@@ -77,7 +77,7 @@ if ($ExistingSource -ne $TargetZip) {
     try {
         foreach ($Entry in $Zip.Entries) {
             if ($Entry.FullName.StartsWith("include/") -and -not [string]::IsNullOrEmpty($Entry.Name)) {
-                $Relative = $Entry.FullName.Replace("/", [IO.Path]::DirectorySeparatorChar)
+                $Relative = $Entry.FullName.Replace('/', [IO.Path]::DirectorySeparatorChar)
                 $Destination = Join-Path $Prefix $Relative
                 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Destination) | Out-Null
                 [System.IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $Destination, $true)
@@ -109,13 +109,13 @@ function Invoke-Cython([string]$Dir, [string]$Pyx) {
     $Content = [IO.File]::ReadAllText($OutC)
     $Content = [regex]::Replace(
         $Content,
-        "(?m)^__PYX_EXTERN_C (\w+)",
-        "/* cythonTask altered */ __PYX_EXTERN_C JNIEXPORT \$1 JNICALL"
+        '(?m)^__PYX_EXTERN_C (\w+)',
+        '/* cythonTask altered */ __PYX_EXTERN_C JNIEXPORT $1 JNICALL'
     )
     $Content = [regex]::Replace(
         $Content,
-        "(__pyx_insert_code_object\(c_line)",
-        "// cythonTask disabled: \$1"
+        '(__pyx_insert_code_object\(c_line)',
+        '// cythonTask disabled: $1'
     )
     [IO.File]::WriteAllText($OutC, $Content, [Text.UTF8Encoding]::new($false))
 }
@@ -156,7 +156,8 @@ if (-not $Ninja -or -not (Test-Path $Ninja)) {
 
 $PrefixMap = Join-Path $Work "prefix-map.cmake"
 $CyForCmake = $Cy.Replace("\", "/")
-Set-Content -Encoding UTF8 -Path $PrefixMap -Value "add_compile_options(\"-ffile-prefix-map=$CyForCmake/=\")"
+$PrefixMapContent = 'add_compile_options("-ffile-prefix-map=' + $CyForCmake + '/=")'
+[IO.File]::WriteAllText($PrefixMap, $PrefixMapContent, [Text.UTF8Encoding]::new($false))
 
 $CmakeArgs = @(
     "-S", $Src,
