@@ -311,11 +311,20 @@ def chaquopyRuntimeTasks = chaquopyAbis.collect { String abi ->
         }).withPathSensitivity(PathSensitivity.RELATIVE)
         inputs.files(targetZip).withPathSensitivity(PathSensitivity.NAME_ONLY)
         outputs.dir(outputDir)
-        commandLine 'bash', new File(chaquopySourceDir, 'exteraless/build.sh').path
+        if (OperatingSystem.current().windows) {
+            commandLine 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+                    new File(projectDir, 'scripts/build-chaquopy-runtime.ps1').absolutePath
+        } else {
+            commandLine 'bash', new File(chaquopySourceDir, 'exteraless/build.sh').path
+        }
         environment('ABI', abi)
         environment('OUT', outputDir.path)
         environment('WORKSPACE', layout.buildDirectory.dir('chaquopy/work').get().asFile.path)
-        environment('PYTHON', chaquopyBuildPython ?: 'python3')
+        if (chaquopyBuildPython != null && !chaquopyBuildPython.isBlank()) {
+            environment('PYTHON', chaquopyBuildPython)
+        } else if (!OperatingSystem.current().windows) {
+            environment('PYTHON', 'python3')
+        }
         environment('PYTHON_VERSION', chaquopyPythonVersion)
         environment('CMAKE_POLICY_VERSION_MINIMUM', '3.5')
         doFirst {
@@ -324,6 +333,7 @@ def chaquopyRuntimeTasks = chaquopyAbis.collect { String abi ->
             }
             environment('NDK', androidComponents.sdkComponents.ndkDirectory.get().asFile.path)
             environment('PYTHON_TARGET_ZIP', targetZip.singleFile.path)
+            environment('ANDROID_SDK_ROOT', androidComponents.sdkComponents.sdkDirectory.get().asFile.path)
         }
     }
 }
