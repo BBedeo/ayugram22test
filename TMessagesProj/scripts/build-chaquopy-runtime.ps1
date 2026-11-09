@@ -155,25 +155,41 @@ if (-not $Ninja -or -not (Test-Path $Ninja)) {
 }
 
 $PrefixMap = Join-Path $Work "prefix-map.cmake"
-$CyForCmake = $Cy.Replace("\", "/")
+
+# CMake treats backslashes inside values used by CMakeLists.txt as escape characters
+# (for example, C:\Users becomes an invalid \U escape). Normalize every path we
+# pass into CMake to forward slashes.
+function Convert-ToCMakePath([string]$Path) {
+    return $Path.Replace("\", "/")
+}
+
+$SrcForCmake = Convert-ToCMakePath $Src
+$WorkForCmake = Convert-ToCMakePath $Work
+$NinjaForCmake = Convert-ToCMakePath $Ninja
+$PrefixMapForCmake = Convert-ToCMakePath $PrefixMap
+$CyForCmake = Convert-ToCMakePath $Cy
+$ToolchainForCmake = Convert-ToCMakePath (Join-Path $Ndk 'build\cmake\android.toolchain.cmake')
+$IncludePythonForCmake = Convert-ToCMakePath (Join-Path $Prefix 'include')
+$LibDirForCmake = Convert-ToCMakePath (Join-Path $Prefix 'lib')
+
 $PrefixMapContent = 'add_compile_options("-ffile-prefix-map=' + $CyForCmake + '/=")'
 [IO.File]::WriteAllText($PrefixMap, $PrefixMapContent, [Text.UTF8Encoding]::new($false))
 
 $CmakeArgs = @(
-    "-S", $Src,
-    "-B", $Work,
+    "-S", $SrcForCmake,
+    "-B", $WorkForCmake,
     "-G", "Ninja",
-    "-DCMAKE_MAKE_PROGRAM=$Ninja",
-    "-DCMAKE_PROJECT_INCLUDE=$PrefixMap",
+    "-DCMAKE_MAKE_PROGRAM=$NinjaForCmake",
+    "-DCMAKE_PROJECT_INCLUDE=$PrefixMapForCmake",
     "-DCMAKE_BUILD_TYPE=Release",
-    "-DCHAQUOPY_SRC_DIR=$Cy",
-    "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $Ndk 'build\cmake\android.toolchain.cmake')",
+    "-DCHAQUOPY_SRC_DIR=$CyForCmake",
+    "-DCMAKE_TOOLCHAIN_FILE=$ToolchainForCmake",
     "-DANDROID_ABI=$Abi",
     "-DANDROID_NATIVE_API_LEVEL=24",
     "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
     "-DCHAQUOPY_PYTHON_VERSION=$PythonVersion",
-    "-DCHAQUOPY_INCLUDE_PYTHON=$(Join-Path $Prefix 'include')",
-    "-DCHAQUOPY_LIB_DIRS=$(Join-Path $Prefix 'lib')",
+    "-DCHAQUOPY_INCLUDE_PYTHON=$IncludePythonForCmake",
+    "-DCHAQUOPY_LIB_DIRS=$LibDirForCmake",
     "-DCHAQUOPY_PY_SUFFIX=.so"
 )
 & $Cmake @CmakeArgs | Out-Null
