@@ -102,7 +102,10 @@ android {
     } else if (!nativeTarget.isBlank()) {
         targetAbis = [nativeTarget]
     } else {
-        targetAbis = ['arm64-v8a', 'x86_64']
+        // Local/debug default: build only ARM64. This matches modern physical
+        // Android devices (including our Honor test device) and avoids compiling
+        // the entire native/Chaquopy stack twice on every Run.
+        targetAbis = ['arm64-v8a']
     }
 
     // splits.abi выключен намеренно, а не по недосмотру. Два ограничения
@@ -114,8 +117,8 @@ android {
     //     filters are set»).
     // Поэтому раздельные APK получаются не сплитами, а отдельной сборкой на
     // каждый ABI: NATIVE_TARGET=arm64-v8a, затем NATIVE_TARGET=x86_64.
-    // Пустой NATIVE_TARGET даёт ОДИН APK с обоими ABI (~+51 МБ на второй
-    // libtmessages.so) — о чём ниже предупреждение в лог.
+    // Пустой NATIVE_TARGET локально собирает только arm64-v8a для быстрого Run.
+    // Для APK с обоими ABI явно задайте NATIVE_TARGET=universal.
     splits {
         abi {
             enable = false
