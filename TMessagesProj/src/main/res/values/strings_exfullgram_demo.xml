@@ -62,4 +62,10 @@
     <string name="ExFullGramTestGeneratedMessage">Test message #%1$d</string>
     <string name="ExFullGramTestGeneratedLongMessage">This is an intentionally very long ExFullGram test message. It is used to check wrapping, bubble height, timestamps, replies, reactions, and general layout behavior with long text. It deliberately contains much more text than a normal short message.</string>
     <string name="ExFullGramTestAccountsLinkedMessage">Local test accounts are linked. Messages between them are synchronized on this device.</string>
+
+    <string name="ExFullGramTestPresetBusyGroupName">Busy Test Group</string>
+    <string name="ExFullGramTestPresetLargeChannelName">Large Test Channel</string>
+    <string name="ExFullGramTestPresetLongContentName">A very long test chat name for checking wrapping, truncation, and ExFullGram header layout behavior</string>
+    <string name="ExFullGramTestPresetLongContentDescription">A deliberately long test chat description used to check how profiles, chat info screens, different screen sizes, line wrapping, and large description blocks are rendered.</string>
+    <string name="ExFullGramTestPresetFloodName">Message Flood Test</string>
 </resources>
