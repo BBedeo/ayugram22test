@@ -913,7 +913,7 @@ public final class OnlineLyrics {
     }
 
     private static String userAgent() {
-        return "exteraless/" + BuildVars.BUILD_VERSION_STRING + " (https://github.com/exteraless/exteraless)";
+        return "ExFullGram/" + BuildVars.BUILD_VERSION_STRING + " (https://github.com/BBedeo/ayugram22test)";
     }
 
     private static boolean isTransient(int code) {
