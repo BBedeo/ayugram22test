@@ -118,7 +118,7 @@ public class IconPackManager {
             // прогрев: декодируем иконки заранее, чтобы первый экран не тормозил
             launchPrewarm();
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to load icon packs", t);
+            FileLog.e("ExFullGram: failed to load icon packs", t);
         }
     }
 
@@ -188,7 +188,7 @@ public class IconPackManager {
             // getOriginalDrawableForDensity не рекурсивен: он идёт сразу в базовый Resources.
             return resources.getOriginalDrawableForDensity(mapped, density, theme);
         } catch (Throwable t) {
-            FileLog.e("openExtera: base icon pack lookup failed", t);
+            FileLog.e("ExFullGram: base icon pack lookup failed", t);
             return null;
         }
     }
@@ -246,7 +246,7 @@ public class IconPackManager {
             }
             return new BitmapDrawable(ApplicationLoader.applicationContext.getResources(), bitmap);
         } catch (Throwable t) {
-            FileLog.e("openExtera: icon pack lookup failed", t);
+            FileLog.e("ExFullGram: icon pack lookup failed", t);
             return null;
         }
     }
@@ -368,10 +368,10 @@ public class IconPackManager {
             scaled.setDensity(density);
             return scaled;
         } catch (OutOfMemoryError e) {
-            FileLog.e("openExtera: out of memory loading icon " + path);
+            FileLog.e("ExFullGram: out of memory loading icon " + path);
             return null;
         } catch (Throwable t) {
-            FileLog.e("openExtera: error loading icon " + path, t);
+            FileLog.e("ExFullGram: error loading icon " + path, t);
             return null;
         }
     }
@@ -399,7 +399,7 @@ public class IconPackManager {
             svg.renderToCanvas(new Canvas(bitmap));
             return bitmap;
         } catch (Throwable t) {
-            FileLog.e("openExtera: cannot render svg icon", t);
+            FileLog.e("ExFullGram: cannot render svg icon", t);
             return null;
         }
     }
@@ -531,7 +531,7 @@ public class IconPackManager {
                 collected.put(name, typeMask | entry);
             }
         } catch (Throwable t) {
-            FileLog.e("openExtera: cannot enumerate app icons", t);
+            FileLog.e("ExFullGram: cannot enumerate app icons", t);
         }
         java.util.LinkedHashMap<String, Integer> result = new java.util.LinkedHashMap<>(collected);
         if (!result.isEmpty()) {
@@ -583,7 +583,7 @@ public class IconPackManager {
             reloadInternal();
             return true;
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to save custom icon", t);
+            FileLog.e("ExFullGram: failed to save custom icon", t);
             return false;
         }
     }
@@ -615,7 +615,7 @@ public class IconPackManager {
             reloadInternal();
             return true;
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to reset custom icon", t);
+            FileLog.e("ExFullGram: failed to reset custom icon", t);
             return false;
         }
     }
@@ -723,7 +723,7 @@ public class IconPackManager {
                     }
                 }
             } catch (Throwable t) {
-                FileLog.e("openExtera: icon prewarm failed", t);
+                FileLog.e("ExFullGram: icon prewarm failed", t);
             } finally {
                 prewarmScheduled = false;
             }
@@ -765,7 +765,7 @@ public class IconPackManager {
             android.net.Uri uri = IconPackProvider.getIconUri(pack.getId(), name);
             return uri == null ? null : androidx.core.graphics.drawable.IconCompat.createWithContentUri(uri);
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to build notification icon", t);
+            FileLog.e("ExFullGram: failed to build notification icon", t);
             return null;
         }
     }
