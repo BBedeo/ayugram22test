@@ -960,6 +960,61 @@ public final class DemoBackend {
         return isTestAccount(account);
     }
 
+    public static boolean isTestAccountOnline(int account) {
+        if (!isTestAccount(account)) return false;
+        TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
+        return user != null
+                && user.status instanceof TLRPC.TL_userStatusOnline
+                && user.status.expires > (int) (System.currentTimeMillis() / 1000L);
+    }
+
+    public static void setTestAccountOnline(int account, boolean online) {
+        if (!isTestAccount(account)) return;
+        TLRPC.User self = UserConfig.getInstance(account).getCurrentUser();
+        if (self == null) return;
+
+        int now = (int) (System.currentTimeMillis() / 1000L);
+        if (online) {
+            TLRPC.TL_userStatusOnline status = new TLRPC.TL_userStatusOnline();
+            status.expires = now + 3600;
+            self.status = status;
+        } else {
+            TLRPC.TL_userStatusOffline status = new TLRPC.TL_userStatusOffline();
+            status.expires = now - 60;
+            self.status = status;
+        }
+        self.flags |= 64;
+        UserConfig.getInstance(account).saveConfig(true);
+
+        ArrayList<TLRPC.User> own = new ArrayList<>();
+        own.add(self);
+        MessagesController.getInstance(account).putUsers(own, false);
+        MessagesStorage.getInstance(account).putUsersAndChats(own, null, true, true);
+        NotificationCenter.getInstance(account).postNotificationName(
+                NotificationCenter.updateInterfaces,
+                MessagesController.UPDATE_MASK_STATUS
+        );
+
+        for (int other = 0; other < UserConfig.MAX_ACCOUNT_COUNT; other++) {
+            if (other == account || !isTestAccount(other)) continue;
+            TLRPC.User peer = MessagesController.getInstance(other).getUser(self.id);
+            if (peer == null) {
+                peer = peerCopy(self);
+            } else {
+                peer.status = self.status;
+                peer.flags |= 64;
+            }
+            ArrayList<TLRPC.User> users = new ArrayList<>();
+            users.add(peer);
+            MessagesController.getInstance(other).putUsers(users, false);
+            MessagesStorage.getInstance(other).putUsersAndChats(users, null, true, true);
+            NotificationCenter.getInstance(other).postNotificationName(
+                    NotificationCenter.updateInterfaces,
+                    MessagesController.UPDATE_MASK_STATUS
+            );
+        }
+    }
+
     private static void copyReply(SendMessagesHelper.SendMessageParams params, TLRPC.TL_message message) {
         if (params.replyToMsg == null) return;
         message.reply_to = new TLRPC.TL_messageReplyHeader();
