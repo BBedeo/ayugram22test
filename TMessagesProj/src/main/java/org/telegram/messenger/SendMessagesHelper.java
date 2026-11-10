@@ -3090,6 +3090,9 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (messageObject == null) {
             return;
         }
+        if (app.exteraless.demo.DemoBackend.editLocalMessage(currentAccount, messageObject)) {
+            return;
+        }
         if (params == null) {
             params = new HashMap<>();
         }
@@ -4045,6 +4048,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         Runnable callback
     ) {
         if (messageObject == null || parentFragment == null) {
+            return;
+        }
+        if (app.exteraless.demo.DemoBackend.commitLocalReaction(currentAccount, messageObject)) {
+            if (callback != null) {
+                callback.run();
+            }
             return;
         }
         messageObject.reactionsLastCheckTime = System.currentTimeMillis();
