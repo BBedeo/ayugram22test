@@ -9652,6 +9652,10 @@ public class MessagesController extends BaseController implements NotificationCe
                 channelId = 0;
             }
         }
+        if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+            app.exteraless.demo.DemoBackend.mirrorLocalDelete(currentAccount, dialogId, messages);
+            return;
+        }
         if (cacheOnly) {
             return;
         }
@@ -11717,6 +11721,9 @@ public class MessagesController extends BaseController implements NotificationCe
     public boolean sendTyping(long dialogId, long threadMsgId, int action, String emojicon, int classGuid) {
         if (action < 0 || action >= sendingTypings.length || dialogId == 0) {
             return false;
+        }
+        if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+            return app.exteraless.demo.DemoBackend.sendLocalTyping(currentAccount, dialogId, threadMsgId, action);
         }
         final long selfId = UserConfig.getInstance(UserConfig.selectedAccount).getClientUserId();
         if (dialogId == selfId) {
@@ -15191,6 +15198,10 @@ public class MessagesController extends BaseController implements NotificationCe
             monoForumPeerId = threadId;
         } else {
             monoForumPeerId = 0;
+        }
+
+        if (app.exteraless.demo.DemoBackend.handleLocalRead(currentAccount, dialogId)) {
+            return;
         }
 
         if (createReadTask) {
