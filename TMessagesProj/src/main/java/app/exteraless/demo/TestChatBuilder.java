@@ -70,10 +70,14 @@ public final class TestChatBuilder {
         messages.setText("20");
         content.addView(messages, rowParams());
 
+        final EditText unread = createTextField(context, LocaleController.getString(R.string.ExFullGramTestUnreadMessages), true);
+        unread.setText("5");
+        content.addView(unread, rowParams());
+
         preset.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                applyPreset(position, type, name, description, participants, messages);
+                applyPreset(position, type, name, description, participants, messages, unread);
             }
 
             @Override
@@ -109,6 +113,7 @@ public final class TestChatBuilder {
                     int selectedPreset = preset.getSelectedItemPosition();
                     int participantCount = parseInt(participants.getText().toString(), selectedType == DemoBackend.TYPE_PRIVATE ? 2 : 20);
                     int messageCount = parseInt(messages.getText().toString(), 20);
+                    int unreadCount = parseInt(unread.getText().toString(), 0);
                     long dialogId = DemoBackend.createTestChat(
                             account,
                             selectedType,
@@ -116,6 +121,7 @@ public final class TestChatBuilder {
                             description.getText().toString(),
                             participantCount,
                             messageCount,
+                            unreadCount,
                             selectedPreset
                     );
                     if (dialogId != 0) {
@@ -133,17 +139,20 @@ public final class TestChatBuilder {
             EditText name,
             EditText description,
             EditText participants,
-            EditText messages
+            EditText messages,
+            EditText unread
     ) {
         switch (preset) {
             case DemoBackend.PRESET_EMPTY:
                 messages.setText("0");
+                unread.setText("0");
                 participants.setText(type.getSelectedItemPosition() == DemoBackend.TYPE_PRIVATE ? "2" : "5");
                 break;
             case DemoBackend.PRESET_BUSY_GROUP:
                 type.setSelection(DemoBackend.TYPE_GROUP);
                 participants.setText("250");
                 messages.setText("100");
+                unread.setText("25");
                 if (name.length() == 0) {
                     name.setText(LocaleController.getString(R.string.ExFullGramTestPresetBusyGroupName));
                 }
@@ -152,6 +161,7 @@ public final class TestChatBuilder {
                 type.setSelection(DemoBackend.TYPE_CHANNEL);
                 participants.setText("50000");
                 messages.setText("50");
+                unread.setText("10");
                 if (name.length() == 0) {
                     name.setText(LocaleController.getString(R.string.ExFullGramTestPresetLargeChannelName));
                 }
@@ -160,6 +170,7 @@ public final class TestChatBuilder {
                 type.setSelection(DemoBackend.TYPE_GROUP);
                 participants.setText("42");
                 messages.setText("30");
+                unread.setText("8");
                 if (name.length() == 0) {
                     name.setText(LocaleController.getString(R.string.ExFullGramTestPresetLongContentName));
                 }
@@ -171,6 +182,7 @@ public final class TestChatBuilder {
                 type.setSelection(DemoBackend.TYPE_GROUP);
                 participants.setText("1000");
                 messages.setText("500");
+                unread.setText("100");
                 if (name.length() == 0) {
                     name.setText(LocaleController.getString(R.string.ExFullGramTestPresetFloodName));
                 }
