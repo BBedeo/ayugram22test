@@ -133,7 +133,7 @@ public final class EtgBackup {
     }
 
     public static String generateBackupName() {
-        return "exteraless-" + Utilities.generateRandomString(4) + EXTENSION;
+        return "exfullgram-" + Utilities.generateRandomString(4) + EXTENSION;
     }
 
     /** Файл похож на бэкап exteraGram: расширение на месте и внутри есть хоть один знакомый ключ. */
