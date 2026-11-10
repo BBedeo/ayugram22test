@@ -68,7 +68,7 @@ public class IconPickerController {
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             view.showFab();
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to show icon picker", t);
+            FileLog.e("ExFullGram: failed to show icon picker", t);
             pickerView = null;
         } finally {
             initializing = false;
