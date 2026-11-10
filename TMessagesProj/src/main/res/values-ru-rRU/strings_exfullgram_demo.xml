@@ -68,4 +68,7 @@
     <string name="ExFullGramTestPresetLongContentName">Очень длинное название тестового чата для проверки переноса, обрезки текста и поведения шапки интерфейса ExFullGram</string>
     <string name="ExFullGramTestPresetLongContentDescription">Очень длинное описание тестового чата. Оно специально создано для проверки того, как профиль, информация о чате и разные размеры экрана отображают длинный текст, переносы строк и большие блоки описания.</string>
     <string name="ExFullGramTestPresetFloodName">Флуд-тест</string>
+
+    <string name="ExFullGramTestGoOnline">Показать аккаунт в сети</string>
+    <string name="ExFullGramTestGoOffline">Показать аккаунт не в сети</string>
 </resources>
