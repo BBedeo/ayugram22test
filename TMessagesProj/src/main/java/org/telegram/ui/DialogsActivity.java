@@ -3988,13 +3988,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             imageView.setRoundRadius(dp(18));
             switchItem.addView(imageView, LayoutHelper.createFrame(36, 36, Gravity.CENTER));
             switchItem.setOnClickListener(this::openAccountSelector);
-            switchItem.setOnLongClickListener(v -> {
-                if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
-                    app.exteraless.demo.TestAccountManager.show(this, v, currentAccount);
-                    return true;
-                }
-                return openAccountSelector(v);
-            });
+            switchItem.setOnLongClickListener(this::openAccountSelector);
 
             TLRPC.User user = getUserConfig().getCurrentUser();
             avatarDrawable.setInfo(currentAccount, user);
@@ -14807,7 +14801,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             o.add(
                     R.drawable.msg_addcontact,
                     getString(R.string.ExFullGramTestAddAccount),
-                    () -> app.exteraless.demo.TestAccountManager.promptAdd(this)
+                    () -> {
+                        o.dismiss();
+                        app.exteraless.demo.TestAccountManager.promptAdd(this);
+                    }
+            );
+            o.add(
+                    R.drawable.msg_recent,
+                    getString(app.exteraless.demo.DemoBackend.isTestAccountOnline(currentAccount)
+                            ? R.string.ExFullGramTestGoOffline
+                            : R.string.ExFullGramTestGoOnline),
+                    () -> {
+                        app.exteraless.demo.DemoBackend.setTestAccountOnline(
+                                currentAccount,
+                                !app.exteraless.demo.DemoBackend.isTestAccountOnline(currentAccount)
+                        );
+                        o.dismiss();
+                    }
             );
         }
 
