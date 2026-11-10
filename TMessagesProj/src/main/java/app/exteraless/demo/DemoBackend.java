@@ -389,7 +389,12 @@ public final class DemoBackend {
         }
 
         TLRPC.User self = UserConfig.getInstance(account).getCurrentUser();
-        int count = Math.max(1, messageCount);
+        if (messageCount <= 0) {
+            installEmptyPrivateDialog(account, self, peer);
+            return;
+        }
+
+        int count = messageCount;
         TLRPC.TL_messages_messages container = new TLRPC.TL_messages_messages();
         container.users.add(self);
         container.users.add(peer);
@@ -470,7 +475,12 @@ public final class DemoBackend {
         MessagesController.getInstance(account).putUsers(users, false);
         MessagesStorage.getInstance(account).putUsersAndChats(users, null, true, true);
 
-        int count = Math.max(1, messageCount);
+        if (messageCount <= 0) {
+            installEmptyChannelDialog(account, chat, users);
+            return;
+        }
+
+        int count = messageCount;
         TLRPC.TL_messages_messages container = new TLRPC.TL_messages_messages();
         container.chats.add(chat);
         container.users.addAll(users);
@@ -501,6 +511,52 @@ public final class DemoBackend {
             NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.chatInfoDidLoad, full, 0, false, false);
             NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
         }, 250);
+    }
+
+    private static void installEmptyPrivateDialog(int account, TLRPC.User self, TLRPC.User peer) {
+        TLRPC.TL_dialog dialog = new TLRPC.TL_dialog();
+        dialog.peer = new TLRPC.TL_peerUser();
+        dialog.peer.user_id = peer.id;
+        dialog.top_message = 0;
+        dialog.read_inbox_max_id = 0;
+        dialog.read_outbox_max_id = 0;
+        dialog.unread_count = 0;
+        dialog.unread_mentions_count = 0;
+        dialog.unread_reactions_count = 0;
+        dialog.unread_poll_votes_count = 0;
+        dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
+
+        TLRPC.TL_messages_dialogs dialogs = new TLRPC.TL_messages_dialogs();
+        dialogs.dialogs.add(dialog);
+        dialogs.users.add(self);
+        dialogs.users.add(peer);
+
+        MessagesController.getInstance(account).processLoadedDialogs(
+                dialogs, null, null, 0, 0, 1, 3, false, false, false);
+    }
+
+    private static void installEmptyChannelDialog(int account, TLRPC.Chat chat, ArrayList<TLRPC.User> users) {
+        TLRPC.TL_dialog dialog = new TLRPC.TL_dialog();
+        dialog.peer = new TLRPC.TL_peerChannel();
+        dialog.peer.channel_id = chat.id;
+        dialog.top_message = 0;
+        dialog.read_inbox_max_id = 0;
+        dialog.read_outbox_max_id = 0;
+        dialog.unread_count = 0;
+        dialog.unread_mentions_count = 0;
+        dialog.unread_reactions_count = 0;
+        dialog.unread_poll_votes_count = 0;
+        dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
+        dialog.flags |= 1; // pts
+        dialog.pts = 1;
+
+        TLRPC.TL_messages_dialogs dialogs = new TLRPC.TL_messages_dialogs();
+        dialogs.dialogs.add(dialog);
+        dialogs.chats.add(chat);
+        dialogs.users.addAll(users);
+
+        MessagesController.getInstance(account).processLoadedDialogs(
+                dialogs, null, null, 0, 0, 1, 3, false, false, false);
     }
 
     private static ArrayList<TLRPC.User> createSampleParticipants(long chatId) {
