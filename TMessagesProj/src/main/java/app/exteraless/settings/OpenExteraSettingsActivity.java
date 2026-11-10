@@ -27,6 +27,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
 
     private static final int MENU_CLOUD = 1;
     private static final int MENU_SEARCH = 2;
+    private static final int MENU_RESET_DEMO = 3;
 
     private static final int TYPE_ABOUT = 100;
 
@@ -102,6 +103,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             final org.telegram.ui.ActionBar.ActionBarMenu menu = actionBar.createMenu();
             menu.addItem(MENU_SEARCH, R.drawable.outline_header_search, getResourceProvider());
             menu.addItem(MENU_CLOUD, R.drawable.cloud_sync, getResourceProvider());
+            if (app.exteraless.demo.DemoBackend.isDemoAccount(currentAccount)) {
+                menu.addItem(MENU_RESET_DEMO, R.drawable.msg_retry_solar, getResourceProvider());
+            }
             actionBar.setActionBarMenuOnItemClick(new org.telegram.ui.ActionBar.ActionBar.ActionBarMenuOnItemClick() {
                 @Override
                 public void onItemClick(int id) {
@@ -111,6 +115,13 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         presentFragment(new OpenExteraCloudActivity());
                     } else if (id == MENU_SEARCH) {
                         showSettingsSearchDialog();
+                    } else if (id == MENU_RESET_DEMO) {
+                        app.exteraless.demo.DemoBackend.reset(currentAccount);
+                        showDialog(new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
+                                .setTitle("ExFullGram Demo")
+                                .setMessage("Demo data has been reset.")
+                                .setPositiveButton(getString(R.string.OK), null)
+                                .create());
                     }
                 }
             });
@@ -194,7 +205,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             getMessagesController().openByUserName("exteraless", this, 1);
         } else if (position == sourceRow) {
             org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
-                    "https://github.com/exteraless/exteraless");
+                    "https://github.com/BBedeo/ayugram22test");
         } else if (position == designerRow) {
             getMessagesController().openByUserName("the8055u", this, 1);
         } else if (position == designStudioRow) {
@@ -212,7 +223,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             if (viewType == TYPE_ABOUT) {
                 AboutHeaderCell view = new AboutHeaderCell(mContext);
-                view.setOnLogoClickListener(v -> showDialog(new app.exteraless.updater.UpdaterSheet(OpenExteraSettingsActivity.this)));
+                view.setOnLogoClickListener(v -> org.telegram.messenger.browser.Browser.openUrl(
+                        getParentActivity(), "https://github.com/BBedeo/ayugram22test"));
                 // У экстеры шапка лежит на фоне окна, а не в карточке-секции.
                 view.setTag(RecyclerListView.TAG_NOT_SECTION);
                 view.setLayoutParams(new RecyclerView.LayoutParams(
@@ -250,7 +262,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndIcon(getString(R.string.OpenExteraOther), R.drawable.msg_fave, false);
                     } else if (position == channelRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.ProfileChannel),
-                                "@exteraless", R.drawable.msg_channel, true);
+                                "Upstream", R.drawable.msg_channel, true);
                     } else if (position == sourceRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraSource),
                                 "GitHub", R.drawable.msg_language, false);
