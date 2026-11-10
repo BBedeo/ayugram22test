@@ -846,7 +846,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                     phoneView.requestPasskey(true, true);
                 }
             } else if (id == 5) {
-                startLocalDemoAccount();
+                startLocalTestAccount();
             }
         });
         moreButtonView.setSubMenuOpenSide(1);
@@ -1732,8 +1732,8 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         onAuthSuccess(res);
     }
 
-    private void startLocalDemoAccount() {
-        final TLRPC.TL_user demoUser = app.exteraless.demo.DemoBackend.createSelf(
+    private void startLocalTestAccount() {
+        final TLRPC.TL_user testUser = app.exteraless.demo.DemoBackend.createSelf(
                 currentAccount,
                 LocaleController.formatString(R.string.ExFullGramTestAccountDefaultName, currentAccount + 1)
         );
@@ -1744,9 +1744,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
 
         UserConfig.getInstance(currentAccount).clearConfig();
         UserConfig.getInstance(currentAccount).syncContacts = false;
-        UserConfig.getInstance(currentAccount).setCurrentUser(demoUser);
+        UserConfig.getInstance(currentAccount).setCurrentUser(testUser);
         UserConfig.getInstance(currentAccount).saveConfig(true);
-        ConnectionsManager.getInstance(currentAccount).setUserId(demoUser.id);
+        ConnectionsManager.getInstance(currentAccount).setUserId(testUser.id);
 
         // Test Mode is entirely local: reset the Telegram cache for this account,
         // seed test data and link it to any other local Test Accounts.
