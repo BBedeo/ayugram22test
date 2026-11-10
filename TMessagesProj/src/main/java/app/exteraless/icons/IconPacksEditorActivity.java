@@ -268,7 +268,7 @@ public class IconPacksEditorActivity extends BaseNekoSettingsActivity {
                     collected.add(new IconEntry(entry.getValue(), entry.getKey()));
                 }
             } catch (Throwable t) {
-                FileLog.e("openExtera: cannot build icon list", t);
+                FileLog.e("ExFullGram: cannot build icon list", t);
             }
             AndroidUtilities.runOnUIThread(() -> {
                 cachedIcons.clear();
