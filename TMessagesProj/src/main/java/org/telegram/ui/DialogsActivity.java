@@ -3979,7 +3979,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             });
         }
 
-        if (allowSwitchAccount && UserConfig.getVisibleAccountsCount() > 1) {
+        if (allowSwitchAccount && (UserConfig.getVisibleAccountsCount() > 1 || app.exteraless.demo.DemoBackend.isTestAccount(currentAccount))) {
             switchItem = menu.addItemWithWidth(11, 0, dp(56));
             AvatarDrawable avatarDrawable = new AvatarDrawable();
             avatarDrawable.setTextSize(dp(12));
@@ -3988,7 +3988,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             imageView.setRoundRadius(dp(18));
             switchItem.addView(imageView, LayoutHelper.createFrame(36, 36, Gravity.CENTER));
             switchItem.setOnClickListener(this::openAccountSelector);
-            switchItem.setOnLongClickListener(this::openAccountSelector);
+            switchItem.setOnLongClickListener(v -> {
+                if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+                    app.exteraless.demo.TestAccountManager.show(this, v, currentAccount);
+                    return true;
+                }
+                return openAccountSelector(v);
+            });
 
             TLRPC.User user = getUserConfig().getCurrentUser();
             avatarDrawable.setInfo(currentAccount, user);
@@ -13875,6 +13881,15 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             return;
         }
 
+        if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+            io.add(
+                    R.drawable.msg_groups,
+                    getString(R.string.ExFullGramTestCreateChat),
+                    () -> app.exteraless.demo.TestChatBuilder.show(this, currentAccount)
+            );
+            io.addGap();
+        }
+
         final boolean isCurrentThemeDark;
         final boolean hideBottomNavigationBar = NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
             if (resourceProvider != null) {
@@ -14783,6 +14798,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 });
                 o.addView(btn, LayoutHelper.createLinear(230, 48));
             }
+        }
+
+        if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+            if (o.getItemsCount() > 0) {
+                o.addGap();
+            }
+            o.add(
+                    R.drawable.msg_addcontact,
+                    getString(R.string.ExFullGramTestAddAccount),
+                    () -> app.exteraless.demo.TestAccountManager.promptAdd(this)
+            );
         }
 
         final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(24), getThemedColor(Theme.key_windowBackgroundWhite));
