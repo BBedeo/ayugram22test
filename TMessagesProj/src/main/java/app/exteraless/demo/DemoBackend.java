@@ -324,6 +324,7 @@ public final class DemoBackend {
             String description,
             int participants,
             int messageCount,
+            int unreadCount,
             int preset
     ) {
         if (!isTestAccount(account)) return 0;
@@ -331,6 +332,7 @@ public final class DemoBackend {
         type = Math.max(TYPE_PRIVATE, Math.min(TYPE_CHANNEL, type));
         participants = Math.max(type == TYPE_PRIVATE ? 2 : 1, Math.min(participants, 1_000_000_000));
         messageCount = Math.max(0, Math.min(messageCount, 5000));
+        unreadCount = Math.max(0, Math.min(unreadCount, messageCount));
 
         String title = name == null ? "" : name.trim();
         if (TextUtils.isEmpty(title)) {
@@ -344,14 +346,14 @@ public final class DemoBackend {
         long id = nextPeerId();
 
         if (type == TYPE_PRIVATE) {
-            installPrivateTestChat(account, id, title, about, messageCount, preset);
+            installPrivateTestChat(account, id, title, about, messageCount, unreadCount, preset);
             return id;
         }
 
-        saveSharedChatSpec(id, type, title, about, participants, messageCount, preset);
+        saveSharedChatSpec(id, type, title, about, participants, messageCount, unreadCount, preset);
         for (int slot = 0; slot < UserConfig.MAX_ACCOUNT_COUNT; slot++) {
             if (isTestAccount(slot)) {
-                installChannelTestChat(slot, id, type, title, about, participants, messageCount, preset);
+                installChannelTestChat(slot, id, type, title, about, participants, messageCount, unreadCount, preset);
             }
         }
         return -id;
@@ -363,6 +365,7 @@ public final class DemoBackend {
             String title,
             String about,
             int messageCount,
+            int unreadCount,
             int preset
     ) {
         TLRPC.TL_user peer = createUser(userId, title, "");
@@ -392,10 +395,11 @@ public final class DemoBackend {
         container.users.add(peer);
         int now = (int) (System.currentTimeMillis() / 1000L);
 
+        int unreadRemaining = Math.min(unreadCount, count);
         for (int i = count - 1; i >= 0; i--) {
             boolean outgoing = i % 4 == 0;
             String text = generatedMessageText(i + 1, preset);
-            container.messages.add(createPrivateMessage(
+            TLRPC.TL_message generated = createPrivateMessage(
                     nextMessageId(),
                     self.id,
                     peer.id,
@@ -403,7 +407,12 @@ public final class DemoBackend {
                     outgoing,
                     text,
                     now - (count - 1 - i) * 12
-            ));
+            );
+            if (!outgoing && unreadRemaining > 0) {
+                generated.unread = true;
+                unreadRemaining--;
+            }
+            container.messages.add(generated);
         }
 
         MessagesStorage.getInstance(account).putMessages(
@@ -420,6 +429,7 @@ public final class DemoBackend {
             String about,
             int participants,
             int messageCount,
+            int unreadCount,
             int preset
     ) {
         boolean broadcast = type == TYPE_CHANNEL;
@@ -446,7 +456,7 @@ public final class DemoBackend {
         full.flags |= 1; // participants_count
         full.read_inbox_max_id = 0;
         full.read_outbox_max_id = 0;
-        full.unread_count = 0;
+        full.unread_count = Math.min(unreadCount, Math.max(1, messageCount));
         full.chat_photo = new TLRPC.TL_photoEmpty();
         full.chat_photo.id = 0;
         full.notify_settings = new TLRPC.TL_peerNotifySettings();
@@ -466,9 +476,10 @@ public final class DemoBackend {
         container.users.addAll(users);
         int now = (int) (System.currentTimeMillis() / 1000L);
 
+        int unreadRemaining = Math.min(unreadCount, count);
         for (int i = count - 1; i >= 0; i--) {
             TLRPC.User sender = users.get(i % Math.max(1, users.size() - 1));
-            container.messages.add(createChannelMessage(
+            TLRPC.TL_message generated = createChannelMessage(
                     nextMessageId(),
                     chatId,
                     broadcast ? chatId : sender.id,
@@ -476,7 +487,12 @@ public final class DemoBackend {
                     broadcast,
                     generatedMessageText(i + 1, preset),
                     now - (count - 1 - i) * 8
-            ));
+            );
+            if (unreadRemaining > 0) {
+                generated.unread = true;
+                unreadRemaining--;
+            }
+            container.messages.add(generated);
         }
 
         MessagesStorage.getInstance(account).putMessages(
@@ -516,6 +532,7 @@ public final class DemoBackend {
             String about,
             int participants,
             int messageCount,
+            int unreadCount,
             int preset
     ) {
         Set<String> ids = new HashSet<>(prefs().getStringSet(KEY_SHARED_CHATS, new HashSet<>()));
@@ -528,6 +545,7 @@ public final class DemoBackend {
                 .putString(p + "about", about)
                 .putInt(p + "participants", participants)
                 .putInt(p + "messages", Math.min(messageCount, 250))
+                .putInt(p + "unread", Math.min(unreadCount, Math.min(messageCount, 250)))
                 .putInt(p + "preset", preset)
                 .apply();
     }
@@ -544,8 +562,9 @@ public final class DemoBackend {
                 String about = prefs().getString(p + "about", "");
                 int participants = prefs().getInt(p + "participants", 20);
                 int messages = prefs().getInt(p + "messages", 10);
+                int unread = prefs().getInt(p + "unread", 0);
                 int preset = prefs().getInt(p + "preset", PRESET_CUSTOM);
-                installChannelTestChat(account, chatId, type, title, about, participants, messages, preset);
+                installChannelTestChat(account, chatId, type, title, about, participants, messages, unread, preset);
             } catch (Exception ignore) {
             }
         }
