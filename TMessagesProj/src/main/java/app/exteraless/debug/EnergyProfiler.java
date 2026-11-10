@@ -748,7 +748,7 @@ public final class EnergyProfiler {
     private File writeReport() throws Exception {
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
         final StringBuilder out = new StringBuilder();
-        out.append("exteraless energy profile\n");
+        out.append("ExFullGram energy profile\n");
         out.append("app ").append(BuildVars.BUILD_VERSION_STRING).append(" (").append(BuildConfig.VERSION_CODE)
                 .append(BuildVars.BUILD_COMMIT_ID.isEmpty() ? "" : ", " + BuildVars.BUILD_COMMIT_ID).append(")")
                 .append(", ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
