@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ExFullGramDemoAccount">Demo account</string>
-    <string name="ExFullGramDemoResetTitle">ExFullGram Demo</string>
-    <string name="ExFullGramDemoResetDone">Demo data has been reset.</string>
+    <string name="ExFullGramDemoAccount">Test account</string>
+    <string name="ExFullGramDemoResetTitle">ExFullGram Test</string>
+    <string name="ExFullGramDemoResetDone">Test data has been reset.</string>
     <string name="ExFullGramUpstream">Upstream</string>
 
     <string name="ExFullGramDemoAliceFirstName">Alice</string>
-    <string name="ExFullGramDemoAliceLastName">Demo</string>
+    <string name="ExFullGramDemoAliceLastName">Test</string>
     <string name="ExFullGramDemoMaxFirstName">Max</string>
     <string name="ExFullGramDemoMaxLastName">Tester</string>
 
-    <string name="ExFullGramDemoAliceMessage1">Hi. This is the local ExFullGram Demo Backend.</string>
+    <string name="ExFullGramDemoAliceMessage1">Hi. This is the local ExFullGram Test Backend.</string>
     <string name="ExFullGramDemoAliceMessage2">You can safely experiment with the interface — these messages never leave the device.</string>
     <string name="ExFullGramDemoAliceMessage3">Try sending a message here: outgoing messages are already stored locally.</string>
 
@@ -20,14 +20,42 @@
 
     <string name="ExFullGramDemoQaMessage1">ExFullGram QA</string>
     <string name="ExFullGramDemoQaMessage2">This account is for testing the interface without a real Telegram account.</string>
-    <string name="ExFullGramDemoQaMessage3">Demo data can be reset from ExFullGram settings.</string>
+    <string name="ExFullGramDemoQaMessage3">Test data can be reset from ExFullGram settings.</string>
 
-    <string name="ExFullGramDemoMediaPhoto">🖼 Photo (Demo)</string>
-    <string name="ExFullGramDemoMediaFile">📎 File (Demo)</string>
-    <string name="ExFullGramDemoMediaLocation">📍 Location (Demo)</string>
-    <string name="ExFullGramDemoMediaPoll">📊 Poll (Demo)</string>
-    <string name="ExFullGramDemoMediaTask">✅ Task (Demo)</string>
-    <string name="ExFullGramDemoMediaGame">🎮 Game (Demo)</string>
-    <string name="ExFullGramDemoMediaInvoice">🧾 Invoice (Demo)</string>
-    <string name="ExFullGramDemoMessage">Demo message</string>
+    <string name="ExFullGramDemoMediaPhoto">🖼 Photo (Test)</string>
+    <string name="ExFullGramDemoMediaFile">📎 File (Test)</string>
+    <string name="ExFullGramDemoMediaLocation">📍 Location (Test)</string>
+    <string name="ExFullGramDemoMediaPoll">📊 Poll (Test)</string>
+    <string name="ExFullGramDemoMediaTask">✅ Task (Test)</string>
+    <string name="ExFullGramDemoMediaGame">🎮 Game (Test)</string>
+    <string name="ExFullGramDemoMediaInvoice">🧾 Invoice (Test)</string>
+    <string name="ExFullGramDemoMessage">Test message</string>
+
+    <string name="ExFullGramTestCreateChat">Create test chat</string>
+    <string name="ExFullGramTestChatBuilderTitle">Test chat builder</string>
+    <string name="ExFullGramTestChatName">Chat name</string>
+    <string name="ExFullGramTestChatDescription">Description</string>
+    <string name="ExFullGramTestChatType">Chat type</string>
+    <string name="ExFullGramTestParticipants">Participants / subscribers</string>
+    <string name="ExFullGramTestMessages">Message count</string>
+    <string name="ExFullGramTestPreset">Preset</string>
+    <string name="ExFullGramTestTypePrivate">Private chat</string>
+    <string name="ExFullGramTestTypeGroup">Group</string>
+    <string name="ExFullGramTestTypeChannel">Channel</string>
+    <string name="ExFullGramTestPresetCustom">Custom</string>
+    <string name="ExFullGramTestPresetEmpty">Empty chat</string>
+    <string name="ExFullGramTestPresetBusyGroup">Busy group · 250 members · 100 messages</string>
+    <string name="ExFullGramTestPresetLargeChannel">Large channel · 50K subscribers · 50 messages</string>
+    <string name="ExFullGramTestPresetLongContent">Long names and long messages</string>
+    <string name="ExFullGramTestPresetFlood">Message flood · 500 messages</string>
+    <string name="ExFullGramTestCreate">Create</string>
+    <string name="ExFullGramTestCreated">Test chat created.</string>
+
+    <string name="ExFullGramTestAccounts">Test accounts</string>
+    <string name="ExFullGramTestAddAccount">Add test account</string>
+    <string name="ExFullGramTestAccountName">Account name</string>
+    <string name="ExFullGramTestAccountDefaultName">Test %1$d</string>
+    <string name="ExFullGramTestAccountCreated">Test account created.</string>
+    <string name="ExFullGramTestNoFreeSlots">No free account slots are available.</string>
+    <string name="ExFullGramTestAccountsHint">Long-press the account avatar to manage local test accounts.</string>
 </resources>
