@@ -826,7 +826,111 @@ public final class DemoBackend {
                 object.getDialogId(),
                 objects
         );
+
+        mirrorReactions(account, object.getDialogId(), object.messageOwner);
         return true;
+    }
+
+    private static void mirrorReactions(int sourceAccount, long dialogId, TLRPC.Message source) {
+        if (source == null) return;
+
+        if (dialogId > 0) {
+            int recipient = accountForTestUser(dialogId);
+            if (recipient >= 0 && recipient != sourceAccount) {
+                long targetDialogId = UserConfig.getInstance(sourceAccount).getClientUserId();
+                updateMirroredReactions(recipient, targetDialogId, source);
+            }
+            return;
+        }
+
+        for (int other = 0; other < UserConfig.MAX_ACCOUNT_COUNT; other++) {
+            if (other == sourceAccount || !isTestAccount(other)) continue;
+            updateMirroredReactions(other, dialogId, source);
+        }
+    }
+
+    private static void updateMirroredReactions(int account, long dialogId, TLRPC.Message source) {
+        TLRPC.Message target = tw.nekomimi.nekogram.helpers.MessageHelper.getInstance(account)
+                .getMessage(dialogId, source.id);
+        if (target == null) return;
+
+        target.reactions = cloneReactionsForTarget(source.reactions, target.reactions);
+        if (target.reactions != null) {
+            target.flags |= 1048576; // reactions
+        } else {
+            target.flags &= ~1048576;
+        }
+
+        ArrayList<TLRPC.Message> raw = new ArrayList<>();
+        raw.add(target);
+        MessagesStorage.getInstance(account).putMessages(raw, false, true, false, 0, 0, 0);
+
+        ArrayList<MessageObject> objects = new ArrayList<>();
+        objects.add(new MessageObject(account, target, true, true));
+        AndroidUtilities.runOnUIThread(() ->
+                NotificationCenter.getInstance(account).postNotificationName(
+                        NotificationCenter.replaceMessagesObjects,
+                        dialogId,
+                        objects
+                )
+        );
+    }
+
+    private static TLRPC.TL_messageReactions cloneReactionsForTarget(
+            TLRPC.MessageReactions source,
+            TLRPC.MessageReactions previousTarget
+    ) {
+        if (source == null) return null;
+
+        TLRPC.TL_messageReactions result = new TLRPC.TL_messageReactions();
+        result.flags = source.flags;
+        result.min = source.min;
+        result.can_see_list = source.can_see_list;
+        result.reactions_as_tags = source.reactions_as_tags;
+
+        for (TLRPC.ReactionCount sourceCount : source.results) {
+            TLRPC.TL_reactionCount count = new TLRPC.TL_reactionCount();
+            count.reaction = sourceCount.reaction;
+            count.count = sourceCount.count;
+            count.flags = sourceCount.flags & ~1;
+            count.chosen = false;
+
+            TLRPC.ReactionCount previous = findReactionCount(previousTarget, sourceCount.reaction);
+            if (previous != null && previous.chosen) {
+                count.chosen = true;
+                count.chosen_order = previous.chosen_order;
+                count.flags |= 1;
+            }
+            result.results.add(count);
+        }
+
+        result.recent_reactions = new ArrayList<>(source.recent_reactions);
+        result.top_reactors = new ArrayList<>(source.top_reactors);
+        return result;
+    }
+
+    private static TLRPC.ReactionCount findReactionCount(TLRPC.MessageReactions reactions, TLRPC.Reaction reaction) {
+        if (reactions == null || reaction == null) return null;
+        for (TLRPC.ReactionCount count : reactions.results) {
+            if (sameReaction(count.reaction, reaction)) return count;
+        }
+        return null;
+    }
+
+    private static boolean sameReaction(TLRPC.Reaction a, TLRPC.Reaction b) {
+        if (a == b) return true;
+        if (a == null || b == null || a.getClass() != b.getClass()) return false;
+        if (a instanceof TLRPC.TL_reactionEmoji) {
+            return TextUtils.equals(
+                    ((TLRPC.TL_reactionEmoji) a).emoticon,
+                    ((TLRPC.TL_reactionEmoji) b).emoticon
+            );
+        }
+        if (a instanceof TLRPC.TL_reactionCustomEmoji) {
+            return ((TLRPC.TL_reactionCustomEmoji) a).document_id
+                    == ((TLRPC.TL_reactionCustomEmoji) b).document_id;
+        }
+        return false;
     }
 
     public static void mirrorLocalDelete(int sourceAccount, long dialogId, ArrayList<Integer> messageIds) {
