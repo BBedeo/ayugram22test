@@ -1,12 +1,11 @@
 <div align="center">
 
-<img src="assets/logo.png" width="128" alt="exteraless">
+<img src="assets/logo.png" width="128" alt="ExFullGram">
 
-# exteraless
+# ExFullGram
 
 Открытая версия exteraGram — с моделью разрешений для плагинов
 
-[![Канал](https://img.shields.io/badge/Telegram-@exteraless-2CA5E0?logo=telegram&logoColor=white)](https://t.me/exteraless)
 
 </div>
 
@@ -14,7 +13,7 @@
 
 ## Что это
 
-exteraless — форк [NagramX](https://github.com/risin42/NagramX), в котором возможности
+ExFullGram — форк [NagramX](https://github.com/risin42/NagramX), в котором возможности
 exteraGram реализованы с открытым исходным кодом. Основа — Telegram для Android 13.1.1.
 
 Отдельный упор — **безопасность плагинов**. В exteraGram плагин не ограничен ни в чём;
@@ -22,9 +21,9 @@ exteraGram реализованы с открытым исходным кодо�
 видно на экране установки, и получает он только то, что вы разрешили.
 
 Проект **в бете**: часть возможностей exteraGram ещё не перенесена. Если заметили, что
-каких-то функций не хватает, — откройте issue или напишите в [канал](https://t.me/exteraless?direct).
+каких-то функций не хватает, — откройте issue в [репозитории](https://github.com/BBedeo/ayugram22test/issues).
 
-* Имя пакета: `com.exteraless.app`
+* Имя пакета: `com.exfullgram.app`
 * Только 64-битные устройства (`arm64-v8a`, `x86_64`)
 
 ### Что внутри
@@ -39,7 +38,7 @@ exteraGram реализованы с открытым исходным кодо�
 * Защита от падений: плагин, который раз за разом роняет приложение, отключается;
   после нескольких падений на старте включается безопасный режим
 * Экспорт и импорт всех плагинов вместе с настройками
-* Python 3.11 на своей сборке [Chaquopy](https://github.com/exteraless/chaquopy)
+* Python 3.11 на своей сборке Chaquopy
 
 **Клиент**
 
@@ -55,8 +54,7 @@ exteraGram реализованы с открытым исходным кодо�
 
 ### Ссылки
 
-* Канал: [@exteraless](https://t.me/exteraless)
-* Исходники: [github.com/exteraless/exteraless](https://github.com/exteraless/exteraless)
+* Исходники: [github.com/BBedeo/ayugram22test](https://github.com/BBedeo/ayugram22test)
 
 ### Сборка
 
@@ -65,7 +63,7 @@ exteraGram реализованы с открытым исходным кодо�
 1. Склонировать репозиторий вместе с подмодулями:
 
     ```bash
-    git clone --recursive --shallow-submodules https://github.com/exteraless/exteraless.git exteraless
+    git clone --recursive --shallow-submodules https://github.com/BBedeo/ayugram22test.git ExFullGram
     ```
 
     Если репозиторий уже склонирован без подмодулей:
@@ -100,7 +98,7 @@ exteraGram реализованы с открытым исходным кодо�
    отладочным ключом Android.
 
 4. Для push-уведомлений заменить `TMessagesProj/google-services.json` своим
-   (Firebase, имя пакета `com.exteraless.app`).
+   (Firebase, имя пакета `com.exfullgram.app`).
 
 5. Необязательно: свои ключи в `local.properties` — `MAPS_API_KEY` (Google Maps; ключ
    привязан к пакету и подписи, поэтому чужой показывает пустую карту) и `GLYPH_API_KEY`
@@ -157,7 +155,7 @@ exteraGram реализованы с открытым исходным кодо�
 
 ### What this is
 
-exteraless is a fork of [NagramX](https://github.com/risin42/NagramX) that implements
+ExFullGram is a fork of [NagramX](https://github.com/risin42/NagramX) that implements
 exteraGram's features open-source. It is based on Telegram for Android 13.1.1.
 
 The special focus is **plugin security**. In exteraGram a plugin is not restricted in
@@ -165,9 +163,9 @@ any way; here it comes with a permission model: a plugin declares what it needs,
 see that on the install sheet, and it gets only what you allow.
 
 The project is **in beta**: some exteraGram features have not been ported yet. If you
-notice a missing feature, open an issue or write to the [channel](https://t.me/exteraless?direct).
+notice a missing feature, open an issue or write to the [channel](https://github.com/BBedeo/ayugram22test/issues).
 
-* Package name: `com.exteraless.app`
+* Package name: `com.exfullgram.app`
 * 64-bit devices only (`arm64-v8a`, `x86_64`)
 
 ### What's inside
@@ -179,7 +177,7 @@ notice a missing feature, open an issue or write to the [channel](https://t.me/e
 * Crash protection: a plugin that keeps crashing the app is disabled, repeated launch
   crashes bring up safe mode
 * Export and import of all plugins with their settings
-* Python 3.11 on our own [Chaquopy](https://github.com/exteraless/chaquopy) build
+* Python 3.11 on our own Chaquopy build
 * exteraGram settings, a Material 3 music player with synced lyrics, ghost mode, saved
   deleted and edited messages, Monet themes, QR login for other devices
 
@@ -190,7 +188,7 @@ You need JDK 21, the Android SDK with NDK and CMake, and Python 3.11 on the buil
 1. Clone with submodules:
 
     ```bash
-    git clone --recursive --shallow-submodules https://github.com/exteraless/exteraless.git exteraless
+    git clone --recursive --shallow-submodules https://github.com/BBedeo/ayugram22test.git ExFullGram
     ```
 
 2. Get `TELEGRAM_APP_ID` and `TELEGRAM_APP_HASH` from [my.telegram.org](https://my.telegram.org/auth)
@@ -202,7 +200,7 @@ You need JDK 21, the Android SDK with NDK and CMake, and Python 3.11 on the buil
    shipped with the repository; without one the build is signed with the Android debug key.
 
 4. For push notifications, replace `TMessagesProj/google-services.json` with your own
-   Firebase config for `com.exteraless.app`.
+   Firebase config for `com.exfullgram.app`.
 
 5. Optional: `MAPS_API_KEY` and `GLYPH_API_KEY` in `local.properties`, and your metadata
    channel id (without `-100`) in `BaseRemoteHelper.CHANNEL_METADATA_ID`.
