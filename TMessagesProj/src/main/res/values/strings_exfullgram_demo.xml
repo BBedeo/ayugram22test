@@ -58,4 +58,8 @@
     <string name="ExFullGramTestAccountCreated">Test account created.</string>
     <string name="ExFullGramTestNoFreeSlots">No free account slots are available.</string>
     <string name="ExFullGramTestAccountsHint">Long-press the account avatar to manage local test accounts.</string>
+
+    <string name="ExFullGramTestGeneratedMessage">Test message #%1$d</string>
+    <string name="ExFullGramTestGeneratedLongMessage">This is an intentionally very long ExFullGram test message. It is used to check wrapping, bubble height, timestamps, replies, reactions, and general layout behavior with long text. It deliberately contains much more text than a normal short message.</string>
+    <string name="ExFullGramTestAccountsLinkedMessage">Local test accounts are linked. Messages between them are synchronized on this device.</string>
 </resources>
