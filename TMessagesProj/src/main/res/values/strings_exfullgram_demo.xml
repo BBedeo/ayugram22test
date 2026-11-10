@@ -68,4 +68,7 @@
     <string name="ExFullGramTestPresetLongContentName">A very long test chat name for checking wrapping, truncation, and ExFullGram header layout behavior</string>
     <string name="ExFullGramTestPresetLongContentDescription">A deliberately long test chat description used to check how profiles, chat info screens, different screen sizes, line wrapping, and large description blocks are rendered.</string>
     <string name="ExFullGramTestPresetFloodName">Message Flood Test</string>
+
+    <string name="ExFullGramTestGoOnline">Set account online</string>
+    <string name="ExFullGramTestGoOffline">Set account offline</string>
 </resources>
