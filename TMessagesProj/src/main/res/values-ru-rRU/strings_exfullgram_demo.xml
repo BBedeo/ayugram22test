@@ -71,4 +71,5 @@
 
     <string name="ExFullGramTestGoOnline">Показать аккаунт в сети</string>
     <string name="ExFullGramTestGoOffline">Показать аккаунт не в сети</string>
+    <string name="ExFullGramTestUnreadMessages">Непрочитанных сообщений</string>
 </resources>
