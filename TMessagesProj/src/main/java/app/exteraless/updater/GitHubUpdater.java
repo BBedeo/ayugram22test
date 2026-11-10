@@ -183,7 +183,7 @@ public final class GitHubUpdater {
     private static JSONObject getJson(String url) throws Exception {
         Request request = new Request.Builder().url(url)
                 .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "exteraless")
+                .header("User-Agent", "ExFullGram")
                 .build();
         try (Response response = client().newCall(request).execute()) {
             ResponseBody body = response.body();
@@ -379,7 +379,7 @@ public final class GitHubUpdater {
         }
         File target = new File(dir, release.apkName.replaceAll("[^A-Za-z0-9._-]", "_"));
         Call call = client().newCall(new Request.Builder().url(release.apkUrl)
-                .header("User-Agent", "exteraless").build());
+                .header("User-Agent", "ExFullGram").build());
         download = call;
         new Thread(() -> {
             boolean ok = false;
