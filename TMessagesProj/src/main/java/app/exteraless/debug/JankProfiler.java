@@ -633,7 +633,7 @@ public final class JankProfiler {
     private File writeReport() {
         final StringBuilder out = new StringBuilder(64 * 1024);
         final long sessionMs = SystemClock.elapsedRealtime() - startedAt;
-        out.append("exteraless jank profile\n");
+        out.append("ExFullGram jank profile\n");
         out.append("app: ").append(BuildVars.BUILD_VERSION_STRING).append(" (").append(BuildConfig.VERSION_CODE).append(")\n");
         out.append("device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
                 .append(", Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")")
