@@ -27,7 +27,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
 
     private static final int MENU_CLOUD = 1;
     private static final int MENU_SEARCH = 2;
-    private static final int MENU_RESET_DEMO = 3;
+    private static final int MENU_RESET_TEST = 3;
 
     private static final int TYPE_ABOUT = 100;
 
@@ -104,7 +104,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             menu.addItem(MENU_SEARCH, R.drawable.outline_header_search, getResourceProvider());
             menu.addItem(MENU_CLOUD, R.drawable.cloud_sync, getResourceProvider());
             if (app.exteraless.demo.DemoBackend.isDemoAccount(currentAccount)) {
-                menu.addItem(MENU_RESET_DEMO, R.drawable.msg_retry_solar, getResourceProvider());
+                menu.addItem(MENU_RESET_TEST, R.drawable.msg_retry_solar, getResourceProvider());
             }
             actionBar.setActionBarMenuOnItemClick(new org.telegram.ui.ActionBar.ActionBar.ActionBarMenuOnItemClick() {
                 @Override
@@ -115,7 +115,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         presentFragment(new OpenExteraCloudActivity());
                     } else if (id == MENU_SEARCH) {
                         showSettingsSearchDialog();
-                    } else if (id == MENU_RESET_DEMO) {
+                    } else if (id == MENU_RESET_TEST) {
                         app.exteraless.demo.DemoBackend.reset(currentAccount);
                         showDialog(new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
                                 .setTitle(getString(R.string.ExFullGramDemoResetTitle))
