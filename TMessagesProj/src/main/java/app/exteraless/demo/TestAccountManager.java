@@ -32,6 +32,21 @@ public final class TestAccountManager {
                     promptAdd(fragment);
                 }
         );
+        options.add(
+                R.drawable.msg_retry_solar,
+                LocaleController.getString(
+                        DemoBackend.isTestAccountOnline(currentAccount)
+                                ? R.string.ExFullGramTestGoOffline
+                                : R.string.ExFullGramTestGoOnline
+                ),
+                () -> {
+                    DemoBackend.setTestAccountOnline(
+                            currentAccount,
+                            !DemoBackend.isTestAccountOnline(currentAccount)
+                    );
+                    options.dismiss();
+                }
+        );
         options.show();
     }
 
