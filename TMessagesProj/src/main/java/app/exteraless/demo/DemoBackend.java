@@ -1079,8 +1079,31 @@ public final class DemoBackend {
         }
     }
 
-    public static boolean handleLocalRead(int account, long dialogId) {
-        return isTestAccount(account);
+    public static boolean handleLocalRead(int account, long dialogId, int maxPositiveId) {
+        if (!isTestAccount(account)) return false;
+
+        if (dialogId > 0 && maxPositiveId > 0) {
+            int senderAccount = accountForTestUser(dialogId);
+            TLRPC.User reader = UserConfig.getInstance(account).getCurrentUser();
+            if (senderAccount >= 0 && senderAccount != account && reader != null) {
+                TL_update.TL_updateReadHistoryOutbox update = new TL_update.TL_updateReadHistoryOutbox();
+                update.peer = new TLRPC.TL_peerUser();
+                update.peer.user_id = reader.id;
+                update.max_id = maxPositiveId;
+                update.pts = 0;
+                update.pts_count = 0;
+                ArrayList<TLRPC.Update> updates = new ArrayList<>();
+                updates.add(update);
+                MessagesController.getInstance(senderAccount).processUpdateArray(
+                        updates,
+                        null,
+                        null,
+                        false,
+                        (int) (System.currentTimeMillis() / 1000L)
+                );
+            }
+        }
+        return true;
     }
 
     public static boolean isTestAccountOnline(int account) {
