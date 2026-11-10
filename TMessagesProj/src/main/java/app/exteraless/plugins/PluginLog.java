@@ -105,7 +105,7 @@ public final class PluginLog {
         }
         File out = new File(target, "plugins-" + fileTime.format(new Date()) + ".log");
         try (OutputStream stream = new FileOutputStream(out)) {
-            String header = "exteraless " + BuildConfig.BUILD_VERSION_STRING
+            String header = "ExFullGram " + BuildConfig.BUILD_VERSION_STRING
                     + (BuildConfig.BUILD_COMMIT_ID.isEmpty() ? "" : " (" + BuildConfig.BUILD_COMMIT_ID + ")")
                     + ", Android " + android.os.Build.VERSION.RELEASE
                     + ", " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL + "\n\n";
