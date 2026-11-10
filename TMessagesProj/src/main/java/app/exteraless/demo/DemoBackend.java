@@ -9,6 +9,8 @@ import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.R;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.TLRPC;
@@ -91,8 +93,8 @@ public final class DemoBackend {
     public static void seed(int account, TLRPC.User self) {
         setEnabled(true);
 
-        TLRPC.TL_user alice = createUser(ALICE_ID, "Alice", "Demo");
-        TLRPC.TL_user max = createUser(MAX_ID, "Max", "Tester");
+        TLRPC.TL_user alice = createUser(ALICE_ID, LocaleController.getString(R.string.ExFullGramDemoAliceFirstName), LocaleController.getString(R.string.ExFullGramDemoAliceLastName));
+        TLRPC.TL_user max = createUser(MAX_ID, LocaleController.getString(R.string.ExFullGramDemoMaxFirstName), LocaleController.getString(R.string.ExFullGramDemoMaxLastName));
         TLRPC.TL_user qa = createUser(QA_ID, "ExFullGram", "QA");
 
         ArrayList<TLRPC.User> users = new ArrayList<>();
@@ -106,19 +108,19 @@ public final class DemoBackend {
 
         int now = (int) (System.currentTimeMillis() / 1000L);
         seedUserDialog(account, self, alice, now - 40, new String[]{
-                "Привет. Это локальный Demo Backend ExFullGram.",
-                "Можешь спокойно ломать интерфейс — эти сообщения никуда не отправляются.",
-                "Попробуй написать сюда: исходящие сообщения уже сохраняются локально."
+                LocaleController.getString(R.string.ExFullGramDemoAliceMessage1),
+                LocaleController.getString(R.string.ExFullGramDemoAliceMessage2),
+                LocaleController.getString(R.string.ExFullGramDemoAliceMessage3)
         });
         seedUserDialog(account, self, max, now - 240, new String[]{
-                "Тестовый чат №2.",
-                "Здесь можно проверять список диалогов, длинные сообщения и ответы.",
-                "Следом добавим полноценные edit/delete/reactions и сетевую симуляцию."
+                LocaleController.getString(R.string.ExFullGramDemoMaxMessage1),
+                LocaleController.getString(R.string.ExFullGramDemoMaxMessage2),
+                LocaleController.getString(R.string.ExFullGramDemoMaxMessage3)
         });
         seedUserDialog(account, self, qa, now - 1800, new String[]{
-                "ExFullGram QA",
-                "Этот аккаунт нужен для проверки интерфейса без настоящего Telegram.",
-                "Demo-данные можно сбросить из настроек ExFullGram."
+                LocaleController.getString(R.string.ExFullGramDemoQaMessage1),
+                LocaleController.getString(R.string.ExFullGramDemoQaMessage2),
+                LocaleController.getString(R.string.ExFullGramDemoQaMessage3)
         });
 
         AndroidUtilities.runOnUIThread(() ->
@@ -160,14 +162,14 @@ public final class DemoBackend {
         String text = params.message;
         if (text == null || text.isEmpty()) text = params.caption;
         if (text == null || text.isEmpty()) {
-            if (params.photo != null) text = "🖼 Фото (Demo)";
-            else if (params.document != null) text = "📎 Файл (Demo)";
-            else if (params.location != null) text = "📍 Геопозиция (Demo)";
-            else if (params.poll != null) text = "📊 Опрос (Demo)";
-            else if (params.todo != null) text = "✅ Задача (Demo)";
-            else if (params.game != null) text = "🎮 Игра (Demo)";
-            else if (params.invoice != null) text = "🧾 Счёт (Demo)";
-            else text = "Demo message";
+            if (params.photo != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaPhoto);
+            else if (params.document != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaFile);
+            else if (params.location != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaLocation);
+            else if (params.poll != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaPoll);
+            else if (params.todo != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaTask);
+            else if (params.game != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaGame);
+            else if (params.invoice != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaInvoice);
+            else text = LocaleController.getString(R.string.ExFullGramDemoMessage);
         }
 
         TLRPC.TL_message message = new TLRPC.TL_message();
