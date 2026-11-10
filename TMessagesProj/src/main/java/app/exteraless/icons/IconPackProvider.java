@@ -88,7 +88,7 @@ public class IconPackProvider extends ContentProvider {
         try {
             return ParcelFileDescriptor.open(result, ParcelFileDescriptor.MODE_READ_ONLY);
         } catch (Exception e) {
-            FileLog.e("openExtera: cannot open icon for notification", e);
+            FileLog.e("ExFullGram: cannot open icon for notification", e);
             return null;
         }
     }
@@ -232,7 +232,7 @@ public class IconPackProvider extends ContentProvider {
                 }
                 return target;
             } catch (Exception e) {
-                FileLog.e("openExtera: failed to rasterize notification icon", e);
+                FileLog.e("ExFullGram: failed to rasterize notification icon", e);
                 return null;
             } finally {
                 if (bitmap != null) {
