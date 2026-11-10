@@ -15200,7 +15200,7 @@ public class MessagesController extends BaseController implements NotificationCe
             monoForumPeerId = 0;
         }
 
-        if (app.exteraless.demo.DemoBackend.handleLocalRead(currentAccount, dialogId)) {
+        if (app.exteraless.demo.DemoBackend.handleLocalRead(currentAccount, dialogId, maxPositiveId)) {
             return;
         }
 
