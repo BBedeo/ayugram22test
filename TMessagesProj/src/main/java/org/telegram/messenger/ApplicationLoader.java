@@ -289,6 +289,9 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
         NekoConfig.init();
         NaConfig.init();
         OpenExteraConfig.init();
+        if ("exteraless".equalsIgnoreCase(NekoConfig.customSavePath.String())) {
+            NekoConfig.customSavePath.setConfigString("exfullgram");
+        }
         app.exteraless.icons.IconPacksConfig.init();
         app.exteraless.pillstack.PillStackConfig.init();
         app.exteraless.appearance.AppearanceConfig.init();
