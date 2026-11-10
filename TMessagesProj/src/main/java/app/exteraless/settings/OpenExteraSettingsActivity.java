@@ -118,8 +118,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                     } else if (id == MENU_RESET_DEMO) {
                         app.exteraless.demo.DemoBackend.reset(currentAccount);
                         showDialog(new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
-                                .setTitle("ExFullGram Demo")
-                                .setMessage("Demo data has been reset.")
+                                .setTitle(getString(R.string.ExFullGramDemoResetTitle))
+                                .setMessage(getString(R.string.ExFullGramDemoResetDone))
                                 .setPositiveButton(getString(R.string.OK), null)
                                 .create());
                     }
@@ -262,7 +262,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndIcon(getString(R.string.OpenExteraOther), R.drawable.msg_fave, false);
                     } else if (position == channelRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.ProfileChannel),
-                                "Upstream", R.drawable.msg_channel, true);
+                                getString(R.string.ExFullGramUpstream), R.drawable.msg_channel, true);
                     } else if (position == sourceRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraSource),
                                 "GitHub", R.drawable.msg_language, false);
