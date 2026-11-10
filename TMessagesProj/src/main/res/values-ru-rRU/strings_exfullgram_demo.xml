@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ExFullGramDemoAccount">Демо-аккаунт</string>
-    <string name="ExFullGramDemoResetTitle">Демо ExFullGram</string>
-    <string name="ExFullGramDemoResetDone">Демо-данные сброшены.</string>
+    <string name="ExFullGramDemoAccount">Тестовый аккаунт</string>
+    <string name="ExFullGramDemoResetTitle">Тестовый режим ExFullGram</string>
+    <string name="ExFullGramDemoResetDone">Тестовые данные сброшены.</string>
     <string name="ExFullGramUpstream">Оригинальный проект</string>
 
     <string name="ExFullGramDemoAliceFirstName">Алиса</string>
-    <string name="ExFullGramDemoAliceLastName">Демо</string>
+    <string name="ExFullGramDemoAliceLastName">Тест</string>
     <string name="ExFullGramDemoMaxFirstName">Макс</string>
     <string name="ExFullGramDemoMaxLastName">Тестер</string>
 
-    <string name="ExFullGramDemoAliceMessage1">Привет. Это локальный Demo Backend ExFullGram.</string>
+    <string name="ExFullGramDemoAliceMessage1">Привет. Это локальный тестовый backend ExFullGram.</string>
     <string name="ExFullGramDemoAliceMessage2">Можешь спокойно экспериментировать с интерфейсом — эти сообщения никуда не отправляются.</string>
     <string name="ExFullGramDemoAliceMessage3">Попробуй написать сюда: исходящие сообщения уже сохраняются локально.</string>
 
@@ -20,14 +20,42 @@
 
     <string name="ExFullGramDemoQaMessage1">ExFullGram QA</string>
     <string name="ExFullGramDemoQaMessage2">Этот аккаунт нужен для проверки интерфейса без настоящего аккаунта Telegram.</string>
-    <string name="ExFullGramDemoQaMessage3">Демо-данные можно сбросить из настроек ExFullGram.</string>
+    <string name="ExFullGramDemoQaMessage3">Тестовые данные можно сбросить из настроек ExFullGram.</string>
 
-    <string name="ExFullGramDemoMediaPhoto">🖼 Фото (Демо)</string>
-    <string name="ExFullGramDemoMediaFile">📎 Файл (Демо)</string>
-    <string name="ExFullGramDemoMediaLocation">📍 Геопозиция (Демо)</string>
-    <string name="ExFullGramDemoMediaPoll">📊 Опрос (Демо)</string>
-    <string name="ExFullGramDemoMediaTask">✅ Задача (Демо)</string>
-    <string name="ExFullGramDemoMediaGame">🎮 Игра (Демо)</string>
-    <string name="ExFullGramDemoMediaInvoice">🧾 Счёт (Демо)</string>
-    <string name="ExFullGramDemoMessage">Демо-сообщение</string>
+    <string name="ExFullGramDemoMediaPhoto">🖼 Фото (Тест)</string>
+    <string name="ExFullGramDemoMediaFile">📎 Файл (Тест)</string>
+    <string name="ExFullGramDemoMediaLocation">📍 Геопозиция (Тест)</string>
+    <string name="ExFullGramDemoMediaPoll">📊 Опрос (Тест)</string>
+    <string name="ExFullGramDemoMediaTask">✅ Задача (Тест)</string>
+    <string name="ExFullGramDemoMediaGame">🎮 Игра (Тест)</string>
+    <string name="ExFullGramDemoMediaInvoice">🧾 Счёт (Тест)</string>
+    <string name="ExFullGramDemoMessage">Тестовое сообщение</string>
+
+    <string name="ExFullGramTestCreateChat">Создать тестовый чат</string>
+    <string name="ExFullGramTestChatBuilderTitle">Конструктор тестового чата</string>
+    <string name="ExFullGramTestChatName">Название чата</string>
+    <string name="ExFullGramTestChatDescription">Описание</string>
+    <string name="ExFullGramTestChatType">Тип чата</string>
+    <string name="ExFullGramTestParticipants">Участники / подписчики</string>
+    <string name="ExFullGramTestMessages">Количество сообщений</string>
+    <string name="ExFullGramTestPreset">Пресет</string>
+    <string name="ExFullGramTestTypePrivate">Личный чат</string>
+    <string name="ExFullGramTestTypeGroup">Группа</string>
+    <string name="ExFullGramTestTypeChannel">Канал</string>
+    <string name="ExFullGramTestPresetCustom">Свои настройки</string>
+    <string name="ExFullGramTestPresetEmpty">Пустой чат</string>
+    <string name="ExFullGramTestPresetBusyGroup">Активная группа · 250 участников · 100 сообщений</string>
+    <string name="ExFullGramTestPresetLargeChannel">Большой канал · 50 тыс. подписчиков · 50 сообщений</string>
+    <string name="ExFullGramTestPresetLongContent">Длинные названия и длинные сообщения</string>
+    <string name="ExFullGramTestPresetFlood">Флуд · 500 сообщений</string>
+    <string name="ExFullGramTestCreate">Создать</string>
+    <string name="ExFullGramTestCreated">Тестовый чат создан.</string>
+
+    <string name="ExFullGramTestAccounts">Тестовые аккаунты</string>
+    <string name="ExFullGramTestAddAccount">Добавить тестовый аккаунт</string>
+    <string name="ExFullGramTestAccountName">Имя аккаунта</string>
+    <string name="ExFullGramTestAccountDefaultName">Тест %1$d</string>
+    <string name="ExFullGramTestAccountCreated">Тестовый аккаунт создан.</string>
+    <string name="ExFullGramTestNoFreeSlots">Свободных слотов аккаунтов нет.</string>
+    <string name="ExFullGramTestAccountsHint">Зажми аватар аккаунта, чтобы управлять локальными тестовыми аккаунтами.</string>
 </resources>
