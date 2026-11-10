@@ -175,8 +175,8 @@
     <string name="OEInlineDocPercent">Проценты и сокращения</string>
     <string name="OEInlineTapToCopy">Нажмите на пример, чтобы скопировать его.</string>
     <string name="OEChatsInlineMathAnnouncement">Результат: %1$s</string>
-    <string name="OELocalPremiumInfo">Премиум-эмодзи уходят ссылками, которые exteraless и поддерживающие это клиенты показывают как настоящие эмодзи. Остальные функции Premium работают только на этом устройстве.</string>
-    <string name="OELocalPremiumEmojiHint">У вас нет **Telegram Premium**, поэтому эмодзи уйдёт ссылкой: увидят его только пользователи **exteraless** и клиентов, поддерживающих это.</string>
+    <string name="OELocalPremiumInfo">Премиум-эмодзи уходят ссылками, которые ExFullGram и поддерживающие это клиенты показывают как настоящие эмодзи. Остальные функции Premium работают только на этом устройстве.</string>
+    <string name="OELocalPremiumEmojiHint">У вас нет **Telegram Premium**, поэтому эмодзи уйдёт ссылкой: увидят его только пользователи **ExFullGram** и клиентов, поддерживающих это.</string>
     <string name="OEChatsSections">Разделы</string>
     <string name="OEChatsMenus">Меню и кнопки</string>
     <string name="OEChatsMenusInfo">Меню чата, сообщений и просмотра медиа</string>
