@@ -19,7 +19,7 @@ import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 
 /**
- * Корневой экран раздела exteraless.
+ * Корневой экран раздела ExFullGram.
  * Структура повторяет настройки exteraGram: About-шапка + категории с иконками.
  * Открывается из главных настроек (SettingsActivity, id 102).
  */
