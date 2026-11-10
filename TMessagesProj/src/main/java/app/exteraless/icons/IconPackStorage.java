@@ -173,7 +173,7 @@ public class IconPackStorage {
             }
             return target.isFile() ? target : null;
         } catch (Exception e) {
-            FileLog.e("openExtera: failed to resolve icon file for pack " + pack.getId(), e);
+            FileLog.e("ExFullGram: failed to resolve icon file for pack " + pack.getId(), e);
             return null;
         }
     }
@@ -207,10 +207,10 @@ public class IconPackStorage {
             invalidateCache();
             return null;
         } catch (IconPackStorageException e) {
-            FileLog.e("openExtera: icon pack install failed: " + e.getError());
+            FileLog.e("ExFullGram: icon pack install failed: " + e.getError());
             return e.getError();
         } catch (Exception e) {
-            FileLog.e("openExtera: icon pack install failed", e);
+            FileLog.e("ExFullGram: icon pack install failed", e);
             return errorFromException(e);
         } finally {
             if (temp != null) {
@@ -227,7 +227,7 @@ public class IconPackStorage {
             JSONObject metadata = extractPackArchive(archive, temp);
             return parseMetadata(metadata, temp, temp);
         } catch (Exception e) {
-            FileLog.e("openExtera: failed to parse icon pack", e);
+            FileLog.e("ExFullGram: failed to parse icon pack", e);
             return null;
         } finally {
             if (temp != null) {
@@ -257,7 +257,7 @@ public class IconPackStorage {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(out))) {
             zipDirectory(source, "", zos);
         } catch (Exception e) {
-            FileLog.e("openExtera: failed to bundle icon pack " + packId, e);
+            FileLog.e("ExFullGram: failed to bundle icon pack " + packId, e);
             return null;
         }
         return out;
@@ -285,7 +285,7 @@ public class IconPackStorage {
             invalidateCache();
             return true;
         } catch (Exception e) {
-            FileLog.e("openExtera: error saving icon pack metadata", e);
+            FileLog.e("ExFullGram: error saving icon pack metadata", e);
             return false;
         }
     }
@@ -449,7 +449,7 @@ public class IconPackStorage {
             }
             return parseMetadata(new JSONObject(readText(file)), file.getParentFile(), file.getParentFile());
         } catch (Exception e) {
-            FileLog.e("openExtera: error parsing " + METADATA_NAME, e);
+            FileLog.e("ExFullGram: error parsing " + METADATA_NAME, e);
             return null;
         }
     }
