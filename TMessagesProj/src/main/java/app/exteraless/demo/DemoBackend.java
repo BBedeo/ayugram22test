@@ -16,6 +16,7 @@ import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_update;
 import org.telegram.ui.ChatActivity;
 
 import java.util.ArrayList;
@@ -718,6 +719,245 @@ public final class DemoBackend {
             putSingleMessage(other, dialogId, mirrored);
         }
         return true;
+    }
+
+
+    public static boolean editLocalMessage(int account, MessageObject object) {
+        if (!isTestAccount(account) || object == null || object.messageOwner == null) {
+            return false;
+        }
+
+        CharSequence editing = object.editingMessage;
+        if (editing != null) {
+            object.messageOwner.message = editing.toString();
+            object.messageOwner.edit_date = (int) (System.currentTimeMillis() / 1000L);
+            object.messageOwner.flags |= 32768; // edit_date
+            if (object.editingMessageEntities != null) {
+                object.messageOwner.entities = new ArrayList<>(object.editingMessageEntities);
+                if (!object.messageOwner.entities.isEmpty()) {
+                    object.messageOwner.flags |= 128;
+                }
+            }
+        }
+
+        object.editingMessage = null;
+        object.editingMessageEntities = null;
+        object.messageOwner.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+        object.caption = null;
+        object.resetLayout();
+        object.checkLayout();
+
+        ArrayList<TLRPC.Message> raw = new ArrayList<>();
+        raw.add(object.messageOwner);
+        MessagesStorage.getInstance(account).putMessages(raw, false, true, false, 0, 0, 0);
+
+        ArrayList<MessageObject> objects = new ArrayList<>();
+        objects.add(object);
+        NotificationCenter.getInstance(account).postNotificationName(
+                NotificationCenter.replaceMessagesObjects,
+                object.getDialogId(),
+                objects
+        );
+
+        mirrorEditedMessage(account, object.getDialogId(), object.messageOwner);
+        return true;
+    }
+
+    private static void mirrorEditedMessage(int sourceAccount, long sourceDialogId, TLRPC.Message source) {
+        if (source == null) return;
+
+        if (sourceDialogId > 0) {
+            int recipient = accountForTestUser(sourceDialogId);
+            if (recipient < 0 || recipient == sourceAccount) return;
+            long mirroredDialogId = UserConfig.getInstance(sourceAccount).getClientUserId();
+            updateMirroredMessage(recipient, mirroredDialogId, source);
+            return;
+        }
+
+        for (int other = 0; other < UserConfig.MAX_ACCOUNT_COUNT; other++) {
+            if (other == sourceAccount || !isTestAccount(other)) continue;
+            updateMirroredMessage(other, sourceDialogId, source);
+        }
+    }
+
+    private static void updateMirroredMessage(int account, long dialogId, TLRPC.Message source) {
+        TLRPC.Message target = tw.nekomimi.nekogram.helpers.MessageHelper.getInstance(account)
+                .getMessage(dialogId, source.id);
+        if (target == null) return;
+
+        target.message = source.message;
+        target.edit_date = source.edit_date;
+        target.flags |= 32768;
+        target.entities = source.entities == null
+                ? new ArrayList<>()
+                : new ArrayList<>(source.entities);
+        if (!target.entities.isEmpty()) {
+            target.flags |= 128;
+        }
+
+        ArrayList<TLRPC.Message> raw = new ArrayList<>();
+        raw.add(target);
+        MessagesStorage.getInstance(account).putMessages(raw, false, true, false, 0, 0, 0);
+
+        ArrayList<MessageObject> objects = new ArrayList<>();
+        objects.add(new MessageObject(account, target, true, true));
+        AndroidUtilities.runOnUIThread(() ->
+                NotificationCenter.getInstance(account).postNotificationName(
+                        NotificationCenter.replaceMessagesObjects,
+                        dialogId,
+                        objects
+                )
+        );
+    }
+
+    public static boolean commitLocalReaction(int account, MessageObject object) {
+        if (!isTestAccount(account) || object == null || object.messageOwner == null) {
+            return false;
+        }
+
+        ArrayList<TLRPC.Message> raw = new ArrayList<>();
+        raw.add(object.messageOwner);
+        MessagesStorage.getInstance(account).putMessages(raw, false, true, false, 0, 0, 0);
+
+        ArrayList<MessageObject> objects = new ArrayList<>();
+        objects.add(object);
+        NotificationCenter.getInstance(account).postNotificationName(
+                NotificationCenter.replaceMessagesObjects,
+                object.getDialogId(),
+                objects
+        );
+        return true;
+    }
+
+    public static void mirrorLocalDelete(int sourceAccount, long dialogId, ArrayList<Integer> messageIds) {
+        if (!isTestAccount(sourceAccount) || messageIds == null || messageIds.isEmpty()) return;
+
+        if (dialogId > 0) {
+            int recipient = accountForTestUser(dialogId);
+            if (recipient >= 0 && recipient != sourceAccount) {
+                long recipientDialogId = UserConfig.getInstance(sourceAccount).getClientUserId();
+                deleteFromAccount(recipient, recipientDialogId, messageIds);
+            }
+            return;
+        }
+
+        for (int other = 0; other < UserConfig.MAX_ACCOUNT_COUNT; other++) {
+            if (other == sourceAccount || !isTestAccount(other)) continue;
+            deleteFromAccount(other, dialogId, messageIds);
+        }
+    }
+
+    private static void deleteFromAccount(int account, long dialogId, ArrayList<Integer> ids) {
+        ArrayList<Integer> copy = new ArrayList<>(ids);
+        long channelId = dialogId < 0 ? -dialogId : 0;
+        MessagesStorage.getInstance(account).markMessagesAsDeleted(
+                dialogId, copy, true, false, ChatActivity.MODE_DEFAULT, 0);
+        MessagesStorage.getInstance(account).updateDialogsWithDeletedMessages(
+                dialogId, channelId, copy, null);
+        AndroidUtilities.runOnUIThread(() -> {
+            NotificationCenter.getInstance(account).postNotificationName(
+                    NotificationCenter.messagesDeleted,
+                    copy,
+                    channelId,
+                    false,
+                    false,
+                    false,
+                    0
+            );
+            NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
+        });
+    }
+
+    public static boolean sendLocalTyping(int sourceAccount, long dialogId, long threadMsgId, int action) {
+        if (!isTestAccount(sourceAccount) || dialogId == 0) return false;
+
+        TLRPC.User self = UserConfig.getInstance(sourceAccount).getCurrentUser();
+        if (self == null) return true;
+
+        TLRPC.SendMessageAction typingAction = createTypingAction(action);
+        if (typingAction == null) return true;
+
+        if (dialogId > 0) {
+            int recipient = accountForTestUser(dialogId);
+            if (recipient >= 0 && recipient != sourceAccount) {
+                ensurePeerKnown(recipient, self);
+                TL_update.TL_updateUserTyping update = new TL_update.TL_updateUserTyping();
+                update.user_id = self.id;
+                update.action = typingAction;
+                if (threadMsgId != 0) {
+                    update.flags |= 1;
+                    update.top_msg_id = (int) threadMsgId;
+                }
+                ArrayList<TLRPC.Update> updates = new ArrayList<>();
+                updates.add(update);
+                MessagesController.getInstance(recipient).processUpdateArray(
+                        updates, null, null, false, (int) (System.currentTimeMillis() / 1000L));
+            }
+            return true;
+        }
+
+        long chatId = -dialogId;
+        for (int other = 0; other < UserConfig.MAX_ACCOUNT_COUNT; other++) {
+            if (other == sourceAccount || !isTestAccount(other)) continue;
+            ensurePeerKnown(other, self);
+
+            TL_update.TL_updateChannelUserTyping update = new TL_update.TL_updateChannelUserTyping();
+            update.channel_id = chatId;
+            update.from_id = new TLRPC.TL_peerUser();
+            update.from_id.user_id = self.id;
+            update.action = createTypingAction(action);
+            if (threadMsgId != 0) {
+                update.flags |= 1;
+                update.top_msg_id = (int) threadMsgId;
+            }
+            ArrayList<TLRPC.Update> updates = new ArrayList<>();
+            updates.add(update);
+            MessagesController.getInstance(other).processUpdateArray(
+                    updates, null, null, false, (int) (System.currentTimeMillis() / 1000L));
+        }
+        return true;
+    }
+
+    private static void ensurePeerKnown(int account, TLRPC.User source) {
+        TLRPC.TL_user peer = peerCopy(source);
+        if (peer == null) return;
+        ArrayList<TLRPC.User> users = new ArrayList<>();
+        users.add(peer);
+        MessagesController.getInstance(account).putUsers(users, false);
+        MessagesStorage.getInstance(account).putUsersAndChats(users, null, true, true);
+    }
+
+    private static TLRPC.SendMessageAction createTypingAction(int action) {
+        switch (action) {
+            case 0:
+                return new TLRPC.TL_sendMessageTypingAction();
+            case 1:
+                return new TLRPC.TL_sendMessageRecordAudioAction();
+            case 2:
+                return new TLRPC.TL_sendMessageCancelAction();
+            case 3:
+                return new TLRPC.TL_sendMessageUploadDocumentAction();
+            case 4:
+                return new TLRPC.TL_sendMessageUploadPhotoAction();
+            case 5:
+                return new TLRPC.TL_sendMessageUploadVideoAction();
+            case 6:
+                return new TLRPC.TL_sendMessageGamePlayAction();
+            case 7:
+                return new TLRPC.TL_sendMessageRecordRoundAction();
+            case 8:
+                return new TLRPC.TL_sendMessageUploadRoundAction();
+            case 9:
+                return new TLRPC.TL_sendMessageUploadAudioAction();
+            case 10:
+                return new TLRPC.TL_sendMessageChooseStickerAction();
+            default:
+                return new TLRPC.TL_sendMessageTypingAction();
+        }
+    }
+
+    public static boolean handleLocalRead(int account, long dialogId) {
+        return isTestAccount(account);
     }
 
     private static void copyReply(SendMessagesHelper.SendMessageParams params, TLRPC.TL_message message) {
