@@ -316,7 +316,7 @@ public class IconPickerView extends FrameLayout {
             ReplaceIconBottomSheet sheet = new ReplaceIconBottomSheet(getContext(), packId, resId, this::updateItems);
             sheet.show();
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to open replace icon sheet", t);
+            FileLog.e("ExFullGram: failed to open replace icon sheet", t);
         }
     }
 
