@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ExFullGramDemoAccount">Демо-аккаунт</string>
+    <string name="ExFullGramDemoResetTitle">Демо ExFullGram</string>
+    <string name="ExFullGramDemoResetDone">Демо-данные сброшены.</string>
+    <string name="ExFullGramUpstream">Оригинальный проект</string>
+
+    <string name="ExFullGramDemoAliceFirstName">Алиса</string>
+    <string name="ExFullGramDemoAliceLastName">Демо</string>
+    <string name="ExFullGramDemoMaxFirstName">Макс</string>
+    <string name="ExFullGramDemoMaxLastName">Тестер</string>
+
+    <string name="ExFullGramDemoAliceMessage1">Привет. Это локальный Demo Backend ExFullGram.</string>
+    <string name="ExFullGramDemoAliceMessage2">Можешь спокойно экспериментировать с интерфейсом — эти сообщения никуда не отправляются.</string>
+    <string name="ExFullGramDemoAliceMessage3">Попробуй написать сюда: исходящие сообщения уже сохраняются локально.</string>
+
+    <string name="ExFullGramDemoMaxMessage1">Тестовый чат №2.</string>
+    <string name="ExFullGramDemoMaxMessage2">Здесь можно проверять список диалогов, длинные сообщения и ответы.</string>
+    <string name="ExFullGramDemoMaxMessage3">Дальше добавим полноценные редактирование, удаление, реакции и симуляцию сети.</string>
+
+    <string name="ExFullGramDemoQaMessage1">ExFullGram QA</string>
+    <string name="ExFullGramDemoQaMessage2">Этот аккаунт нужен для проверки интерфейса без настоящего аккаунта Telegram.</string>
+    <string name="ExFullGramDemoQaMessage3">Демо-данные можно сбросить из настроек ExFullGram.</string>
+
+    <string name="ExFullGramDemoMediaPhoto">🖼 Фото (Демо)</string>
+    <string name="ExFullGramDemoMediaFile">📎 Файл (Демо)</string>
+    <string name="ExFullGramDemoMediaLocation">📍 Геопозиция (Демо)</string>
+    <string name="ExFullGramDemoMediaPoll">📊 Опрос (Демо)</string>
+    <string name="ExFullGramDemoMediaTask">✅ Задача (Демо)</string>
+    <string name="ExFullGramDemoMediaGame">🎮 Игра (Демо)</string>
+    <string name="ExFullGramDemoMediaInvoice">🧾 Счёт (Демо)</string>
+    <string name="ExFullGramDemoMessage">Демо-сообщение</string>
+</resources>
