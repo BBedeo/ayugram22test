@@ -14745,36 +14745,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         return btn;
     }
 
-    private void showAddTestAccountDialog() {
-        if (getParentActivity() == null || !app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
-            return;
-        }
-
-        final EditText nameField = new EditText(getParentActivity());
-        nameField.setSingleLine(true);
-        nameField.setHint(getString(R.string.ExFullGramTestAccountName));
-        nameField.setPadding(dp(20), 0, dp(20), 0);
-
-        final AlertDialog dialog = new AlertDialog.Builder(getParentActivity())
-                .setTitle(getString(R.string.ExFullGramTestAddAccount))
-                .setView(nameField)
-                .setNegativeButton(getString(R.string.Cancel), null)
-                .setPositiveButton(getString(R.string.ExFullGramTestCreate), (d, which) -> {
-                    int newAccount = app.exteraless.demo.DemoBackend.addTestAccount(nameField.getText().toString());
-                    if (newAccount < 0) {
-                        BulletinFactory.of(DialogsActivity.this)
-                                .createErrorBulletin(getString(R.string.ExFullGramTestNoFreeSlots))
-                                .show();
-                    } else {
-                        BulletinFactory.of(DialogsActivity.this)
-                                .createSimpleBulletin(R.raw.contact_check, getString(R.string.ExFullGramTestAccountCreated))
-                                .show();
-                    }
-                })
-                .create();
-        showDialog(dialog);
-    }
-
     private boolean openAccountSelector(View view) {
         final ArrayList<Integer> accountNumbers = new ArrayList<>();
 
