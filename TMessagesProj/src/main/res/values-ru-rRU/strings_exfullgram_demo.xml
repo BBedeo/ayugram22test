@@ -62,4 +62,10 @@
     <string name="ExFullGramTestGeneratedMessage">Тестовое сообщение №%1$d</string>
     <string name="ExFullGramTestGeneratedLongMessage">Это специально очень длинное тестовое сообщение ExFullGram. Оно нужно, чтобы проверять перенос строк, высоту пузыря, отображение времени, ответов, реакций и поведение интерфейса на длинном тексте. Здесь намеренно больше текста, чем обычно бывает в коротком сообщении.</string>
     <string name="ExFullGramTestAccountsLinkedMessage">Локальные тестовые аккаунты связаны. Сообщения между ними синхронизируются на этом устройстве.</string>
+
+    <string name="ExFullGramTestPresetBusyGroupName">Активная тестовая группа</string>
+    <string name="ExFullGramTestPresetLargeChannelName">Большой тестовый канал</string>
+    <string name="ExFullGramTestPresetLongContentName">Очень длинное название тестового чата для проверки переноса, обрезки текста и поведения шапки интерфейса ExFullGram</string>
+    <string name="ExFullGramTestPresetLongContentDescription">Очень длинное описание тестового чата. Оно специально создано для проверки того, как профиль, информация о чате и разные размеры экрана отображают длинный текст, переносы строк и большие блоки описания.</string>
+    <string name="ExFullGramTestPresetFloodName">Флуд-тест</string>
 </resources>
