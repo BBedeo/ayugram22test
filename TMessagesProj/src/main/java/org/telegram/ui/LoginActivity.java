@@ -1733,7 +1733,10 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
     }
 
     private void startLocalDemoAccount() {
-        final TLRPC.TL_user demoUser = app.exteraless.demo.DemoBackend.createSelf();
+        final TLRPC.TL_user demoUser = app.exteraless.demo.DemoBackend.createSelf(
+                currentAccount,
+                LocaleController.formatString(R.string.ExFullGramTestAccountDefaultName, currentAccount + 1)
+        );
 
         BackButtonMenuRecent.clearRecentDialogs(currentAccount);
         PasscodeHelper.removePasscodeForAccount(currentAccount);
@@ -1743,13 +1746,11 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         UserConfig.getInstance(currentAccount).syncContacts = false;
         UserConfig.getInstance(currentAccount).setCurrentUser(demoUser);
         UserConfig.getInstance(currentAccount).saveConfig(true);
+        ConnectionsManager.getInstance(currentAccount).setUserId(demoUser.id);
 
-        // Keep the demo account entirely local. cleanup(false) resets the DB
-        // without scheduling getDifference(), then DemoBackend queues its seed
-        // data behind the cleanup on the same storage queue.
-        MessagesStorage.getInstance(currentAccount).cleanup(false);
-        MessagesController.getInstance(currentAccount).putUser(demoUser, false);
-        app.exteraless.demo.DemoBackend.seed(currentAccount, demoUser);
+        // Test Mode is entirely local: reset the Telegram cache for this account,
+        // seed test data and link it to any other local Test Accounts.
+        app.exteraless.demo.DemoBackend.reset(currentAccount);
 
         needFinishActivity(false, false, 0);
     }
