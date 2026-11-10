@@ -71,4 +71,5 @@
 
     <string name="ExFullGramTestGoOnline">Set account online</string>
     <string name="ExFullGramTestGoOffline">Set account offline</string>
+    <string name="ExFullGramTestUnreadMessages">Unread messages</string>
 </resources>
