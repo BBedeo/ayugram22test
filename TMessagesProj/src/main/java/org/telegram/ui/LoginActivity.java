@@ -823,6 +823,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         if (BuildVars.SUPPORTS_PASSKEYS) moreButtonView.addSubItem(4, R.drawable.menu_passkey_add, getString(R.string.PasskeyLogin));
         moreButtonView.addSubItem(2, R.drawable.msg_permissions_solar, getString(R.string.CustomApi)).setContentDescription(getString(R.string.CustomApi));
         moreButtonView.addSubItem(3, R.drawable.msg_retry_solar, getString(R.string.TestBackend));
+        moreButtonView.addSubItem(5, R.drawable.msg_retry_solar, "Demo account");
         moreButtonView.setDelegate(id -> {
             if (id == 0) {
                 presentFragment(new ProxyListActivity());
@@ -844,6 +845,8 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 if (phoneView != null) {
                     phoneView.requestPasskey(true, true);
                 }
+            } else if (id == 5) {
+                startLocalDemoAccount();
             }
         });
         moreButtonView.setSubMenuOpenSide(1);
@@ -1727,6 +1730,28 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         TLRPC.TL_auth_authorization res = new TLRPC.TL_auth_authorization();
         res.user = UserConfig.getInstance(0).getCurrentUser();
         onAuthSuccess(res);
+    }
+
+    private void startLocalDemoAccount() {
+        final TLRPC.TL_user demoUser = app.exteraless.demo.DemoBackend.createSelf();
+
+        BackButtonMenuRecent.clearRecentDialogs(currentAccount);
+        PasscodeHelper.removePasscodeForAccount(currentAccount);
+        MessagesController.getInstance(currentAccount).cleanup();
+
+        UserConfig.getInstance(currentAccount).clearConfig();
+        UserConfig.getInstance(currentAccount).syncContacts = false;
+        UserConfig.getInstance(currentAccount).setCurrentUser(demoUser);
+        UserConfig.getInstance(currentAccount).saveConfig(true);
+
+        // Keep the demo account entirely local. cleanup(false) resets the DB
+        // without scheduling getDifference(), then DemoBackend queues its seed
+        // data behind the cleanup on the same storage queue.
+        MessagesStorage.getInstance(currentAccount).cleanup(false);
+        MessagesController.getInstance(currentAccount).putUser(demoUser, false);
+        app.exteraless.demo.DemoBackend.seed(currentAccount, demoUser);
+
+        needFinishActivity(false, false, 0);
     }
 
     private void onAuthSuccess(TLRPC.TL_auth_authorization res) {
