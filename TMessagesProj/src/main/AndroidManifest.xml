@@ -463,7 +463,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="vnd.android.cursor.item/vnd.com.exfullgram.app.android.profile"/>
             </intent-filter>
-            <!-- exteraless plugins: файл плагина, открытый из чата, файлового
+            <!-- ExFullGram plugins: файл плагина, открытый из чата, файлового
                  менеджера или «Поделиться». Без этого фильтра система показывает
                  обычный выбор приложения, а установить плагин негде. -->
             <intent-filter>
