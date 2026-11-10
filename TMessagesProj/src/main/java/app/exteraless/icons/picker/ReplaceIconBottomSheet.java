@@ -236,7 +236,7 @@ public class ReplaceIconBottomSheet extends BottomSheet {
             }
             apply(temp, true);
         } catch (Throwable t) {
-            FileLog.e("openExtera: failed to paste icon from clipboard", t);
+            FileLog.e("ExFullGram: failed to paste icon from clipboard", t);
         }
     }
 
