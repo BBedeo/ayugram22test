@@ -461,7 +461,7 @@ public final class DemoBackend {
         full.flags |= 1; // participants_count
         full.read_inbox_max_id = 0;
         full.read_outbox_max_id = 0;
-        full.unread_count = Math.min(unreadCount, Math.max(1, messageCount));
+        full.unread_count = Math.min(unreadCount, messageCount);
         full.chat_photo = new TLRPC.TL_photoEmpty();
         full.chat_photo.id = 0;
         full.notify_settings = new TLRPC.TL_peerNotifySettings();
@@ -600,8 +600,8 @@ public final class DemoBackend {
                 .putString(p + "title", title)
                 .putString(p + "about", about)
                 .putInt(p + "participants", participants)
-                .putInt(p + "messages", Math.min(messageCount, 250))
-                .putInt(p + "unread", Math.min(unreadCount, Math.min(messageCount, 250)))
+                .putInt(p + "messages", messageCount)
+                .putInt(p + "unread", Math.min(unreadCount, messageCount))
                 .putInt(p + "preset", preset)
                 .apply();
     }
@@ -670,6 +670,12 @@ public final class DemoBackend {
         }
     }
 
+    private static String linkedPairKey(int a, int b) {
+        int first = Math.min(a, b);
+        int second = Math.max(a, b);
+        return "linked_pair_" + first + "_" + second;
+    }
+
     private static void ensureTestAccountsKnowEachOther(int a, int b) {
         TLRPC.User selfA = UserConfig.getInstance(a).getCurrentUser();
         TLRPC.User selfB = UserConfig.getInstance(b).getCurrentUser();
@@ -691,22 +697,32 @@ public final class DemoBackend {
         int id = nextMessageId();
         int date = (int) (System.currentTimeMillis() / 1000L);
         String text = LocaleController.getString(R.string.ExFullGramTestAccountsLinkedMessage);
+        String pairKey = linkedPairKey(a, b);
+        boolean alreadyLinked = prefs().getBoolean(pairKey, false);
 
+        // Account A may have just been reset, so always restore its local dialog.
         TLRPC.TL_messages_messages containerA = new TLRPC.TL_messages_messages();
         containerA.users.add(selfA);
         containerA.users.add(peerB);
         containerA.messages.add(createPrivateMessage(id, selfA.id, selfB.id, selfB.id, false, text, date));
         MessagesStorage.getInstance(a).putMessages(containerA, selfB.id, 0, 0, true, ChatActivity.MODE_DEFAULT, 0);
 
-        TLRPC.TL_messages_messages containerB = new TLRPC.TL_messages_messages();
-        containerB.users.add(selfB);
-        containerB.users.add(peerA);
-        containerB.messages.add(createPrivateMessage(id, selfB.id, selfA.id, selfB.id, true, text, date));
-        MessagesStorage.getInstance(b).putMessages(containerB, selfA.id, 0, 0, true, ChatActivity.MODE_DEFAULT, 0);
+        // Only seed B the first time this pair is created. Repeated resets of A
+        // must not spam B with another "accounts linked" service message.
+        if (!alreadyLinked) {
+            TLRPC.TL_messages_messages containerB = new TLRPC.TL_messages_messages();
+            containerB.users.add(selfB);
+            containerB.users.add(peerA);
+            containerB.messages.add(createPrivateMessage(id, selfB.id, selfA.id, selfB.id, true, text, date));
+            MessagesStorage.getInstance(b).putMessages(containerB, selfA.id, 0, 0, true, ChatActivity.MODE_DEFAULT, 0);
+            prefs().edit().putBoolean(pairKey, true).apply();
+        }
 
         AndroidUtilities.runOnUIThread(() -> {
             NotificationCenter.getInstance(a).postNotificationName(NotificationCenter.dialogsNeedReload);
-            NotificationCenter.getInstance(b).postNotificationName(NotificationCenter.dialogsNeedReload);
+            if (!alreadyLinked) {
+                NotificationCenter.getInstance(b).postNotificationName(NotificationCenter.dialogsNeedReload);
+            }
         }, 250);
     }
 
