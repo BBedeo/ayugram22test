@@ -19,6 +19,9 @@ tab = read("org/telegram/ui/Components/glass/GlassTabView.java")
 menu = read("org/telegram/ui/Components/ItemOptions.java")
 pill = read("app/exteraless/appearance/ElasticGlassPillRenderer.java")
 blur_drawable = read("org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java")
+glass_effect = read("org/telegram/ui/Components/blur3/LiquidGlassEffect.java")
+pill_shader = (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_shader.agsl").read_text(encoding="utf-8")
+common_shader = (root / "TMessagesProj/src/main/res/raw/liquid_glass_shader.agsl").read_text(encoding="utf-8")
 buttons = read("org/telegram/ui/Components/voip/VoIPToggleButton.java")
 switch = read("org/telegram/ui/Components/voip/VoIpSwitchLayout.java")
 top = read("app/exteraless/appearance/ElasticCallIconView.java")
@@ -82,6 +85,26 @@ checks = {
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
         and ".setStrokeWidth(AndroidUtilities.dpf2(.28f), AndroidUtilities.dpf2(.10f))" in main
         and "? (dark ? .115f : .085f)" in main,
+    "Elastic navigation uses isolated shader without replacing shared glass":
+        "R.raw.liquid_glass_pill_shader" in glass_effect
+        and "R.raw.liquid_glass_shader" in glass_effect
+        and "new LiquidGlassEffect(renderNodeFill, elasticPillLens)" in blur_drawable
+        and "capsule.setElasticPillLens(true);" in main,
+    "Isolated shader refracts live capture and adds dynamic internal caustics":
+        "uniform shader img;" in pill_shader
+        and "img.eval(uv)" in pill_shader
+        and "glass_motion" in pill_shader
+        and "float glint = gaussian(glintX)" in pill_shader
+        and "redSample.r" in pill_shader
+        and "blueSample.b" in pill_shader
+        and "glass_press" in pill_shader
+        and "half4 main" in pill_shader
+        and "uniform shader img;" in common_shader,
+    "Refraction highlight responds to actual frame displacement":
+        "lastCenterX" in pill
+        and "centerX - lastCenterX" in pill
+        and "lightVelocity +=" in pill
+        and "nativeGlass.setLiquidOptics" in pill,
     "No fake painted double rim over the native lens":
         "canvas.drawArc(" not in pill
         and "LinearGradient" not in pill
