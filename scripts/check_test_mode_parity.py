@@ -10,6 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "TMessagesProj/src/main/java"
 send = (BASE / "org/telegram/messenger/SendMessagesHelper.java").read_text(encoding="utf-8")
+# Limit ordering assertions to the specific outgoing send overload.
+send_method = send.split("public void sendMessage(SendMessageParams originalParams) {", 1)[1]
 backend = (BASE / "app/exteraless/demo/DemoBackend.java").read_text(encoding="utf-8")
 composer = (BASE / "org/telegram/ui/Components/ChatActivityEnterView.java").read_text(encoding="utf-8")
 
@@ -18,8 +20,8 @@ checks = {
         send.count("applySharedOutgoingFeatures(sendMessageParams);") == 2,
     "Test send intercept precedes network transport":
         "DemoBackend.isTestAccount(currentAccount)" in send
-        and send.index("DemoBackend.sendLocalMessage(currentAccount, sendMessageParams)")
-            < send.index("BotAccountRouter.guardSend(currentAccount"),
+        and send_method.index("DemoBackend.sendLocalMessage(currentAccount, sendMessageParams)")
+            < send_method.index("BotAccountRouter.guardSend(currentAccount"),
     "Text composer passes native animation metadata":
         "params.sendAnimationData = sendAnimationData" in composer
         or "scheduleRepeatPeriod, sendAnimationData, updateStickersOrder" in composer,
