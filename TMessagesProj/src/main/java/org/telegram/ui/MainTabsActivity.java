@@ -493,14 +493,14 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                             .setBackgroundColor((r, dark) -> {
                                 final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                                 if (dark) {
-                                    // Lift the pill's translucent glass tint cleanly above the darker
-                                    // raw page source so it stays brighter than tabsViewBackground
-                                    // over uniform scenes while remaining ~66% transparent to refraction.
-                                    final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.25f);
-                                    return Theme.multAlpha(lifted, canRefract ? .34f : .42f);
+                                    // Keep the interior ~80% transparent so refracted page content
+                                    // shines through vividly, while gently lifting above the raw page
+                                    // so flat dark scenes never look like a dark cutout.
+                                    final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.34f);
+                                    return Theme.multAlpha(lifted, canRefract ? .20f : .34f);
                                 }
-                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.52f);
-                                return Theme.multAlpha(lifted, canRefract ? .28f : .36f);
+                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.60f);
+                                return Theme.multAlpha(lifted, canRefract ? .18f : .30f);
                             })
                             // Subtle optical rim only; refraction and curved Fresnel glow
                             // come from LiquidGlassEffect, not a heavy 2D outline.
@@ -521,8 +521,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(12));
-                capsule.setIntensity(1.75f);
+                capsule.setThickness(dp(14));
+                capsule.setIntensity(2.65f);
             }
             tabsView.setElasticPillGlass(capsule);
         }

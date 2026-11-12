@@ -386,12 +386,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final boolean changed = elasticSelectedTab != tab;
         elasticSelectedTab = tab;
         setSkipDrawSelector(true);
-        // The pill should slide with a short, controlled spring; the old
-        // low-damping spring was meant for an almost invisible long-press
-        // selector and visibly overshot across neighboring buttons.
+        // Spring with visible jelly overshoot and damped settle so releasing
+        // or tapping feels fluid rather than snapping like a magnet.
         selectedTabPositionX.getSpring()
-                .setStiffness(390f)
-                .setDampingRatio(.82f);
+                .setStiffness(260f)
+                .setDampingRatio(.52f);
         if (!isInLongPress && (changed || !elasticPillInitialized)) {
             syncElasticPillToSelected(animated);
         }
@@ -429,9 +428,19 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             // damped spring settle the lens into the destination slot. This
             // makes ACTION_UP visibly continuous instead of teleporting.
             selectedTabPositionX.setStartVelocity(elasticReleaseVelocityX);
+            final float impulse = Math.max(2.2f, Math.min(7.5f,
+                    Math.abs(elasticReleaseVelocityX) * .0055f
+                    + Math.abs(animatedLongSelectedViewCenterX - cx) * .026f));
             elasticReleaseVelocityX = 0f;
             selectedTabPositionX.animateToFinalPosition(cx);
+            elasticJellyBounce.setStartVelocity(impulse);
+            elasticJellyBounce.animateToFinalPosition(0f);
         } else {
+            if (elasticReleaseVelocityX != 0f) {
+                elasticJellyBounce.setStartVelocity(Math.max(2.0f, Math.min(5.0f,
+                        Math.abs(elasticReleaseVelocityX) * .005f)));
+                elasticJellyBounce.animateToFinalPosition(0f);
+            }
             elasticReleaseVelocityX = 0f;
         }
         invalidate();
@@ -530,23 +539,31 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         if (selected == null || selected.getWidth() <= 0) return;
         if (!elasticPillInitialized) syncElasticPillToSelected(false);
         final float centerX = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
-        // At rest the lens is EXACTLY the native selector. During travel only,
-        // add a small directional stretch so it behaves like a moving liquid
-        // lens instead of a rigid oval sliding on rails.
+        final float frameDelta = Float.isNaN(elasticPrevCenterX) ? 0f : (centerX - elasticPrevCenterX);
+        elasticPrevCenterX = centerX;
+        // At rest the lens is EXACTLY the native selector. During travel and
+        // spring settle, stretch along motion and apply the jelly squash-bounce.
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
         final float extension = Math.min(dp(16), travelled * .17f);
+        final float velocityStretch = Math.min(dp(9), Math.abs(frameDelta) * .48f);
+        final float totalStretch = Math.min(dp(22), extension + velocityStretch);
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float verticalCompression = Math.min(dp(1.4f), extension * .09f);
-        final float height = Math.max(1f, availableHeight - verticalCompression);
+        final float pressSwell = (elasticTouchStartedOnPill && !elasticMenuShownDuringTouch) ? dp(1.4f) : 0f;
+        final float jellyX = elasticJellyValue * dp(6.5f) + pressSwell;
+        final float jellyY = -elasticJellyValue * dp(3.0f) + pressSwell * .65f;
+        final float verticalCompression = Math.min(dp(2.4f), totalStretch * .12f);
+        final float height = Math.max(1f, availableHeight - verticalCompression + jellyY);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
-        final float baseWidth = Math.max(dp(28), widthAtX);
+        final float baseWidth = Math.max(dp(28), widthAtX + jellyX);
         final float cy = getPaddingTop() + availableHeight * .5f;
 
         final float direction = elasticDragging
                 ? Math.signum(centerX - selectedTabDestinationX)
-                : Math.signum(selectedTabDestinationX - centerX);
-        final float trailingStretch = direction == 0f ? extension * .5f : extension * .30f;
-        final float leadingStretch = extension - trailingStretch;
+                : (Math.abs(frameDelta) > .25f
+                        ? Math.signum(frameDelta)
+                        : Math.signum(selectedTabDestinationX - centerX));
+        final float trailingStretch = direction == 0f ? totalStretch * .5f : totalStretch * .30f;
+        final float leadingStretch = totalStretch - trailingStretch;
         final float leftStretch = direction < 0f ? leadingStretch : trailingStretch;
         final float rightStretch = direction > 0f ? leadingStretch : trailingStretch;
 
@@ -561,7 +578,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             selectorRect.offset(getWidth() - edge - selectorRect.right, 0);
         }
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
-                Theme.isCurrentThemeDark(), direction * extension / dp(16),
+                Theme.isCurrentThemeDark(), direction * Math.min(1f, totalStretch / dp(16)),
                 elasticTouchStartedOnPill && !elasticMenuShownDuringTouch);
     }
 
@@ -622,6 +639,28 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
     private float animatedLongSelectedViewCenterX;
     private float animatedLongSelectedViewOffsetX;
+    private float elasticPrevCenterX = Float.NaN;
+    private float elasticJellyValue;
+
+    final SpringAnimation elasticJellyBounce = new SpringAnimation(this, new FloatPropertyCompat<MainTabsLayout>("elasticJellyBounce") {
+        @Override
+        public float getValue(MainTabsLayout object) {
+            return object.elasticJellyValue;
+        }
+
+        @Override
+        public void setValue(MainTabsLayout object, float value) {
+            object.elasticJellyValue = value;
+            object.invalidate();
+        }
+    }, 0f);
+
+    {
+        elasticJellyBounce.setMinimumVisibleChange(0.002f);
+        elasticJellyBounce.setSpring(new SpringForce(0f)
+                .setStiffness(210f)
+                .setDampingRatio(0.36f));
+    }
 
     private boolean isInLongPress;
     private float lastLongSelectedViewCenterX;
@@ -982,7 +1021,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     elasticVelocityTracker.computeCurrentVelocity(1000);
                     final float rawVelocity = elasticVelocityTracker.getXVelocity(elasticTouchPointer);
                     final float maxVelocity = dp(1400);
-                    elasticReleaseVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, rawVelocity)) * .18f;
+                    elasticReleaseVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, rawVelocity)) * .62f;
                 }
                 finishElasticTouch(true);
                 if (hovered instanceof GlassTabView) {

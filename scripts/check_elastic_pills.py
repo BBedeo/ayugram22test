@@ -54,9 +54,9 @@ checks = {
         and "elasticSelectedTab != null" in nav,
     "Elastic pill reuses exact native long-press tab geometry":
         "getInterpolatedWidthByX(centerX, this)" in nav
-        and "final float height = Math.max(1f, availableHeight - verticalCompression)" in nav
-        and "verticalCompression = Math.min(dp(1.4f), extension * .09f)" in nav
-        and "final float baseWidth = Math.max(dp(28), widthAtX)" in nav
+        and "final float height = Math.max(1f, availableHeight - verticalCompression + jellyY)" in nav
+        and "verticalCompression = Math.min(dp(2.4f), totalStretch * .12f)" in nav
+        and "final float baseWidth = Math.max(dp(28), widthAtX + jellyX)" in nav
         and "getSelectorVisualWidth()" in nav
         and "public float getSelectorVisualWidth()" in tab
         and "Math.min(dp(16), travelled * .17f)" in nav,
@@ -69,7 +69,7 @@ checks = {
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
-        and "capsule.setIntensity(1.75f);" in main
+        and "capsule.setIntensity(2.65f);" in main
         and "source != iBlur3SourceTabGlass" in main
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
@@ -81,11 +81,11 @@ checks = {
         and "nativeGlass.setLiquidOptics" in pill
         and "baseAngle = 315f" in pill
         and "dark ? .76f : .82f" in pill
-        and "direction * extension / dp(16)" in nav,
+        and "totalStretch / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
         and ".setStrokeWidth(AndroidUtilities.dpf2(.24f), AndroidUtilities.dpf2(.08f))" in main
-        and "canRefract ? .34f : .42f" in main,
+        and "canRefract ? .20f : .34f" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -138,8 +138,9 @@ checks = {
         "VelocityTracker" in nav
         and "computeCurrentVelocity(1000)" in nav
         and "setStartVelocity(elasticReleaseVelocityX)" in nav
-        and ".setStiffness(390f)" in nav
-        and ".setDampingRatio(.82f)" in nav,
+        and ".setStiffness(260f)" in nav
+        and ".setDampingRatio(.52f)" in nav
+        and "elasticJellyBounce" in nav,
     "Dragging cancels child click; click commits only on finger release":
         "super.dispatchTouchEvent(cancel);" in nav
         and "hovered.performClick();" in nav
