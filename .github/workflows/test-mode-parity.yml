@@ -1,0 +1,22 @@
+name: Test Mode parity guard
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'TMessagesProj/src/main/java/**'
+      - 'scripts/check_test_mode_parity.py'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check native Telegram animation and Test transport wiring
+        run: python3 scripts/check_test_mode_parity.py
