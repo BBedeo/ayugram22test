@@ -228,7 +228,18 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
     private float liquidShineOverride = Float.NaN;
     private float liquidLightAngleOverride = Float.NaN;
     private float liquidMotionPhaseOverride = Float.NaN;
+    private float elasticPressOverride = Float.NaN;
     private boolean elasticPillLens;
+
+    /** Animated optical pressure for the manually drawn selected pill. */
+    public void setElasticPressProgress(float amount) {
+        final float press = Math.max(0f, Math.min(1f, amount));
+        if (elasticPressOverride != press) {
+            elasticPressOverride = press;
+            if (renderNodeImpl != null) renderNodeImpl.invalidate();
+            invalidateSelf();
+        }
+    }
 
     /**
      * Select a distinct AGSL material for the travelling navbar pill only.
@@ -1416,7 +1427,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                     boundProps.liquidIntensity * LiquidGlassTuning.refractionScale(),
                     boundProps.liquidIndex,
                     backgroundColor,
-                    LiquidGlassTuning.motionEnabled() ? pressProgress : 0f,
+                    Float.isNaN(elasticPressOverride)
+                            ? (LiquidGlassTuning.motionEnabled() ? pressProgress : 0f)
+                            : elasticPressOverride,
                     Float.isNaN(liquidShineOverride)
                             ? LiquidGlassTuning.shine() : liquidShineOverride,
                     Float.isNaN(liquidLightAngleOverride)
