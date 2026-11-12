@@ -4522,6 +4522,16 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         return true;
     }
 
+    /**
+     * Shared outgoing feature pipeline. New ExFullGram transformations added
+     * here automatically affect real chats AND local Test chats. Do not place
+     * feature transforms after the Test transport switch in sendMessage().
+     */
+    private void applySharedOutgoingFeatures(SendMessageParams params) {
+        app.exteraless.chats.DeletedReplyQuote.rewrite(currentAccount, params);
+        app.exteraless.chats.LinkedCustomEmoji.replaceForSend(currentAccount, params.peer, params.entities);
+    }
+
     public void sendMessage(SendMessageParams originalParams) {
         app.exteraless.plugins.HookResult hookResult = app.exteraless.plugins.HookResult.DEFAULT;
         // exteraless plugins: исходящее сообщение через on_send_message_hook (CANCEL = не отправлять)
@@ -4535,15 +4545,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         SendMessageParams replacement = hookResult.replacement(SendMessageParams.class);
         final SendMessageParams sendMessageParams = replacement != null ? replacement : originalParams;
         if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
-            // Keep Test Mode on the same outgoing feature pipeline as regular
-            // accounts. Only the final transport is replaced by local storage.
-            app.exteraless.chats.DeletedReplyQuote.rewrite(currentAccount, sendMessageParams);
-            app.exteraless.chats.LinkedCustomEmoji.replaceForSend(currentAccount, sendMessageParams.peer, sendMessageParams.entities);
-            if (app.exteraless.demo.DemoBackend.sendLocalMessage(currentAccount, sendMessageParams)) return;
+            // Test changes only the transport. Both account types must pass
+            // through the same ExFullGram outgoing feature transformations.
+            applySharedOutgoingFeatures(sendMessageParams);
+            app.exteraless.demo.DemoBackend.sendLocalMessage(currentAccount, sendMessageParams);
+            return; // No Telegram network requests from Test Mode.
         }
         if (app.exteraless.privacy.BotAccountRouter.guardSend(currentAccount, sendMessageParams.peer, () -> sendMessage(sendMessageParams))) return;
-        app.exteraless.chats.DeletedReplyQuote.rewrite(currentAccount, sendMessageParams);
-        app.exteraless.chats.LinkedCustomEmoji.replaceForSend(currentAccount, sendMessageParams.peer, sendMessageParams.entities);
+        applySharedOutgoingFeatures(sendMessageParams);
         final SendMessageChatArguments sendMessageChatArguments = sendMessageParams.sendMessageChatArguments != null ?
                 sendMessageParams.sendMessageChatArguments : SendMessageChatArguments.EMPTY;
         String message = sendMessageParams.message;
