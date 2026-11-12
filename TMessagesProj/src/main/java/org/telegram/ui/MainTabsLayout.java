@@ -560,7 +560,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             selectorRect.offset(getWidth() - edge - selectorRect.right, 0);
         }
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
-                Theme.isCurrentThemeDark(), direction * extension / dp(16));
+                Theme.isCurrentThemeDark(), direction * extension / dp(16),
+                elasticTouchStartedOnPill && !elasticMenuShownDuringTouch);
     }
 
         private boolean drawTopDivider = true;
@@ -912,6 +913,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticTouchStartedOnPill = elasticTouchTab instanceof GlassTabView
                     && findSelectedTab() != null
                     && selectorRect.contains(elasticDownX, elasticDownY);
+            if (elasticTouchStartedOnPill) invalidate();
             // Preserve the finger's offset from the visible pill, so the
             // glass does not jump when the user begins dragging.
             elasticTouchOffsetX = animatedLongSelectedViewCenterX - elasticDownX;
@@ -1033,6 +1035,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         } else {
             elasticReleaseVelocityX = 0f;
         }
+        invalidate();
     }
 
     /**
