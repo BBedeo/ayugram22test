@@ -488,12 +488,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> Theme.multAlpha(
                                     Theme.getColor(Theme.key_glass_targetMainTabs, r),
-                                    dark ? .30f : .27f))
-                            .setStrokeColorTop(0xE3FFFFFF, 0xB0FFFFFF)
-                            .setStrokeColorBottom(0x6DFFFFFF, 0x50FFFFFF)
-                            .setShadowColor(0x27000000, 0x45000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(4f), 0, AndroidUtilities.dpf2(1f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.75f)));
+                                    dark ? .14f : .12f))
+                            .setStrokeColorTop(0x44FFFFFF, 0x44FFFFFF)
+                            .setStrokeColorBottom(0x0FFFFFFF, 0x0FFFFFFF)
+                            .setShadowColor(0x19000000, 0x23000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(2f), 0, AndroidUtilities.dpf2(.6f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.7f), AndroidUtilities.dpf2(.45f)));
             tabsView.setElasticPillGlass(capsule);
         }
 
@@ -1063,10 +1063,17 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     public GlassTabView[] tabs;
 
     public void selectTab(int position, boolean animated) {
+        GlassTabView actualSelected = null;
         for (int a = 0; a < tabs.length; a++) {
             GlassTabView tab = tabs[a];
-            tab.setSelected(indexToPosition(a) == position, animated);
+            final boolean selected = indexToPosition(a) == position;
+            tab.setSelected(selected, animated);
+            if (selected) actualSelected = tab;
         }
+        // The pill must follow the same actual page selection as ViewPager.
+        // Inferring it from an in-flight icon BoolAnimator leaves it on the
+        // previous tab during animation.
+        if (tabsView != null) tabsView.setElasticSelectedTab(actualSelected, animated);
     }
 
     public void setGestureSelectedOverride(float animatedPosition, boolean allow) {
