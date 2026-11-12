@@ -5,6 +5,9 @@ on:
     branches: [main, dev]
     paths:
       - 'TMessagesProj/src/main/java/**'
+      - 'TMessagesProj/src/main/kotlin/**'
+      - 'TMessagesProj/src/main/res/values*/strings_oe*.xml'
+      - 'scripts/check_liquid_glass.py'
       - 'scripts/check_test_mode_parity.py'
       - 'scripts/check_account_profiles.py'
       - 'AGENTS.md'
@@ -24,3 +27,5 @@ jobs:
         run: python3 scripts/check_test_mode_parity.py
       - name: Check account profile isolation and global settings search
         run: python3 scripts/check_account_profiles.py
+      - name: Check optional universal Liquid Glass, native refraction and theme fallbacks
+        run: python3 scripts/check_liquid_glass.py
