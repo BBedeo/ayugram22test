@@ -15,6 +15,7 @@ config = (root / "TMessagesProj/src/main/kotlin/app/exteraless/appearance/Appear
 appearance = read("app/exteraless/settings/OpenExteraAppearanceActivity.java")
 nav = read("org/telegram/ui/MainTabsLayout.java")
 main = read("org/telegram/ui/MainTabsActivity.java")
+menu = read("org/telegram/ui/Components/ItemOptions.java")
 pill = read("app/exteraless/appearance/ElasticGlassPillRenderer.java")
 buttons = read("org/telegram/ui/Components/voip/VoIPToggleButton.java")
 switch = read("org/telegram/ui/Components/voip/VoIpSwitchLayout.java")
