@@ -7702,6 +7702,12 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @SuppressWarnings("unchecked")
     public void didReceivedNotification(int id, final int account, Object... args) {
         if (id == NotificationCenter.appDidLogout) {
+            // ExFullGram Test accounts are local-only and have no Telegram auth key.
+            // Network components may emit appDidLogout for them; never route that
+            // synthetic event back to the login screen.
+            if (app.exteraless.demo.DemoBackend.isTestSlot(account)) {
+                return;
+            }
             switchToAvailableAccountOrLogout();
         } else if (id == NotificationCenter.openBoostForUsersDialog) {
             long dialogId = (long) args[0];
