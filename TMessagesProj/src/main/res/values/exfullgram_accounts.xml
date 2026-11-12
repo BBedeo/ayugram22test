@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OpenExteraAccounts">Accounts and settings</string>
+    <string name="EFGAccountsTitle">Account settings</string>
+    <string name="EFGAccountsIntro">Give each Telegram or Test account its own ExFullGram, Nagram and Neko settings profile.</string>
+    <string name="EFGAccountsCurrent">Current profile</string>
+    <string name="EFGAccountsOptions">Profiles</string>
+    <string name="EFGAccountsSeparateSettings">Separate settings for each account</string>
+    <string name="EFGAccountsSeparateHint">Store mod settings separately for every account, including Test Mode.</string>
+    <string name="EFGAccountsCompare">Compare accounts</string>
+    <string name="EFGAccountsCompareHint">Select settings from the left or right account and merge the differences.</string>
+    <string name="EFGAccountsReset">Reset account settings</string>
+    <string name="EFGAccountsResetHint">Reset the selected ExFullGram/Nagram settings profile only.</string>
+    <string name="EFGAccountsResetConfirm">Reset the mod settings for %1$s? Chats, messages and Telegram login will stay untouched.</string>
+    <string name="EFGAccountsApplied">Saved %1$d settings changes</string>
+    <string name="EFGAccountsScope">Covers ExFullGram, Nagram and Neko settings. Telegram server settings, chat data and account sign-in are not copied.</string>
+    <string name="EFGAccountsComparisonTitle">Account differences</string>
+    <string name="EFGAccountsLeft">Left account</string>
+    <string name="EFGAccountsRight">Right account</string>
+    <string name="EFGAccountsPickSide">Choose an account</string>
+    <string name="EFGAccountsSelectHint">Tap the value you want to keep in each row. Highlighted values overwrite the opposite account when you apply.</string>
+    <string name="EFGAccountsNoDifferences">These accounts have identical mod settings.</string>
+    <string name="EFGAccountsApply">Apply selected changes</string>
+    <string name="EFGAccountsApplyConfirm">Apply %1$d selected changes to these account profiles? Unselected settings will not change.</string>
+    <string name="EFGAccountsNothingSelected">Choose at least one value first.</string>
+    <string name="EFGAccountsEnableFirst">Enable separate settings for each account to compare or merge them.</string>
+    <string name="EFGAccountsRestartHint">Some visual changes may only appear after restarting the application.</string>
+    <string name="EFGAccountsResetWhich">Choose account to reset</string>
+</resources>
