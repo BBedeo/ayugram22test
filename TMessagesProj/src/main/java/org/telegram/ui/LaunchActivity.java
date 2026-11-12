@@ -454,6 +454,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         ApplicationLoader.postInitApplication();
         AndroidUtilities.checkDisplaySize(this, getResources().getConfiguration());
         currentAccount = UserConfig.selectedAccount;
+        // Restore the selected ExFullGram settings profile before building UI.
+        app.exteraless.settings.AccountSettingsProfiles.initialize(currentAccount);
         if (BuildVars.DEBUG_VERSION || BuildVars.DEBUG_PRIVATE_VERSION) {
             registerDebugThemeReceiver();
         }
@@ -1290,6 +1292,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         switchingAccount = true;
 
         ConnectionsManager.getInstance(currentAccount).setAppPaused(true, false);
+        // Save the old settings and apply the new account's profile BEFORE
+        // currentAccount and the Telegram fragment tree are switched.
+        app.exteraless.settings.AccountSettingsProfiles.beforeAccountSwitch(currentAccount, account);
         UserConfig.selectedAccount = account;
         UserConfig.getInstance(0).saveConfig(false);
 
