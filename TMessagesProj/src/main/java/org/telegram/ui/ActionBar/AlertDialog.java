@@ -60,6 +60,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LiteMode;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
@@ -283,7 +284,12 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
     }
 
     protected boolean supportsNativeBlur() {
-        return false; // Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && LaunchActivity.systemBlurEnabled;
+        // Telegram's original fallback stays untouched with the toggle OFF.
+        // System blur may also be disabled in Android settings, so the regular
+        // blurred-bitmap/opaque paths remain available as a fallback.
+        return LiquidGlassTuning.isActive()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && LaunchActivity.systemBlurEnabled;
     }
 
     public void redPositive() {
@@ -364,12 +370,22 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         backgroundColor = getThemedColor(backgroundColorKey = Theme.key_dialogBackground);
         final boolean isDark = AndroidUtilities.computePerceivedBrightness(backgroundColor) < 0.721f;
         blurredNativeBackground = supportsNativeBlur() && progressViewStyle == ALERT_TYPE_MESSAGE;
-        blurredBackground = (blurredNativeBackground || !supportsNativeBlur() && SharedConfig.getDevicePerformanceClass() >= SharedConfig.PERFORMANCE_CLASS_HIGH && LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR)) && isDark;
+        boolean optionalGlass = LiquidGlassTuning.isActive() && progressViewStyle == ALERT_TYPE_MESSAGE;
+        boolean glassBitmapFallback = optionalGlass
+                && SharedConfig.getDevicePerformanceClass() >= SharedConfig.PERFORMANCE_CLASS_HIGH;
+        blurredBackground = (blurredNativeBackground || glassBitmapFallback
+                || !supportsNativeBlur() && SharedConfig.getDevicePerformanceClass() >= SharedConfig.PERFORMANCE_CLASS_HIGH && LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR))
+                && (isDark || optionalGlass);
+        if (optionalGlass) {
+            blurAlpha = LiquidGlassTuning.tintAlphaMenu(isDark, blurAlpha);
+        }
 
         backgroundPaddings = new Rect();
         if (progressStyle != ALERT_TYPE_SPINNER || blurredBackground) {
             shadowDrawable = context.getResources().getDrawable(R.drawable.popup_fixed_alert4).mutate();
-            blurOpacity = progressStyle == ALERT_TYPE_SPINNER ? 0.55f : (isDark ? 0.80f : 0.985f);
+            blurOpacity = progressStyle == ALERT_TYPE_SPINNER ? 0.55f
+                    : (optionalGlass ? LiquidGlassTuning.tintAlphaMenu(isDark, 0.80f)
+                    : (isDark ? 0.80f : 0.985f));
             shadowDrawable.setColorFilter(new PorterDuffColorFilter(backgroundColor, PorterDuff.Mode.MULTIPLY));
             shadowDrawable.getPadding(backgroundPaddings);
         }
@@ -1456,10 +1472,21 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 if (progressViewStyle == ALERT_TYPE_MESSAGE) {
                     blurredNativeBackground = true;
                     window.setBackgroundBlurRadius(50);
-                    float rad = dp(12);
-                    ShapeDrawable shapeDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
-                    shapeDrawable.getPaint().setColor(ColorUtils.setAlphaComponent(backgroundColor, (int) (blurAlpha * 255)));
-                    window.setBackgroundDrawable(shapeDrawable);
+                    if (LiquidGlassTuning.isActive()) {
+                        // Edge highlight and a translucent native window backdrop
+                        // instead of the old opaque popup rectangle.
+                        GradientDrawable glass = new GradientDrawable();
+                        glass.setColor(ColorUtils.setAlphaComponent(backgroundColor,
+                                Math.round(blurAlpha * 255)));
+                        glass.setCornerRadius(dp(16));
+                        glass.setStroke(dp(1), 0x52FFFFFF);
+                        window.setBackgroundDrawable(glass);
+                    } else {
+                        float rad = dp(12);
+                        ShapeDrawable shapeDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
+                        shapeDrawable.getPaint().setColor(ColorUtils.setAlphaComponent(backgroundColor, (int) (blurAlpha * 255)));
+                        window.setBackgroundDrawable(shapeDrawable);
+                    }
                     if (blurBehind) {
                         params.flags |= WindowManager.LayoutParams.FLAG_BLUR_BEHIND;
                         params.setBlurBehindRadius(20);
