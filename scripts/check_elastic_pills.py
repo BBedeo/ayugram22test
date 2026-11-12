@@ -105,6 +105,12 @@ checks = {
         and "centerX - lastCenterX" in pill
         and "lightVelocity +=" in pill
         and "nativeGlass.setLiquidOptics" in pill,
+    "Touch compression drives the real GPU shader, not a fake overlay":
+        "elasticTouchStartedOnPill && !elasticMenuShownDuringTouch" in nav
+        and "nativeGlass.setElasticPressProgress(pressure)" in pill
+        and "setElasticPressProgress(float amount)" in blur_drawable
+        and "elasticPressOverride" in blur_drawable
+        and "glass_press, 0.0, 1.0" in pill_shader,
     "No fake painted double rim over the native lens":
         "canvas.drawArc(" not in pill
         and "LinearGradient" not in pill
