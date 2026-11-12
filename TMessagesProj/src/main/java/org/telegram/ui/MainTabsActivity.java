@@ -6,6 +6,7 @@ import static org.telegram.messenger.LocaleController.getString;
 import static org.telegram.ui.Components.Premium.LimitReachedBottomSheet.TYPE_ACCOUNTS;
 
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.LiteMode;
 import android.animation.Animator;
 import android.content.Context;
 import android.content.Intent;
@@ -485,7 +486,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             // The selection pill gets its own native glass lens, sampling the
             // actual pages under the tabs (NOT a fake dark-blue oval). The
             // renderer draws this once behind the icons and labels.
-            final boolean canRefract = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU;
+            final boolean canRefract = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && !LiteMode.isPowerSaverApplied();
             BlurredBackgroundDrawable capsule = iBlur3FactoryGlass.create(tabsView,
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> Theme.multAlpha(
