@@ -502,6 +502,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                             .setShadowLayer(AndroidUtilities.dpf2(.9f), 0, AndroidUtilities.dpf2(.25f))
                             .setStrokeWidth(AndroidUtilities.dpf2(.28f), AndroidUtilities.dpf2(.10f)));
             capsule.setLiquidGlassEffectAllowed();
+            capsule.setElasticPillLens(true);
             if (canRefract) {
                 // Elastic pills are themselves a liquid-glass interaction.
                 // Force the real GPU lens for this drawable even when the
