@@ -6,7 +6,12 @@ import static org.telegram.messenger.AndroidUtilities.lerp;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import androidx.core.graphics.ColorUtils;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
@@ -20,6 +25,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RawRes;
 
 import org.telegram.messenger.LocaleController;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.messenger.utils.ViewOutlineProviderImpl;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
@@ -202,7 +208,26 @@ public class FragmentFloatingButton extends FrameLayout implements FactorAnimato
             progressView.setProgressColor(Theme.getColor(Theme.key_chats_actionIcon, resourcesProvider));
             final int color = Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider);
             final int pressedColor = Theme.getColor(Theme.key_featuredStickers_addButtonPressed, resourcesProvider);
-            if (recolorBackground) {
+            if (LiquidGlassTuning.isActive()) {
+                // The compose FAB uses a real theme-aware translucent material,
+                // a directional glass highlight and the existing press-scale
+                // animation. It needs no additional bitmap capture on scroll.
+                final boolean dark = resourcesProvider != null
+                        ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
+                final int alpha = Math.round(LiquidGlassTuning.tintAlphaMenu(dark, .8f) * 255);
+                final int top = ColorUtils.setAlphaComponent(
+                        ColorUtils.blendARGB(color, Color.WHITE, .14f), alpha);
+                final int bottom = ColorUtils.setAlphaComponent(color, alpha);
+                final GradientDrawable lens = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR, new int[]{top, bottom});
+                lens.setCornerRadius(dp(app.exteraless.appearance.AppearanceConfig.squareFab() ? 14 : 24));
+                lens.setStroke(dp(1), LiquidGlassTuning.adaptHighlight(dark ? 0x7DFFFFFF : 0xB0FFFFFF));
+                final int rippleColor = Theme.multAlpha(pressedColor, .33f);
+                setBackground(themedBackground = new RippleDrawable(
+                        ColorStateList.valueOf(rippleColor), lens, null));
+                themedBackgroundColor = color;
+                themedBackgroundPressedColor = pressedColor;
+            } else if (recolorBackground) {
                 if (color != themedBackgroundColor || pressedColor != themedBackgroundPressedColor) {
                     themedBackgroundColor = color;
                     themedBackgroundPressedColor = pressedColor;
