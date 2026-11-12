@@ -1,16 +1,10 @@
 package app.exteraless.demo;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.graphics.drawable.ColorDrawable;
 import android.text.InputType;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,7 +32,7 @@ public final class TestChatBuilder {
         int pad = AndroidUtilities.dp(20);
         content.setPadding(pad, AndroidUtilities.dp(4), pad, AndroidUtilities.dp(8));
 
-        final Spinner preset = createSpinner(context, new String[]{
+        final SelectorField preset = createSelector(fragment, context, LocaleController.getString(R.string.ExFullGramTestPreset), new String[]{
                 LocaleController.getString(R.string.ExFullGramTestPresetCustom),
                 LocaleController.getString(R.string.ExFullGramTestPresetEmpty),
                 LocaleController.getString(R.string.ExFullGramTestPresetBusyGroup),
@@ -49,7 +43,7 @@ public final class TestChatBuilder {
         addLabel(content, context, LocaleController.getString(R.string.ExFullGramTestPreset));
         content.addView(preset, rowParams());
 
-        final Spinner type = createSpinner(context, new String[]{
+        final SelectorField type = createSelector(fragment, context, LocaleController.getString(R.string.ExFullGramTestChatType), new String[]{
                 LocaleController.getString(R.string.ExFullGramTestTypePrivate),
                 LocaleController.getString(R.string.ExFullGramTestTypeGroup),
                 LocaleController.getString(R.string.ExFullGramTestTypeChannel)
@@ -77,30 +71,17 @@ public final class TestChatBuilder {
         unread.setText("5");
         content.addView(unread, rowParams());
 
-        preset.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                applyPreset(position, type, name, description, participants, messages, unread);
-            }
+        preset.setOnSelectionChanged(position ->
+                applyPreset(position, type, name, description, participants, messages, unread));
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-
-        type.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                participants.setEnabled(position != DemoBackend.TYPE_PRIVATE);
-                if (position == DemoBackend.TYPE_PRIVATE) {
-                    participants.setText("2");
-                } else if (parseInt(participants.getText().toString(), 2) <= 2) {
-                    participants.setText(position == DemoBackend.TYPE_CHANNEL ? "1000" : "20");
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
+        type.setOnSelectionChanged(position -> {
+            boolean enabled = position != DemoBackend.TYPE_PRIVATE;
+            participants.setEnabled(enabled);
+            participants.setAlpha(enabled ? 1f : 0.55f);
+            if (position == DemoBackend.TYPE_PRIVATE) {
+                participants.setText("2");
+            } else if (parseInt(participants.getText().toString(), 2) <= 2) {
+                participants.setText(position == DemoBackend.TYPE_CHANNEL ? "1000" : "20");
             }
         });
 
@@ -138,7 +119,7 @@ public final class TestChatBuilder {
 
     private static void applyPreset(
             int preset,
-            Spinner type,
+            SelectorField type,
             EditText name,
             EditText description,
             EditText participants,
@@ -196,46 +177,84 @@ public final class TestChatBuilder {
         }
     }
 
-    private static Spinner createSpinner(Context context, String[] values) {
-        Spinner spinner = new Spinner(context);
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, values) {
-            @Override
-            public View getView(int position, View convertView, android.view.ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                styleSpinnerText(view, false);
-                return view;
-            }
-
-            @Override
-            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                styleSpinnerText(view, true);
-                return view;
-            }
-        };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setPopupBackgroundDrawable(new ColorDrawable(Theme.getColor(Theme.key_dialogBackground)));
-        return spinner;
+    private static SelectorField createSelector(
+            BaseFragment fragment,
+            Context context,
+            String title,
+            String[] values
+    ) {
+        return new SelectorField(fragment, context, title, values);
     }
 
-    private static void styleSpinnerText(View view, boolean dropdown) {
-        if (!(view instanceof TextView)) {
-            return;
+    private interface SelectionChangedListener {
+        void onSelected(int position);
+    }
+
+    private static final class SelectorField extends TextView {
+        private final BaseFragment fragment;
+        private final String title;
+        private final String[] values;
+        private int selectedPosition;
+        private SelectionChangedListener listener;
+
+        SelectorField(BaseFragment fragment, Context context, String title, String[] values) {
+            super(context);
+            this.fragment = fragment;
+            this.title = title;
+            this.values = values;
+
+            setTextSize(16);
+            setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+            setGravity(android.view.Gravity.CENTER_VERTICAL);
+            setMinHeight(AndroidUtilities.dp(52));
+            setPadding(AndroidUtilities.dp(16), 0, AndroidUtilities.dp(16), 0);
+            setBackground(Theme.createSimpleSelectorRoundRectDrawable(
+                    AndroidUtilities.dp(14),
+                    Theme.getColor(Theme.key_dialogSearchBackground),
+                    Theme.getColor(Theme.key_dialogBackgroundGray)
+            ));
+            setOnClickListener(v -> {
+                AlertDialog dialog = new AlertDialog.Builder(context)
+                        .setTitle(title)
+                        .setItems(values, (d, which) -> setSelection(which))
+                        .create();
+                fragment.showDialog(dialog);
+            });
+            updateText();
         }
-        TextView textView = (TextView) view;
-        textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-        textView.setTextSize(16);
-        textView.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        textView.setMinHeight(AndroidUtilities.dp(48));
-        textView.setPadding(
-                AndroidUtilities.dp(dropdown ? 20 : 8),
-                0,
-                AndroidUtilities.dp(16),
-                0
-        );
-        if (dropdown) {
-            textView.setBackgroundColor(Theme.getColor(Theme.key_dialogBackground));
+
+        int getSelectedItemPosition() {
+            return selectedPosition;
+        }
+
+        void setSelection(int position) {
+            if (values.length == 0) {
+                selectedPosition = 0;
+                setText("");
+                return;
+            }
+            int safe = Math.max(0, Math.min(position, values.length - 1));
+            boolean changed = safe != selectedPosition;
+            selectedPosition = safe;
+            updateText();
+            if (listener != null && (changed || position == selectedPosition)) {
+                listener.onSelected(selectedPosition);
+            }
+        }
+
+        void setOnSelectionChanged(SelectionChangedListener listener) {
+            this.listener = listener;
+            if (listener != null) {
+                listener.onSelected(selectedPosition);
+            }
+        }
+
+        private void updateText() {
+            if (values.length == 0) {
+                setText("");
+                return;
+            }
+            setText(values[selectedPosition] + "   ▾");
         }
     }
 
@@ -245,15 +264,16 @@ public final class TestChatBuilder {
         editText.setTextSize(16);
         editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
         editText.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint));
-        editText.setBackgroundTintList(new ColorStateList(
-                new int[][]{
-                        new int[]{android.R.attr.state_focused},
-                        new int[]{}
-                },
-                new int[]{
-                        Theme.getColor(Theme.key_dialogInputFieldActivated),
-                        Theme.getColor(Theme.key_dialogInputField)
-                }
+        editText.setMinHeight(AndroidUtilities.dp(52));
+        editText.setPadding(
+                AndroidUtilities.dp(16),
+                AndroidUtilities.dp(10),
+                AndroidUtilities.dp(16),
+                AndroidUtilities.dp(10)
+        );
+        editText.setBackground(Theme.createRoundRectDrawable(
+                AndroidUtilities.dp(14),
+                Theme.getColor(Theme.key_dialogSearchBackground)
         ));
         editText.setSingleLine(numeric);
         if (numeric) {
@@ -282,7 +302,7 @@ public final class TestChatBuilder {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        params.topMargin = AndroidUtilities.dp(4);
+        params.topMargin = AndroidUtilities.dp(8);
         return params;
     }
 
