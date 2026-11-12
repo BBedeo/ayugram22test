@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OpenExteraAccounts">Акаунти та налаштування</string>
+    <string name="EFGAccountsTitle">Налаштування акаунтів</string>
+    <string name="EFGAccountsIntro">Окремі профілі налаштувань ExFullGram, Nagram і Neko для кожного акаунта, включно з Test Mode.</string>
+    <string name="EFGAccountsCurrent">Поточний профіль</string>
+    <string name="EFGAccountsOptions">Профілі</string>
+    <string name="EFGAccountsSeparateSettings">Окремі налаштування для акаунтів</string>
+    <string name="EFGAccountsSeparateHint">Налаштування мода зберігаються окремо для звичайних і тестових акаунтів.</string>
+    <string name="EFGAccountsCompare">Відмінності між акаунтами</string>
+    <string name="EFGAccountsCompareHint">Порівняння двох профілів і перенесення обраних параметрів в обидва боки.</string>
+    <string name="EFGAccountsReset">Скинути налаштування акаунта</string>
+    <string name="EFGAccountsResetHint">Скидає лише обраний профіль ExFullGram/Nagram.</string>
+    <string name="EFGAccountsResetConfirm">Скинути налаштування мода для %1$s? Чати, повідомлення та авторизація Telegram залишаться без змін.</string>
+    <string name="EFGAccountsApplied">Збережено змін: %1$d</string>
+    <string name="EFGAccountsScope">Охоплює налаштування ExFullGram, Nagram і Neko. Серверні налаштування Telegram, чати й дані входу не копіюються.</string>
+    <string name="EFGAccountsComparisonTitle">Відмінності між акаунтами</string>
+    <string name="EFGAccountsLeft">Лівий акаунт</string>
+    <string name="EFGAccountsRight">Правий акаунт</string>
+    <string name="EFGAccountsPickSide">Вибрати акаунт</string>
+    <string name="EFGAccountsSelectHint">Натисни потрібне значення в рядку. Виділене значення замінить налаштування іншого акаунта.</string>
+    <string name="EFGAccountsNoDifferences">Ці акаунти мають однакові налаштування мода.</string>
+    <string name="EFGAccountsApply">Застосувати вибрані зміни</string>
+    <string name="EFGAccountsApplyConfirm">Застосувати вибрані зміни (%1$d)? Решта налаштувань не зміниться.</string>
+    <string name="EFGAccountsNothingSelected">Спершу вибери хоча б одне значення.</string>
+    <string name="EFGAccountsEnableFirst">Щоб порівнювати й переносити налаштування, увімкни окремі профілі.</string>
+    <string name="EFGAccountsRestartHint">Деякі зміни оформлення з’являться після перезапуску програми.</string>
+    <string name="EFGAccountsResetWhich">Налаштування якого акаунта скинути?</string>
+</resources>
