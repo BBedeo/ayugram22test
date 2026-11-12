@@ -32,8 +32,8 @@ public final class ElasticGlassPillRenderer {
         final float clampedStretch = Math.max(-1f, Math.min(1f, stretching));
         final float baseAngle = 315f;
         final float angle = (float) Math.toRadians(baseAngle + clampedStretch * 9f);
-        final float shine = dark ? .64f : .72f;
-        nativeGlass.setLiquidOptics(shine, angle, clampedStretch * .24f);
+        final float shine = dark ? .76f : .82f;
+        nativeGlass.setLiquidOptics(shine, angle, clampedStretch * .28f);
 
         nativeGlass.draw(canvas);
     }
