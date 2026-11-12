@@ -1,6 +1,7 @@
 package org.telegram.ui.Components.blur3;
 
 import android.os.Build;
+import android.graphics.Canvas;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -11,7 +12,6 @@ import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 import org.telegram.utils.glass.source.GlassSource;
 import org.telegram.utils.glass.source.GlassSourceBitmap;
-import org.telegram.utils.glass.source.GlassSourceRenderNode;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.utils.glass.GlassEngine;
 
@@ -153,6 +153,30 @@ public class BlurredBackgroundDrawableViewFactory {
         return new BlurredBackgroundDrawable(source);
     }
 
+    /**
+     * A still snapshot is also a valid GPU lens input. It implements
+     * DrawableOwner so BlurredBackgroundDrawable uses its native RenderNode
+     * shader path, without attempting to draw an empty/invalid RenderNode.
+     * The original GlassSourceBitmap remains available as the frosted fallback.
+     */
+    private static final class CapturedGlassSource implements GlassSource, DrawableOwner {
+        private final GlassSourceBitmap capture;
+
+        CapturedGlassSource(GlassSourceBitmap capture) {
+            this.capture = capture;
+        }
+
+        @Override
+        public void draw(Canvas canvas, float left, float top, float right, float bottom) {
+            capture.draw(canvas, left, top, right, bottom);
+        }
+
+        @Override
+        public BlurredBackgroundDrawable createDrawable() {
+            return new BlurredBackgroundDrawable(this);
+        }
+    }
+
     private BlurredBackgroundDrawable createDrawable() {
         if (glassSource == frostedSource && frostedSource == staticSource) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -160,8 +184,7 @@ public class BlurredBackgroundDrawableViewFactory {
                 // A snapshot is a legitimate refractive source. Render its
                 // pixels through Telegram's existing AGSL lens instead of
                 // falling back to a flat frosted bitmap popup.
-                final GlassSourceRenderNode lensSource = new GlassSourceRenderNode(glassSource);
-                lensSource.setUnderSource(glassSource);
+                final CapturedGlassSource lensSource = new CapturedGlassSource((GlassSourceBitmap) glassSource);
                 final BlurredBackgroundDrawable drawable = new BlurredBackgroundDrawable(
                         lensSource, glassSource, glassSource);
                 bitmapLensDrawables.add(new WeakReference<>(drawable));
