@@ -28,8 +28,18 @@ public class LiquidGlassEffect {
     private float[] effectPoolCenterY;
 
     public LiquidGlassEffect(RenderNode node) {
+        this(node, false);
+    }
+
+    /**
+     * The moving navigation lens needs its own stronger optical profile.
+     * Keep the original shared AGSL shader completely unchanged for every
+     * other Telegram surface, including menus and chat controls.
+     */
+    public LiquidGlassEffect(RenderNode node, boolean elasticPillLens) {
         this.node = node;
-        final String code = AndroidUtilities.readRes(R.raw.liquid_glass_shader);
+        final String code = AndroidUtilities.readRes(
+                elasticPillLens ? R.raw.liquid_glass_pill_shader : R.raw.liquid_glass_shader);
         shader = plainShader = new RuntimeShader(code);
         node.setRenderEffect(effect = RenderEffect.createRuntimeShaderEffect(shader, "img"));
     }
