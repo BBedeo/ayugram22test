@@ -34,6 +34,7 @@ public final class DemoBackend {
     private static final String KEY_NEXT_MESSAGE_ID = "next_message_id";
     private static final String KEY_NEXT_PEER_ID = "next_peer_id";
     private static final String KEY_SHARED_CHATS = "shared_test_chats";
+    private static final String KEY_ACCOUNT_READY_PREFIX = "account_ready_";
 
     public static final int TYPE_PRIVATE = 0;
     public static final int TYPE_GROUP = 1;
@@ -160,7 +161,25 @@ public final class DemoBackend {
         }
     }
 
+    public static boolean isAccountReady(int account) {
+        return isTestAccount(account) && prefs().getBoolean(KEY_ACCOUNT_READY_PREFIX + account, false);
+    }
+
+    public static void ensureReady(int account, Runnable onReady) {
+        if (isAccountReady(account)) {
+            if (onReady != null) {
+                AndroidUtilities.runOnUIThread(onReady);
+            }
+            return;
+        }
+        reset(account, onReady);
+    }
+
     public static void reset(int account) {
+        reset(account, null);
+    }
+
+    public static void reset(int account, Runnable onReady) {
         TLRPC.User self = UserConfig.getInstance(account).getCurrentUser();
         if (self == null || !isTestUserId(self.id)) {
             self = createSelf(account, defaultAccountName(account));
@@ -169,12 +188,34 @@ public final class DemoBackend {
             ConnectionsManager.getInstance(account).setUserId(self.id);
         }
 
-        MessagesController.getInstance(account).cleanup();
-        MessagesStorage.getInstance(account).cleanup(false);
-        MessagesController.getInstance(account).putUser(self, false);
-        seed(account, self);
-        installSavedSharedChats(account);
-        linkAccountToOtherTestAccounts(account);
+        final TLRPC.User finalSelf = self;
+        final MessagesController controller = MessagesController.getInstance(account);
+        final MessagesStorage storage = MessagesStorage.getInstance(account);
+
+        prefs().edit().putBoolean(KEY_ACCOUNT_READY_PREFIX + account, false).apply();
+        controller.cleanup();
+
+        // cleanup() is asynchronous. The old Test Mode seeded immediately after calling it,
+        // so cleanup could delete the freshly written dialogs and leave the first screen empty.
+        // Queue the seed only after cleanup has completed on the same storage queue.
+        storage.cleanup(false);
+        storage.getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> {
+            controller.putUser(finalSelf, false);
+            seed(account, finalSelf);
+            installSavedSharedChats(account);
+            linkAccountToOtherTestAccounts(account);
+
+            // seed()/install* enqueue their writes onto this same queue. This runnable is
+            // therefore executed only after the local account data has actually been stored.
+            storage.getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> {
+                prefs().edit().putBoolean(KEY_ACCOUNT_READY_PREFIX + account, true).apply();
+                NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
+                NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.mainUserInfoChanged);
+                if (onReady != null) {
+                    onReady.run();
+                }
+            }));
+        }));
     }
 
     public static void seed(int account, TLRPC.User self) {
