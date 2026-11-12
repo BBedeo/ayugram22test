@@ -199,9 +199,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             iBlur3SourceTabGlass = createTabSource(false);
             iBlur3SourceTabFrosted = createTabSource(true);
+            iBlur3SourceTabLens = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? createTabLensSource() : null;
         } else {
             iBlur3SourceTabGlass = null;
             iBlur3SourceTabFrosted = null;
+            iBlur3SourceTabLens = null;
         }
 
         iBlur3SourceColor = new GlassSourceColor();
@@ -289,9 +291,104 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         return source;
     }
 
+    /**
+     * Crisp 1x bottom-strip capture of active tab fragments for the elastic
+     * Liquid Glass lens (with micro 0.85dp softening instead of heavy bar blur),
+     * while the surrounding tab bar keeps its frosted iBlur3SourceTabGlass.
+     */
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    private GlassSourceRenderNode createTabLensSource() {
+        final GlassSourceRenderNode source = new GlassSourceRenderNode(null);
+        source.setupRenderer(new RenderNodeWithHash.Renderer() {
+            @Override
+            public void renderNodeCalculateHash(IBlur3Hash hash) {
+                hash.add(getEstBackgroundColor());
+                hash.add(tabLensContentVersion);
+                hash.add((int) tabsCapturePosition.top);
+                hash.add((int) tabsCapturePosition.bottom);
+                if (fragmentView == null) {
+                    return;
+                }
+                final int width = fragmentView.getMeasuredWidth();
+                for (int a = 0, N = fragmentsArr.size(); a < N; a++) {
+                    final FragmentState state = fragmentsArr.valueAt(a);
+                    final BaseFragment fragment = state.fragment;
+                    if (fragment.fragmentView == null) {
+                        continue;
+                    }
+                    if (!ViewPositionWatcher.computeRectInParent(fragment.fragmentView, contentView, fragmentPosition)) {
+                        continue;
+                    }
+                    if (fragmentPosition.right <= 0 || fragmentPosition.left >= width) {
+                        continue;
+                    }
+                    hash.addF(fragmentPosition.left);
+                    hash.addF(fragmentPosition.top);
+                    hash.add(fragment.getClassGuid());
+                }
+            }
+
+            @Override
+            public void renderNodeUpdateDisplayList(Canvas canvas) {
+                if (capturingTabLens || fragmentView == null) {
+                    return;
+                }
+                final int width = fragmentView.getMeasuredWidth();
+                final int height = fragmentView.getMeasuredHeight();
+                if (width <= 0 || height <= 0) {
+                    return;
+                }
+                capturingTabLens = true;
+                try {
+                    canvas.drawColor(getEstBackgroundColor());
+                    final int stripTop = tabsCapturePosition.bottom > tabsCapturePosition.top
+                            ? Math.max(0, (int) tabsCapturePosition.top - dp(24))
+                            : Math.max(0, height - dp(120));
+                    final int stripBottom = tabsCapturePosition.bottom > tabsCapturePosition.top
+                            ? Math.min(height, (int) tabsCapturePosition.bottom + dp(24))
+                            : height;
+                    canvas.save();
+                    canvas.clipRect(0, stripTop, width, stripBottom);
+                    for (int a = 0, N = fragmentsArr.size(); a < N; a++) {
+                        final FragmentState state = fragmentsArr.valueAt(a);
+                        final BaseFragment fragment = state.fragment;
+                        final View view = fragment.fragmentView;
+                        if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
+                            continue;
+                        }
+                        if (!ViewPositionWatcher.computeRectInParent(view, contentView, fragmentPosition)) {
+                            continue;
+                        }
+                        if (fragmentPosition.right <= 0 || fragmentPosition.left >= width) {
+                            continue;
+                        }
+                        canvas.save();
+                        canvas.translate(fragmentPosition.left, fragmentPosition.top);
+                        view.draw(canvas);
+                        canvas.restore();
+                    }
+                    canvas.restore();
+                } finally {
+                    capturingTabLens = false;
+                }
+            }
+        });
+        source.setBlur(AndroidUtilities.dpf2(0.85f));
+        return source;
+    }
+
     @Override
     protected FrameLayout createContentView(Context context) {
         return new FrameLayout(context) {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onDescendantInvalidated(@NonNull View child, @NonNull View target) {
+                if (child == viewPager && !capturingTabLens) {
+                    tabLensContentVersion++;
+                }
+                super.onDescendantInvalidated(child, target);
+            }
+
             @Override
             protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
                 super.onLayout(changed, left, top, right, bottom);
@@ -308,6 +405,20 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 }
                 if (insetRight != 0) {
                     canvas.drawRect(getWidth() - insetRight, 0, getWidth(), getHeight(), Theme.fillingPaint(color));
+                }
+
+                if (iBlur3SourceTabLens != null
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        && fragmentView != null
+                        && tabLensCapturedVersion != tabLensContentVersion) {
+                    final int w = fragmentView.getMeasuredWidth();
+                    final int h = fragmentView.getMeasuredHeight();
+                    if (w > 0 && h > 0) {
+                        blur3_updateFragmentsGlass();
+                        iBlur3SourceTabLens.setSize(w, h);
+                        iBlur3SourceTabLens.updateDisplayListIfNeeded();
+                        tabLensCapturedVersion = tabLensContentVersion;
+                    }
                 }
 
                 super.dispatchDraw(canvas);
@@ -399,6 +510,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         tabsView = new MainTabsLayout(context, resourceProvider);
         tabsView.setClipChildren(false);
+        tabsView.setClipToPadding(false);
         // В M3 панель без внутренних
         // отступов и без ограничения ширины
         MainTabsUiHelper.applyTabsLayoutStyle(tabsView, dp(328 + DialogsActivity.MAIN_TABS_MARGIN * 2));
@@ -484,32 +596,38 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         tabsViewBackground.setPadding(MainTabsUiHelper.getBackgroundInset());
         tabsView.setBackground(tabsViewBackground);
         if (ElasticPillGesture.enabled()) {
-            // The selection pill gets its own native glass lens, sampling the
-            // actual pages under the tabs (NOT a fake dark-blue oval). The
-            // renderer draws this once behind the icons and labels.
+            // The selection pill gets its own native glass lens sampling our
+            // crisp 1x fragment-strip capture (iBlur3SourceTabLens) while the
+            // outer bar keeps smoothly frosted iBlur3SourceTabGlass.
             final boolean canRefract = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                     && !LiteMode.isPowerSaverApplied();
-            BlurredBackgroundDrawable capsule = iBlur3FactoryGlass.create(tabsView,
+            final BlurredBackgroundDrawableViewFactory iBlur3FactoryTabLens = new BlurredBackgroundDrawableViewFactory(
+                    iBlur3SourceTabLens != null ? iBlur3SourceTabLens : (iBlur3SourceTabGlass != null ? iBlur3SourceTabGlass : iBlur3SourceColor),
+                    iBlur3SourceTabLens != null ? iBlur3SourceTabLens : (iBlur3SourceTabFrosted != null ? iBlur3SourceTabFrosted : iBlur3SourceColor),
+                    iBlur3SourceColor);
+            iBlur3FactoryTabLens.setSourceRootView(viewPositionWatcher, contentView);
+            iBlur3FactoryTabLens.setLiquidGlassEffectAllowed(true);
+            BlurredBackgroundDrawable capsule = iBlur3FactoryTabLens.create(tabsView,
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> {
                                 if (dark) {
-                                    // Pure crystal tint over live refracted backdrop (~4% alpha when shader
-                                    // is active) so underlying content & icons shine through without matte fog.
-                                    return canRefract ? 0x0AFFFFFF : 0x2AFFFFFF;
+                                    // Cool translucent crystal at rest (airier than the outer bar so the
+                                    // resting pill reads as luminous frost rather than a sunken black oval),
+                                    // cleared smoothly into pure refractive crystal during lift/drag.
+                                    return canRefract ? 0x2EE8F1FF : 0x42E8F1FF;
                                 }
                                 final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
-                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.72f);
-                                return Theme.multAlpha(lifted, canRefract ? .14f : .30f);
+                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.80f);
+                                return Theme.multAlpha(lifted, canRefract ? .34f : .48f);
                             })
-                            // Combine Telegram's native baked GlassRim crescents (~1.1dp/0.95dp) with
-                            // the AGSL dynamic specular glint and subtle elevation shadow so the lens
-                            // gleams like solid 3D glass instead of flat plastic.
-                            .setStrokeColorTop(0xDCFFFFFF, 0x8AFFFFFF)
-                            .setStrokeColorBottom(0x88FFFFFF, 0x4EFFFFFF)
+                            // Whisper-thin gossamer hairline stroke so the AGSL top-dome sheen and
+                            // subtle Fresnel arcs create glass depth without any chalky wireframe border.
+                            .setStrokeColorTop(0x52FFFFFF, 0x22FFFFFF)
+                            .setStrokeColorBottom(0x28FFFFFF, 0x12FFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
-                            .setShadowColor(0x14000000, 0x28000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(2.4f), 0, AndroidUtilities.dpf2(.6f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.95f)));
+                            .setShadowColor(0x0E000000, 0x18000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(3.5f), 0, AndroidUtilities.dpf2(1.2f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.42f), AndroidUtilities.dpf2(.30f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
             capsule.setLightAngle(GlassRim.LIGHT_TOP_LEFT);
@@ -522,7 +640,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(18));
+                capsule.setThickness(dp(19));
                 capsule.setIntensity(3.15f);
             }
             tabsView.setElasticPillGlass(capsule);
@@ -1602,6 +1720,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private final @NonNull GlassSourceColor iBlur3SourceColor;
     private final @Nullable GlassSourceRenderNode iBlur3SourceTabGlass;
     private final @Nullable GlassSourceRenderNode iBlur3SourceTabFrosted;
+    private final @Nullable GlassSourceRenderNode iBlur3SourceTabLens;
+    private int tabLensContentVersion = 1;
+    private int tabLensCapturedVersion = 0;
+    private boolean capturingTabLens;
 
     /** The one the tabs draw now; null with the blur off, they are on the color then. */
     @Nullable
@@ -1621,6 +1743,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         }
         iBlur3SourceTabGlass.invalidateDisplayListForDrawables();
         iBlur3SourceTabFrosted.invalidateDisplayListForDrawables();
+        tabLensContentVersion++;
+        if (iBlur3SourceTabLens != null) {
+            iBlur3SourceTabLens.invalidateRenderer();
+            iBlur3SourceTabLens.invalidateDisplayListForDrawables();
+        }
         blur3_invalidateBlur();
         if (tabsView != null) {
             tabsView.invalidate();
@@ -1637,6 +1764,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && iBlur3SourceTabGlass != null) {
             iBlur3SourceTabGlass.invalidateRenderer();
             iBlur3SourceTabFrosted.invalidateRenderer();
+            tabLensContentVersion++;
+            if (iBlur3SourceTabLens != null) {
+                iBlur3SourceTabLens.invalidateRenderer();
+            }
             blur3_invalidateBlur();
         }
     }
@@ -1693,6 +1824,13 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             iBlur3SourceTabGlass.setSize(width, height);
             iBlur3SourceTabGlass.updateDisplayListIfNeeded();
         }
+        if (ElasticPillGesture.enabled()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && iBlur3SourceTabLens != null) {
+            iBlur3SourceTabLens.setSize(width, height);
+            iBlur3SourceTabLens.updateDisplayListIfNeeded();
+            tabLensCapturedVersion = tabLensContentVersion;
+        }
     }
 
     private void blur3_updateFadeColors() {
@@ -1704,8 +1842,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     private void blur3_updateColors() {
         blur3_updateFadeColors();
+        tabLensContentVersion++;
         if (tabsViewBackground != null) {
             tabsViewBackground.updateColors();
+        }
+        if (tabsView != null) {
+            tabsView.updateElasticPillColors();
         }
         blur3_invalidateBlur();
         if (fadeView != null) {

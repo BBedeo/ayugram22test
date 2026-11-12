@@ -67,11 +67,10 @@ public final class ElasticGlassPillRenderer {
         final float shine = dark ? .86f : .92f;
         nativeGlass.setLiquidOptics(shine, angle, phase);
 
-        // A stationary finger still compresses the optical surface; both
-        // down and release ease over several native frames. No extra overlay
-        // View is added and long-press remains the original tab listener.
-        final float targetPress = pressed ? 1f : 0f;
-        opticalPress += (targetPress - opticalPress) * (pressed ? .30f : .22f);
+        // A stationary finger OR active ballistic glide lifts the optical lens into
+        // clear crystal refraction mode; release crossfades smoothly back into rest frost.
+        final float targetPress = pressed ? 1f : Math.min(1f, Math.abs(stretching) * 1.45f);
+        opticalPress += (targetPress - opticalPress) * (pressed || targetPress > opticalPress ? .34f : .20f);
         if (Math.abs(targetPress - opticalPress) < .018f) {
             opticalPress = targetPress;
         }

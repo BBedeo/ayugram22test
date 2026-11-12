@@ -44,8 +44,9 @@ half4 main(in float2 fragCoord) {
   float t = clamp(thickness, 2.0, min(size.x, size.y) * 0.92);
   float press = clamp(glass_press, 0.0, 1.0);
   float move = clamp(glass_motion, -1.0, 1.0);
+  float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Smooth convex glass bevel rising from flat interior (0) to outer wall (1).
+  // Smooth convex glass bevel rising from interior plateau (0) to curved outer wall (1).
   float rimT = clamp(1.0 + sd / t, 0.0, 1.0);
   float bevel = pow(max(rimT, 0.0001), 1.35);
 
@@ -61,59 +62,62 @@ half4 main(in float2 fragCoord) {
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
 
   // Strong optical rim refraction + gentle convex dome magnification in the center.
-  float2 uv = fragCoord + ray.xy * (0.36 * rayDepth * refract_intensity)
-      * (1.0 + abs(move) * 0.28 + press * 0.25);
-  uv += float2(move * 5.2, 0.0) * bevel
-      - relCenter * (0.08 + press * 0.095 + abs(move) * 0.04) * t * (1.0 - bevel * 0.35);
+  float2 uv = fragCoord + ray.xy * (0.42 * rayDepth * refract_intensity)
+      * (1.0 + lift * 0.35);
+  uv += float2(move * 5.8, 0.0) * bevel
+      - relCenter * (0.09 + lift * 0.11) * t * (1.0 - bevel * 0.30);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
   uv = clamp(uv, uvMin, uvMax);
 
   // Prismatic RGB dispersion concentrated around the curved lens bevel.
-  float2 disp = ray.xy * t * (0.28 + press * 0.16 + abs(move) * 0.14) * bevel;
+  float2 disp = ray.xy * t * (0.34 + lift * 0.24) * bevel;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  backdrop.r = mix(backdrop.r, rChan, half(0.75 * bevel));
-  backdrop.b = mix(backdrop.b, bChan, half(0.75 * bevel));
+  backdrop.r = mix(backdrop.r, rChan, half(0.80 * bevel));
+  backdrop.b = mix(backdrop.b, bChan, half(0.80 * bevel));
 
-  // Recover subtle crisp contrast on blurred backdrop edges along the refractive lens.
-  half3 micro = img.eval(clamp(uv + edgeDir * 2.5, uvMin, uvMax)).rgb;
-  backdrop.rgb = clamp(backdrop.rgb + (backdrop.rgb - micro) * half(0.28 * (0.35 + 0.65 * bevel)), half3(0.0), half3(1.0));
+  // Boost chromatic vibrancy & micro-contrast so UI content gleams inside the lens.
+  half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.14 + 0.12 * lift)), half3(0.0), half3(1.0));
 
-  half4 surface = srcOver(half4(foreground_color_premultiplied), backdrop);
+  // Two-state _UILiquidLensView tint: luminous crystal frost at rest, clearing smoothly on lift.
+  half4 fgTint = half4(foreground_color_premultiplied) * half(1.0 - lift * 0.68);
+  half4 surface = srcOver(fgTint, backdrop);
 
-  // Subtle dark TIR separation near outer wall + 3D meniscus valley inside bevel.
-  float outerWall = gaussian((-sd - 0.7) / max(1.0, t * 0.055));
-  float meniscus = gaussian((-sd - t * 0.32) / max(2.2, t * 0.16));
-  surface.rgb *= half(1.0 - 0.08 * outerWall - 0.095 * meniscus);
+  // Delicate TIR depth separation + 3D internal meniscus band.
+  float outerWall = gaussian((-sd - 0.75) / max(1.0, t * 0.055));
+  float meniscus = gaussian((-sd - t * 0.26) / max(2.0, t * 0.15));
+  surface.rgb *= half(1.0 - (0.055 + 0.045 * lift) * outerWall - (0.050 + 0.055 * lift) * meniscus);
 
-  // Crisp luminous specular edge glints inset safely inside the clip outline (sd < 0).
+  // Silky asymmetric Fresnel edge glints (never a chalky uniform 360 border).
   float angle = glass_light_angle + move * 0.42;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot * 0.54 + 0.46, 0.0001), 2.8);
-  float catchArc = pow(max(-rawDot * 0.54 + 0.46, 0.0001), 3.4) * 0.74;
-  float fresnelSide = 0.22;
+  float keyArc = pow(max(rawDot * 0.55 + 0.45, 0.0001), 3.0) * 0.56;
+  float catchArc = pow(max(-rawDot * 0.55 + 0.45, 0.0001), 3.6) * 0.34;
+  float fresnelSide = 0.04 + 0.06 * lift;
 
-  float rimCore = gaussian((-sd - max(1.8, t * 0.10)) / max(1.4, t * 0.095));
-  float rimSoft = gaussian((-sd - t * 0.19) / max(2.8, t * 0.22));
-  float rimSpec = (keyArc + catchArc + fresnelSide) * (rimCore * 0.62 + rimSoft * 0.26);
+  float rimCore = gaussian((-sd - max(1.1, t * 0.065)) / max(1.0, t * 0.065));
+  float rimSoft = gaussian((-sd - t * 0.17) / max(2.4, t * 0.18));
+  float rimSpec = (keyArc + catchArc + fresnelSide) * (rimCore * 0.54 + rimSoft * 0.20) * (0.55 + 0.45 * lift);
 
-  // Subtle curved crown sheen + drag velocity sweep across bevel.
-  float upperCrown = smoothstep(0.15, -0.78, relCenter.y) * (1.0 - bevel * 0.55) * 0.042;
+  // Curved sapphire top-dome reflection gradient + focused lower caustic + motion sweep.
+  float upperCrown = smoothstep(0.28, -0.78, relCenter.y) * (1.0 - bevel * 0.35) * (0.085 - 0.030 * lift);
+  float lowerCaustic = smoothstep(-0.10, 0.85, relCenter.y) * bevel * (0.035 + 0.125 * lift);
   float sweepCoord = relCenter.x * 0.80 + relCenter.y * 0.45 - move * 0.38;
-  float sweep = gaussian(sweepCoord / 0.34) * (0.04 + 0.16 * abs(move) + 0.10 * press) * (0.30 + 0.70 * bevel);
+  float sweep = gaussian(sweepCoord / 0.28) * (0.025 + 0.17 * abs(move) + 0.09 * press) * (0.30 + 0.70 * bevel);
 
   float highlightStrength = clamp(glass_highlight, 0.55, 1.0);
   if (glass_adaptive > 0.5) {
-    float luma = float(dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722)));
-    highlightStrength *= clamp(1.24 - luma * 0.42, 0.78, 1.24);
+    float bgLuma = float(dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722)));
+    highlightStrength *= clamp(1.22 - bgLuma * 0.42, 0.76, 1.22);
   }
 
-  float totalGlint = highlightStrength * (rimSpec + upperCrown + sweep) * (1.0 + press * 0.25);
-  half3 specTint = mix(half3(0.86, 0.94, 1.0), half3(1.0, 0.99, 0.96), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
+  float totalGlint = highlightStrength * (rimSpec + upperCrown + lowerCaustic + sweep);
+  half3 specTint = mix(half3(0.84, 0.93, 1.0), half3(1.0, 0.99, 0.96), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
   surface.rgb = min(half3(1.0), surface.rgb + specTint * half(totalGlint * float(surface.a)));
 
   return surface;

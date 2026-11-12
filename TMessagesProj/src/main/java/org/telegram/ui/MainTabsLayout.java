@@ -134,6 +134,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         invalidate();
     }
 
+    public void updateElasticPillColors() {
+        if (elasticPillGlass != null) {
+            elasticPillGlass.updateColors();
+        }
+        invalidate();
+    }
+
     public MainTabsLayout(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
         this.resourcesProvider = resourcesProvider;
@@ -566,9 +573,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float velocityStretch = Math.min(dp(5.5f), Math.abs(frameDelta) * .32f);
         final float totalStretch = Math.min(dp(18), extension + velocityStretch);
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float pressSwell = elasticPressValue * dp(1.8f);
+        final float lift = Math.max(elasticPressValue, Math.min(1f, totalStretch / dp(6.5f)));
+        final float pressSwell = lift * dp(5.4f);
         final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell;
-        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .65f;
+        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .88f;
         final float verticalCompression = Math.min(dp(1.8f), totalStretch * .10f);
         final float height = Math.max(1f, availableHeight - verticalCompression + jellyY);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
@@ -656,7 +664,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         try {
             if (tabsContentNode == null) {
                 tabsContentNode = new RenderNode("ElasticTabsContent");
+                tabsContentNode.setClipToBounds(false);
                 pillRefractNode = new RenderNode("ElasticPillRefract");
+                pillRefractNode.setClipToBounds(false);
                 final String code = AndroidUtilities.readRes(R.raw.liquid_glass_pill_content_shader);
                 pillContentShader = new RuntimeShader(code);
             }
@@ -689,7 +699,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 pillContentShader.setFloatUniform("center", cx, cy);
                 pillContentShader.setFloatUniform("size", hw, hh);
                 pillContentShader.setFloatUniform("radius", hh);
-                pillContentShader.setFloatUniform("thickness", Math.min(dp(20), hh * .78f));
+                pillContentShader.setFloatUniform("thickness", Math.min(dp(24), hh * .90f));
                 pillContentShader.setFloatUniform("glass_press", press);
                 pillContentShader.setFloatUniform("glass_motion", motion);
                 pillRefractNode.setRenderEffect(

@@ -27,24 +27,25 @@ half4 main(in float2 fragCoord) {
 
   float t = clamp(thickness, 4.0, min(size.x, size.y) * 0.90);
   float rimT = clamp(1.0 + sd / t, 0.0, 1.0);
-  float bevel = pow(max(rimT, 0.0001), 1.45);
+  float bevel = pow(max(rimT, 0.0001), 1.40);
   float press = clamp(glass_press, 0.0, 1.0);
   float move = clamp(glass_motion, -1.0, 1.0);
+  float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
   // Convex optical droplet magnification inside the pill + strong bevel bending at the wall.
-  float magFactor = (0.075 + press * 0.075 + abs(move) * 0.03) * (1.0 - bevel * 0.55);
+  float magFactor = (0.075 + lift * 0.105) * (1.0 - bevel * 0.48);
   float2 refractOffset = -p * magFactor
-      + edgeDir * bevel * t * (0.42 + press * 0.16 + abs(move) * 0.14)
-      + float2(move * t * 0.22, 0.0) * bevel;
+      + edgeDir * bevel * t * (0.48 + lift * 0.28)
+      + float2(move * t * 0.26, 0.0) * bevel;
 
   float2 uv = fragCoord + refractOffset;
-  float2 disp = edgeDir * (1.8 + press * 1.4 + abs(move) * 1.2) * bevel;
+  float2 disp = edgeDir * (1.5 + lift * 2.1) * bevel;
 
   half4 centerSample = img.eval(uv);
   half rVal = img.eval(uv + disp).r;
   half bVal = img.eval(uv - disp).b;
 
-  float fringe = 0.72 * bevel;
+  float fringe = 0.78 * bevel;
   half3 rgb = half3(
       mix(centerSample.r, rVal, half(fringe)),
       centerSample.g,

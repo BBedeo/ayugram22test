@@ -67,11 +67,14 @@ checks = {
         and "direction = elasticDragging" in nav,
     "Native glass sampling and forced GPU refraction are preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main
+        and "iBlur3FactoryTabLens.create(tabsView," in main
+        and "createTabLensSource()" in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
         and "capsule.setIntensity(3.15f);" in main
         and "source != iBlur3SourceTabGlass" in main
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
+        and "iBlur3SourceTabLens.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
         and "nativeGlass.draw(canvas);" in pill,
     "Forced elastic lens keeps local Fresnel optics":
@@ -82,10 +85,10 @@ checks = {
         and "baseAngle = 315f" in pill
         and "dark ? .86f : .92f" in pill
         and "totalStretch / dp(16)" in nav,
-    "Elastic lens never falls back to SOLID divider outline":
+    "Elastic lens never falls back to SOLID divider or chalky wireframe outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.95f))" in main
-        and "canRefract ? 0x0AFFFFFF : 0x2AFFFFFF" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.42f), AndroidUtilities.dpf2(.30f))" in main
+        and "canRefract ? 0x2EE8F1FF : 0x42E8F1FF" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -94,6 +97,7 @@ checks = {
     "Isolated shader refracts live capture and adds dynamic internal caustics":
         "uniform shader img;" in pill_shader
         and pill_shader.count("float move =") == 1
+        and "float lift =" in pill_shader
         and "img.eval(uv)" in pill_shader
         and "glass_motion" in pill_shader
         and "float rimSpec =" in pill_shader
@@ -104,6 +108,7 @@ checks = {
         and "bChan" in pill_shader
         and "glass_press" in pill_shader
         and "half4 main" in pill_shader
+        and "uniform float radius;" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
         and "uniform shader img;" in common_shader,
     "Refraction highlight responds to actual frame displacement":
         "lastCenterX" in pill
