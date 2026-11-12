@@ -3,15 +3,19 @@ package app.exteraless.appearance;
 import android.graphics.Canvas;
 import android.graphics.RectF;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 
 /**
- * Draws the travelling bottom-navigation lens using Telegram's real captured
- * glass source. Do not paint a second fake rim or gradient on top: the native
- * LiquidGlassEffect is responsible for refraction, shine and the optical edge.
+ * Single travelling native GPU lens behind the real tab icons.
+ * Its dedicated AGSL shader samples the captured page, bends edge pixels,
+ * disperses colour and shades a directional glass reflection.
+ * No drawn white outline or synthetic opaque oval.
  */
 public final class ElasticGlassPillRenderer {
     private float lastRadius = -1f;
+    private float lastCenterX = Float.NaN;
+    private float lightVelocity;
 
     public void draw(Canvas canvas, RectF bounds, BlurredBackgroundDrawable nativeGlass,
                      boolean dark, float stretching) {
@@ -25,15 +29,27 @@ public final class ElasticGlassPillRenderer {
             nativeGlass.setRadius(radius);
         }
 
-        // The forced pill lens must keep its own Fresnel lighting even when
-        // universal Liquid Glass is off. A small directional angle/phase shift
-        // follows the stretch, so the highlight reacts to motion instead of
-        // looking painted onto a rigid dark oval.
-        final float clampedStretch = Math.max(-1f, Math.min(1f, stretching));
+        // Optical motion tracks actual lens displacement per frame; no timer,
+        // looping animation or permanent redraw when the tab is at rest.
+        final float centerX = bounds.centerX();
+        final float delta = Float.isNaN(lastCenterX) ? 0f : centerX - lastCenterX;
+        lastCenterX = centerX;
+        final float velocity = Math.max(-1f, Math.min(1f,
+                delta / Math.max(1f, AndroidUtilities.dp(7))));
+        final float target = velocity + Math.max(-.10f, Math.min(.10f, stretching * .10f));
+        final float smoothing = Math.abs(target) > Math.abs(lightVelocity) ? .46f : .23f;
+        lightVelocity += (target - lightVelocity) * smoothing;
+        if (Math.abs(lightVelocity) < .018f && Math.abs(target) < .018f) {
+            lightVelocity = 0f;
+        }
+        // Quantize the phase to avoid tiny float updates keeping the GPU awake.
+        final float phase = Math.round(Math.max(-1f, Math.min(1f, lightVelocity)) * 100f) / 100f;
+
+        // The highlight is part of the optical material, not a 2D stroked rim.
         final float baseAngle = 315f;
-        final float angle = (float) Math.toRadians(baseAngle + clampedStretch * 9f);
+        final float angle = (float) Math.toRadians(baseAngle + phase * 24f);
         final float shine = dark ? .76f : .82f;
-        nativeGlass.setLiquidOptics(shine, angle, clampedStretch * .28f);
+        nativeGlass.setLiquidOptics(shine, angle, phase);
 
         nativeGlass.draw(canvas);
     }
