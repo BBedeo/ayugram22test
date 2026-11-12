@@ -6,6 +6,7 @@ on:
     paths:
       - 'TMessagesProj/src/main/java/**'
       - 'scripts/check_test_mode_parity.py'
+      - 'scripts/check_account_profiles.py'
       - 'AGENTS.md'
       - '.github/workflows/test-mode-parity.yml'
   workflow_dispatch:
@@ -21,3 +22,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Check native Telegram animation and Test transport wiring
         run: python3 scripts/check_test_mode_parity.py
+      - name: Check account profile isolation and global settings search
+        run: python3 scripts/check_account_profiles.py
