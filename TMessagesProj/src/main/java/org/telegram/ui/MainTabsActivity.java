@@ -491,7 +491,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                             .setBackgroundColor((r, dark) -> Theme.multAlpha(
                                     Theme.getColor(Theme.key_glass_targetMainTabs, r),
                                     canRefract
-                                            ? (dark ? .085f : .06f)
+                                            ? (dark ? .055f : .04f)
                                             : (dark ? .16f : .13f)))
                             // One native optical rim only. Refraction comes from
                             // LiquidGlassEffect, not from painted gradients.
