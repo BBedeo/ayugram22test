@@ -1,5 +1,6 @@
 package org.telegram.ui.Components.blur3;
 
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -9,10 +10,14 @@ import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 import org.telegram.utils.glass.source.GlassSource;
+import org.telegram.utils.glass.source.GlassSourceBitmap;
+import org.telegram.utils.glass.source.GlassSourceRenderNode;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.utils.glass.GlassEngine;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import me.vkryl.core.reference.ReferenceList;
 
@@ -93,7 +98,21 @@ public class BlurredBackgroundDrawableViewFactory {
         this.linkedDrawables = linkedDrawables;
     }
 
+    // Snapshot-backed glass (popup menus and transient overlays) needs a
+    // fresh GPU display list whenever its captured bitmap changes. Keep weak
+    // references: menus can outlive their fragment factory otherwise.
+    private final ArrayList<WeakReference<BlurredBackgroundDrawable>> bitmapLensDrawables = new ArrayList<>();
+
     public void invalidateAllLinkedViews() {
+        for (Iterator<WeakReference<BlurredBackgroundDrawable>> i = bitmapLensDrawables.iterator(); i.hasNext();) {
+            final BlurredBackgroundDrawable d = i.next().get();
+            if (d == null) {
+                i.remove();
+            } else {
+                d.invalidateDisplayList();
+                d.invalidateSelf();
+            }
+        }
         if (linkedViews != null) {
             for (View v : linkedViews) {
                 v.invalidate();
@@ -136,6 +155,18 @@ public class BlurredBackgroundDrawableViewFactory {
 
     private BlurredBackgroundDrawable createDrawable() {
         if (glassSource == frostedSource && frostedSource == staticSource) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && LiquidGlassTuning.isActive() && glassSource instanceof GlassSourceBitmap) {
+                // A snapshot is a legitimate refractive source. Render its
+                // pixels through Telegram's existing AGSL lens instead of
+                // falling back to a flat frosted bitmap popup.
+                final GlassSourceRenderNode lensSource = new GlassSourceRenderNode(glassSource);
+                lensSource.setUnderSource(glassSource);
+                final BlurredBackgroundDrawable drawable = new BlurredBackgroundDrawable(
+                        lensSource, glassSource, glassSource);
+                bitmapLensDrawables.add(new WeakReference<>(drawable));
+                return drawable;
+            }
             return createDrawable(glassSource);
         }
         final BlurredBackgroundDrawable drawable = new BlurredBackgroundDrawable(glassSource, frostedSource, staticSource);
