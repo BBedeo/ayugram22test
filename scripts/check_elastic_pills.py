@@ -51,10 +51,15 @@ checks = {
     "Elastic pill reuses exact native long-press tab geometry":
         "getInterpolatedWidthByX(centerX, this)" in nav
         and "final float height = availableHeight" in nav
-        and "final float availableWidth = Math.max(dp(28), widthAtX)" in nav
+        and "final float baseWidth = Math.max(dp(28), widthAtX)" in nav
         and "getSelectorVisualWidth()" in nav
         and "public float getSelectorVisualWidth()" in tab
-        and "Math.min(dp(14), travelled * .15f)" in nav,
+        and "Math.min(dp(16), travelled * .17f)" in nav,
+    "Moving pill deforms directionally but rests at native size":
+        "verticalCompression" in nav
+        and "leadingStretch" in nav
+        and "trailingStretch" in nav
+        and "direction = elasticDragging" in nav,
     "Native glass sampling and forced GPU refraction are preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
