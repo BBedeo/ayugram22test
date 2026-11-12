@@ -13,10 +13,26 @@ buttons = (java / "org/telegram/ui/Components/voip/VoIPToggleButton.java").read_
 switch = (java / "org/telegram/ui/Components/voip/VoIpSwitchLayout.java").read_text()
 top = (java / "app/exteraless/appearance/ElasticCallIconView.java").read_text()
 call = (java / "org/telegram/ui/VoIPFragment.java").read_text()
+tabs_activity = (java / "org/telegram/ui/MainTabsActivity.java").read_text()
+pill = (java / "app/exteraless/appearance/ElasticGlassPillRenderer.java").read_text()
 slider = (java / "org/telegram/ui/Components/SeekBarView.java").read_text()
 gesture = (java / "app/exteraless/appearance/ElasticPillGesture.java").read_text()
 
 checks = {
+    "Pill is a visible frosted/refraction material, not a 9-percent selected oval":
+        "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
+        and "iBlur3FactoryGlass.create(tabsView," in tabs_activity
+        and "new BlurredBackgroundProviderBuilder(resourceProvider)" in tabs_activity
+        and "nativeGlass.draw(canvas);" in pill
+        and "canvas.drawArc(arc, 199f" in pill,
+    "Long pressing real tabs is allowed in elastic mode":
+        "(ElasticPillGesture.enabled()" in nav
+        and "!tabsWithIgnoreClick.contains(found)" in nav
+        and "if (ElasticPillGesture.enabled()) return true;" in tabs_activity,
+    "Only one shared pill shows behind labels and adapts to real tab widths":
+        "setSkipDrawSelector(true);" in nav
+        and "getInterpolatedWidthByX(x, this)" in nav
+        and "drawElasticGlassSelector(canvas);" in nav,
     "Opt-in independent of Liquid Glass":
         'addConfig("OEAppearanceElasticDragPills", ConfigItem.configTypeBool, false)' in config
         and "universalLiquidGlass" not in gesture,
