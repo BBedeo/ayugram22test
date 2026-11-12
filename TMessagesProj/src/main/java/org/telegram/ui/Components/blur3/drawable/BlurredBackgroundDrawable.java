@@ -225,6 +225,31 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
         onBoundPropsChanged();
     }
 
+    private float liquidShineOverride = Float.NaN;
+    private float liquidLightAngleOverride = Float.NaN;
+    private float liquidMotionPhaseOverride = Float.NaN;
+
+    /**
+     * Optional per-surface optics for forced liquid lenses. This lets an
+     * isolated control (for example the elastic tab pill) keep a real Fresnel
+     * highlight and motion even when the global Liquid Glass appearance mode
+     * is disabled.
+     */
+    public BlurredBackgroundDrawable setLiquidOptics(float shine, float lightAngleRadians, float motionPhase) {
+        final float clampedShine = Math.max(0f, Math.min(1f, shine));
+        final boolean changed = liquidShineOverride != clampedShine
+                || liquidLightAngleOverride != lightAngleRadians
+                || liquidMotionPhaseOverride != motionPhase;
+        liquidShineOverride = clampedShine;
+        liquidLightAngleOverride = lightAngleRadians;
+        liquidMotionPhaseOverride = motionPhase;
+        if (changed && renderNodeImpl != null) {
+            renderNodeImpl.invalidate();
+        }
+        if (changed) invalidateSelf();
+        return this;
+    }
+
     public static final int ARROW_NONE = -1;
     public static final int ARROW_LEFT = 0;
     public static final int ARROW_TOP = 1;
@@ -1374,10 +1399,14 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                     boundProps.liquidIndex,
                     backgroundColor,
                     LiquidGlassTuning.motionEnabled() ? pressProgress : 0f,
-                    LiquidGlassTuning.shine(),
-                    LiquidGlassTuning.lightAngleRadians(),
-                    LiquidGlassTuning.motionEnabled()
-                            ? pressProgress * .5f + (getSourceOffsetX() + getSourceOffsetY()) * .0015f : 0f,
+                    Float.isNaN(liquidShineOverride)
+                            ? LiquidGlassTuning.shine() : liquidShineOverride,
+                    Float.isNaN(liquidLightAngleOverride)
+                            ? LiquidGlassTuning.lightAngleRadians() : liquidLightAngleOverride,
+                    Float.isNaN(liquidMotionPhaseOverride)
+                            ? (LiquidGlassTuning.motionEnabled()
+                                    ? pressProgress * .5f + (getSourceOffsetX() + getSourceOffsetY()) * .0015f : 0f)
+                            : liquidMotionPhaseOverride,
                     LiquidGlassTuning.adaptiveLightEnabled() ? 1f : 0f,
                     originX - sL, originY - sT,
                     downsample
