@@ -17,6 +17,8 @@ import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.MotionEvent;
+import app.exteraless.appearance.ElasticPillGesture;
 import android.view.animation.OvershootInterpolator;
 
 import app.exteraless.appearance.LiquidGlassTuning;
@@ -82,6 +84,8 @@ public class VoIPToggleButton extends FrameLayout {
     private ValueAnimator checkAnimator;
     private ValueAnimator pressedScaleAnimator;
     private float pressedScale = 1.0f;
+    private final ElasticPillGesture elasticDrag = new ElasticPillGesture(this);
+    private boolean cancelClickForDrag;
 
     public VoIPToggleButton(@NonNull Context context, float diameter) {
         super(context);
@@ -138,7 +142,8 @@ public class VoIPToggleButton extends FrameLayout {
             pressedScaleAnimator.cancel();
         }
         pressedScaleAnimator = ValueAnimator.ofFloat(pressedScale,
-                pressed ? (LiquidGlassTuning.motionEnabled() ? .88f : .8f) : 1f);
+                pressed ? (ElasticPillGesture.enabled() ? .98f
+                        : LiquidGlassTuning.motionEnabled() ? .88f : .8f) : 1f);
         if (LiquidGlassTuning.motionEnabled() && !pressed) {
             pressedScaleAnimator.setInterpolator(new OvershootInterpolator(1.15f));
         }
@@ -150,10 +155,56 @@ public class VoIPToggleButton extends FrameLayout {
         pressedScaleAnimator.start();
     }
 
+    /**
+     * The optical face moves, NOT the View or its touch rectangle.
+     * A release after a drag must never call a destructive onClick (hang up).
+     */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (!ElasticPillGesture.enabled()) return super.dispatchTouchEvent(event);
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                elasticDrag.down(event.getX(), event.getY());
+                cancelClickForDrag = false;
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+                setPressedBtn(true);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (elasticDrag.move(event.getX(), event.getY())) {
+                    if (!cancelClickForDrag) {
+                        cancelClickForDrag = true;
+                        MotionEvent cancel = MotionEvent.obtain(event);
+                        cancel.setAction(MotionEvent.ACTION_CANCEL);
+                        super.dispatchTouchEvent(cancel);
+                        cancel.recycle();
+                    }
+                    return true;
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+                final boolean wasDrag = elasticDrag.up();
+                setPressedBtn(false);
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+                if (cancelClickForDrag || wasDrag) {
+                    cancelClickForDrag = false;
+                    return true;
+                }
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                elasticDrag.up();
+                cancelClickForDrag = false;
+                setPressedBtn(false);
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+                break;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
     @SuppressLint("DrawAllocation")
     @Override
     protected void onDraw(Canvas canvas) {
         canvas.save();
+        elasticDrag.transform(canvas, getMeasuredWidth() / 2f, dp(diameter) / 2f, dp(diameter));
         final boolean glassMotion = LiquidGlassTuning.motionEnabled();
         final float press = glassMotion ? Math.max(0f, Math.min(1f, (1f - pressedScale) / .12f)) : 0f;
         if (glassMotion) {
