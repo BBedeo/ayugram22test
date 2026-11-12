@@ -533,14 +533,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         // at rest, or paint glass over the neighboring tab's label.
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
         final float extension = Math.min(dp(14), travelled * .15f);
-        // Fill the whole nav row with a 1dp top/bottom optical inset.
+        // Use the EXACT same resting geometry as GlassTabView's original
+        // long-press selector. No optical inset here: even 2-4dp is visible
+        // when comparing the contours frame-for-frame.
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float height = Math.max(1f, availableHeight - dp(2));
+        final float height = availableHeight;
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
-        // Never cap the capsule at 70dp: long labels such as "Настройки"
-        // must remain visually inside the same contour as the selected tab.
-        // The slot itself is the source of truth for the pill geometry.
-        final float availableWidth = Math.max(dp(28), widthAtX - dp(4));
+        final float availableWidth = Math.max(dp(28), widthAtX);
         final float width = availableWidth + extension;
         final float cy = getPaddingTop() + availableHeight * .5f;
         selectorRect.set(centerX - width * .5f, cy - height * .5f,
@@ -1078,7 +1077,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 continue;
             }
 
-            float centerX = view.getX() + view.getWidth() * 0.5f;
+            float centerX = getCenterX(view);
 
             if (centerX < min) min = centerX;
             if (centerX > max) max = centerX;
@@ -1110,7 +1109,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 continue;
             }
 
-            float centerX = view.getX() + view.getWidth() * 0.5f;
+            float centerX = getCenterX(view);
             float distance = Math.abs(centerX - x);
 
             if (distance < nearestDistance) {
@@ -1136,7 +1135,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 continue;
             }
 
-            float centerX = view.getX() + view.getWidth() * 0.5f;
+            float centerX = getCenterX(view);
 
             if (centerX <= x && (left == null || centerX > getCenterX(left))) {
                 left = view;
@@ -1152,25 +1151,32 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
 
         if (left == null) {
-            return right.getWidth();
+            return getSelectorWidth(right);
         }
 
         if (right == null) {
-            return left.getWidth();
+            return getSelectorWidth(left);
         }
 
         float leftX = getCenterX(left);
         float rightX = getCenterX(right);
 
         if (left == right || leftX == rightX) {
-            return left.getWidth();
+            return getSelectorWidth(left);
         }
 
         float ratio = (x - leftX) / (rightX - leftX);
-        return lerp(left.getWidth(), right.getWidth(), ratio);
+        return lerp(getSelectorWidth(left), getSelectorWidth(right), ratio);
+    }
+
+    private static float getSelectorWidth(View v) {
+        if (v instanceof GlassTabView) {
+            return ((GlassTabView) v).getSelectorVisualWidth();
+        }
+        return v.getWidth();
     }
 
     private static float getCenterX(View v) {
-        return v.getX() + v.getWidth() * 0.5f;
+        return v.getX() + getSelectorWidth(v) * 0.5f;
     }
 }
