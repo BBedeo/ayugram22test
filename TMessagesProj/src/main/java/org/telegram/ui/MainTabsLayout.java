@@ -641,8 +641,15 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         @Override
         public void onLongPressCancelled(View view, float x, float y) {
             checkPivot(view, x, y);
-            checkLongMove(x, y, false, true);
-            isInLongPress = false;
+            if (ElasticPillGesture.enabled()) {
+                // The page never changed during drag, so a cancelled gesture
+                // must spring to the ACTUAL selected tab, not the last hover.
+                isInLongPress = false;
+                syncElasticPillToSelected(true);
+            } else {
+                checkLongMove(x, y, false, true);
+                isInLongPress = false;
+            }
             AndroidUtilities.runOnUIThread(restoreDrawSelector, 450);
             lastLongSelectedView = null;
             invalidate();
