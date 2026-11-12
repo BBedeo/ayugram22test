@@ -972,6 +972,16 @@ public class ConnectionsManager extends BaseController {
 
     public static void onLogout(final int currentAccount) {
         AndroidUtilities.runOnUIThread(() -> {
+            // ExFullGram Test accounts intentionally have no Telegram authorization key.
+            // The native network layer therefore reports "logout" for them, but that must
+            // never erase the local virtual account or return the user to LoginActivity.
+            if (app.exteraless.demo.DemoBackend.isTestSlot(currentAccount)) {
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.d("ignore native logout for ExFullGram Test account " + currentAccount);
+                }
+                return;
+            }
+
             AccountInstance accountInstance = AccountInstance.getInstance(currentAccount);
             if (accountInstance.getUserConfig().getClientUserId() != 0) {
                 accountInstance.getUserConfig().clearConfig();
