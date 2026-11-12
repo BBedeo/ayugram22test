@@ -608,13 +608,17 @@ public class GlassEngine {
         final boolean exGlass = LiquidGlassTuning.isActive();
         final boolean isBlurEnabled = LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR) || exGlass;
         final boolean isLiquidGlassEnabled = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || exGlass;
+        final int material = exGlass ? LiquidGlassTuning.material() : -1;
 
         final boolean glassSettingsInvalidated = glassSettings == null
             || glassSettings.isBlurEnabled != isBlurEnabled
-            || glassSettings.isLiquidGlassEnabled != isLiquidGlassEnabled;
+            || glassSettings.isLiquidGlassEnabled != isLiquidGlassEnabled
+            || glassSettings.liquidMaterial != material;
 
         if (glassSettingsInvalidated) {
-            glassSettings = new GlassSettings(isBlurEnabled, isLiquidGlassEnabled);
+            // Material is part of renderer state: switching styles or account
+            // identities must invalidate existing lens frames and colors.
+            glassSettings = new GlassSettings(isBlurEnabled, isLiquidGlassEnabled, material);
             glassSettingsGenerationId++;
         }
     }

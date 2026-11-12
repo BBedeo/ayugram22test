@@ -718,7 +718,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     getString(R.string.OEAppearanceLiquidGlassClear),
                     getString(R.string.OEAppearanceLiquidGlassBalanced),
                     getString(R.string.OEAppearanceLiquidGlassExpressive)
-            }, AppearanceConfig.liquidGlassMaterial, this::rebuildAll);
+            }, AppearanceConfig.liquidGlassMaterial, () -> {
+                org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings();
+                rebuildAll();
+            });
             return;
         } else if (position == glassOutlineRow) {
             showSelector(position, getString(R.string.OEAppearanceGlassOutline), new CharSequence[]{

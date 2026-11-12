@@ -14,6 +14,11 @@ public final class LiquidGlassTuning {
                 && !LiteMode.isPowerSaverApplied();
     }
 
+    /** The effective style participates in GlassEngine's invalidation state. */
+    public static int material() {
+        return isActive() ? AppearanceConfig.liquidGlassMaterial() : -1;
+    }
+
     /** Preserve all prior theme colors when the optional effect is disabled. */
     public static float tintAlpha(boolean dark, float original) {
         if (!isActive()) return original;
