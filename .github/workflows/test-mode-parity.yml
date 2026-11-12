@@ -8,6 +8,7 @@ on:
       - 'TMessagesProj/src/main/kotlin/**'
       - 'TMessagesProj/src/main/res/values*/strings_oe*.xml'
       - 'scripts/check_liquid_glass.py'
+      - 'scripts/check_elastic_pills.py'
       - 'scripts/check_voip_glass.py'
       - 'scripts/check_test_mode_parity.py'
       - 'scripts/check_account_profiles.py'
@@ -30,5 +31,7 @@ jobs:
         run: python3 scripts/check_account_profiles.py
       - name: Check optional universal Liquid Glass, native refraction and theme fallbacks
         run: python3 scripts/check_liquid_glass.py
+      - name: Check elastic navigation, call actions and slider gestures
+        run: python3 scripts/check_elastic_pills.py
       - name: Check private call glass and optional compact captions
         run: python3 scripts/check_voip_glass.py
