@@ -99,7 +99,7 @@ checks = {
         and "float glint = gaussian(glintX)" in pill_shader
         and "float bowedArc = gaussian(" in pill_shader
         and "float sweep = gaussian(diagonal" in pill_shader
-        and "float bodyLight = 0.018" in pill_shader
+        and "float bodyLight = 0.014" in pill_shader
         and "redSample.r" in pill_shader
         and "blueSample.b" in pill_shader
         and "glass_press" in pill_shader

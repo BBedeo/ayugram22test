@@ -45,21 +45,21 @@ half4 main(float2 fragCoord) {
 
     // Curved refractive dome: extend bevel curvature deeper so edge bending
     // and chromatic split stay clearly visible across the lens shoulder.
-    float cosN = clamp(1.0 + sd / (t * 1.45), 0.0, 1.0);
+    float cosN = clamp(1.0 + sd / (t * 1.55), 0.0, 1.0);
     float sinN = sqrt(max(0.0, 1.0 - cosN * cosN));
     float3 normal = normalize(float3(slope * cosN, sinN + 0.001));
     float3 ray = refract(float3(0.0, 0.0, -1.0), normal,
                          1.0 / max(refract_index, 1.05));
     float h = sd < -t ? t : sqrt(max(0.0, sd * (-2.0 * t - sd)));
-    float rayDepth = (h + t * 9.5) / max(0.18, -ray.z);
-    float edgeBand = 1.0 - smoothstep(0.0, t * 1.60, -sd);
+    float rayDepth = (h + t * 11.0) / max(0.16, -ray.z);
+    float edgeBand = 1.0 - smoothstep(0.0, t * 1.65, -sd);
     float move = clamp(glass_motion, -1.0, 1.0);
     float press = clamp(glass_press, 0.0, 1.0);
     float2 relCenter = p / max(size, float2(1.0));
     float2 uv = fragCoord + ray.xy * rayDepth * refract_intensity
-                * (1.0 + abs(move) * 0.28);
-    uv += float2(move * 4.5, 0.0) * edgeBand
-          - relCenter * (0.045 + press * 0.065) * t * (1.0 - edgeBand * 0.35);
+                * (1.0 + abs(move) * 0.30);
+    uv += float2(move * 4.8, 0.0) * edgeBand
+          - relCenter * (0.055 + press * 0.075) * t * (1.0 - edgeBand * 0.30);
     float2 uvMin = center - size + 0.5;
     float2 uvMax = center + size - 0.5;
     uv = clamp(uv, uvMin, uvMax);
@@ -69,19 +69,19 @@ half4 main(float2 fragCoord) {
     // Edge-only chromatic dispersion, sampled from the same real backdrop.
     // Work is conditional and confined to the small navigation lens.
     if (edgeBand > 0.10 && refract_intensity > 0.01) {
-        float2 chroma = edgeNormal * t * 0.32 * edgeBand * (1.0 + abs(move) * 0.45);
+        float2 chroma = edgeNormal * t * 0.36 * edgeBand * (1.0 + abs(move) * 0.45);
         half4 redSample = img.eval(clamp(uv + chroma, uvMin, uvMax));
         half4 blueSample = img.eval(clamp(uv - chroma, uvMin, uvMax));
-        backdrop.r = mix(backdrop.r, redSample.r, half(edgeBand * 0.78));
-        backdrop.b = mix(backdrop.b, blueSample.b, half(edgeBand * 0.78));
+        backdrop.r = mix(backdrop.r, redSample.r, half(edgeBand * 0.82));
+        backdrop.b = mix(backdrop.b, blueSample.b, half(edgeBand * 0.82));
     }
 
     half4 surface = sourceOver(half4(foreground_color_premultiplied), backdrop);
 
     // Subtle internal-reflection meniscus just inside the bright bevel gives
     // real 3D glass thickness even over flat dark scenes.
-    float meniscus = gaussian((-sd - t * 0.42) / (t * 0.20));
-    surface.rgb = max(half3(0.0), surface.rgb - half3(0.075 * meniscus));
+    float meniscus = gaussian((-sd - t * 0.38) / (t * 0.18));
+    surface.rgb = max(half3(0.0), surface.rgb - half3(0.105 * meniscus));
 
     // A glass body must stay crystal-clear in the center while catching
     // crisp iOS-style specular Fresnel light on its curved bevels and motion caustics.
@@ -89,16 +89,16 @@ half4 main(float2 fragCoord) {
     float2 light = float2(cos(glass_light_angle + move * 0.34),
                           sin(glass_light_angle + move * 0.34));
     float facing = clamp(dot(edgeNormal, light) * 0.5 + 0.5, 0.0, 1.0);
-    float grazing = gaussian((-sd - t * 0.14) / (t * 0.38));
-    float lip = gaussian(-sd / max(2.0, t * 0.11));
+    float grazing = gaussian((-sd - t * 0.13) / (t * 0.34));
+    float lip = gaussian(-sd / max(1.8, t * 0.10));
     float edgeLight = pow(facing, 2.8) * grazing
-                    + pow(1.0 - facing, 3.4) * grazing * 0.42
-                    + pow(facing, 2.2) * lip * 0.55;
+                    + pow(1.0 - facing, 3.2) * grazing * 0.48
+                    + pow(facing, 2.2) * lip * 0.62;
 
     // Subtle overhead dome reflection tucked near the upper curve.
-    float bowedHeight = -0.56 + 0.18 * relative.x * relative.x
+    float bowedHeight = -0.58 + 0.18 * relative.x * relative.x
                         + move * 0.10;
-    float bowedArc = gaussian((relative.y - bowedHeight) / 0.16);
+    float bowedArc = gaussian((relative.y - bowedHeight) / 0.15);
     bowedArc *= 0.58 + 0.42 * gaussian((relative.x + 0.24) / 0.86);
 
     // Directional caustic sweeps smoothly during drag and touch press,
@@ -109,21 +109,21 @@ half4 main(float2 fragCoord) {
     float glintX = (relative.x - (0.08 + move * 0.56)) / 0.30;
     float glintY = (relative.y + 0.36 + move * 0.09) / 0.32;
     float glint = gaussian(glintX) * gaussian(glintY);
-    float underside = gaussian((relative.y - 0.74) / 0.22)
+    float underside = gaussian((relative.y - 0.74) / 0.20)
                       * gaussian(relative.x / 0.90);
-    float bodyLight = 0.018 + 0.016 * (1.0 - clamp(relative.y * relative.y, 0.0, 1.0));
+    float bodyLight = 0.014 + 0.012 * (1.0 - clamp(relative.y * relative.y, 0.0, 1.0));
     float active = clamp(abs(move), 0.0, 1.0);
 
     // Crisp rim speculars + motion-driven caustics; keep center transparent.
     float illumination = glass_highlight * (
           bodyLight
-        + 0.48 * edgeLight
-        + 0.17 * bowedArc
-        + 0.16 * glint
-        + 0.14 * sweep
-        + 0.075 * underside
-        + 0.26 * active * sweep
-        + 0.18 * press * glint
+        + 0.52 * edgeLight
+        + 0.16 * bowedArc
+        + 0.15 * glint
+        + 0.13 * sweep
+        + 0.085 * underside
+        + 0.28 * active * sweep
+        + 0.20 * press * glint
         ) * (1.0 + press * 0.28);
     if (glass_adaptive > 0.5) {
         float luma = dot(float3(backdrop.rgb), float3(0.2126, 0.7152, 0.0722));
@@ -132,8 +132,9 @@ half4 main(float2 fragCoord) {
                             * (1.0 - facing * 0.65) * 0.075;
         surface.rgb = max(half3(0.0), surface.rgb - half3(lightThemeRim));
     }
+    half3 specTint = mix(half3(0.84, 0.94, 1.0), half3(1.0, 0.98, 0.95), half(facing));
     surface.rgb = min(half3(1.0),
-                      surface.rgb + half3(0.91, 0.96, 1.0)
+                      surface.rgb + specTint
                       * half(illumination * float(surface.a)));
     return surface;
 }

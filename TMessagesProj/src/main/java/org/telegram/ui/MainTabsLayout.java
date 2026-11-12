@@ -580,6 +580,29 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
                 Theme.isCurrentThemeDark(), direction * Math.min(1f, totalStretch / dp(16)),
                 elasticTouchStartedOnPill && !elasticMenuShownDuringTouch);
+        updateElasticTabLensScale(centerX, widthAtX, totalStretch);
+    }
+
+    private void updateElasticTabLensScale(float lensCenterX, float lensWidth, float totalStretch) {
+        final float travelFactor = Math.min(1f, totalStretch / Math.max(1f, dp(10)));
+        final float boost = Math.max(0f,
+                elasticPressValue * .050f
+                + travelFactor * .028f
+                + Math.max(0f, elasticJellyValue) * .030f);
+        final float span = Math.max(dp(28), lensWidth * .95f);
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            final View child = getChildAt(i);
+            if (!(child instanceof GlassTabView) || child.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            final float dist = Math.abs(getCenterX(child) - lensCenterX);
+            final float overlap = Math.max(0f, Math.min(1f, 1f - dist / span));
+            final float targetScale = 1f + overlap * boost;
+            if (Math.abs(child.getScaleX() - targetScale) > .001f) {
+                child.setScaleX(targetScale);
+                child.setScaleY(targetScale);
+            }
+        }
     }
 
         private boolean drawTopDivider = true;
@@ -1172,6 +1195,14 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             return x;
         }
 
+        if (ElasticPillGesture.enabled()) {
+            // Soft iOS-like edge rubber-banding when pulling slightly past first/last tab.
+            final float over = dp(6);
+            final float soft = dp(24);
+            if (x < min) return min - over * (float) Math.tanh((min - x) / soft);
+            if (x > max) return max + over * (float) Math.tanh((x - max) / soft);
+            return x;
+        }
         if (x < min) return min;
         if (x > max) return max;
         return x;
