@@ -310,6 +310,8 @@ public final class DemoBackend {
 
         MessagesStorage.getInstance(account).putMessages(
                 container, peer.id, 0, 0, true, ChatActivity.MODE_DEFAULT, 0);
+        registerLocalDialog(account, peer.id, container.messages.get(0), 0,
+                container.users, container.chats);
     }
 
     private static TLRPC.TL_message createPrivateMessage(
@@ -372,6 +374,62 @@ public final class DemoBackend {
         return message;
     }
 
+    /**
+     * Register a local Test dialog with Telegram's dialogs controller as well as
+     * its message history. Writing messages alone does not add a dialog to the
+     * chat list, even when dialogsNeedReload is posted.
+     *
+     * Run the registration after all pending SQLite writes for this peer have
+     * completed. This also makes the latest message available for the preview.
+     */
+    private static void registerLocalDialog(
+            int account,
+            long dialogId,
+            TLRPC.Message topMessage,
+            int unreadCount,
+            ArrayList<TLRPC.User> users,
+            ArrayList<TLRPC.Chat> chats
+    ) {
+        if (topMessage == null) return;
+
+        TLRPC.TL_dialog dialog = new TLRPC.TL_dialog();
+        if (dialogId > 0) {
+            TLRPC.TL_peerUser peer = new TLRPC.TL_peerUser();
+            peer.user_id = dialogId;
+            dialog.peer = peer;
+        } else {
+            TLRPC.TL_peerChannel peer = new TLRPC.TL_peerChannel();
+            peer.channel_id = -dialogId;
+            dialog.peer = peer;
+            dialog.flags |= 1; // pts
+            dialog.pts = 1;
+        }
+        dialog.top_message = topMessage.id;
+        dialog.last_message_date = topMessage.date;
+        dialog.read_inbox_max_id = 0;
+        dialog.read_outbox_max_id = 0;
+        dialog.unread_count = Math.max(0, unreadCount);
+        dialog.unread_mentions_count = 0;
+        dialog.unread_reactions_count = 0;
+        dialog.unread_poll_votes_count = 0;
+        dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
+
+        TLRPC.TL_messages_dialogs dialogs = new TLRPC.TL_messages_dialogs();
+        dialogs.dialogs.add(dialog);
+        dialogs.messages.add(topMessage);
+        if (users != null) dialogs.users.addAll(users);
+        if (chats != null) dialogs.chats.addAll(chats);
+
+        MessagesStorage.getInstance(account).getStorageQueue().postRunnable(() ->
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (!isTestAccount(account)) return;
+                    MessagesController.getInstance(account).processLoadedDialogs(
+                            dialogs, null, null, 0, 0, 1, 3, false, false, false);
+                    NotificationCenter.getInstance(account).postNotificationName(
+                            NotificationCenter.dialogsNeedReload);
+                }));
+    }
+
     private static void putSingleMessage(int account, long dialogId, TLRPC.Message message) {
         ArrayList<TLRPC.Message> raw = new ArrayList<>();
         raw.add(message);
@@ -380,9 +438,23 @@ public final class DemoBackend {
 
         ArrayList<MessageObject> objects = new ArrayList<>();
         objects.add(new MessageObject(account, message, true, true));
-        MessagesController.getInstance(account).updateInterfaceWithMessages(
-                dialogId, objects, ChatActivity.MODE_DEFAULT);
-        NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
+        MessagesController controller = MessagesController.getInstance(account);
+        controller.updateInterfaceWithMessages(dialogId, objects, ChatActivity.MODE_DEFAULT);
+
+        // Also update the dialog index so returning to the chat list shows the
+        // just-sent message instead of an old preview or an absent Test chat.
+        ArrayList<TLRPC.User> users = new ArrayList<>();
+        ArrayList<TLRPC.Chat> chats = new ArrayList<>();
+        TLRPC.User self = UserConfig.getInstance(account).getCurrentUser();
+        if (self != null) users.add(self);
+        if (dialogId > 0) {
+            TLRPC.User peer = controller.getUser(dialogId);
+            if (peer != null) users.add(peer);
+        } else {
+            TLRPC.Chat chat = controller.getChat(-dialogId);
+            if (chat != null) chats.add(chat);
+        }
+        registerLocalDialog(account, dialogId, message, message.out ? 0 : 1, users, chats);
     }
 
     public static long createTestChat(
@@ -490,8 +562,8 @@ public final class DemoBackend {
 
         MessagesStorage.getInstance(account).putMessages(
                 container, peer.id, 0, 0, true, ChatActivity.MODE_DEFAULT, 0);
-        AndroidUtilities.runOnUIThread(() ->
-                NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload), 250);
+        registerLocalDialog(account, peer.id, container.messages.get(0),
+                Math.min(unreadCount, count), container.users, container.chats);
     }
 
     private static void installChannelTestChat(
@@ -575,10 +647,11 @@ public final class DemoBackend {
 
         MessagesStorage.getInstance(account).putMessages(
                 container, -chatId, 0, 0, true, ChatActivity.MODE_DEFAULT, 0);
-        AndroidUtilities.runOnUIThread(() -> {
-            NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.chatInfoDidLoad, full, 0, false, false);
-            NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
-        }, 250);
+        registerLocalDialog(account, -chatId, container.messages.get(0),
+                Math.min(unreadCount, count), container.users, container.chats);
+        AndroidUtilities.runOnUIThread(() ->
+                NotificationCenter.getInstance(account).postNotificationName(
+                        NotificationCenter.chatInfoDidLoad, full, 0, false, false), 250);
     }
 
     private static void installEmptyPrivateDialog(int account, TLRPC.User self, TLRPC.User peer) {
