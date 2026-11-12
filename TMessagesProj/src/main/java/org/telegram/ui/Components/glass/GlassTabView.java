@@ -164,6 +164,10 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     public void setGestureSelectedOverride(float gestureSelectedOverride, boolean allow) {
         final float next = MathUtils.clamp(gestureSelectedOverride, 0f, 1f);
         final boolean nextAllow = allow && !mainTabMaterial3;
+        if (!nextAllow && !this.hasGestureSelectedOverride) {
+            this.gestureSelectedOverride = 0f;
+            return;
+        }
         if (this.gestureSelectedOverride == next && this.hasGestureSelectedOverride == nextAllow) {
             return;
         }
@@ -291,12 +295,18 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     }
 
     public void setSelected(boolean selected, boolean animated) {
+        // When an elastic pill drag has already visually transitioned this tab via
+        // gestureSelectedOverride, lock the animator immediately to match without
+        // snapping back to its pre-drag value (which flashes blue->white->blue on drop).
+        final boolean matchesGesturePreview = hasGestureSelectedOverride
+                && (selected ? gestureSelectedOverride >= 0.45f : gestureSelectedOverride < 0.45f);
+        final boolean effectiveAnimated = animated && !matchesGesturePreview;
         if (mainTabMaterial3) {
-            MainTabsUiHelper.setMaterial3MainTabSelected(isSelectedAnimator, selectedIndicatorAlphaAnimator, selected, animated);
+            MainTabsUiHelper.setMaterial3MainTabSelected(isSelectedAnimator, selectedIndicatorAlphaAnimator, selected, effectiveAnimated);
         } else {
-            isSelectedAnimator.setValue(selected, animated);
+            isSelectedAnimator.setValue(selected, effectiveAnimated);
         }
-        checkPlayAnimation(animated);
+        checkPlayAnimation(effectiveAnimated);
 
         textView.setTypeface(!selected || mainTabMaterial3
                 ? AndroidUtilities.bold()

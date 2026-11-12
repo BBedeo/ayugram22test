@@ -611,22 +611,21 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> {
                                 if (dark) {
-                                    // Clear luminous sapphire crystal over dark screens while staying
-                                    // optically glassy and crisp over bright scrolled items.
-                                    return canRefract ? 0x24E2F0FF : 0x38E2F0FF;
+                                    // Subtle cool smoky crystal at rest (~7.8%, matching dark dock without
+                                    // black sink or white acrylic fog), clearing on lift into pure glass lens.
+                                    return canRefract ? 0x14DCE8F6 : 0x24DCE8F6;
                                 }
                                 final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                                 final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.84f);
-                                return Theme.multAlpha(lifted, canRefract ? .46f : .56f);
+                                return Theme.multAlpha(lifted, canRefract ? .34f : .48f);
                             })
-                            // Crisp crystal rim catching upper crown & lateral caps around the tab label
-                            // while curved Fresnel arcs in AGSL render 3D glass depth.
-                            .setStrokeColorTop(0x64FFFFFF, 0x2AFFFFFF)
-                            .setStrokeColorBottom(0x34FFFFFF, 0x16FFFFFF)
+                            // Razor-clean optical hairline catching light only on curved bevels.
+                            .setStrokeColorTop(0x52FFFFFF, 0x1EFFFFFF)
+                            .setStrokeColorBottom(0x28FFFFFF, 0x10FFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
                             .setShadowColor(0x16000000, 0x2E000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(5.5f), 0, AndroidUtilities.dpf2(1.8f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.44f), AndroidUtilities.dpf2(.30f)));
+                            .setShadowLayer(AndroidUtilities.dpf2(4.8f), 0, AndroidUtilities.dpf2(1.5f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.35f), AndroidUtilities.dpf2(.25f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
             capsule.setLightAngle(GlassRim.LIGHT_TOP_LEFT);
@@ -639,8 +638,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(22));
-                capsule.setIntensity(3.45f);
+                capsule.setThickness(dp(20));
+                capsule.setIntensity(3.60f);
             }
             tabsView.setElasticPillGlass(capsule);
         }
