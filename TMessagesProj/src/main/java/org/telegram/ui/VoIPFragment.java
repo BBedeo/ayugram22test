@@ -120,6 +120,9 @@ import org.telegram.ui.Components.voip.EndCloseLayout;
 import org.telegram.ui.Components.voip.PrivateVideoPreviewDialogNew;
 import org.telegram.ui.Components.voip.RateCallLayout;
 import org.telegram.ui.Components.voip.VoIPBackgroundProvider;
+import org.telegram.ui.Components.voip.VoIPCallGlass;
+import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.ui.Components.voip.VoIPButtonsLayout;
 import org.telegram.ui.Components.voip.VoIPFloatingLayout;
 import org.telegram.ui.Components.voip.VoIPHelper;
@@ -1070,6 +1073,15 @@ public class VoIPFragment implements
                 setPressedBtn(pressed);
             }
         };
+        // Independent UI preference: captions stay available through each
+        // button's content description and TalkBack accessibility metadata.
+        final boolean compactCallControls = AppearanceConfig.hideVoIPControlLabels.Bool();
+        bottomSpeakerBtn.setLabelsHidden(compactCallControls);
+        bottomVideoBtn.setLabelsHidden(compactCallControls);
+        bottomMuteBtn.setLabelsHidden(compactCallControls);
+        bottomEndCallBtn.setLabelsHidden(compactCallControls);
+        buttonsLayout.setCompact(compactCallControls);
+
         int startDelay = 150;
         bottomSpeakerBtn.setTranslationY(AndroidUtilities.dp(100));
         bottomSpeakerBtn.setScaleX(0f);
@@ -1150,14 +1162,18 @@ public class VoIPFragment implements
         frameLayout.addView(acceptDeclineView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 186, Gravity.BOTTOM, horizontalMargin, 0, horizontalMargin, 0));
 
         addIcon = new ImageView(context);
-        addIcon.setBackground(Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
+        addIcon.setBackground(LiquidGlassTuning.isActive()
+                ? new VoIPCallGlass.IconBackground()
+                : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         addIcon.setImageResource(R.drawable.msg_addcontact);
         addIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
         frameLayout.addView(addIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.RIGHT));
         ScaleStateListAnimator.apply(addIcon);
 
         backIcon = new ImageView(context);
-        backIcon.setBackground(Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
+        backIcon.setBackground(LiquidGlassTuning.isActive()
+                ? new VoIPCallGlass.IconBackground()
+                : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         backIcon.setImageResource(R.drawable.msg_call_minimize_shadow);
         backIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
         backIcon.setContentDescription(LocaleController.getString(R.string.Back));
@@ -1177,7 +1193,9 @@ public class VoIPFragment implements
             }
         };
         speakerPhoneIcon.setContentDescription(LocaleController.getString(R.string.VoipSpeaker));
-        speakerPhoneIcon.setBackground(Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
+        speakerPhoneIcon.setBackground(LiquidGlassTuning.isActive()
+                ? new VoIPCallGlass.IconBackground()
+                : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         speakerPhoneIcon.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
         frameLayout.addView(speakerPhoneIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.RIGHT, 0, 56, 0, 0));
         speakerPhoneIcon.setAlpha(0f);
