@@ -313,7 +313,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 for (int a = 0, N = fragmentsArr.size(); a < N; a++) {
                     final FragmentState state = fragmentsArr.valueAt(a);
                     final BaseFragment fragment = state.fragment;
-                    if (fragment.fragmentView == null) {
+                    if (fragment.fragmentView == null || fragment.fragmentView.getVisibility() == View.GONE) {
                         continue;
                     }
                     if (!ViewPositionWatcher.computeRectInParent(fragment.fragmentView, contentView, fragmentPosition)) {
@@ -353,7 +353,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         final FragmentState state = fragmentsArr.valueAt(a);
                         final BaseFragment fragment = state.fragment;
                         final View view = fragment.fragmentView;
-                        if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
+                        if (view == null || view.getVisibility() == View.GONE || view.getWidth() <= 0 || view.getHeight() <= 0) {
                             continue;
                         }
                         if (!ViewPositionWatcher.computeRectInParent(view, contentView, fragmentPosition)) {
@@ -611,23 +611,23 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> {
                                 if (dark) {
-                                    // Cool translucent crystal at rest (airier than the outer bar so the
-                                    // resting pill reads as luminous frost rather than a sunken black oval),
-                                    // cleared smoothly into pure refractive crystal during lift/drag.
-                                    return canRefract ? 0x2EE8F1FF : 0x42E8F1FF;
+                                    // Deep sapphire crystal at rest (~6.7% cool highlight -> sleek #272E37 over
+                                    // #1C232B, never milky gray fog and never a sunken black cutout), clearing
+                                    // smoothly into pure transparent crystal during lift/drag.
+                                    return canRefract ? 0x11E4F0FF : 0x26E4F0FF;
                                 }
                                 final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
-                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.80f);
-                                return Theme.multAlpha(lifted, canRefract ? .34f : .48f);
+                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.84f);
+                                return Theme.multAlpha(lifted, canRefract ? .46f : .56f);
                             })
-                            // Whisper-thin gossamer hairline stroke so the AGSL top-dome sheen and
-                            // subtle Fresnel arcs create glass depth without any chalky wireframe border.
-                            .setStrokeColorTop(0x52FFFFFF, 0x22FFFFFF)
-                            .setStrokeColorBottom(0x28FFFFFF, 0x12FFFFFF)
+                            // Gossamer optical hairline so only the AGSL curved diagonal Fresnel arcs
+                            // catch light — zero uniform wireframe border.
+                            .setStrokeColorTop(0x38FFFFFF, 0x16FFFFFF)
+                            .setStrokeColorBottom(0x1CFFFFFF, 0x0CFFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
-                            .setShadowColor(0x0E000000, 0x18000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(3.5f), 0, AndroidUtilities.dpf2(1.2f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.42f), AndroidUtilities.dpf2(.30f)));
+                            .setShadowColor(0x10000000, 0x20000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(3.2f), 0, AndroidUtilities.dpf2(1.0f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.32f), AndroidUtilities.dpf2(.22f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
             capsule.setLightAngle(GlassRim.LIGHT_TOP_LEFT);

@@ -32,11 +32,11 @@ half4 main(in float2 fragCoord) {
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Convex optical droplet magnification inside the pill + strong bevel bending at the wall.
+  // Convex optical droplet magnification inside the pill + smooth bevel lip wrap without double-ghosting.
   float magFactor = (0.075 + lift * 0.105) * (1.0 - bevel * 0.48);
   float2 refractOffset = -p * magFactor
-      + edgeDir * bevel * t * (0.48 + lift * 0.28)
-      + float2(move * t * 0.26, 0.0) * bevel;
+      + edgeDir * bevel * t * (0.26 + lift * 0.18)
+      + float2(move * t * 0.20, 0.0) * bevel;
 
   float2 uv = fragCoord + refractOffset;
   float2 disp = edgeDir * (1.5 + lift * 2.1) * bevel;

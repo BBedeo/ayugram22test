@@ -60,12 +60,13 @@ half4 main(in float2 fragCoord) {
 
   float2 invSize = 1.0 / max(size, float2(1.0));
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
+  float2 isoRel = clamp(p / max(min(size.x, size.y), 1.0), float2(-2.2), float2(2.2));
 
-  // Strong optical rim refraction + gentle convex dome magnification in the center.
+  // Strong optical rim refraction + isotropic convex dome magnification in the center.
   float2 uv = fragCoord + ray.xy * (0.42 * rayDepth * refract_intensity)
       * (1.0 + lift * 0.35);
   uv += float2(move * 5.8, 0.0) * bevel
-      - relCenter * (0.09 + lift * 0.11) * t * (1.0 - bevel * 0.30);
+      - isoRel * (0.085 + lift * 0.105) * t * (1.0 - bevel * 0.30);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
@@ -83,7 +84,7 @@ half4 main(in float2 fragCoord) {
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
   backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.14 + 0.12 * lift)), half3(0.0), half3(1.0));
 
-  // Two-state _UILiquidLensView tint: luminous crystal frost at rest, clearing smoothly on lift.
+  // Two-state _UILiquidLensView tint: sleek sapphire crystal at rest, clearing smoothly on lift.
   half4 fgTint = half4(foreground_color_premultiplied) * half(1.0 - lift * 0.68);
   half4 surface = srcOver(fgTint, backdrop);
 
@@ -92,23 +93,23 @@ half4 main(in float2 fragCoord) {
   float meniscus = gaussian((-sd - t * 0.26) / max(2.0, t * 0.15));
   surface.rgb *= half(1.0 - (0.055 + 0.045 * lift) * outerWall - (0.050 + 0.055 * lift) * meniscus);
 
-  // Silky asymmetric Fresnel edge glints (never a chalky uniform 360 border).
+  // Silky diagonal Fresnel corner glints (never a chalky uniform 360 border).
   float angle = glass_light_angle + move * 0.42;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot * 0.55 + 0.45, 0.0001), 3.0) * 0.56;
-  float catchArc = pow(max(-rawDot * 0.55 + 0.45, 0.0001), 3.6) * 0.34;
-  float fresnelSide = 0.04 + 0.06 * lift;
+  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.6) * 0.66;
+  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 4.0) * 0.40;
+  float fresnelSide = 0.015 + 0.045 * lift;
 
-  float rimCore = gaussian((-sd - max(1.1, t * 0.065)) / max(1.0, t * 0.065));
-  float rimSoft = gaussian((-sd - t * 0.17) / max(2.4, t * 0.18));
-  float rimSpec = (keyArc + catchArc + fresnelSide) * (rimCore * 0.54 + rimSoft * 0.20) * (0.55 + 0.45 * lift);
+  float rimCore = gaussian((-sd - max(1.0, t * 0.058)) / max(0.95, t * 0.055));
+  float rimSoft = gaussian((-sd - t * 0.16) / max(2.2, t * 0.16));
+  float rimSpec = (keyArc + catchArc + fresnelSide) * (rimCore * 0.56 + rimSoft * 0.18) * (0.58 + 0.42 * lift);
 
-  // Curved sapphire top-dome reflection gradient + focused lower caustic + motion sweep.
-  float upperCrown = smoothstep(0.28, -0.78, relCenter.y) * (1.0 - bevel * 0.35) * (0.085 - 0.030 * lift);
-  float lowerCaustic = smoothstep(-0.10, 0.85, relCenter.y) * bevel * (0.035 + 0.125 * lift);
+  // Subtle top-dome crystal sheen + focused lower caustic + motion sweep.
+  float upperCrown = smoothstep(0.18, -0.82, relCenter.y) * (1.0 - bevel * 0.40) * (0.032 - 0.012 * lift);
+  float lowerCaustic = smoothstep(-0.05, 0.85, relCenter.y) * bevel * (0.025 + 0.105 * lift);
   float sweepCoord = relCenter.x * 0.80 + relCenter.y * 0.45 - move * 0.38;
-  float sweep = gaussian(sweepCoord / 0.28) * (0.025 + 0.17 * abs(move) + 0.09 * press) * (0.30 + 0.70 * bevel);
+  float sweep = gaussian(sweepCoord / 0.28) * (0.02 + 0.16 * abs(move) + 0.08 * press) * (0.30 + 0.70 * bevel);
 
   float highlightStrength = clamp(glass_highlight, 0.55, 1.0);
   if (glass_adaptive > 0.5) {

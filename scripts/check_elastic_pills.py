@@ -87,8 +87,8 @@ checks = {
         and "totalStretch / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider or chalky wireframe outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.42f), AndroidUtilities.dpf2(.30f))" in main
-        and "canRefract ? 0x2EE8F1FF : 0x42E8F1FF" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.32f), AndroidUtilities.dpf2(.22f))" in main
+        and "canRefract ? 0x11E4F0FF : 0x26E4F0FF" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
