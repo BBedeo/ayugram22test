@@ -89,6 +89,7 @@ import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProviderBuilder;
 import app.exteraless.appearance.ElasticPillGesture;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.utils.glass.GlassEngine;
 import org.telegram.utils.glass.GlassSettings;
 import org.telegram.utils.glass.source.GlassSourceColor;
@@ -488,12 +489,20 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> Theme.multAlpha(
                                     Theme.getColor(Theme.key_glass_targetMainTabs, r),
-                                    dark ? .14f : .12f))
-                            .setStrokeColorTop(0x44FFFFFF, 0x44FFFFFF)
-                            .setStrokeColorBottom(0x0FFFFFFF, 0x0FFFFFFF)
-                            .setShadowColor(0x19000000, 0x23000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(2f), 0, AndroidUtilities.dpf2(.6f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.7f), AndroidUtilities.dpf2(.45f)));
+                                    LiquidGlassTuning.isActive()
+                                            ? (dark ? .09f : .07f)
+                                            : (dark ? .16f : .13f)))
+                            // A very light optical edge only. The old selector
+                            // stacked this with two painted rims and looked like
+                            // a thick white outline instead of refracted glass.
+                            .setStrokeColorTop(0x20FFFFFF, 0x28FFFFFF)
+                            .setStrokeColorBottom(0x04FFFFFF, 0x08FFFFFF)
+                            .setShadowColor(0x0D000000, 0x14000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(1.2f), 0, AndroidUtilities.dpf2(.35f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.35f), AndroidUtilities.dpf2(.20f)));
+            capsule.setLiquidGlassEffectAllowed();
+            capsule.setThickness(dp(9));
+            capsule.setIntensity(1.15f);
             tabsView.setElasticPillGlass(capsule);
         }
 
