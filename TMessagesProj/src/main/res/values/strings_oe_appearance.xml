@@ -52,6 +52,10 @@
     <string name="OEAppearanceSwitchStyle">Switches</string>
     <string name="OEAppearanceSliderStyle">Sliders</string>
 
+    <string name="OEAppearanceCalls">Calls</string>
+    <string name="OEAppearanceHideVoIPControlLabels">Hide call button captions</string>
+    <string name="OEAppearanceHideVoIPControlLabelsInfo">Hide the four labels under the private call controls. Button names remain available to accessibility services. Takes effect when opening the call screen.</string>
+
     <!-- Optional ExFullGram Liquid Glass -->
     <string name="OEAppearanceUniversalLiquidGlass">Liquid Glass everywhere</string>
     <string name="OEAppearanceUniversalLiquidGlassInfo">Native refractive glass for tabs, menus, controls and overlays. Android 13+ for full refraction; frosted fallback on older devices.</string>

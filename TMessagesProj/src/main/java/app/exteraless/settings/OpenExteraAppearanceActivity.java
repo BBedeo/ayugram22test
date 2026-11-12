@@ -111,6 +111,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int disableAvatarBlurRow;
     private int blurDividerRow;
 
+    // Calls — independent of the glass master switch
+    private int callsHeaderRow;
+    private int hideVoIPLabelsRow;
+    private int callsDividerRow;
+
     // Avatar corners
     private int avatarCornersPreviewRow;
     private int singleCornerRadiusRow;
@@ -278,6 +283,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         forceBlurRow = addRow("forceBlur");
         disableAvatarBlurRow = addRow("disableAvatarBlur");
         blurDividerRow = addRow();
+
+        callsHeaderRow = addRow("callsHeader");
+        hideVoIPLabelsRow = addRow("hideVoIPControlLabels");
+        callsDividerRow = addRow();
 
     }
 
@@ -734,6 +743,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             rebuildAll();
             if (enabled) showPowerSaverNotice();
             return;
+        } else if (position == hideVoIPLabelsRow) {
+            final boolean hidden = AppearanceConfig.hideVoIPControlLabels.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(hidden);
+            }
+            return;
         } else if (position == glassAdvancedRow) {
             AppearanceConfig.liquidGlassAdvanced.toggleConfigBool();
             rebuildRowsAndNotify();
@@ -1062,6 +1077,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setText(getString(R.string.OEAppearanceSections));
                     } else if (position == blurHeaderRow) {
                         cell.setText(getString(R.string.OEAppearanceBlur));
+                    } else if (position == callsHeaderRow) {
+                        cell.setText(getString(R.string.OEAppearanceCalls));
                     } else if (position == chatListHeaderRow) {
                         cell.setText(getString(R.string.OEAppearanceChatList));
                     } else if (position == foldersHeaderRow) {
@@ -1086,6 +1103,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceGooeyAvatar), AppearanceConfig.gooeyAvatarAnimation.Bool(), true);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
+                    } else if (position == hideVoIPLabelsRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceHideVoIPControlLabels),
+                                AppearanceConfig.hideVoIPControlLabels.Bool(), false);
                     } else if (position == separateHeadersRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSeparateHeaders), AppearanceConfig.sectionsSeparatedHeaders(), true);
                     } else if (position == glassAdvancedRow) {
@@ -1247,6 +1267,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setText(getString(R.string.OEAppearanceCustomThemesInfo));
                     } else if (position == blurDividerRow) {
                         cell.setText(getString(R.string.OEAppearanceBlurInfo));
+                    } else if (position == callsDividerRow) {
+                        cell.setText(getString(R.string.OEAppearanceHideVoIPControlLabelsInfo));
                     } else if (position == avatarsDividerRow) {
                         cell.setText(getString(R.string.OEAppearanceSingleCornerRadiusInfo));
                     } else if (position == chatListDividerRow) {
@@ -1298,11 +1320,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 }
             }
             if (position == appearanceHeaderRow || position == sectionsHeaderRow
-                    || position == blurHeaderRow || position == chatListHeaderRow
+                    || position == blurHeaderRow || position == callsHeaderRow || position == chatListHeaderRow
                     || position == foldersHeaderRow || position == linksHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == appearanceDividerRow || position == sectionsDividerRow
-                    || position == blurDividerRow || position == avatarsDividerRow
+                    || position == blurDividerRow || position == callsDividerRow || position == avatarsDividerRow
                     || position == chatListDividerRow || position == foldersDividerRow
                     || position == linksDividerRow) {
                 return TYPE_INFO_PRIVACY;

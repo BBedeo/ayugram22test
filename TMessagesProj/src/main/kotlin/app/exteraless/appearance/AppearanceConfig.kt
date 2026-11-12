@@ -190,6 +190,14 @@ object AppearanceConfig {
             }
         })
 
+    /**
+     * Call control captions are visible by default. This option remains
+     * independent of Liquid Glass; accessibility and saved themes stay intact.
+     */
+    @JvmField
+    val hideVoIPControlLabels =
+        addConfig("OEAppearanceHideVoIPControlLabels", ConfigItem.configTypeBool, false)
+
     /** ExFullGram-wide optional native Liquid Glass; OFF by default. */
     @JvmField
     val universalLiquidGlass =

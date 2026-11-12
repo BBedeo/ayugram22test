@@ -17,4 +17,7 @@
     <string name="OEAppearanceGlassLightAngle">Направление света</string>
     <string name="OEAppearanceGlassMin">Мин.</string>
     <string name="OEAppearanceGlassMax">Макс.</string>
+    <string name="OEAppearanceCalls">Звонки</string>
+    <string name="OEAppearanceHideVoIPControlLabels">Скрыть подписи кнопок звонка</string>
+    <string name="OEAppearanceHideVoIPControlLabelsInfo">Убирает четыре подписи под кнопками во время личного звонка. Названия доступны экранному диктору. Применяется при открытии экрана звонка.</string>
 </resources>

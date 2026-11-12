@@ -17,4 +17,7 @@
     <string name="OEAppearanceGlassLightAngle">Напрямок світла</string>
     <string name="OEAppearanceGlassMin">Мін.</string>
     <string name="OEAppearanceGlassMax">Макс.</string>
+    <string name="OEAppearanceCalls">Дзвінки</string>
+    <string name="OEAppearanceHideVoIPControlLabels">Приховати підписи кнопок виклику</string>
+    <string name="OEAppearanceHideVoIPControlLabelsInfo">Приховує чотири підписи під кнопками приватного виклику. Назви залишаються доступними екранному диктору. Діє після відкриття екрана виклику.</string>
 </resources>
