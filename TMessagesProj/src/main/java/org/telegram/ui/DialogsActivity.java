@@ -8307,7 +8307,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
 
 
-            if ((!getMessagesController().isForum(dialogId) && !getMessagesController().isCommunity(dialogId) || isBotForumWithEmptyTopics(dialogId)) && (!selectedDialogs.isEmpty() || (initialDialogsType == DIALOGS_TYPE_FORWARD && selectAlertString != null))) {
+            if ((!getMessagesController().isForum(dialogId) && !getMessagesController().isCommunity(dialogId) || isBotForumWithEmptyTopics(dialogId)) && (!selectedDialogs.isEmpty() || (initialDialogsType == DIALOGS_TYPE_FORWARD && (selectAlertString != null || NekoConfig.forwardMultiSelectByTap.Bool())))) {
                 if (!selectedDialogs.contains(dialogId) && !checkCanWrite(dialogId)) {
                     return;
                 }
@@ -12406,6 +12406,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             });
         hideSendersNameItem[0] = options.getLast();
         options
+            .addIf(initialDialogsType == DIALOGS_TYPE_FORWARD, R.drawable.msg_send,
+                    LocaleController.getString(R.string.ExFullGramForwardSendAsCopy), () -> {
+                ChatActivity.noForwardQuote = true;
+                this.forceDocument = false;
+                if (delegate == null || selectedDialogs.isEmpty()) {
+                    return;
+                }
+                final ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
+                for (int i = 0; i < selectedDialogs.size(); i++) {
+                    topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
+                }
+                delegate.didSelectDialogs(DialogsActivity.this, topicKeys, commentView.getFieldText(),
+                        false, notify, scheduleDate, scheduleRepeatPeriod, null);
+            })
             .addIf(canSendDocs, R.drawable.msg_sendfile, LocaleController.getString(multipleMedia ? R.string.SendAsFiles : R.string.SendAsFile), () -> {
                 this.forceDocument = true;
                 if (delegate == null || selectedDialogs.isEmpty()) {
@@ -13244,7 +13258,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     if (!validateSlowModeDialog(did)) {
                         return;
                     }
-                    if (!selectedDialogs.isEmpty()) {
+                    if (!selectedDialogs.isEmpty() || (initialDialogsType == DIALOGS_TYPE_FORWARD && NekoConfig.forwardMultiSelectByTap.Bool())) {
                         boolean checked = addOrRemoveSelectedDialog(did, null);
                         findAndUpdateCheckBox(did, checked);
                         updateSelectedCount();
