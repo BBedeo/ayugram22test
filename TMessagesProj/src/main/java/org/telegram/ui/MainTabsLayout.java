@@ -560,7 +560,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             selectorRect.offset(getWidth() - edge - selectorRect.right, 0);
         }
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
-                Theme.isCurrentThemeDark(), extension / dp(16));
+                Theme.isCurrentThemeDark(), direction * extension / dp(16));
     }
 
         private boolean drawTopDivider = true;
