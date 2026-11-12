@@ -181,7 +181,7 @@ object NaConfig {
         addConfig(
             "CustomTitle",
             ConfigItem.configTypeString,
-            "exteraless"
+            "ExFullGram"
         )
     val dateOfForwardedMsg =
         addConfig(
