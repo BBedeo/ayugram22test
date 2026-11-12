@@ -35,6 +35,8 @@ public final class DemoBackend {
     private static final String KEY_NEXT_PEER_ID = "next_peer_id";
     private static final String KEY_SHARED_CHATS = "shared_test_chats";
     private static final String KEY_ACCOUNT_READY_PREFIX = "account_ready_";
+    private static final String KEY_ACCOUNT_DATA_VERSION_PREFIX = "account_data_version_";
+    private static final int ACCOUNT_DATA_VERSION = 2;
 
     public static final int TYPE_PRIVATE = 0;
     public static final int TYPE_GROUP = 1;
@@ -171,7 +173,9 @@ public final class DemoBackend {
     }
 
     public static boolean isAccountReady(int account) {
-        return isTestAccount(account) && prefs().getBoolean(KEY_ACCOUNT_READY_PREFIX + account, false);
+        return isTestAccount(account)
+                && prefs().getBoolean(KEY_ACCOUNT_READY_PREFIX + account, false)
+                && prefs().getInt(KEY_ACCOUNT_DATA_VERSION_PREFIX + account, 0) >= ACCOUNT_DATA_VERSION;
     }
 
     public static void ensureReady(int account, Runnable onReady) {
@@ -228,7 +232,10 @@ public final class DemoBackend {
                 config.saveConfig(false);
 
                 org.telegram.ui.DialogsActivity.dialogsLoaded[account] = false;
-                prefs().edit().putBoolean(KEY_ACCOUNT_READY_PREFIX + account, true).apply();
+                prefs().edit()
+                        .putInt(KEY_ACCOUNT_DATA_VERSION_PREFIX + account, ACCOUNT_DATA_VERSION)
+                        .putBoolean(KEY_ACCOUNT_READY_PREFIX + account, true)
+                        .apply();
                 NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
                 NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.mainUserInfoChanged);
                 if (onReady != null) {
