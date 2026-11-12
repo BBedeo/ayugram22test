@@ -162,8 +162,17 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     }
 
     public void setGestureSelectedOverride(float gestureSelectedOverride, boolean allow) {
-        this.gestureSelectedOverride = gestureSelectedOverride;
-        this.hasGestureSelectedOverride = allow && !mainTabMaterial3;
+        final float next = MathUtils.clamp(gestureSelectedOverride, 0f, 1f);
+        final boolean nextAllow = allow && !mainTabMaterial3;
+        if (this.gestureSelectedOverride == next && this.hasGestureSelectedOverride == nextAllow) {
+            return;
+        }
+        this.gestureSelectedOverride = next;
+        this.hasGestureSelectedOverride = nextAllow;
+        // The travelling glass selector is drawn by MainTabsLayout, so this
+        // override must drive icon/text emphasis too, not only the old local
+        // selector that is skipped in elastic mode.
+        applyColors();
         invalidate();
     }
 
@@ -297,8 +306,11 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     private boolean needUpdateBackupViewColor;
 
     private void applyColors() {
-        final int color = ColorUtils.blendARGB(colorDefault, colorSelected, isSelectedAnimator.getFloatValue());
-        final int colorText = ColorUtils.blendARGB(colorDefault, colorSelectedText, isSelectedAnimator.getFloatValue());
+        final float selectedFactor = hasGestureSelectedOverride
+                ? gestureSelectedOverride
+                : isSelectedAnimator.getFloatValue();
+        final int color = ColorUtils.blendARGB(colorDefault, colorSelected, selectedFactor);
+        final int colorText = ColorUtils.blendARGB(colorDefault, colorSelectedText, selectedFactor);
 
         final PorterDuffColorFilter filter = new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN);
         if (backupImageView != null && needUpdateBackupViewColor) {
