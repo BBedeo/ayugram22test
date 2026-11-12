@@ -13,6 +13,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.VelocityTracker;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -110,6 +111,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private boolean elasticTouchStartedOnPill;
     private boolean elasticMenuShownDuringTouch;
     private int elasticTouchPointer = -1;
+    private VelocityTracker elasticVelocityTracker;
+    private float elasticReleaseVelocityX;
 
     /** A separate native backdrop lens is layered ABOVE the panel and BELOW the tab icons. */
     public void setElasticPillGlass(BlurredBackgroundDrawable glass) {
@@ -386,8 +389,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         // low-damping spring was meant for an almost invisible long-press
         // selector and visibly overshot across neighboring buttons.
         selectedTabPositionX.getSpring()
-                .setStiffness(650f)
-                .setDampingRatio(.76f);
+                .setStiffness(390f)
+                .setDampingRatio(.82f);
         if (!isInLongPress && (changed || !elasticPillInitialized)) {
             syncElasticPillToSelected(animated);
         }
@@ -421,7 +424,14 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         } else if (Math.abs(animatedLongSelectedViewCenterX - cx) > .5f) {
             selectedTabPositionOffsetX.cancel();
             animatedLongSelectedViewOffsetX = 0f;
+            // Preserve a little of the finger's release velocity, then let a
+            // damped spring settle the lens into the destination slot. This
+            // makes ACTION_UP visibly continuous instead of teleporting.
+            selectedTabPositionX.setStartVelocity(elasticReleaseVelocityX);
+            elasticReleaseVelocityX = 0f;
             selectedTabPositionX.animateToFinalPosition(cx);
+        } else {
+            elasticReleaseVelocityX = 0f;
         }
         invalidate();
     }
@@ -527,8 +537,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
         final float height = Math.max(1f, availableHeight - dp(2));
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
-        final float availableWidth = Math.max(dp(28), widthAtX - dp(6));
-        final float width = Math.min(availableWidth, Math.max(height, dp(70))) + extension;
+        // Never cap the capsule at 70dp: long labels such as "Настройки"
+        // must remain visually inside the same contour as the selected tab.
+        // The slot itself is the source of truth for the pill geometry.
+        final float availableWidth = Math.max(dp(28), widthAtX - dp(4));
+        final float width = availableWidth + extension;
         final float cy = getPaddingTop() + availableHeight * .5f;
         selectorRect.set(centerX - width * .5f, cy - height * .5f,
                 centerX + width * .5f, cy + height * .5f);
@@ -882,6 +895,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticDownY = ev.getY();
             elasticDragging = false;
             elasticMenuShownDuringTouch = false;
+            elasticReleaseVelocityX = 0f;
+            if (elasticVelocityTracker != null) elasticVelocityTracker.recycle();
+            elasticVelocityTracker = VelocityTracker.obtain();
+            elasticVelocityTracker.addMovement(ev);
             // Do not treat every tab rectangle as a draggable surface.
             elasticTouchStartedOnPill = elasticTouchTab instanceof GlassTabView
                     && findSelectedTab() != null
@@ -894,6 +911,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 getParent().requestDisallowInterceptTouchEvent(true);
             }
             return super.dispatchTouchEvent(ev);
+        }
+
+        if (elasticVelocityTracker != null) {
+            elasticVelocityTracker.addMovement(ev);
         }
 
         if (!elasticTouchStartedOnPill || elasticMenuShownDuringTouch) {
@@ -937,6 +958,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             }
             if (elasticDragging) {
                 animatedLongSelectedViewCenterX = clampXToChildrenCenters(x + elasticTouchOffsetX, this);
+                updateElasticSelectionPreview(animatedLongSelectedViewCenterX);
                 invalidate();
                 return true;
             }
@@ -944,6 +966,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             if (elasticDragging) {
                 final View hovered = findNearestVisibleChildByX(
                         animatedLongSelectedViewCenterX, this);
+                if (elasticVelocityTracker != null) {
+                    elasticVelocityTracker.computeCurrentVelocity(1000);
+                    final float rawVelocity = elasticVelocityTracker.getXVelocity(elasticTouchPointer);
+                    final float maxVelocity = dp(1400);
+                    elasticReleaseVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, rawVelocity)) * .18f;
+                }
                 finishElasticTouch(true);
                 if (hovered instanceof GlassTabView) {
                     hovered.performClick();
@@ -969,9 +997,55 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         elasticTouchTab = null;
         elasticTouchPointer = -1;
         if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+        clearElasticSelectionPreview();
+        if (elasticVelocityTracker != null) {
+            elasticVelocityTracker.recycle();
+            elasticVelocityTracker = null;
+        }
         if (hadDrag) {
             isInLongPress = false;
-            if (!releasedOnTab) syncElasticPillToSelected(true);
+            if (!releasedOnTab) {
+                elasticReleaseVelocityX = 0f;
+                syncElasticPillToSelected(true);
+            }
+        } else {
+            elasticReleaseVelocityX = 0f;
+        }
+    }
+
+    /**
+     * While dragging, only preview the visual selection. The actual ViewPager
+     * page is still committed on ACTION_UP, but icon/text emphasis follows the
+     * liquid lens continuously instead of leaving blue letters outside it.
+     */
+    private void updateElasticSelectionPreview(float x) {
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            final View child = getChildAt(i);
+            if (!(child instanceof GlassTabView) || child.getVisibility() != View.VISIBLE) continue;
+
+            final float center = getCenterX(child);
+            float nearestSpacing = Float.MAX_VALUE;
+            for (int j = 0; j < n; j++) {
+                if (i == j) continue;
+                final View other = getChildAt(j);
+                if (other == null || other.getVisibility() != View.VISIBLE) continue;
+                nearestSpacing = Math.min(nearestSpacing, Math.abs(center - getCenterX(other)));
+            }
+            if (nearestSpacing == Float.MAX_VALUE || nearestSpacing < 1f) {
+                nearestSpacing = Math.max(1f, child.getWidth());
+            }
+            final float factor = Math.max(0f, Math.min(1f,
+                    1f - Math.abs(center - x) / nearestSpacing));
+            ((GlassTabView) child).setGestureSelectedOverride(factor, true);
+        }
+    }
+
+    private void clearElasticSelectionPreview() {
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            final View child = getChildAt(i);
+            if (child instanceof GlassTabView) {
+                ((GlassTabView) child).setGestureSelectedOverride(0f, false);
+            }
         }
     }
 
