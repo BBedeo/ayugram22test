@@ -12,6 +12,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.view.View;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
@@ -142,6 +143,12 @@ public final class VoIPCallGlass {
         private boolean targetPressed;
         private ValueAnimator pressAnimator;
         private int drawableAlpha = 255;
+        private final VoIPBackgroundProvider callBackground;
+        private final int[] windowPosition = new int[2];
+
+        public IconBackground(VoIPBackgroundProvider callBackground) {
+            this.callBackground = callBackground;
+        }
 
         @Override
         public boolean isStateful() {
@@ -182,6 +189,19 @@ public final class VoIPCallGlass {
             canvas.save();
             if (LiquidGlassTuning.motionEnabled()) {
                 canvas.scale(1f + press * .075f, 1f - press * .085f, cx, cy);
+            }
+            // Use the call's own animated gradient capture as a backdrop,
+            // rather than an unrelated solid circle. We only sample the
+            // existing bitmap shader and do not recapture the entire screen.
+            if (callBackground != null && callBackground.getTotalWidth() > 0
+                    && callBackground.getTotalHeight() > 0 && getCallback() instanceof View) {
+                View owner = (View) getCallback();
+                owner.getLocationInWindow(windowPosition);
+                callBackground.setLightTranslation(windowPosition[0], windowPosition[1]);
+                canvas.drawCircle(cx, cy, radius, callBackground.getLightPaint());
+                if (callBackground.isReveal()) {
+                    canvas.drawCircle(cx, cy, radius, callBackground.getRevealPaint());
+                }
             }
             painter.drawFace(canvas, cx, cy, radius, Color.WHITE, press, drawableAlpha / 255f);
             canvas.restore();
