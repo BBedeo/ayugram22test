@@ -6,4 +6,15 @@
     <string name="OEAppearanceLiquidGlassClear">Прозрачное · мягкое</string>
     <string name="OEAppearanceLiquidGlassBalanced">Сбалансированное · естественное</string>
     <string name="OEAppearanceLiquidGlassExpressive">Выразительное · сильное преломление</string>
+    <string name="OEAppearanceGlassAdvanced">Тонкая настройка стекла</string>
+    <string name="OEAppearanceGlassMotion">Эластичное стекло при нажатии</string>
+    <string name="OEAppearanceGlassAdaptive">Адаптивное освещение</string>
+    <string name="OEAppearanceGlassStrength">Сила преломления</string>
+    <string name="OEAppearanceGlassBlur">Размытие фона</string>
+    <string name="OEAppearanceGlassTransparency">Прозрачность</string>
+    <string name="OEAppearanceGlassThickness">Толщина линзы</string>
+    <string name="OEAppearanceGlassHighlight">Яркость бликов</string>
+    <string name="OEAppearanceGlassLightAngle">Направление света</string>
+    <string name="OEAppearanceGlassMin">Мин.</string>
+    <string name="OEAppearanceGlassMax">Макс.</string>
 </resources>

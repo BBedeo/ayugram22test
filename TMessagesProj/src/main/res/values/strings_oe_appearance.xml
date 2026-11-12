@@ -60,6 +60,17 @@
     <string name="OEAppearanceLiquidGlassBalanced">Balanced · natural</string>
     <string name="OEAppearanceLiquidGlassExpressive">Expressive · stronger lens</string>
 
+    <string name="OEAppearanceGlassAdvanced">Fine-tune Liquid Glass</string>
+    <string name="OEAppearanceGlassMotion">Reactive elastic glass</string>
+    <string name="OEAppearanceGlassAdaptive">Adaptive lighting</string>
+    <string name="OEAppearanceGlassStrength">Refraction strength</string>
+    <string name="OEAppearanceGlassBlur">Background blur</string>
+    <string name="OEAppearanceGlassTransparency">Transparency</string>
+    <string name="OEAppearanceGlassThickness">Lens thickness</string>
+    <string name="OEAppearanceGlassHighlight">Highlights</string>
+    <string name="OEAppearanceGlassLightAngle">Light angle</string>
+    <string name="OEAppearanceGlassMin">Min</string>
+    <string name="OEAppearanceGlassMax">Max</string>
     <!-- Blur &amp; Effects -->
     <string name="OEAppearanceBlur">Blur Options</string>
     <string name="OEAppearanceForceBlur">Force Blur</string>

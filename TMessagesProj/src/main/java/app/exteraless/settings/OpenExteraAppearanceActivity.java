@@ -79,6 +79,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private static final int TYPE_ROUND_CHECK = 105;
     /** Две карточки-превью формы плавающей кнопки. */
     private static final int TYPE_FAB_SHAPE = 106;
+    private static final int TYPE_GLASS_SLIDER_BASE = 107;
+    private static final int GLASS_SLIDER_COUNT = 6;
 
     // Appearance
     private int appearanceHeaderRow;
@@ -99,6 +101,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int blurHeaderRow;
     private int universalLiquidGlassRow;
     private int liquidGlassMaterialRow;
+    private int glassAdvancedRow;
+    private final int[] liquidGlassSliderRows = new int[GLASS_SLIDER_COUNT];
+    private int glassMotionRow;
+    private int glassAdaptiveRow;
     private int glassOutlineRow;
     private int glassMessageMenuRow;
     private int forceBlurRow;
@@ -164,6 +170,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
      * значение на каждый dp, и пересборка всех фрагментов на каждом шаге даёт рывки.
      */
     private final Runnable sectionRadiusRebuild = this::rebuildAll;
+    /** Debounced visual refresh: do not rebuild the fragment on every slider tick. */
+    private final Runnable glassPrecisionRebuild = () -> {
+        org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings();
+        rebuildAll();
+    };
 
     public OpenExteraAppearanceActivity() {
         super();
@@ -252,6 +263,16 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         blurHeaderRow = addRow("blurHeader");
         universalLiquidGlassRow = addRow("universalLiquidGlass");
         liquidGlassMaterialRow = AppearanceConfig.universalLiquidGlass() ? addRow("liquidGlassMaterial") : -1;
+        glassAdvancedRow = AppearanceConfig.universalLiquidGlass() ? addRow("glassAdvanced") : -1;
+        for (int i = 0; i < GLASS_SLIDER_COUNT; i++) liquidGlassSliderRows[i] = -1;
+        glassMotionRow = glassAdaptiveRow = -1;
+        if (AppearanceConfig.universalLiquidGlass() && AppearanceConfig.liquidGlassAdvanced.Bool()) {
+            for (int i = 0; i < GLASS_SLIDER_COUNT; i++) {
+                liquidGlassSliderRows[i] = addRow("glassPrecision" + i);
+            }
+            glassMotionRow = addRow("glassMotion");
+            glassAdaptiveRow = addRow("glassAdaptive");
+        }
         glassOutlineRow = addRow("glassOutline");
         glassMessageMenuRow = addRow("glassMessageMenu");
         forceBlurRow = addRow("forceBlur");
@@ -713,6 +734,18 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             rebuildAll();
             if (enabled) showPowerSaverNotice();
             return;
+        } else if (position == glassAdvancedRow) {
+            AppearanceConfig.liquidGlassAdvanced.toggleConfigBool();
+            rebuildRowsAndNotify();
+            return;
+        } else if (position == glassMotionRow) {
+            AppearanceConfig.liquidGlassMotion.toggleConfigBool();
+            glassPrecisionRebuild.run();
+            return;
+        } else if (position == glassAdaptiveRow) {
+            AppearanceConfig.liquidGlassAdaptive.toggleConfigBool();
+            glassPrecisionRebuild.run();
+            return;
         } else if (position == liquidGlassMaterialRow) {
             showSelector(position, getString(R.string.OEAppearanceLiquidGlassMaterial), new CharSequence[]{
                     getString(R.string.OEAppearanceLiquidGlassClear),
@@ -894,6 +927,36 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
     }
 
+    private static final int[] GLASS_SLIDER_LABELS = {
+            R.string.OEAppearanceGlassStrength,
+            R.string.OEAppearanceGlassBlur,
+            R.string.OEAppearanceGlassTransparency,
+            R.string.OEAppearanceGlassThickness,
+            R.string.OEAppearanceGlassHighlight,
+            R.string.OEAppearanceGlassLightAngle
+    };
+    private static final int[] GLASS_SLIDER_MAX = {150, 100, 100, 24, 100, 360};
+    private static final int[] GLASS_SLIDER_MIN = {0, 0, 0, 3, 0, 0};
+
+    private ConfigItem glassSliderConfig(int i) {
+        switch (i) {
+            case 0: return AppearanceConfig.liquidGlassStrength;
+            case 1: return AppearanceConfig.liquidGlassBlur;
+            case 2: return AppearanceConfig.liquidGlassTransparency;
+            case 3: return AppearanceConfig.liquidGlassThickness;
+            case 4: return AppearanceConfig.liquidGlassHighlight;
+            default: return AppearanceConfig.liquidGlassLightAngle;
+        }
+    }
+
+    private void onGlassSliderChanged(int id, int value) {
+        final ConfigItem item = glassSliderConfig(id);
+        if (item.Int() == value) return;
+        item.setConfigInt(value);
+        AndroidUtilities.cancelRunOnUIThread(glassPrecisionRebuild);
+        AndroidUtilities.runOnUIThread(glassPrecisionRebuild, 600);
+    }
+
     private class ListAdapter extends BaseListAdapter {
 
         public ListAdapter(Context context) {
@@ -947,6 +1010,25 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     detailCell.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     detailCell.setMultilineDetail(false);
                     view = detailCell;
+                    break;
+                }
+                case TYPE_GLASS_SLIDER_BASE:
+                case TYPE_GLASS_SLIDER_BASE + 1:
+                case TYPE_GLASS_SLIDER_BASE + 2:
+                case TYPE_GLASS_SLIDER_BASE + 3:
+                case TYPE_GLASS_SLIDER_BASE + 4:
+                case TYPE_GLASS_SLIDER_BASE + 5: {
+                    final int which = viewType - TYPE_GLASS_SLIDER_BASE;
+                    final AvatarCornersSeekBar slider = new AvatarCornersSeekBar(
+                            mContext, value -> onGlassSliderChanged(which, value),
+                            GLASS_SLIDER_MIN[which], GLASS_SLIDER_MAX[which],
+                            getString(GLASS_SLIDER_LABELS[which]),
+                            getString(R.string.OEAppearanceGlassMin),
+                            getString(R.string.OEAppearanceGlassMax));
+                    slider.setValueSuffix(which == 3 ? "dp" : which == 5 ? "°" : "%");
+                    slider.setValue(glassSliderConfig(which).Int());
+                    slider.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    view = slider;
                     break;
                 }
                 case TYPE_SECTION_SLIDER:
@@ -1006,6 +1088,15 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == separateHeadersRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSeparateHeaders), AppearanceConfig.sectionsSeparatedHeaders(), true);
+                    } else if (position == glassAdvancedRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceGlassAdvanced),
+                                AppearanceConfig.liquidGlassAdvanced.Bool(), true);
+                    } else if (position == glassMotionRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceGlassMotion),
+                                AppearanceConfig.liquidGlassMotion.Bool(), true);
+                    } else if (position == glassAdaptiveRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceGlassAdaptive),
+                                AppearanceConfig.liquidGlassAdaptive.Bool(), true);
                     } else if (position == universalLiquidGlassRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceUniversalLiquidGlass),
                                 getString(R.string.OEAppearanceUniversalLiquidGlassInfo),
@@ -1137,6 +1228,16 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     }
                     break;
                 }
+                case TYPE_GLASS_SLIDER_BASE:
+                case TYPE_GLASS_SLIDER_BASE + 1:
+                case TYPE_GLASS_SLIDER_BASE + 2:
+                case TYPE_GLASS_SLIDER_BASE + 3:
+                case TYPE_GLASS_SLIDER_BASE + 4:
+                case TYPE_GLASS_SLIDER_BASE + 5: {
+                    int which = holder.getItemViewType() - TYPE_GLASS_SLIDER_BASE;
+                    ((AvatarCornersSeekBar) holder.itemView).setValue(glassSliderConfig(which).Int());
+                    break;
+                }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     // Скруглённый «хвост» списка положен последней тени, а она у нас после блока
@@ -1190,7 +1291,13 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 return TYPE_FOLDERS;
             } else if (position == sectionRadiusRow) {
                 return TYPE_SECTION_SLIDER;
-            } else if (position == appearanceHeaderRow || position == sectionsHeaderRow
+            }
+            for (int i = 0; i < GLASS_SLIDER_COUNT; i++) {
+                if (position == liquidGlassSliderRows[i]) {
+                    return TYPE_GLASS_SLIDER_BASE + i;
+                }
+            }
+            if (position == appearanceHeaderRow || position == sectionsHeaderRow
                     || position == blurHeaderRow || position == chatListHeaderRow
                     || position == foldersHeaderRow || position == linksHeaderRow) {
                 return TYPE_HEADER;

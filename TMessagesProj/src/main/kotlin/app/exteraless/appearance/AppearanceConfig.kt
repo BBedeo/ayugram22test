@@ -212,6 +212,42 @@ object AppearanceConfig {
         return liquidGlassMaterial.Int().coerceIn(0, 2)
     }
 
+    /** Expand the precision controls only on request. */
+    @JvmField
+    val liquidGlassAdvanced = addConfig("OEAppearanceGlassAdvanced", ConfigItem.configTypeBool, false)
+
+    /** Lens strength percent: 75 keeps Telegram's native coefficient. */
+    @JvmField
+    val liquidGlassStrength = addConfig("OEAppearanceGlassStrength", ConfigItem.configTypeInt, 75)
+
+    /** Capture blur: 60 matches Telegram's baseline, 0 disables it. */
+    @JvmField
+    val liquidGlassBlur = addConfig("OEAppearanceGlassBlur", ConfigItem.configTypeInt, 60)
+
+    /** Relative tint transparency; 50 is neutral for the selected preset. */
+    @JvmField
+    val liquidGlassTransparency = addConfig("OEAppearanceGlassTransparency", ConfigItem.configTypeInt, 50)
+
+    /** Lens edge thickness in dp, constrained to the surface size at render time. */
+    @JvmField
+    val liquidGlassThickness = addConfig("OEAppearanceGlassThickness", ConfigItem.configTypeInt, 11)
+
+    /** Fresnel edge sheen intensity. */
+    @JvmField
+    val liquidGlassHighlight = addConfig("OEAppearanceGlassHighlight", ConfigItem.configTypeInt, 55)
+
+    /** Direction of the virtual light source. */
+    @JvmField
+    val liquidGlassLightAngle = addConfig("OEAppearanceGlassLightAngle", ConfigItem.configTypeInt, 315)
+
+    /** Optical response to pressed-state changes; never steals touch events. */
+    @JvmField
+    val liquidGlassMotion = addConfig("OEAppearanceGlassMotion", ConfigItem.configTypeBool, true)
+
+    /** Adapt tint/highlights to theme and current backdrop color. */
+    @JvmField
+    val liquidGlassAdaptive = addConfig("OEAppearanceGlassAdaptive", ConfigItem.configTypeBool, true)
+
     /** Стеклянное меню сообщения. Дефолт true, как в exteraGram (BooleanPref(1)). */
     @JvmField
     val glassMessageMenu =

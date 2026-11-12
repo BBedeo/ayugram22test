@@ -6,4 +6,15 @@
     <string name="OEAppearanceLiquidGlassClear">Прозоре · м’яке</string>
     <string name="OEAppearanceLiquidGlassBalanced">Збалансоване · природне</string>
     <string name="OEAppearanceLiquidGlassExpressive">Виразне · сильне заломлення</string>
+    <string name="OEAppearanceGlassAdvanced">Тонке налаштування скла</string>
+    <string name="OEAppearanceGlassMotion">Пружне скло під час натискання</string>
+    <string name="OEAppearanceGlassAdaptive">Адаптивне освітлення</string>
+    <string name="OEAppearanceGlassStrength">Сила заломлення</string>
+    <string name="OEAppearanceGlassBlur">Розмиття тла</string>
+    <string name="OEAppearanceGlassTransparency">Прозорість</string>
+    <string name="OEAppearanceGlassThickness">Товщина лінзи</string>
+    <string name="OEAppearanceGlassHighlight">Яскравість відблисків</string>
+    <string name="OEAppearanceGlassLightAngle">Напрямок світла</string>
+    <string name="OEAppearanceGlassMin">Мін.</string>
+    <string name="OEAppearanceGlassMax">Макс.</string>
 </resources>
