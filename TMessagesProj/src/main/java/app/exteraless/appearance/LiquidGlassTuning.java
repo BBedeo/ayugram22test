@@ -83,6 +83,20 @@ public final class LiquidGlassTuning {
         return clamp(base * factor, min, .94f);
     }
 
+    /** Fast bit-packed identity of the user-visible precision controls. */
+    public static long settingsSignature() {
+        if (!isActive()) return 0L;
+        long v = AppearanceConfig.liquidGlassStrength.Int() & 255L;
+        v |= (AppearanceConfig.liquidGlassBlur.Int() & 127L) << 8;
+        v |= (AppearanceConfig.liquidGlassTransparency.Int() & 127L) << 15;
+        v |= (AppearanceConfig.liquidGlassThickness.Int() & 31L) << 22;
+        v |= (AppearanceConfig.liquidGlassHighlight.Int() & 127L) << 27;
+        v |= (AppearanceConfig.liquidGlassLightAngle.Int() & 511L) << 34;
+        v |= (AppearanceConfig.liquidGlassMotion.Bool() ? 1L : 0L) << 43;
+        v |= (AppearanceConfig.liquidGlassAdaptive.Bool() ? 1L : 0L) << 44;
+        return v;
+    }
+
     /** Preserve all prior theme colors when the optional effect is disabled. */
     public static float tintAlpha(boolean dark, float original) {
         if (!isActive()) return original;

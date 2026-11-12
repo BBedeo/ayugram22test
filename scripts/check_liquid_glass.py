@@ -45,14 +45,26 @@ checks = {
         'LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || exGlass' in engine
         and 'glassSettings.liquidMaterial != material' in engine
         and 'new GlassSettings(isBlurEnabled, isLiquidGlassEnabled, material)' in engine,
-    "Material participates in native glass equality and hash code":
-        'liquidMaterial == settings.liquidMaterial' in state
-        and 'Objects.hash(isBlurEnabled, isLiquidGlassEnabled, liquidMaterial)' in state,
+    "Precision values and profile changes invalidate existing GPU surfaces":
+        'liquidControls == settings.liquidControls' in state
+        and 'glassSettings.liquidControls != controls' in engine
+        and 'LiquidGlassTuning.settingsSignature()' in engine,
+    "Additional bottom sheets get opt-in translucent theme material and a rim":
+        'LiquidGlassTuning.isActive()' in read(JAVA / "org/telegram/ui/ActionBar/BottomSheet.java")
+        and 'LayerDrawable material' in read(JAVA / "org/telegram/ui/ActionBar/BottomSheet.java"),
     "GPU refraction stays on Telegram native AGSL shader":
         'LiquidGlassEffect' in drawable
         and 'LiquidGlassTuning.refractionScale()' in drawable
         and 'uniform float refract_intensity;' in shader
         and 'uniform float refract_intensity;' in arrow,
+    "Press glints and elasticity use native drawable state, no touch hijacking":
+        'onStateChange(int[] state)' in drawable
+        and 'ValueAnimator.ofFloat(pressProgress' in drawable
+        and 'glass_press' in shader
+        and 'glass_motion' in arrow,
+    "Fine-tuning uses native shader plus adjustable capture blur":
+        'LiquidGlassTuning.blurScale()' in read(JAVA / "org/telegram/utils/glass/source/GlassSourceRenderNode.java")
+        and 'LiquidGlassTuning.refractionScale()' in drawable,
     "Snapshot menus use drawable-owner GPU lens with fallback":
         'CapturedGlassSource implements GlassSource, DrawableOwner' in factory
         and 'new BlurredBackgroundDrawable(' in factory

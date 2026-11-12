@@ -21,6 +21,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import app.exteraless.appearance.LiquidGlassTuning;
 import android.graphics.ColorFilter;
 import android.graphics.Insets;
 import android.graphics.Paint;
@@ -1534,7 +1537,29 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                     onContainerTranslationYChanged(translationY);
                 }
             };
-            containerView.setBackgroundDrawable(shadowDrawable);
+            if (LiquidGlassTuning.isActive()) {
+                // Sheets are independent from ChatActivity's glass capture
+                // pipeline. Use a translucent, theme-aware material and a
+                // subtle optical rim, with system background blur where safe.
+                final int color = getThemedColor(Theme.key_dialogBackground);
+                final boolean dark = AndroidUtilities.computePerceivedBrightness(color) < .72f;
+                shadowDrawable.setAlpha(Math.round(LiquidGlassTuning.tintAlphaMenu(dark, .8f) * 255f));
+                GradientDrawable rim = new GradientDrawable();
+                rim.setColor(0x00000000);
+                final float radius = dp(18);
+                rim.setCornerRadii(new float[]{radius, radius, radius, radius, 0, 0, 0, 0});
+                rim.setStroke(dp(1), LiquidGlassTuning.adaptHighlight(dark ? 0x65FFFFFF : 0xA0FFFFFF));
+                LayerDrawable material = new LayerDrawable(new Drawable[]{shadowDrawable, rim});
+                material.setLayerInset(1, backgroundPaddingLeft, backgroundPaddingTop,
+                        backgroundPaddingLeft, 0);
+                containerView.setBackgroundDrawable(material);
+                if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                        && LaunchActivity.systemBlurEnabled) {
+                    window.setBackgroundBlurRadius(Math.round(dp(24) * LiquidGlassTuning.blurScale()));
+                }
+            } else {
+                containerView.setBackgroundDrawable(shadowDrawable);
+            }
             containerView.setPadding(backgroundPaddingLeft, (applyTopPadding ? dp(8) : 0) + backgroundPaddingTop - 1, backgroundPaddingLeft, (applyBottomPadding ? dp(8) : 0));
         }
         containerView.setVisibility(View.INVISIBLE);
