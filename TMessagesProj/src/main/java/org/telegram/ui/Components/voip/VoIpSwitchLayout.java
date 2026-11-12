@@ -119,6 +119,9 @@ public class VoIpSwitchLayout extends FrameLayout {
                 newText = "";
         }
         setContentDescription(newText);
+        // The tappable child must expose the same accessible name when the
+        // visual captions are hidden (and while the icon is animating).
+        voIpButtonView.setContentDescription(newText);
         if (labelsHidden) {
             currentTextView.animate().cancel();
             newTextView.animate().cancel();
