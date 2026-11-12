@@ -16553,6 +16553,12 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void performLogout(int type) {
+        // Type 0 is the forced/native network logout path. A local ExFullGram
+        // Test account has no Telegram auth key by design, so never clear it here.
+        if (type == 0 && app.exteraless.demo.DemoBackend.isTestSlot(currentAccount)) {
+            return;
+        }
+
         if (type == 1) {
             GramWalletStorage.wipeForUser(ApplicationLoader.applicationContext, currentAccount, getUserConfig().getClientUserId());
             unregistedPush();
