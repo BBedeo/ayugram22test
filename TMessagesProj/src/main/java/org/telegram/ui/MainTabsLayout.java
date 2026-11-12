@@ -974,9 +974,22 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 }
                 finishElasticTouch(true);
                 if (hovered instanceof GlassTabView) {
+                    final boolean sameSelection = elasticSelectedTab == hovered;
                     hovered.performClick();
+                    if (sameSelection) {
+                        // Releasing inside the already-selected slot still has
+                        // to settle from the finger position back to its center.
+                        syncElasticPillToSelected(true);
+                    } else if (elasticSelectedTab != hovered) {
+                        // The child click was rejected (for example by an
+                        // in-flight ViewPager touch). Return to the real page.
+                        elasticReleaseVelocityX = 0f;
+                        syncElasticPillToSelected(true);
+                    }
+                } else {
+                    elasticReleaseVelocityX = 0f;
+                    syncElasticPillToSelected(true);
                 }
-                syncElasticPillToSelected(true);
                 return true;
             }
             finishElasticTouch(false);
