@@ -87,6 +87,7 @@ import org.telegram.ui.Components.blur3.BlurredBackgroundWithFadeDrawable;
 import org.telegram.ui.Components.blur3.RenderNodeWithHash;
 import org.telegram.ui.Components.blur3.capture.IBlur3Hash;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
+import org.telegram.ui.Components.blur3.drawable.GlassRim;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProviderBuilder;
 import app.exteraless.appearance.ElasticPillGesture;
@@ -511,6 +512,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                             .setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.95f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
+            capsule.setLightAngle(GlassRim.LIGHT_TOP_LEFT);
             if (canRefract) {
                 // Elastic pills are themselves a liquid-glass interaction.
                 // Force the real GPU lens for this drawable even when the
