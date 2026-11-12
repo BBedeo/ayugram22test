@@ -518,6 +518,15 @@ public final class DemoBackend {
         } else if (params.invoice != null) {
             message.media = params.invoice;
             message.flags |= 512;
+        } else if (params.user != null) {
+            TLRPC.TL_messageMediaContact media = new TLRPC.TL_messageMediaContact();
+            media.phone_number = params.user.phone != null ? params.user.phone : "";
+            media.first_name = params.user.first_name != null ? params.user.first_name : "";
+            media.last_name = params.user.last_name != null ? params.user.last_name : "";
+            media.user_id = params.user.id;
+            media.vcard = "";
+            message.media = media;
+            message.flags |= 512;
         }
     }
 
@@ -940,14 +949,16 @@ public final class DemoBackend {
         String text = params.message;
         if (text == null || text.isEmpty()) text = params.caption;
         if (text == null || text.isEmpty()) {
-            if (params.photo != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaPhoto);
-            else if (params.document != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaFile);
-            else if (params.location != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaLocation);
-            else if (params.poll != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaPoll);
-            else if (params.todo != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaTask);
-            else if (params.game != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaGame);
-            else if (params.invoice != null) text = LocaleController.getString(R.string.ExFullGramDemoMediaInvoice);
-            else text = LocaleController.getString(R.string.ExFullGramDemoMessage);
+            // A genuine Telegram media bubble has no artificial "[Photo]" or
+            // "[File]" caption. Preserve its media type to let ChatActivity
+            // render native sticker, voice, photo and document transitions.
+            if (params.photo != null || params.document != null || params.location != null
+                    || params.poll != null || params.todo != null || params.game != null
+                    || params.invoice != null || params.user != null || params.mediaWebPage != null) {
+                text = "";
+            } else {
+                text = LocaleController.getString(R.string.ExFullGramDemoMessage);
+            }
         }
 
         TLRPC.User self = UserConfig.getInstance(account).getCurrentUser();
