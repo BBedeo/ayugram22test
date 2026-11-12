@@ -79,7 +79,8 @@ checks = {
         and "direction * extension / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.16f), AndroidUtilities.dpf2(.06f))" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.16f), AndroidUtilities.dpf2(.06f))" in main
+        and "? (dark ? .055f : .04f)" in main,
     "No fake painted double rim over the native lens":
         "canvas.drawArc(" not in pill
         and "LinearGradient" not in pill
@@ -93,6 +94,11 @@ checks = {
         "updateElasticSelectionPreview(animatedLongSelectedViewCenterX)" in nav
         and "setGestureSelectedOverride(factor, true)" in nav
         and "clearElasticSelectionPreview()" in nav,
+    "Tab icon and text accent follow the travelling lens":
+        "applyColors();" in tab
+        and "hasGestureSelectedOverride" in tab
+        and "gestureSelectedOverride" in tab
+        and "final float selectedFactor = hasGestureSelectedOverride" in tab,
     "Release keeps finger velocity and settles with a controlled spring":
         "VelocityTracker" in nav
         and "computeCurrentVelocity(1000)" in nav
