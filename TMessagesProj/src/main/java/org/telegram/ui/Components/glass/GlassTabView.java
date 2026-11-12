@@ -167,11 +167,23 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         if (this.gestureSelectedOverride == next && this.hasGestureSelectedOverride == nextAllow) {
             return;
         }
+        final boolean prevEffective = this.hasGestureSelectedOverride
+                ? (this.gestureSelectedOverride >= 0.45f)
+                : isSelectedAnimator.getValue();
         this.gestureSelectedOverride = next;
         this.hasGestureSelectedOverride = nextAllow;
+        final boolean nextEffective = this.hasGestureSelectedOverride
+                ? (this.gestureSelectedOverride >= 0.45f)
+                : isSelectedAnimator.getValue();
         // The travelling glass selector is drawn by MainTabsLayout, so this
-        // override must drive icon/text emphasis too, not only the old local
-        // selector that is skipped in elastic mode.
+        // override must drive icon/text emphasis and Lottie active/outline
+        // transitions live as the finger pulls away onto neighboring tabs.
+        if (prevEffective != nextEffective) {
+            textView.setTypeface(!nextEffective || mainTabMaterial3
+                    ? AndroidUtilities.bold()
+                    : AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_EXTRA_BOLD));
+            checkPlayAnimation(true);
+        }
         applyColors();
         invalidate();
     }
@@ -352,7 +364,9 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     private long lastBotIconId;
 
     private void checkPlayAnimation(boolean animated) {
-        final boolean isSelected = isSelectedAnimator.getValue();
+        final boolean isSelected = hasGestureSelectedOverride
+                ? (gestureSelectedOverride >= 0.45f)
+                : isSelectedAnimator.getValue();
 
         if (tabAnimationBot !=  null) {
             boolean animatedIcon = true;

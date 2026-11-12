@@ -13,47 +13,83 @@ float sdfPill(float2 p, float2 halfSize, float r) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rad;
 }
 
+float gaussian(float x) {
+  return exp(-x * x);
+}
+
 half4 main(in float2 fragCoord) {
   float2 p = fragCoord - center;
   float sdRaw = sdfPill(p, size, radius);
-  if (sdRaw > 0.5) {
+  if (sdRaw > 0.75) {
     return half4(0.0);
   }
+  float pillAA = smoothstep(0.75, -0.75, sdRaw);
   float sd = min(sdRaw, 0.0);
   float gx = sdfPill(p + float2(1.0, 0.0), size, radius) - sdRaw;
   float gy = sdfPill(p + float2(0.0, 1.0), size, radius) - sdRaw;
   float gLen = length(float2(gx, gy));
   float2 edgeDir = gLen > 0.001 ? float2(gx, gy) / gLen : float2(0.0, -1.0);
 
-  float t = clamp(thickness, 4.0, min(size.x, size.y) * 0.90);
-  float rimT = clamp(1.0 + sd / t, 0.0, 1.0);
-  float bevel = pow(max(rimT, 0.0001), 1.40);
+  float minHalf = max(min(size.x, size.y), 4.0);
+  float t = clamp(thickness, 4.0, minHalf * 0.90);
+  float lensDepth = clamp(-sd / minHalf, 0.0, 1.0);
+  float rimT = clamp(1.0 + sd / max(t, minHalf * 0.68), 0.0, 1.0);
+  float lip = pow(max(rimT, 0.0001), 1.32);
   float press = clamp(glass_press, 0.0, 1.0);
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Convex optical droplet magnification inside the pill + smooth bevel lip wrap without double-ghosting.
-  float magFactor = (0.075 + lift * 0.105) * (1.0 - bevel * 0.48);
+  // Convex droplet magnification in center + curved glass meniscus bend around the outer shoulder.
+  float magFactor = (0.088 + lift * 0.095) * (0.28 + 0.72 * lensDepth);
   float2 refractOffset = -p * magFactor
-      + edgeDir * bevel * t * (0.26 + lift * 0.18)
-      + float2(move * t * 0.20, 0.0) * bevel;
+      + edgeDir * lip * t * (0.30 + lift * 0.22)
+      + float2(move * t * 0.24, 0.0) * lip;
 
   float2 uv = fragCoord + refractOffset;
-  float2 disp = edgeDir * (1.5 + lift * 2.1) * bevel;
+  float2 disp = edgeDir * (1.8 + lift * 2.4) * lip + float2(move * 1.1, 0.0) * lip;
 
-  half4 centerSample = img.eval(uv);
-  half rVal = img.eval(uv + disp).r;
-  half bVal = img.eval(uv - disp).b;
+  half4 gC = img.eval(uv);
+  half4 rC = img.eval(uv + disp);
+  half4 bC = img.eval(uv - disp);
 
-  float fringe = 0.78 * bevel;
-  half3 rgb = half3(
-      mix(centerSample.r, rVal, half(fringe)),
-      centerSample.g,
-      mix(centerSample.b, bVal, half(fringe)));
+  float fringe = 0.72 * lip;
+  half r = mix(gC.r, rC.r, half(fringe));
+  half b = mix(gC.b, bC.b, half(fringe));
+  half rA = mix(gC.a, rC.a, half(fringe));
+  half bA = mix(gC.a, bC.a, half(fringe));
+  half contentA = max(gC.a, max(rA, bA));
+  half4 refracted = half4(min(half3(contentA), half3(r, gC.g, b)), contentA) * half(pillAA);
 
-  // Subtle top-rim specular kiss strictly inside opaque glyph pixels (premultiplied-safe).
-  float topKiss = bevel * pow(max(dot(edgeDir, float2(-0.707, -0.707)) * 0.5 + 0.5, 0.0001), 2.5);
-  rgb = min(half3(centerSample.a), rgb + half3(0.14 * topKiss) * centerSample.a);
+  // Top-surface curved crystal reflections composited OVER refracted glyphs so icons,
+  // badges, and letters visibly sit inside the 3D glass bead rather than painted above it.
+  float2 invSize = 1.0 / max(size, float2(1.0));
+  float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
+  float angle = -2.356 + move * 0.40;
+  float2 lightDir = float2(cos(angle), sin(angle));
+  float rawDot = dot(edgeDir, lightDir);
+  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.6);
+  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 4.0) * 0.65;
 
-  return half4(rgb, centerSample.a);
+  float d = -sd;
+  float edgeGlow = gaussian((d - 1.3) / 1.45);
+  float bevelGlow = gaussian((d - 4.5) / 4.2) * 0.30;
+  float rimGlint = (keyArc * 0.44 + catchArc * 0.28 + (0.045 + 0.055 * lift))
+      * (edgeGlow + bevelGlow) * (0.65 + 0.35 * lift);
+
+  float crown = smoothstep(0.10, -0.92, relCenter.y)
+      * smoothstep(-1.05, -0.25, relCenter.y)
+      * (0.042 + 0.022 * lift) * (1.0 - lip * 0.35);
+  float sweepCoord = relCenter.x * 0.78 + relCenter.y * 0.45 - move * 0.38;
+  float sweep = gaussian(sweepCoord / 0.24)
+      * (0.14 * abs(move) + 0.05 * press) * (0.35 + 0.65 * lip);
+
+  float darkRim = gaussian((d - 0.6) / 1.1) * (0.10 + 0.06 * lift);
+  float specAlpha = clamp(rimGlint + crown + sweep, 0.0, 0.72) * pillAA;
+  half3 specRGB = mix(half3(0.86, 0.94, 1.0), half3(1.0, 0.99, 0.97),
+      half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0))) * half(specAlpha);
+
+  half3 shadowed = refracted.rgb * half(1.0 - darkRim * float(refracted.a));
+  half3 outRGB = specRGB + shadowed * half(1.0 - specAlpha);
+  float outAlpha = specAlpha + float(refracted.a) * (1.0 - specAlpha);
+  return half4(min(outRGB, half3(outAlpha)), half(outAlpha));
 }

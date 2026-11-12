@@ -566,14 +566,23 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float centerX = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
         final float frameDelta = Float.isNaN(elasticPrevCenterX) ? 0f : (centerX - elasticPrevCenterX);
         elasticPrevCenterX = centerX;
-        // At rest the lens is EXACTLY the native selector. During travel and
-        // spring settle, stretch along motion and apply the jelly squash-bounce.
+        elasticSmoothedDelta += (frameDelta - elasticSmoothedDelta) * .35f;
+        // At rest the lens is EXACTLY the native selector. During live drag,
+        // stretch responds to smoothed velocity (not distance from the old tab,
+        // which would freeze an asymmetric wing at destination and snap on release).
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
-        final float extension = Math.min(dp(16), travelled * .17f);
-        final float velocityStretch = Math.min(dp(5.5f), Math.abs(frameDelta) * .32f);
-        final float totalStretch = Math.min(dp(18), extension + velocityStretch);
+        final float extension = elasticDragging ? 0f : Math.min(dp(16), travelled * .17f);
+        final float velocityStretch = elasticDragging
+                ? Math.min(dp(14), Math.abs(elasticSmoothedDelta) * 1.10f)
+                : Math.min(dp(5.5f), Math.abs(elasticSmoothedDelta) * .35f);
+        final float targetStretch = Math.min(dp(18), extension + velocityStretch);
+        elasticSmoothedStretch += (targetStretch - elasticSmoothedStretch) * (elasticDragging ? .32f : .26f);
+        if (Math.abs(elasticSmoothedStretch) < .02f && targetStretch == 0f) {
+            elasticSmoothedStretch = 0f;
+        }
+        final float totalStretch = elasticSmoothedStretch;
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float lift = Math.max(elasticPressValue, Math.min(1f, totalStretch / dp(6.5f)));
+        final float lift = Math.max(elasticPressValue, Math.min(1f, totalStretch / dp(7.0f)));
         final float pressSwell = lift * dp(5.4f);
         final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell;
         final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .88f;
@@ -584,25 +593,37 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float cy = getPaddingTop() + availableHeight * .5f;
 
         final float direction = elasticDragging
-                ? Math.signum(centerX - selectedTabDestinationX)
-                : (Math.abs(frameDelta) > .25f
-                        ? Math.signum(frameDelta)
+                ? (Math.abs(elasticSmoothedDelta) > .20f ? Math.signum(elasticSmoothedDelta) : 0f)
+                : (Math.abs(elasticSmoothedDelta) > .25f
+                        ? Math.signum(elasticSmoothedDelta)
                         : Math.signum(selectedTabDestinationX - centerX));
         final float trailingStretch = direction == 0f ? totalStretch * .5f : totalStretch * .30f;
         final float leadingStretch = totalStretch - trailingStretch;
         final float leftStretch = direction < 0f ? leadingStretch : trailingStretch;
         final float rightStretch = direction > 0f ? leadingStretch : trailingStretch;
 
+        // Softly absorb outer edge approach instead of rigidly brick-walling
+        // and offsetting the opposite side across the active tab.
+        final float edge = dp(1.0f);
+        final float rawLeft = centerX - baseWidth * .5f;
+        final float rawRight = centerX + baseWidth * .5f;
+        final float leftHeadroom = Math.max(0f, rawLeft - edge);
+        final float rightHeadroom = Math.max(0f, (getWidth() - edge) - rawRight);
+        final float dampedLeftStretch = Math.min(leftStretch, leftHeadroom);
+        final float dampedRightStretch = Math.min(rightStretch, rightHeadroom);
+        final float finalLeft = rawLeft < edge
+                ? edge - (edge - rawLeft) * dp(1.0f) / ((edge - rawLeft) + dp(2.0f))
+                : rawLeft - dampedLeftStretch;
+        final float finalRight = rawRight > getWidth() - edge
+                ? (getWidth() - edge) + (rawRight - (getWidth() - edge)) * dp(1.0f)
+                        / ((rawRight - (getWidth() - edge)) + dp(2.0f))
+                : rawRight + dampedRightStretch;
+
         selectorRect.set(
-                centerX - baseWidth * .5f - leftStretch,
+                finalLeft,
                 cy - height * .5f,
-                centerX + baseWidth * .5f + rightStretch,
+                finalRight,
                 cy + height * .5f);
-        final float edge = dp(3);
-        if (selectorRect.left < edge) selectorRect.offset(edge - selectorRect.left, 0);
-        if (selectorRect.right > getWidth() - edge) {
-            selectorRect.offset(getWidth() - edge - selectorRect.right, 0);
-        }
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
                 Theme.isCurrentThemeDark(), direction * Math.min(1f, totalStretch / dp(16)),
                 elasticTouchStartedOnPill && !elasticMenuShownDuringTouch);
@@ -611,11 +632,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
     private void updateElasticTabLensScale(float lensCenterX, float lensWidth, float totalStretch) {
         final float travelFactor = Math.min(1f, totalStretch / Math.max(1f, dp(10)));
+        final float active = Math.max(elasticPressValue, travelFactor);
         final float boost = Math.max(0f,
                 elasticPressValue * .050f
                 + travelFactor * .028f
                 + Math.max(0f, elasticJellyValue) * .030f);
-        final float span = Math.max(dp(28), lensWidth * .95f);
+        final float sink = active * .036f;
+        final float span = Math.max(dp(28), lensWidth * .86f);
         for (int i = 0, n = getChildCount(); i < n; i++) {
             final View child = getChildAt(i);
             if (!(child instanceof GlassTabView) || child.getVisibility() != View.VISIBLE) {
@@ -623,7 +646,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             }
             final float dist = Math.abs(getCenterX(child) - lensCenterX);
             final float overlap = Math.max(0f, Math.min(1f, 1f - dist / span));
-            final float targetScale = 1f + overlap * boost;
+            final float targetScale = 1f + overlap * boost - (1f - overlap) * sink;
             if (Math.abs(child.getScaleX() - targetScale) > .001f) {
                 child.setScaleX(targetScale);
                 child.setScaleY(targetScale);
@@ -853,6 +876,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private float animatedLongSelectedViewCenterX;
     private float animatedLongSelectedViewOffsetX;
     private float elasticPrevCenterX = Float.NaN;
+    private float elasticSmoothedDelta;
+    private float elasticSmoothedStretch;
     private float elasticJellyValue;
     private float elasticPressValue;
 
@@ -1258,10 +1283,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     final float maxVelocity = dp(1400);
                     elasticReleaseVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, rawVelocity)) * .38f;
                 }
-                finishElasticTouch(true);
+                finishElasticTouch(true, false);
                 if (hovered instanceof GlassTabView) {
                     final boolean sameSelection = elasticSelectedTab == hovered;
                     hovered.performClick();
+                    clearElasticSelectionPreview();
                     if (sameSelection) {
                         // Releasing inside the already-selected slot still has
                         // to settle from the finger position back to its center.
@@ -1273,6 +1299,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                         syncElasticPillToSelected(true);
                     }
                 } else {
+                    clearElasticSelectionPreview();
                     elasticReleaseVelocityX = 0f;
                     syncElasticPillToSelected(true);
                 }
@@ -1289,6 +1316,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     }
 
     private void finishElasticTouch(boolean releasedOnTab) {
+        finishElasticTouch(releasedOnTab, true);
+    }
+
+    private void finishElasticTouch(boolean releasedOnTab, boolean clearPreview) {
         final boolean hadDrag = elasticDragging;
         final boolean wasOnPill = elasticTouchStartedOnPill;
         elasticDragging = false;
@@ -1298,7 +1329,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         elasticTouchTab = null;
         elasticTouchPointer = -1;
         if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
-        clearElasticSelectionPreview();
+        if (clearPreview) {
+            clearElasticSelectionPreview();
+        }
         if (elasticVelocityTracker != null) {
             elasticVelocityTracker.recycle();
             elasticVelocityTracker = null;
@@ -1346,8 +1379,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             if (nearestSpacing == Float.MAX_VALUE || nearestSpacing < 1f) {
                 nearestSpacing = Math.max(1f, child.getWidth());
             }
-            final float factor = Math.max(0f, Math.min(1f,
-                    1f - Math.abs(center - x) / nearestSpacing));
+            final float linear = Math.max(0f, Math.min(1f,
+                    1f - Math.abs(center - x) / (nearestSpacing * .78f)));
+            final float factor = linear * linear * (3f - 2f * linear);
             ((GlassTabView) child).setGestureSelectedOverride(factor, true);
         }
     }

@@ -87,8 +87,8 @@ checks = {
         and "totalStretch / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider or chalky wireframe outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.32f), AndroidUtilities.dpf2(.22f))" in main
-        and "canRefract ? 0x11E4F0FF : 0x26E4F0FF" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.34f), AndroidUtilities.dpf2(.24f))" in main
+        and "canRefract ? 0x1CE0EEFF : 0x32E0EEFF" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -109,6 +109,8 @@ checks = {
         and "glass_press" in pill_shader
         and "half4 main" in pill_shader
         and "uniform float radius;" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
+        and "specRGB" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
+        and "outAlpha" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
         and "uniform shader img;" in common_shader,
     "Refraction highlight responds to actual frame displacement":
         "lastCenterX" in pill
@@ -136,9 +138,14 @@ checks = {
         and "clearElasticSelectionPreview()" in nav,
     "Tab icon and text accent follow the travelling lens":
         "applyColors();" in tab
+        and "checkPlayAnimation(true);" in tab
         and "hasGestureSelectedOverride" in tab
         and "gestureSelectedOverride" in tab
-        and "final float selectedFactor = hasGestureSelectedOverride" in tab,
+        and "final float selectedFactor = hasGestureSelectedOverride" in tab
+        and "elasticSmoothedStretch" in nav
+        and "leftHeadroom" in nav
+        and "final float sink =" in nav
+        and "finishElasticTouch(true, false);" in nav,
     "Release keeps finger velocity and settles with a controlled spring":
         "VelocityTracker" in nav
         and "computeCurrentVelocity(1000)" in nav
