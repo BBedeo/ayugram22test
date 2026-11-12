@@ -69,7 +69,7 @@ checks = {
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
-        and "capsule.setIntensity(1.58f);" in main
+        and "capsule.setIntensity(1.75f);" in main
         and "source != iBlur3SourceTabGlass" in main
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
@@ -84,8 +84,8 @@ checks = {
         and "direction * extension / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.28f), AndroidUtilities.dpf2(.10f))" in main
-        and "? (dark ? .115f : .085f)" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.24f), AndroidUtilities.dpf2(.08f))" in main
+        and "canRefract ? .34f : .42f" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -93,6 +93,7 @@ checks = {
         and "capsule.setElasticPillLens(true);" in main,
     "Isolated shader refracts live capture and adds dynamic internal caustics":
         "uniform shader img;" in pill_shader
+        and pill_shader.count("float move =") == 1
         and "img.eval(uv)" in pill_shader
         and "glass_motion" in pill_shader
         and "float glint = gaussian(glintX)" in pill_shader

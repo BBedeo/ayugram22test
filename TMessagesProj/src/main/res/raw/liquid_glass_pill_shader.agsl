@@ -53,10 +53,12 @@ half4 main(float2 fragCoord) {
     float rayDepth = (h + t * 7.0) / max(0.2, -ray.z);
     float edgeBand = 1.0 - smoothstep(0.0, t * 1.35, -sd);
     float move = clamp(glass_motion, -1.0, 1.0);
+    float press = clamp(glass_press, 0.0, 1.0);
+    float2 relCenter = p / max(size, float2(1.0));
     float2 uv = fragCoord + ray.xy * rayDepth * refract_intensity
-                * (1.0 + abs(move) * 0.16);
-    uv += float2(move * 3.0, 0.0) * edgeBand
-          + p / max(size, float2(1.0)) * glass_press * t * 0.04;
+                * (1.0 + abs(move) * 0.22);
+    uv += float2(move * 3.5, 0.0) * edgeBand
+          - relCenter * (0.025 + press * 0.045) * t * (1.0 - edgeBand * 0.45);
     float2 uvMin = center - size + 0.5;
     float2 uvMax = center + size - 0.5;
     uv = clamp(uv, uvMin, uvMax);
@@ -66,11 +68,11 @@ half4 main(float2 fragCoord) {
     // Edge-only chromatic dispersion, sampled from the same real backdrop.
     // Work is conditional and confined to the small navigation lens.
     if (edgeBand > 0.13 && refract_intensity > 0.01) {
-        float2 chroma = edgeNormal * t * 0.14 * edgeBand;
+        float2 chroma = edgeNormal * t * 0.18 * edgeBand * (1.0 + abs(move) * 0.35);
         half4 redSample = img.eval(clamp(uv + chroma, uvMin, uvMax));
         half4 blueSample = img.eval(clamp(uv - chroma, uvMin, uvMax));
-        backdrop.r = mix(backdrop.r, redSample.r, half(edgeBand * 0.65));
-        backdrop.b = mix(backdrop.b, blueSample.b, half(edgeBand * 0.65));
+        backdrop.r = mix(backdrop.r, redSample.r, half(edgeBand * 0.68));
+        backdrop.b = mix(backdrop.b, blueSample.b, half(edgeBand * 0.68));
     }
 
     half4 surface = sourceOver(half4(foreground_color_premultiplied), backdrop);
@@ -78,49 +80,53 @@ half4 main(float2 fragCoord) {
     // A glass body must remain visibly luminous even if the captured
     // backdrop is a solid dark color. Shape-dependent caustics live inside
     // this dedicated GPU lens: no flat fill, painted outline or bitmap.
-    float2 relative = p / max(size, float2(1.0));
-    float move = clamp(glass_motion, -1.0, 1.0);
-    float press = clamp(glass_press, 0.0, 1.0);
+    float2 relative = relCenter;
     float2 light = float2(cos(glass_light_angle + move * 0.34),
                           sin(glass_light_angle + move * 0.34));
     float facing = clamp(dot(edgeNormal, light) * 0.5 + 0.5, 0.0, 1.0);
-    float grazing = gaussian((-sd - t * 0.20) / (t * 0.58));
-    float edgeLight = pow(facing, 3.0) * grazing;
+    float grazing = gaussian((-sd - t * 0.18) / (t * 0.55));
+    float lip = gaussian(-sd / max(2.2, t * 0.16));
+    float edgeLight = pow(facing, 2.6) * grazing
+                    + pow(1.0 - facing, 3.2) * grazing * 0.30
+                    + pow(facing, 2.0) * lip * 0.32;
 
-    // The bowed line of reflected overhead light is intentionally inside
-    // the pill (not on the border) and sweeps slightly when it is dragged.
-    float bowedHeight = -0.58 + 0.21 * relative.x * relative.x
-                        + move * 0.11;
-    float bowedArc = gaussian((relative.y - bowedHeight) / 0.115);
-    bowedArc *= 0.61 + 0.39 * gaussian((relative.x + 0.28) / 0.86);
+    // The bowed line of reflected overhead light sits smoothly inside
+    // the upper dome and sweeps gently during horizontal drag.
+    float bowedHeight = -0.52 + 0.18 * relative.x * relative.x
+                        + move * 0.10;
+    float bowedArc = gaussian((relative.y - bowedHeight) / 0.19);
+    bowedArc *= 0.62 + 0.38 * gaussian((relative.x + 0.24) / 0.88);
 
     // A second elongated directional caustic follows velocity. At rest it
     // becomes a soft diagonal reflection instead of vanishing entirely.
     float diagonal = relative.x + relative.y * 0.38 - 0.12 - move * 0.62;
-    float sweep = gaussian(diagonal / 0.22)
-                  * gaussian((relative.y + 0.25) / 0.77);
-    float glintX = (relative.x - (0.09 + move * 0.56)) / 0.32;
-    float glintY = (relative.y + 0.39 + move * 0.09) / 0.35;
+    float sweep = gaussian(diagonal / 0.24)
+                  * gaussian((relative.y + 0.22) / 0.78);
+    float glintX = (relative.x - (0.08 + move * 0.56)) / 0.34;
+    float glintY = (relative.y + 0.36 + move * 0.09) / 0.36;
     float glint = gaussian(glintX) * gaussian(glintY);
-    float underside = gaussian((relative.y - 0.73) / 0.25)
+    float underside = gaussian((relative.y - 0.72) / 0.26)
                       * gaussian(relative.x / 0.92);
-    float bodyLight = 0.060 + 0.050 * (1.0 - clamp(relative.y * relative.y, 0.0, 1.0));
+    float bodyLight = 0.060 + 0.055 * (1.0 - clamp(relative.y * relative.y, 0.0, 1.0));
     float active = clamp(abs(move), 0.0, 1.0);
 
-    // Several broad, curved components create the optical depth that the
-    // previous very narrow Fresnel band was missing on a black tab bar.
+    // Multi-layered curved caustics give optical glass depth even over
+    // a flat dark screen without painting a static opaque overlay.
     float illumination = glass_highlight * (
           bodyLight
-        + 0.32 * edgeLight
-        + 0.29 * bowedArc
-        + 0.27 * glint
-        + 0.24 * sweep
-        + 0.055 * underside
-        + 0.17 * active * sweep
-        ) * (1.0 + press * 0.35);
+        + 0.34 * edgeLight
+        + 0.26 * bowedArc
+        + 0.25 * glint
+        + 0.23 * sweep
+        + 0.075 * underside
+        + 0.18 * active * sweep
+        ) * (1.0 + press * 0.36);
     if (glass_adaptive > 0.5) {
         float luma = dot(float3(backdrop.rgb), float3(0.2126, 0.7152, 0.0722));
-        illumination *= clamp(1.17 - luma * 0.36, 0.82, 1.20);
+        illumination *= clamp(1.18 - luma * 0.38, 0.82, 1.22);
+        float lightThemeRim = smoothstep(0.68, 0.96, luma) * edgeBand
+                            * (1.0 - facing * 0.65) * 0.075;
+        surface.rgb = max(half3(0.0), surface.rgb - half3(lightThemeRim));
     }
     surface.rgb = min(half3(1.0),
                       surface.rgb + half3(0.91, 0.96, 1.0)

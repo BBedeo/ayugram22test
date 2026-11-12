@@ -118,6 +118,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     public void setElasticPillGlass(BlurredBackgroundDrawable glass) {
         if (elasticPillGlass != null) elasticPillGlass.setCallback(null);
         elasticPillGlass = glass;
+        if (elasticPillGlass != null) elasticPillGlass.setCallback(this);
         if (glass != null) glass.setCallback(this);
         invalidate();
     }

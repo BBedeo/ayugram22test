@@ -490,19 +490,26 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     && !LiteMode.isPowerSaverApplied();
             BlurredBackgroundDrawable capsule = iBlur3FactoryGlass.create(tabsView,
                     new BlurredBackgroundProviderBuilder(resourceProvider)
-                            .setBackgroundColor((r, dark) -> Theme.multAlpha(
-                                    Theme.getColor(Theme.key_glass_targetMainTabs, r),
-                                    canRefract
-                                            ? (dark ? .115f : .085f)
-                                            : (dark ? .16f : .13f)))
-                            // One native optical rim only. Refraction comes from
-                            // LiquidGlassEffect, not from painted gradients.
-                            .setStrokeColorTop(0x2BFFFFFF, 0x34FFFFFF)
-                            .setStrokeColorBottom(0x04FFFFFF, 0x08FFFFFF)
+                            .setBackgroundColor((r, dark) -> {
+                                final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
+                                if (dark) {
+                                    // Lift the pill's translucent glass tint cleanly above the darker
+                                    // raw page source so it stays brighter than tabsViewBackground
+                                    // over uniform scenes while remaining ~66% transparent to refraction.
+                                    final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.25f);
+                                    return Theme.multAlpha(lifted, canRefract ? .34f : .42f);
+                                }
+                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.52f);
+                                return Theme.multAlpha(lifted, canRefract ? .28f : .36f);
+                            })
+                            // Subtle optical rim only; refraction and curved Fresnel glow
+                            // come from LiquidGlassEffect, not a heavy 2D outline.
+                            .setStrokeColorTop(0x26FFFFFF, 0x24FFFFFF)
+                            .setStrokeColorBottom(0x06FFFFFF, 0x0AFFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
                             .setShadowColor(0x0B000000, 0x10000000)
                             .setShadowLayer(AndroidUtilities.dpf2(.9f), 0, AndroidUtilities.dpf2(.25f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.28f), AndroidUtilities.dpf2(.10f)));
+                            .setStrokeWidth(AndroidUtilities.dpf2(.24f), AndroidUtilities.dpf2(.08f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
             if (canRefract) {
@@ -514,8 +521,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(10));
-                capsule.setIntensity(1.58f);
+                capsule.setThickness(dp(12));
+                capsule.setIntensity(1.75f);
             }
             tabsView.setElasticPillGlass(capsule);
         }
