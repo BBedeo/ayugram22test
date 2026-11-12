@@ -11,6 +11,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -102,6 +103,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private final ElasticGlassPillRenderer elasticGlassPill = new ElasticGlassPillRenderer();
     private BlurredBackgroundDrawable elasticPillGlass;
     private float selectedTabDestinationX;
+    private View elasticSelectedTab;
+    private View elasticTouchTab;
+    private float elasticDownX, elasticDownY, elasticTouchOffsetX;
+    private boolean elasticDragging;
+    private int elasticTouchPointer = -1;
 
     /** A separate native backdrop lens is layered ABOVE the panel and BELOW the tab icons. */
     public void setElasticPillGlass(BlurredBackgroundDrawable glass) {
@@ -327,9 +333,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         super.onLayout(changed, l, t, r, b);
         checkVisualWidth();
         if (ElasticPillGesture.enabled()) {
-            // Use the measured geometry, not a hard-coded number of tabs.
             setSkipDrawSelector(true);
-            if (!isInLongPress) syncElasticPillToSelected(false);
+            if (!isInLongPress) updateElasticGeometry();
         }
     }
 
@@ -339,7 +344,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         checkVisualWidth();
         if (ElasticPillGesture.enabled()) {
             setSkipDrawSelector(true);
-            if (!isInLongPress) syncElasticPillToSelected(false);
+            if (!isInLongPress) updateElasticGeometry();
         }
     }
 
@@ -365,32 +370,60 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 ((GlassTabView) child).setSelected(child == tab, animated);
             }
         }
-        if (ElasticPillGesture.enabled()) {
-            setSkipDrawSelector(true);
-            if (!isInLongPress) syncElasticPillToSelected(animated);
+        if (ElasticPillGesture.enabled()) setElasticSelectedTab(tab, animated);
+    }
+
+    /** The real selected tab is passed by MainTabsActivity, not inferred from
+     *  GlassTabView's previous selection during its BoolAnimator transition. */
+    public void setElasticSelectedTab(View tab, boolean animated) {
+        if (!ElasticPillGesture.enabled()) return;
+        final boolean changed = elasticSelectedTab != tab;
+        elasticSelectedTab = tab;
+        setSkipDrawSelector(true);
+        if (!isInLongPress && (changed || !elasticPillInitialized)) {
+            syncElasticPillToSelected(animated);
         }
     }
 
     private boolean elasticPillInitialized;
 
+    private void updateElasticGeometry() {
+        final View selected = findSelectedTab();
+        if (selected == null || selected.getWidth() <= 0) return;
+        final float cx = getCenterX(selected);
+        if (!elasticPillInitialized || Math.abs(cx - selectedTabDestinationX) > 1f) {
+            // Tab positions can change with the number of tabs or device
+            // rotation. Do not reset a running selection spring on every layout.
+            syncElasticPillToSelected(false);
+        }
+    }
+
     private void syncElasticPillToSelected(boolean animated) {
         final View selected = findSelectedTab();
-        if (selected == null || selected.getWidth() == 0) return;
+        if (selected == null || selected.getWidth() <= 0) return;
         final float cx = getCenterX(selected);
+        final boolean hadPosition = elasticPillInitialized;
         selectedTabDestinationX = cx;
-        if (!elasticPillInitialized || !animated) {
+        if (!hadPosition || !animated) {
             selectedTabPositionX.cancel();
             selectedTabPositionOffsetX.cancel();
             animatedLongSelectedViewCenterX = cx;
-            animatedLongSelectedViewOffsetX = 0;
+            animatedLongSelectedViewOffsetX = 0f;
             elasticPillInitialized = true;
-        } else {
+        } else if (Math.abs(animatedLongSelectedViewCenterX - cx) > .5f) {
+            selectedTabPositionOffsetX.cancel();
+            animatedLongSelectedViewOffsetX = 0f;
             selectedTabPositionX.animateToFinalPosition(cx);
         }
         invalidate();
     }
 
     private View findSelectedTab() {
+        if (elasticSelectedTab != null
+                && elasticSelectedTab.getParent() == this
+                && elasticSelectedTab.getVisibility() == View.VISIBLE) {
+            return elasticSelectedTab;
+        }
         for (int a = 0, N = getChildCount(); a < N; a++) {
             final View child = getChildAt(a);
             if (child.getVisibility() != View.VISIBLE) {
@@ -477,31 +510,29 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final View selected = findSelectedTab();
         if (selected == null || selected.getWidth() <= 0) return;
         if (!elasticPillInitialized) syncElasticPillToSelected(false);
-        final float x = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
-        final float selectedCenter = getCenterX(selected);
-        final float destination = isInLongPress ? selectedCenter : selectedTabDestinationX;
-        final float travel = x - destination;
-        final float span = Math.abs(travel);
-        final float extension = Math.min(dp(isInLongPress ? 100 : 46), span * (isInLongPress ? .58f : .32f));
-        final float center = x - Math.signum(travel) * extension * .23f;
-        final float tabWidth = Math.max(dp(55), getInterpolatedWidthByX(x, this) - dp(5));
-        final float width = Math.min(getWidth() - dp(8), tabWidth + extension);
-        final float available = getHeight() - getPaddingTop() - getPaddingBottom();
-        final float height = Math.max(dp(24), Math.min(dp(56), available - dp(8)));
-        final float cy = getPaddingTop() + available * .5f;
-        selectorRect.set(center - width * .5f, cy - height * .5f,
-                center + width * .5f, cy + height * .5f);
-        // Keep the optical element inside the bar while its contents move.
-        if (selectorRect.left < dp(2)) selectorRect.offset(dp(2) - selectorRect.left, 0);
-        if (selectorRect.right > getWidth() - dp(2)) {
-            selectorRect.offset(getWidth() - dp(2) - selectorRect.right, 0);
+        final float centerX = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
+        // Every item has a separate measured slot. Never span multiple slots
+        // at rest, or paint glass over the neighboring tab's label.
+        final float travelled = Math.abs(centerX - selectedTabDestinationX);
+        final float extension = Math.min(dp(14), travelled * .15f);
+        final float widthAtX = getInterpolatedWidthByX(centerX, this);
+        final float availableWidth = Math.max(dp(34), widthAtX - dp(10));
+        final float width = Math.min(availableWidth, dp(70)) + extension;
+        final float availableHeight = getHeight() - getPaddingTop() - getPaddingBottom();
+        final float height = Math.max(dp(25), Math.min(dp(49), availableHeight - dp(12)));
+        final float cy = getPaddingTop() + availableHeight * .5f;
+        selectorRect.set(centerX - width * .5f, cy - height * .5f,
+                centerX + width * .5f, cy + height * .5f);
+        final float edge = dp(3);
+        if (selectorRect.left < edge) selectorRect.offset(edge - selectorRect.left, 0);
+        if (selectorRect.right > getWidth() - edge) {
+            selectorRect.offset(getWidth() - edge - selectorRect.right, 0);
         }
-        final boolean dark = Theme.isCurrentThemeDark();
-        elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass, dark,
-                Math.min(1f, extension / dp(72)));
+        elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
+                Theme.isCurrentThemeDark(), extension / dp(14));
     }
 
-    private boolean drawTopDivider = true;
+        private boolean drawTopDivider = true;
 
     public void setDrawTopDivider(boolean value) {
         if (drawTopDivider != value) {
@@ -812,25 +843,102 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         view.setPivotY(pivotY);
     }
 
+    /**
+     * Regular taps stay delegated to the original tab views. A genuine
+     * horizontal drag cancels the tapped child and moves only the selected
+     * capsule. The parent ViewPager may not also consume this gesture.
+     */
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (ElasticPillGesture.enabled() && getParent() != null) {
-            switch (ev.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    if (findChildUnder(this, ev.getX(), ev.getY()) != null) {
-                        // A held navigation pill must not swipe the screen or
-                        // trigger the ViewPager's page-change gesture.
-                        getParent().requestDisallowInterceptTouchEvent(true);
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    getParent().requestDisallowInterceptTouchEvent(false);
-                    break;
-            }
+        if (!ElasticPillGesture.enabled()) {
+            clickHelper.onTouchEvent(this, ev);
+            return super.dispatchTouchEvent(ev);
         }
-        clickHelper.onTouchEvent(this, ev);
+
+        final int action = ev.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            elasticTouchTab = findChildUnder(this, ev.getX(), ev.getY());
+            elasticTouchPointer = ev.getPointerId(0);
+            elasticDownX = ev.getX();
+            elasticDownY = ev.getY();
+            elasticDragging = false;
+            final View selected = findSelectedTab();
+            elasticTouchOffsetX = (selected != null ? getCenterX(selected) : elasticDownX) - elasticDownX;
+            if (elasticTouchTab instanceof GlassTabView && getParent() != null) {
+                getParent().requestDisallowInterceptTouchEvent(true);
+            }
+            return super.dispatchTouchEvent(ev);
+        }
+
+        if (!(elasticTouchTab instanceof GlassTabView)) {
+            return super.dispatchTouchEvent(ev);
+        }
+        if (action == MotionEvent.ACTION_POINTER_DOWN) {
+            finishElasticTouch(false);
+            MotionEvent cancel = MotionEvent.obtain(ev);
+            cancel.setAction(MotionEvent.ACTION_CANCEL);
+            final boolean handled = super.dispatchTouchEvent(cancel);
+            cancel.recycle();
+            return handled;
+        }
+        final int index = ev.findPointerIndex(elasticTouchPointer);
+        if (index < 0) {
+            finishElasticTouch(false);
+            return true;
+        }
+
+        if (action == MotionEvent.ACTION_MOVE) {
+            final float x = ev.getX(index);
+            final float y = ev.getY(index);
+            final int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+            if (!elasticDragging && Math.abs(x - elasticDownX) > slop
+                    && Math.abs(x - elasticDownX) >= Math.abs(y - elasticDownY) * .75f) {
+                elasticDragging = true;
+                isInLongPress = true;
+                selectedTabPositionX.cancel();
+                selectedTabPositionOffsetX.cancel();
+                animatedLongSelectedViewOffsetX = 0f;
+                MotionEvent cancel = MotionEvent.obtain(ev);
+                cancel.setAction(MotionEvent.ACTION_CANCEL);
+                super.dispatchTouchEvent(cancel);
+                cancel.recycle();
+            }
+            if (elasticDragging) {
+                animatedLongSelectedViewCenterX = clampXToChildrenCenters(x + elasticTouchOffsetX, this);
+                invalidate();
+                return true;
+            }
+        } else if (action == MotionEvent.ACTION_UP) {
+            if (elasticDragging) {
+                final View hovered = findNearestVisibleChildByX(
+                        animatedLongSelectedViewCenterX, this);
+                finishElasticTouch(true);
+                if (hovered instanceof GlassTabView) {
+                    hovered.performClick();
+                }
+                syncElasticPillToSelected(true);
+                return true;
+            }
+            finishElasticTouch(false);
+            return super.dispatchTouchEvent(ev);
+        } else if (action == MotionEvent.ACTION_CANCEL) {
+            final boolean dragging = elasticDragging;
+            finishElasticTouch(false);
+            if (dragging) return true;
+        }
         return super.dispatchTouchEvent(ev);
+    }
+
+    private void finishElasticTouch(boolean releasedOnTab) {
+        final boolean hadDrag = elasticDragging;
+        elasticDragging = false;
+        elasticTouchTab = null;
+        elasticTouchPointer = -1;
+        if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+        if (hadDrag) {
+            isInLongPress = false;
+            if (!releasedOnTab) syncElasticPillToSelected(true);
+        }
     }
 
 
