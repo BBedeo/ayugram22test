@@ -1669,6 +1669,18 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             source.setSize(width, height);
             source.updateDisplayListIfNeeded();
         }
+
+        // The elastic selector can force the true refractive lens even when
+        // global Liquid Glass is disabled. Keep its glass capture alive too;
+        // otherwise the drawable has a GPU effect but only a stale/empty source
+        // and looks like a flat dark capsule.
+        if (ElasticPillGesture.enabled()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && iBlur3SourceTabGlass != null
+                && source != iBlur3SourceTabGlass) {
+            iBlur3SourceTabGlass.setSize(width, height);
+            iBlur3SourceTabGlass.updateDisplayListIfNeeded();
+        }
     }
 
     private void blur3_updateFadeColors() {
