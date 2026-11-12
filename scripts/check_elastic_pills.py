@@ -15,6 +15,7 @@ config = (root / "TMessagesProj/src/main/kotlin/app/exteraless/appearance/Appear
 appearance = read("app/exteraless/settings/OpenExteraAppearanceActivity.java")
 nav = read("org/telegram/ui/MainTabsLayout.java")
 main = read("org/telegram/ui/MainTabsActivity.java")
+tab = read("org/telegram/ui/Components/glass/GlassTabView.java")
 menu = read("org/telegram/ui/Components/ItemOptions.java")
 pill = read("app/exteraless/appearance/ElasticGlassPillRenderer.java")
 buttons = read("org/telegram/ui/Components/voip/VoIPToggleButton.java")
@@ -52,12 +53,15 @@ checks = {
         and "final float height = availableHeight" in nav
         and "final float availableWidth = Math.max(dp(28), widthAtX)" in nav
         and "getSelectorVisualWidth()" in nav
+        and "public float getSelectorVisualWidth()" in tab
         and "Math.min(dp(14), travelled * .15f)" in nav,
     "Native glass sampling and forced GPU refraction are preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
         and "capsule.setIntensity(1.42f);" in main
+        and "source != iBlur3SourceTabGlass" in main
+        and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
         and "nativeGlass.draw(canvas);" in pill,
     "No fake painted double rim over the native lens":
