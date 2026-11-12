@@ -87,6 +87,8 @@ import org.telegram.ui.Components.blur3.RenderNodeWithHash;
 import org.telegram.ui.Components.blur3.capture.IBlur3Hash;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
+import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProviderBuilder;
+import app.exteraless.appearance.ElasticPillGesture;
 import org.telegram.utils.glass.GlassEngine;
 import org.telegram.utils.glass.GlassSettings;
 import org.telegram.utils.glass.source.GlassSourceColor;
@@ -424,7 +426,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         for (int index : displayOrder) {
             final GlassTabView view = tabs[index];
             final int tabIndex = index;
-            tabs[index].setOnLongClickListener(v -> processLongClick(v, tabIndex));
+            tabs[index].setOnLongClickListener(v -> {
+                // Elastic drag owns a held tab. Do not open its normal context
+                // menu and accidentally steal a swipe from the glass capsule.
+                if (ElasticPillGesture.enabled()) return true;
+                return processLongClick(v, tabIndex);
+            });
             tabs[index].setOnClickListener(v -> {
                 if (viewPager.isManualScrolling() || viewPager.isTouch()) {
                     return;
@@ -473,6 +480,22 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         tabsViewBackground.setRadius(MainTabsUiHelper.getBackgroundRadius());
         tabsViewBackground.setPadding(MainTabsUiHelper.getBackgroundInset());
         tabsView.setBackground(tabsViewBackground);
+        if (ElasticPillGesture.enabled()) {
+            // The selection pill gets its own native glass lens, sampling the
+            // actual pages under the tabs (NOT a fake dark-blue oval). The
+            // renderer draws this once behind the icons and labels.
+            BlurredBackgroundDrawable capsule = iBlur3FactoryGlass.create(tabsView,
+                    new BlurredBackgroundProviderBuilder(resourceProvider)
+                            .setBackgroundColor((r, dark) -> Theme.multAlpha(
+                                    Theme.getColor(Theme.key_glass_targetMainTabs, r),
+                                    dark ? .30f : .27f))
+                            .setStrokeColorTop(0xE3FFFFFF, 0xB0FFFFFF)
+                            .setStrokeColorBottom(0x6DFFFFFF, 0x50FFFFFF)
+                            .setShadowColor(0x27000000, 0x45000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(4f), 0, AndroidUtilities.dpf2(1f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.75f)));
+            tabsView.setElasticPillGlass(capsule);
+        }
 
         BlurredBackgroundDrawableViewFactory iBlur3FactoryFade = new BlurredBackgroundDrawableViewFactory(iBlur3SourceColor);
         iBlur3FactoryFade.setSourceRootView(viewPositionWatcher, contentView);
