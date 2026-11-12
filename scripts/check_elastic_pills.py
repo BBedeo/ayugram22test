@@ -1,78 +1,80 @@
 #!/usr/bin/env python3
-"""Regression guard for ExFullGram's independently configurable elastic pills.
-Static contracts only: Android compilation and physical touch tests are separate.
+"""Static regression contracts for ExFullGram's opt-in elastic controls.
+
+Not a visual or runtime test; use Android Gradle plus on-device verification.
 """
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 java = root / "TMessagesProj/src/main/java"
+
+def read(rel):
+    return (java / rel).read_text(encoding="utf-8")
+
 config = (root / "TMessagesProj/src/main/kotlin/app/exteraless/appearance/AppearanceConfig.kt").read_text()
-appearance = (java / "app/exteraless/settings/OpenExteraAppearanceActivity.java").read_text()
-nav = (java / "org/telegram/ui/MainTabsLayout.java").read_text()
-buttons = (java / "org/telegram/ui/Components/voip/VoIPToggleButton.java").read_text()
-switch = (java / "org/telegram/ui/Components/voip/VoIpSwitchLayout.java").read_text()
-top = (java / "app/exteraless/appearance/ElasticCallIconView.java").read_text()
-call = (java / "org/telegram/ui/VoIPFragment.java").read_text()
-tabs_activity = (java / "org/telegram/ui/MainTabsActivity.java").read_text()
-pill = (java / "app/exteraless/appearance/ElasticGlassPillRenderer.java").read_text()
-slider = (java / "org/telegram/ui/Components/SeekBarView.java").read_text()
-gesture = (java / "app/exteraless/appearance/ElasticPillGesture.java").read_text()
+appearance = read("app/exteraless/settings/OpenExteraAppearanceActivity.java")
+nav = read("org/telegram/ui/MainTabsLayout.java")
+main = read("org/telegram/ui/MainTabsActivity.java")
+pill = read("app/exteraless/appearance/ElasticGlassPillRenderer.java")
+buttons = read("org/telegram/ui/Components/voip/VoIPToggleButton.java")
+switch = read("org/telegram/ui/Components/voip/VoIpSwitchLayout.java")
+top = read("app/exteraless/appearance/ElasticCallIconView.java")
+call = read("org/telegram/ui/VoIPFragment.java")
+slider = read("org/telegram/ui/Components/SeekBarView.java")
+gesture = read("app/exteraless/appearance/ElasticPillGesture.java")
 
 checks = {
-    "Pill is a visible frosted/refraction material, not a 9-percent selected oval":
-        "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
-        and "iBlur3FactoryGlass.create(tabsView," in tabs_activity
-        and "new BlurredBackgroundProviderBuilder(resourceProvider)" in tabs_activity
-        and "nativeGlass.draw(canvas);" in pill
-        and "canvas.drawArc(arc, 199f" in pill,
-    "Long pressing real tabs is allowed in elastic mode":
-        "(ElasticPillGesture.enabled()" in nav
-        and "!tabsWithIgnoreClick.contains(found)" in nav
-        and "if (ElasticPillGesture.enabled()) return true;" in tabs_activity,
-    "Only one shared pill shows behind labels and adapts to real tab widths":
-        "setSkipDrawSelector(true);" in nav
-        and "getInterpolatedWidthByX(x, this)" in nav
-        and "drawElasticGlassSelector(canvas);" in nav,
-    "Opt-in independent of Liquid Glass":
+    "Optional, off by default, independent of Liquid Glass":
         'addConfig("OEAppearanceElasticDragPills", ConfigItem.configTypeBool, false)' in config
         and "universalLiquidGlass" not in gesture,
-    "User can toggle elastic controls in appearance and rebuild existing views":
+    "Appearance setting triggers view rebuild":
         "elasticDragPillsRow" in appearance
         and "item = AppearanceConfig.elasticDragPills;" in appearance
         and "rebuild = true;" in appearance,
-    "Nav pill follows measured tab centers and widths":
-        "getInterpolatedWidthByX(x, this)" in nav
-        and "syncElasticPillToSelected" in nav
-        and "selectedTabPositionX.animateToFinalPosition(cx)" in nav,
-    "Nav changes page only after releasing drag":
-        "if (!ElasticPillGesture.enabled()) setTabSelected(found, true);" in nav
-        and "lastLongSelectedView.performClick();" in nav,
-    "Nav never scales entire bar while elastic mode is active":
-        "if (!ElasticPillGesture.enabled()) animatorIsScaled.setValue(true, true);" in nav,
-    "Navigation gestures are blocked only when a finger touches a tab":
-        "findChildUnder(this, ev.getX(), ev.getY()) != null" in nav
+    "Selected nav follows the real ViewPager state, not a fading tab":
+        "actualSelected = tab;" in main
+        and "tabsView.setElasticSelectedTab(actualSelected, animated)" in main
+        and "elasticSelectedTab != null" in nav,
+    "Measured tab sizes constrain a single pill's width and height":
+        "getInterpolatedWidthByX(centerX, this)" in nav
+        and "Math.min(availableWidth, dp(70)) + extension" in nav
+        and "Math.min(dp(14), travelled * .15f)" in nav,
+    "Native glass sampling is preserved behind icons":
+        "iBlur3FactoryGlass.create(tabsView," in main
+        and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
+        and "nativeGlass.draw(canvas);" in pill,
+    "No giant fake white arcs or flat opaque image":
+        "canvas.drawArc(" not in pill
+        and "new LinearGradient" in pill
+        and "0x22FFFFFF" in pill,
+    "Touch motion drives only the pill and blocks parent swipe":
+        "ViewConfiguration.get(getContext()).getScaledTouchSlop()" in nav
+        and "animatedLongSelectedViewCenterX = clampXToChildrenCenters(x + elasticTouchOffsetX, this)" in nav
         and "requestDisallowInterceptTouchEvent(true)" in nav,
-    "Cancelled nav gesture restores the real selected tab":
-        "syncElasticPillToSelected(true);" in nav
-        and "onLongPressCancelled" in nav,
-    "VoIP circle drag cannot trigger hang-up":
+    "Dragging cancels child click; click commits only on finger release":
+        "super.dispatchTouchEvent(cancel);" in nav
+        and "hovered.performClick();" in nav
+        and "action == MotionEvent.ACTION_UP" in nav
+        and "if (!ElasticPillGesture.enabled())" in nav,
+    "Cancelled drag restores actual tab":
+        "finishElasticTouch(false)" in nav
+        and "syncElasticPillToSelected(true);" in nav,
+    "Original nav and scaling remain untouched when option is off":
+        "clickHelper.onTouchEvent(this, ev);" in nav
+        and "if (!ElasticPillGesture.enabled()) animatorIsScaled.setValue(true, true);" in nav,
+    "Call buttons cancel actions on drag":
         "cancelClickForDrag" in buttons
-        and "MotionEvent.ACTION_CANCEL" in buttons,
-    "VoIP mic/video/speaker actions ignore dragged release":
-        "if (!dragged && isClick(" in switch,
-    "Top call icons use elastic widgets":
-        "new ElasticCallIconView(context)" in call
-        and "consumedDrag" in top,
-    "Slider uses only thumb geometry and protects page navigation":
+        and "MotionEvent.ACTION_CANCEL" in buttons
+        and "if (!dragged && isClick(" in switch,
+    "Top-left and top-right call buttons support drag":
+        "new ElasticCallIconView(context)" in call and "consumedDrag" in top,
+    "Slider thumb stretches without scaling whole row":
         "elasticThumbStretch" in slider
-        and "requestDisallowInterceptTouchEvent(true)" in slider
         and "canvas.drawRoundRect(rect, height, height, outerPaint1);" in slider,
-    "Elastic motion returns to origin without modifying hit boxes":
-        "Math.tanh" in gesture
-        and "OvershootInterpolator" in gesture
-        and "public boolean up()" in gesture,
+    "Optical press snapback uses bounded translation":
+        "Math.tanh" in gesture and "OvershootInterpolator" in gesture,
 }
-for name, passes in checks.items():
-    print(("PASS" if passes else "FAIL") + ": " + name)
+for name, good in checks.items():
+    print(("PASS" if good else "FAIL") + ": " + name)
 if not all(checks.values()):
-    raise SystemExit("Elastic drag regression checks failed")
+    raise SystemExit("Elastic pill contract regression")
