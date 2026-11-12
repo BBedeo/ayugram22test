@@ -485,24 +485,34 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             // The selection pill gets its own native glass lens, sampling the
             // actual pages under the tabs (NOT a fake dark-blue oval). The
             // renderer draws this once behind the icons and labels.
+            final boolean canRefract = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU;
             BlurredBackgroundDrawable capsule = iBlur3FactoryGlass.create(tabsView,
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> Theme.multAlpha(
                                     Theme.getColor(Theme.key_glass_targetMainTabs, r),
-                                    LiquidGlassTuning.isActive()
-                                            ? (dark ? .09f : .07f)
+                                    canRefract
+                                            ? (dark ? .085f : .06f)
                                             : (dark ? .16f : .13f)))
-                            // A very light optical edge only. The old selector
-                            // stacked this with two painted rims and looked like
-                            // a thick white outline instead of refracted glass.
-                            .setStrokeColorTop(0x20FFFFFF, 0x28FFFFFF)
-                            .setStrokeColorBottom(0x04FFFFFF, 0x08FFFFFF)
-                            .setShadowColor(0x0D000000, 0x14000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(1.2f), 0, AndroidUtilities.dpf2(.35f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.35f), AndroidUtilities.dpf2(.20f)));
+                            // One native optical rim only. Refraction comes from
+                            // LiquidGlassEffect, not from painted gradients.
+                            .setStrokeColorTop(0x2EFFFFFF, 0x36FFFFFF)
+                            .setStrokeColorBottom(0x03FFFFFF, 0x08FFFFFF)
+                            .setShadowColor(0x0B000000, 0x12000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(1.0f), 0, AndroidUtilities.dpf2(.3f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.32f), AndroidUtilities.dpf2(.16f)));
             capsule.setLiquidGlassEffectAllowed();
-            capsule.setThickness(dp(9));
-            capsule.setIntensity(1.15f);
+            if (canRefract) {
+                // Elastic pills are themselves a liquid-glass interaction.
+                // Force the real GPU lens for this drawable even when the
+                // global "all surfaces" Liquid Glass option is off.
+                capsule.setGlassSettings(new GlassSettings(
+                        true,
+                        true,
+                        LiquidGlassTuning.material(),
+                        LiquidGlassTuning.settingsSignature()));
+                capsule.setThickness(dp(11));
+                capsule.setIntensity(1.42f);
+            }
             tabsView.setElasticPillGlass(capsule);
         }
 
