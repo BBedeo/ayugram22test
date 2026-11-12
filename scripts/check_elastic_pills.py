@@ -47,23 +47,37 @@ checks = {
         "actualSelected = tab;" in main
         and "tabsView.setElasticSelectedTab(actualSelected, animated)" in main
         and "elasticSelectedTab != null" in nav,
-    "Measured tab sizes constrain a single pill's width and height":
+    "Measured tab geometry keeps long labels inside the pill":
         "getInterpolatedWidthByX(centerX, this)" in nav
-        and "Math.min(availableWidth, Math.max(height, dp(70))) + extension" in nav
+        and "widthAtX - dp(4)" in nav
+        and "final float width = availableWidth + extension" in nav
         and "availableHeight - dp(2)" in nav
         and "Math.min(dp(14), travelled * .15f)" in nav,
-    "Native glass sampling is preserved behind icons":
+    "Native glass sampling and visible refraction are preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main
+        and "capsule.setLiquidGlassEffectAllowed();" in main
+        and "capsule.setIntensity(1.15f);" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
         and "nativeGlass.draw(canvas);" in pill,
-    "No giant fake white arcs or flat opaque image":
+    "No fake painted double rim over the native lens":
         "canvas.drawArc(" not in pill
-        and "new LinearGradient" in pill
-        and "0x22FFFFFF" in pill,
+        and "LinearGradient" not in pill
+        and "insideEdge" not in pill
+        and "rim.setStyle" not in pill,
     "Touch motion drives only the pill and blocks parent swipe":
         "ViewConfiguration.get(getContext()).getScaledTouchSlop()" in nav
         and "animatedLongSelectedViewCenterX = clampXToChildrenCenters(x + elasticTouchOffsetX, this)" in nav
         and "requestDisallowInterceptTouchEvent(true)" in nav,
+    "Dragging previews selection under the lens without committing the page":
+        "updateElasticSelectionPreview(animatedLongSelectedViewCenterX)" in nav
+        and "setGestureSelectedOverride(factor, true)" in nav
+        and "clearElasticSelectionPreview()" in nav,
+    "Release keeps finger velocity and settles with a controlled spring":
+        "VelocityTracker" in nav
+        and "computeCurrentVelocity(1000)" in nav
+        and "setStartVelocity(elasticReleaseVelocityX)" in nav
+        and ".setStiffness(390f)" in nav
+        and ".setDampingRatio(.82f)" in nav,
     "Dragging cancels child click; click commits only on finger release":
         "super.dispatchTouchEvent(cancel);" in nav
         and "hovered.performClick();" in nav
