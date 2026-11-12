@@ -495,11 +495,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                                             : (dark ? .16f : .13f)))
                             // One native optical rim only. Refraction comes from
                             // LiquidGlassEffect, not from painted gradients.
-                            .setStrokeColorTop(0x2EFFFFFF, 0x36FFFFFF)
-                            .setStrokeColorBottom(0x03FFFFFF, 0x08FFFFFF)
-                            .setShadowColor(0x0B000000, 0x12000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(1.0f), 0, AndroidUtilities.dpf2(.3f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.32f), AndroidUtilities.dpf2(.16f)));
+                            .setStrokeColorTop(0x12FFFFFF, 0x18FFFFFF)
+                            .setStrokeColorBottom(0x00FFFFFF, 0x03FFFFFF)
+                            .setStrokeColorFull(0x00000000, 0x00000000)
+                            .setShadowColor(0x06000000, 0x0A000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(.7f), 0, AndroidUtilities.dpf2(.2f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.16f), AndroidUtilities.dpf2(.06f)));
             capsule.setLiquidGlassEffectAllowed();
             if (canRefract) {
                 // Elastic pills are themselves a liquid-glass interaction.
