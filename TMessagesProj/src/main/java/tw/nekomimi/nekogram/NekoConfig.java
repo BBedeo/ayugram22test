@@ -284,8 +284,12 @@ public class NekoConfig {
             }
             if (!configLoaded)
                 getPreferences().registerOnSharedPreferenceChangeListener(CloudSettingsHelper.listener);
-            for (int a = 1; a <= 5; a++) {
-                datacenterInfos.add(new DatacenterInfo(a));
+            // Account profile switching reloads configs with force=true.
+            // Do not append duplicate datacenter entries on every switch.
+            if (datacenterInfos.isEmpty()) {
+                for (int a = 1; a <= 5; a++) {
+                    datacenterInfos.add(new DatacenterInfo(a));
+                }
             }
             configLoaded = true;
         }
