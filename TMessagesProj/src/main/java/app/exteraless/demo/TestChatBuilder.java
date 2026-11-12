@@ -32,7 +32,7 @@ public final class TestChatBuilder {
         int pad = AndroidUtilities.dp(20);
         content.setPadding(pad, AndroidUtilities.dp(4), pad, AndroidUtilities.dp(8));
 
-        final SelectorField preset = createSelector(fragment, context, LocaleController.getString(R.string.ExFullGramTestPreset), new String[]{
+        final SelectorField preset = createSelector(context, LocaleController.getString(R.string.ExFullGramTestPreset), new String[]{
                 LocaleController.getString(R.string.ExFullGramTestPresetCustom),
                 LocaleController.getString(R.string.ExFullGramTestPresetEmpty),
                 LocaleController.getString(R.string.ExFullGramTestPresetBusyGroup),
@@ -43,7 +43,7 @@ public final class TestChatBuilder {
         addLabel(content, context, LocaleController.getString(R.string.ExFullGramTestPreset));
         content.addView(preset, rowParams());
 
-        final SelectorField type = createSelector(fragment, context, LocaleController.getString(R.string.ExFullGramTestChatType), new String[]{
+        final SelectorField type = createSelector(context, LocaleController.getString(R.string.ExFullGramTestChatType), new String[]{
                 LocaleController.getString(R.string.ExFullGramTestTypePrivate),
                 LocaleController.getString(R.string.ExFullGramTestTypeGroup),
                 LocaleController.getString(R.string.ExFullGramTestTypeChannel)
@@ -178,12 +178,11 @@ public final class TestChatBuilder {
     }
 
     private static SelectorField createSelector(
-            BaseFragment fragment,
             Context context,
             String title,
             String[] values
     ) {
-        return new SelectorField(fragment, context, title, values);
+        return new SelectorField(context, title, values);
     }
 
     private interface SelectionChangedListener {
@@ -191,15 +190,13 @@ public final class TestChatBuilder {
     }
 
     private static final class SelectorField extends TextView {
-        private final BaseFragment fragment;
         private final String title;
         private final String[] values;
         private int selectedPosition;
         private SelectionChangedListener listener;
 
-        SelectorField(BaseFragment fragment, Context context, String title, String[] values) {
+        SelectorField(Context context, String title, String[] values) {
             super(context);
-            this.fragment = fragment;
             this.title = title;
             this.values = values;
 
@@ -218,7 +215,9 @@ public final class TestChatBuilder {
                         .setTitle(title)
                         .setItems(values, (d, which) -> setSelection(which))
                         .create();
-                fragment.showDialog(dialog);
+                // A nested selector must not replace the parent builder dialog.
+                // BaseFragment.showDialog() dismisses the dialog already owned by the fragment.
+                dialog.show();
             });
             updateText();
         }
