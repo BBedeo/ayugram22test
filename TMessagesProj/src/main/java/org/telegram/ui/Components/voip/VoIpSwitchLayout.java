@@ -16,6 +16,9 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.OvershootInterpolator;
+
+import app.exteraless.appearance.LiquidGlassTuning;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -44,6 +47,19 @@ public class VoIpSwitchLayout extends FrameLayout {
     private final TextView currentTextView;
     private final TextView newTextView;
     public int animationDelay;
+    private boolean labelsHidden;
+
+    /** Hide the caption in every switching state, not only the first frame. */
+    public void setLabelsHidden(boolean hidden) {
+        labelsHidden = hidden;
+        currentTextView.animate().cancel();
+        newTextView.animate().cancel();
+        currentTextView.setAlpha(1f);
+        currentTextView.setTranslationY(0f);
+        currentTextView.setVisibility(hidden ? GONE : VISIBLE);
+        newTextView.setVisibility(GONE);
+        requestLayout();
+    }
 
     public void setOnBtnClickedListener(VoIpButtonView.OnBtnClickedListener onBtnClickedListener) {
         voIpButtonView.setOnBtnClickedListener(onBtnClickedListener);
@@ -103,6 +119,15 @@ public class VoIpSwitchLayout extends FrameLayout {
                 newText = "";
         }
         setContentDescription(newText);
+        if (labelsHidden) {
+            currentTextView.animate().cancel();
+            newTextView.animate().cancel();
+            currentTextView.setText(newText);
+            newTextView.setText(newText);
+            currentTextView.setVisibility(GONE);
+            newTextView.setVisibility(GONE);
+            return;
+        }
 
         if (currentTextView.getVisibility() == GONE && newTextView.getVisibility() == GONE) {
             currentTextView.setVisibility(VISIBLE);
@@ -260,6 +285,7 @@ public class VoIpSwitchLayout extends FrameLayout {
         private RLottieDrawable singleIcon;
         private final Paint maskPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint whiteCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final VoIPCallGlass.Painter callGlass = new VoIPCallGlass.Painter();
         private final Paint darkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path clipPath = new Path();
         private final int maxRadius = AndroidUtilities.dp(ITEM_SIZE / 2f);
@@ -382,7 +408,11 @@ public class VoIpSwitchLayout extends FrameLayout {
             if (pressedScaleAnimator != null) {
                 pressedScaleAnimator.cancel();
             }
-            pressedScaleAnimator = ValueAnimator.ofFloat(pressedScale, pressed ? 0.8f : 1f);
+            pressedScaleAnimator = ValueAnimator.ofFloat(pressedScale,
+                    pressed ? (LiquidGlassTuning.motionEnabled() ? .88f : .8f) : 1f);
+            if (LiquidGlassTuning.motionEnabled() && !pressed) {
+                pressedScaleAnimator.setInterpolator(new OvershootInterpolator(1.15f));
+            }
             pressedScaleAnimator.addUpdateListener(animation -> {
                 pressedScale = (float) animation.getAnimatedValue();
                 invalidate();
@@ -394,7 +424,16 @@ public class VoIpSwitchLayout extends FrameLayout {
         @Override
         protected void onDraw(Canvas canvas) {
             canvas.save();
-            canvas.scale(pressedScale, pressedScale, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
+            final boolean glassMotion = LiquidGlassTuning.motionEnabled();
+            final float press = glassMotion
+                    ? Math.max(0f, Math.min(1f, (1f - pressedScale) / .12f)) : 0f;
+            if (glassMotion) {
+                canvas.scale(pressedScale * (1f + press * .075f),
+                        pressedScale * (1f - press * .085f),
+                        getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
+            } else {
+                canvas.scale(pressedScale, pressedScale, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
+            }
             float cx = getWidth() / 2f;
             float cy = getHeight() / 2f;
 
@@ -406,7 +445,11 @@ public class VoIpSwitchLayout extends FrameLayout {
                 if (singleIconBackgroundAlphaPercent > 20) {
                     darkPaint.setAlpha((int) (VoIPBackgroundProvider.DARK_LIGHT_DEFAULT_ALPHA * singleIconBackgroundAlphaPercent / 100f));
                     whiteCirclePaint.setAlpha((int) (255 * singleIconBackgroundAlphaPercent / 100f));
-                    canvas.drawCircle(cx, cy, maxRadius, whiteCirclePaint);
+                    if (LiquidGlassTuning.isActive()) {
+                        callGlass.drawFace(canvas, cx, cy, maxRadius, Color.WHITE, press);
+                    } else {
+                        canvas.drawCircle(cx, cy, maxRadius, whiteCirclePaint);
+                    }
                     singleIcon.draw(canvas, maskPaint);
                     singleIcon.draw(canvas, darkPaint); //dimming icons
                 } else {
@@ -414,8 +457,12 @@ public class VoIpSwitchLayout extends FrameLayout {
                     if(backgroundProvider.isReveal()) {
                         canvas.drawCircle(cx, cy, maxRadius, backgroundProvider.getRevealPaint());
                     }
+                    if (LiquidGlassTuning.isActive()) {
+                        callGlass.drawRim(canvas, cx, cy, maxRadius, press);
+                    }
                     singleIcon.draw(canvas);
                 }
+                canvas.restore();
                 return;
             }
             if (selectedIcon == null || unSelectedIcon == null) return;
@@ -425,7 +472,11 @@ public class VoIpSwitchLayout extends FrameLayout {
 
             if (selectedRadius == maxRadius && unselectedRadius > 0 && unselectedRadius != maxRadius) {
                 //in the process of changing from selected to NOT selected.
-                canvas.drawCircle(cx, cy, selectedRadius, whiteCirclePaint);
+                if (LiquidGlassTuning.isActive()) {
+                    callGlass.drawFace(canvas, cx, cy, selectedRadius, Color.WHITE, press);
+                } else {
+                    canvas.drawCircle(cx, cy, selectedRadius, whiteCirclePaint);
+                }
                 canvas.drawCircle(cx, cy, unselectedRadius, maskPaint);
 
                 selectedIcon.setAlpha(255);
@@ -445,6 +496,9 @@ public class VoIpSwitchLayout extends FrameLayout {
                 if (backgroundProvider.isReveal()) {
                     canvas.drawCircle(cx, cy, unselectedRadius, backgroundProvider.getRevealPaint());
                 }
+                if (LiquidGlassTuning.isActive()) {
+                    callGlass.drawRim(canvas, cx, cy, unselectedRadius, press);
+                }
                 unSelectedIcon.draw(canvas);
             }
 
@@ -453,7 +507,11 @@ public class VoIpSwitchLayout extends FrameLayout {
                 clipPath.reset();
                 clipPath.addCircle(cx, cy, selectedRadius, Path.Direction.CW);
                 canvas.clipPath(clipPath);
-                canvas.drawCircle(cx, cy, selectedRadius, whiteCirclePaint); //circular background
+                if (LiquidGlassTuning.isActive()) {
+                    callGlass.drawFace(canvas, cx, cy, selectedRadius, Color.WHITE, press);
+                } else {
+                    canvas.drawCircle(cx, cy, selectedRadius, whiteCirclePaint); //circular background
+                }
                 selectedIcon.setAlpha(255);
                 selectedIcon.draw(canvas, maskPaint);
                 selectedIcon.setAlpha((int) (255 * VoIPBackgroundProvider.DARK_LIGHT_PERCENT));
