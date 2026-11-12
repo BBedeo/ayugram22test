@@ -11,6 +11,9 @@ package org.telegram.ui.Components;
 import static org.telegram.messenger.AndroidUtilities.dp;
 
 import android.content.Context;
+import android.animation.ValueAnimator;
+import android.view.animation.OvershootInterpolator;
+import app.exteraless.appearance.ElasticPillGesture;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -99,6 +102,10 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
     private int[] pressedState = new int[]{android.R.attr.state_enabled, android.R.attr.state_pressed};
     private float transitionProgress = 1f;
     private int transitionThumbX;
+    // Only the slider knob stretches, never the entire row or track.
+    private float elasticThumbStretch;
+    private ValueAnimator elasticThumbRelease;
+    private float elasticTouchStartX;
     private int separatorsCount;
     private boolean isModern = false;
     private int previewingState = -1;
@@ -274,8 +281,28 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             sx = ev.getX();
             sy = ev.getY();
+            if (ElasticPillGesture.enabled()) {
+                elasticTouchStartX = sx;
+                if (elasticThumbRelease != null) elasticThumbRelease.cancel();
+                elasticThumbStretch = 0;
+                // Dragging a slider must not swipe the current fragment/tab.
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+            }
             return true;
         } else if (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_CANCEL) {
+            if (ElasticPillGesture.enabled()) {
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+                final float start = elasticThumbStretch;
+                if (elasticThumbRelease != null) elasticThumbRelease.cancel();
+                elasticThumbRelease = ValueAnimator.ofFloat(start, 0f);
+                elasticThumbRelease.setDuration(240);
+                elasticThumbRelease.setInterpolator(new OvershootInterpolator(.65f));
+                elasticThumbRelease.addUpdateListener(animation -> {
+                    elasticThumbStretch = (float) animation.getAnimatedValue();
+                    invalidate();
+                });
+                elasticThumbRelease.start();
+            }
             captured = false;
             if (ev.getAction() == MotionEvent.ACTION_UP) {
                 final ViewConfiguration vc = ViewConfiguration.get(getContext());
@@ -316,6 +343,13 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
                 return true;
             }
         } else if (ev.getAction() == MotionEvent.ACTION_MOVE) {
+            if (ElasticPillGesture.enabled()) {
+                // The longer the tug, the more the knob elongates; the thumb
+                // still maps exactly to the requested seek value.
+                elasticThumbStretch = Math.min(AndroidUtilities.dp(12),
+                        Math.abs(ev.getX() - elasticTouchStartX) * .11f);
+                invalidate();
+            }
             if (!captured) {
                 final ViewConfiguration vc = ViewConfiguration.get(getContext());
                 if (Math.abs(ev.getY() - sy) > vc.getScaledTouchSlop()) {
@@ -650,7 +684,14 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         }
 
         if (!isModern) {
-            if (transitionProgress < 1f) {
+            if (ElasticPillGesture.enabled() && (pressed || Math.abs(elasticThumbStretch) > .2f)) {
+                final float cx = thumbX + selectorWidth / 2f;
+                final float cy = y + thumbSize / 2f;
+                final float widthExtra = Math.abs(elasticThumbStretch);
+                rect.set(cx - currentRadius - widthExtra, cy - currentRadius,
+                        cx + currentRadius + widthExtra, cy + currentRadius);
+                canvas.drawRoundRect(rect, currentRadius, currentRadius, outerPaint1);
+            } else if (transitionProgress < 1f) {
                 final float oldCircleProgress = 1f - Easings.easeInQuad.getInterpolation(Math.min(1f, transitionProgress * 3f));
                 final float newCircleProgress = Easings.easeOutQuad.getInterpolation(transitionProgress);
                 if (oldCircleProgress > 0f) {
@@ -690,8 +731,19 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
             }
 
             // left, top, right, bottom, rx, ry
-            rect.set(thumbX + selectorWidth / 2f, top - thumbOverflow, thumbX + selectorWidth / 2f + thumbSize, bottom + thumbOverflow);
-            canvas.drawRoundRect(rect, indicatorRadius, indicatorRadius, outerPaint1);
+            if (ElasticPillGesture.enabled()) {
+                final float center = thumbX + selectorWidth / 2f + thumbSize / 2f;
+                final float half = Math.max(AndroidUtilities.dp(4), thumbSize / 2f)
+                        + Math.abs(elasticThumbStretch);
+                final float height = AndroidUtilities.dp(MD3_THUMB_HEIGHT_DP) / 2f;
+                rect.set(center - half, getMeasuredHeight() / 2f - height,
+                        center + half, getMeasuredHeight() / 2f + height);
+                canvas.drawRoundRect(rect, height, height, outerPaint1);
+            } else {
+                rect.set(thumbX + selectorWidth / 2f, top - thumbOverflow,
+                        thumbX + selectorWidth / 2f + thumbSize, bottom + thumbOverflow);
+                canvas.drawRoundRect(rect, indicatorRadius, indicatorRadius, outerPaint1);
+            }
         }
 
         /*if (transitionProgress < 1f) {
