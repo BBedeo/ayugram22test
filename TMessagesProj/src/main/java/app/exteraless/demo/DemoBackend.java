@@ -431,30 +431,94 @@ public final class DemoBackend {
     }
 
     private static void putSingleMessage(int account, long dialogId, TLRPC.Message message) {
+        putSingleMessage(account, dialogId, message, null);
+    }
+
+    /**
+     * Feed local messages into the SAME Telegram UI event path as real sends.
+     * ChatActivity reads SendAnimationData and wasJustSent on MessageObject
+     * to animate a bubble from the composer; neither field survives SQLite.
+     * This is intentionally a UI-only transition, not an outgoing network request.
+     */
+    private static void putSingleMessage(int account, long dialogId, TLRPC.Message message,
+                                         SendMessagesHelper.SendMessageParams sendParams) {
         ArrayList<TLRPC.Message> raw = new ArrayList<>();
         raw.add(message);
         MessagesStorage.getInstance(account).putMessages(
                 raw, false, true, false, 0, ChatActivity.MODE_DEFAULT, 0);
 
-        ArrayList<MessageObject> objects = new ArrayList<>();
-        objects.add(new MessageObject(account, message, true, true));
-        MessagesController controller = MessagesController.getInstance(account);
-        controller.updateInterfaceWithMessages(dialogId, objects, ChatActivity.MODE_DEFAULT);
-
-        // Also update the dialog index so returning to the chat list shows the
-        // just-sent message instead of an old preview or an absent Test chat.
-        ArrayList<TLRPC.User> users = new ArrayList<>();
-        ArrayList<TLRPC.Chat> chats = new ArrayList<>();
-        TLRPC.User self = UserConfig.getInstance(account).getCurrentUser();
-        if (self != null) users.add(self);
-        if (dialogId > 0) {
-            TLRPC.User peer = controller.getUser(dialogId);
-            if (peer != null) users.add(peer);
-        } else {
-            TLRPC.Chat chat = controller.getChat(-dialogId);
-            if (chat != null) chats.add(chat);
+        MessageObject object = new MessageObject(account, message,
+                sendParams != null ? sendParams.replyToMsg : null, true, true);
+        if (sendParams != null && message.out) {
+            object.sendAnimationData = sendParams.sendAnimationData;
+            object.wasJustSent = true;
         }
-        registerLocalDialog(account, dialogId, message, message.out ? 0 : 1, users, chats);
+        ArrayList<MessageObject> objects = new ArrayList<>();
+        objects.add(object);
+        // Telegram's ordinary send path uses updateInterfaceWithMessages plus
+        // dialogsNeedReload. processLoadedDialogs is for INITIAL chat creation:
+        // calling it on EVERY send replaces the in-flight MessageObject and can
+        // interrupt Telegram's composer-to-bubble animation.
+        MessagesController.getInstance(account).updateInterfaceWithMessages(
+                dialogId, objects, ChatActivity.MODE_DEFAULT);
+        NotificationCenter.getInstance(account).postNotificationName(
+                NotificationCenter.dialogsNeedReload);
+    }
+
+    /**
+     * Preserve Telegram's normal outgoing message metadata in offline Test Mode.
+     * In particular, message entities and actual media types determine which
+     * native bubbles and animations ChatActivity chooses to draw.
+     */
+    private static void applySendParameters(TLRPC.TL_message message,
+                                             SendMessagesHelper.SendMessageParams params) {
+        if (params == null) return;
+        if (params.entities != null && !params.entities.isEmpty()) {
+            message.entities = new ArrayList<>(params.entities);
+            message.flags |= TLRPC.MESSAGE_FLAG_HAS_ENTITIES;
+        }
+        message.silent = !params.notify;
+        message.invert_media = params.invert_media;
+        if (params.effect_id != 0) {
+            message.flags2 |= 4;
+            message.effect = params.effect_id;
+        }
+        if (!TextUtils.isEmpty(params.path)) {
+            message.attachPath = params.path;
+        }
+        if (params.mediaWebPage != null) {
+            message.media = params.mediaWebPage;
+            message.flags |= 512;
+        } else if (params.photo != null) {
+            TLRPC.TL_messageMediaPhoto media = new TLRPC.TL_messageMediaPhoto();
+            media.photo = params.photo;
+            media.flags |= 3;
+            message.media = media;
+            message.flags |= 512;
+        } else if (params.document != null) {
+            TLRPC.TL_messageMediaDocument media = new TLRPC.TL_messageMediaDocument();
+            media.document = params.document;
+            media.flags |= 3;
+            message.media = media;
+            message.flags |= 512;
+        } else if (params.poll != null) {
+            message.media = params.poll;
+            message.flags |= 512;
+        } else if (params.todo != null) {
+            message.media = params.todo;
+            message.flags |= 512;
+        } else if (params.location != null) {
+            message.media = params.location;
+            message.flags |= 512;
+        } else if (params.game != null) {
+            TLRPC.TL_messageMediaGame media = new TLRPC.TL_messageMediaGame();
+            media.game = params.game;
+            message.media = media;
+            message.flags |= 512;
+        } else if (params.invoice != null) {
+            message.media = params.invoice;
+            message.flags |= 512;
+        }
     }
 
     public static long createTestChat(
@@ -894,8 +958,9 @@ public final class DemoBackend {
         if (dialogId > 0) {
             TLRPC.TL_message message = createPrivateMessage(
                     messageId, self.id, dialogId, self.id, true, text, date);
+            applySendParameters(message, params);
             copyReply(params, message);
-            putSingleMessage(account, dialogId, message);
+            putSingleMessage(account, dialogId, message, params);
 
             int recipientAccount = accountForTestUser(dialogId);
             if (recipientAccount >= 0 && recipientAccount != account) {
@@ -915,6 +980,7 @@ public final class DemoBackend {
                         text,
                         date
                 );
+                applySendParameters(mirrored, params);
                 if (message.reply_to != null) {
                     mirrored.reply_to = message.reply_to;
                     mirrored.flags |= 8;
@@ -930,14 +996,16 @@ public final class DemoBackend {
 
         TLRPC.TL_message message = createChannelMessage(
                 messageId, chatId, self.id, true, broadcast, text, date);
+        applySendParameters(message, params);
         copyReply(params, message);
-        putSingleMessage(account, dialogId, message);
+        putSingleMessage(account, dialogId, message, params);
 
         // Shared test groups/channels are mirrored to every local Test Account.
         for (int other = 0; other < UserConfig.MAX_ACCOUNT_COUNT; other++) {
             if (other == account || !isTestAccount(other)) continue;
             TLRPC.TL_message mirrored = createChannelMessage(
                     messageId, chatId, self.id, false, broadcast, text, date);
+            applySendParameters(mirrored, params);
             if (message.reply_to != null) {
                 mirrored.reply_to = message.reply_to;
                 mirrored.flags |= 8;
