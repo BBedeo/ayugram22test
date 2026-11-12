@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OpenExteraAccounts">Аккаунты и настройки</string>
+    <string name="EFGAccountsTitle">Настройки аккаунтов</string>
+    <string name="EFGAccountsIntro">Индивидуальные настройки ExFullGram, Nagram и Neko для каждого аккаунта, включая Test Mode.</string>
+    <string name="EFGAccountsCurrent">Текущий профиль</string>
+    <string name="EFGAccountsOptions">Профили</string>
+    <string name="EFGAccountsSeparateSettings">Отдельные настройки для аккаунтов</string>
+    <string name="EFGAccountsSeparateHint">Настройки мода сохраняются отдельно для каждого обычного и тестового аккаунта.</string>
+    <string name="EFGAccountsCompare">Отличия между аккаунтами</string>
+    <string name="EFGAccountsCompareHint">Сравнение двух профилей и перенос отдельных параметров в обе стороны.</string>
+    <string name="EFGAccountsReset">Сбросить настройки аккаунта</string>
+    <string name="EFGAccountsResetHint">Сбрасывает только выбранный профиль ExFullGram/Nagram.</string>
+    <string name="EFGAccountsResetConfirm">Сбросить настройки мода для %1$s? Чаты, сообщения и авторизация Telegram останутся на месте.</string>
+    <string name="EFGAccountsApplied">Сохранено изменений: %1$d</string>
+    <string name="EFGAccountsScope">Работает с настройками ExFullGram, Nagram и Neko. Серверные настройки Telegram, данные чатов и вход в аккаунт не копируются.</string>
+    <string name="EFGAccountsComparisonTitle">Отличия между аккаунтами</string>
+    <string name="EFGAccountsLeft">Левый аккаунт</string>
+    <string name="EFGAccountsRight">Правый аккаунт</string>
+    <string name="EFGAccountsPickSide">Выбрать аккаунт</string>
+    <string name="EFGAccountsSelectHint">Нажми на нужное значение в строке. Подсвеченное значение заменит настройку другого аккаунта после применения.</string>
+    <string name="EFGAccountsNoDifferences">У этих аккаунтов одинаковые настройки мода.</string>
+    <string name="EFGAccountsApply">Применить выбранные изменения</string>
+    <string name="EFGAccountsApplyConfirm">Применить выбранные изменения (%1$d)? Остальные настройки аккаунтов не изменятся.</string>
+    <string name="EFGAccountsNothingSelected">Сначала выбери хотя бы одно значение.</string>
+    <string name="EFGAccountsEnableFirst">Для сравнения и переноса включи отдельные настройки аккаунтов.</string>
+    <string name="EFGAccountsRestartHint">Некоторые изменения оформления появятся после перезапуска приложения.</string>
+    <string name="EFGAccountsResetWhich">Какой аккаунт сбросить?</string>
+</resources>
