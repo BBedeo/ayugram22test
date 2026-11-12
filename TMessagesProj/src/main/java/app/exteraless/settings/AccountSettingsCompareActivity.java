@@ -366,7 +366,7 @@ public class AccountSettingsCompareActivity extends BaseFragment {
 
             // The native RecyclerView item animator fades/repositions rows
             // after merges; value selection also has a subtle scale motion.
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.bottomMargin = dp(8);
             setLayoutParams(lp);
