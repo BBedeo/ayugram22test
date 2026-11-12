@@ -95,6 +95,15 @@ public final class DemoBackend {
         return isTestAccount(account);
     }
 
+    /**
+     * Remains true even if Telegram's network layer temporarily clears UserConfig.
+     * This lets LaunchActivity distinguish a local Test slot from a real logout.
+     */
+    public static boolean isTestSlot(int account) {
+        if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT) return false;
+        return isTestAccount(account) || prefs().getBoolean(KEY_ACCOUNT_READY_PREFIX + account, false);
+    }
+
     private static String defaultAccountName(int account) {
         return LocaleController.formatString(R.string.ExFullGramTestAccountDefaultName, account + 1);
     }
@@ -208,6 +217,17 @@ public final class DemoBackend {
             // seed()/install* enqueue their writes onto this same queue. This runnable is
             // therefore executed only after the local account data has actually been stored.
             storage.getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> {
+                UserConfig config = UserConfig.getInstance(account);
+                // A local Test slot has no Telegram server to continue loading from.
+                // Mark the local cache as the complete dialog source so an empty/short
+                // cache can never fall through to TL_messages_getDialogs.
+                config.setDialogsLoadOffset(0, Integer.MAX_VALUE, 0, 0L, 0L, 0L, 0L);
+                config.notificationsSettingsLoaded = true;
+                config.notificationsSignUpSettingsLoaded = true;
+                config.unreadDialogsLoaded = true;
+                config.saveConfig(false);
+
+                org.telegram.ui.DialogsActivity.dialogsLoaded[account] = false;
                 prefs().edit().putBoolean(KEY_ACCOUNT_READY_PREFIX + account, true).apply();
                 NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.dialogsNeedReload);
                 NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.mainUserInfoChanged);
