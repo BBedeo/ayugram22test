@@ -47,16 +47,17 @@ checks = {
         "actualSelected = tab;" in main
         and "tabsView.setElasticSelectedTab(actualSelected, animated)" in main
         and "elasticSelectedTab != null" in nav,
-    "Measured tab geometry keeps long labels inside the pill":
+    "Elastic pill reuses exact native long-press tab geometry":
         "getInterpolatedWidthByX(centerX, this)" in nav
-        and "widthAtX - dp(4)" in nav
-        and "final float width = availableWidth + extension" in nav
-        and "availableHeight - dp(2)" in nav
+        and "final float height = availableHeight" in nav
+        and "final float availableWidth = Math.max(dp(28), widthAtX)" in nav
+        and "getSelectorVisualWidth()" in nav
         and "Math.min(dp(14), travelled * .15f)" in nav,
-    "Native glass sampling and visible refraction are preserved behind icons":
+    "Native glass sampling and forced GPU refraction are preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
-        and "capsule.setIntensity(1.15f);" in main
+        and "capsule.setGlassSettings(new GlassSettings(" in main
+        and "capsule.setIntensity(1.42f);" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
         and "nativeGlass.draw(canvas);" in pill,
     "No fake painted double rim over the native lens":
