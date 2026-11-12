@@ -380,6 +380,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final boolean changed = elasticSelectedTab != tab;
         elasticSelectedTab = tab;
         setSkipDrawSelector(true);
+        // The pill should slide with a short, controlled spring; the old
+        // low-damping spring was meant for an almost invisible long-press
+        // selector and visibly overshot across neighboring buttons.
+        selectedTabPositionX.getSpring()
+                .setStiffness(650f)
+                .setDampingRatio(.76f);
         if (!isInLongPress && (changed || !elasticPillInitialized)) {
             syncElasticPillToSelected(animated);
         }
