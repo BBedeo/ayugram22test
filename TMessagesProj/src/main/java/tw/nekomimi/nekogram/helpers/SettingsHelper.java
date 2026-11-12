@@ -28,6 +28,7 @@ import app.exteraless.settings.OpenExteraCloudActivity;
 import app.exteraless.settings.OpenExteraGlyphActivity;
 import app.exteraless.pillstack.PillStackSettingsActivity;
 import app.exteraless.plugins.ui.PluginsActivity;
+import app.exteraless.settings.AccountSettingsActivity;
 import app.exteraless.settings.OpenExteraAppNavigationActivity;
 import app.exteraless.settings.OpenExteraAppearanceActivity;
 import app.exteraless.settings.OpenExteraAyuMomentsActivity;
@@ -236,6 +237,9 @@ public class SettingsHelper {
                 case "settings":
                     fragment = neko_fragment = new OpenExteraSettingsActivity();
                     break;
+                case "accounts":
+                    fragment = neko_fragment = new AccountSettingsActivity();
+                    break;
                 case "general":
                     if (TRANSLATOR_ROWS.containsKey(row)) {
                         fragment = nekox_fragment = new NekoTranslatorSettingsActivity();
@@ -302,6 +306,9 @@ public class SettingsHelper {
                     break;
                 case "exteraless":
                     fragment = neko_fragment = new OpenExteraSettingsActivity();
+                    break;
+                case "exteraless_accounts":
+                    fragment = neko_fragment = new AccountSettingsActivity();
                     break;
                 case "exteraless_general":
                     if (TRANSLATOR_ROWS.containsKey(row)) {
@@ -446,6 +453,7 @@ public class SettingsHelper {
 
         ArrayList<BaseNekoSettingsActivity> exteralessFragments = new ArrayList<>();
         exteralessFragments.add(new OpenExteraSettingsActivity());
+        exteralessFragments.add(new AccountSettingsActivity());
         exteralessFragments.add(new OpenExteraGeneralActivity());
         exteralessFragments.add(new OpenExteraAppearanceActivity());
         exteralessFragments.add(new OpenExteraChatsActivity());
