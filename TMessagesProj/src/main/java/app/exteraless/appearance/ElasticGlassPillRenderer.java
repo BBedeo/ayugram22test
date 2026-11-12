@@ -24,6 +24,17 @@ public final class ElasticGlassPillRenderer {
             lastRadius = radius;
             nativeGlass.setRadius(radius);
         }
+
+        // The forced pill lens must keep its own Fresnel lighting even when
+        // universal Liquid Glass is off. A small directional angle/phase shift
+        // follows the stretch, so the highlight reacts to motion instead of
+        // looking painted onto a rigid dark oval.
+        final float clampedStretch = Math.max(-1f, Math.min(1f, stretching));
+        final float baseAngle = 315f;
+        final float angle = (float) Math.toRadians(baseAngle + clampedStretch * 9f);
+        final float shine = dark ? .64f : .72f;
+        nativeGlass.setLiquidOptics(shine, angle, clampedStretch * .24f);
+
         nativeGlass.draw(canvas);
     }
 }
