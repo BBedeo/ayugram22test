@@ -18,6 +18,7 @@ main = read("org/telegram/ui/MainTabsActivity.java")
 tab = read("org/telegram/ui/Components/glass/GlassTabView.java")
 menu = read("org/telegram/ui/Components/ItemOptions.java")
 pill = read("app/exteraless/appearance/ElasticGlassPillRenderer.java")
+blur_drawable = read("org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java")
 buttons = read("org/telegram/ui/Components/voip/VoIPToggleButton.java")
 switch = read("org/telegram/ui/Components/voip/VoIpSwitchLayout.java")
 top = read("app/exteraless/appearance/ElasticCallIconView.java")
@@ -69,6 +70,16 @@ checks = {
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
         and "nativeGlass.draw(canvas);" in pill,
+    "Forced elastic lens keeps local Fresnel optics":
+        "setLiquidOptics" in blur_drawable
+        and "liquidShineOverride" in blur_drawable
+        and "liquidLightAngleOverride" in blur_drawable
+        and "nativeGlass.setLiquidOptics" in pill
+        and "baseAngle = 315f" in pill
+        and "direction * extension / dp(16)" in nav,
+    "Elastic lens never falls back to SOLID divider outline":
+        ".setStrokeColorFull(0x00000000, 0x00000000)" in main
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.16f), AndroidUtilities.dpf2(.06f))" in main,
     "No fake painted double rim over the native lens":
         "canvas.drawArc(" not in pill
         and "LinearGradient" not in pill
