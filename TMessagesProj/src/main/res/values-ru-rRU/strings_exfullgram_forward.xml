@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ExFullGramForwardMultiSelect">Мультивыбор получателей по нажатию</string>
+    <string name="ExFullGramForwardMultiSelectInfo">Вкл.: режим ExFullGram — каждое нажатие добавляет или убирает получателя. Выкл.: режим X-TERRA — первое нажатие выбирает одного получателя, а мультивыбор начинается после зажатия.</string>
+    <string name="ExFullGramForwardSendAsCopy">Отправить без пометки пересылки</string>
+</resources>
