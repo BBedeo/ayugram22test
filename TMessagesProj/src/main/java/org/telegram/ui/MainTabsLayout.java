@@ -582,10 +582,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
         final float totalStretch = elasticSmoothedStretch;
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float lift = Math.max(elasticPressValue, Math.min(1f, totalStretch / dp(7.0f)));
-        final float pressSwell = lift * dp(5.4f);
+        final float glideLift = Math.min(1f, totalStretch / dp(7.0f));
+        final float pressSwell = elasticPressValue * dp(8.0f) + glideLift * dp(2.8f);
         final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell;
-        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .88f;
+        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .94f;
         final float verticalCompression = Math.min(dp(1.8f), totalStretch * .10f);
         final float height = Math.max(1f, availableHeight - verticalCompression + jellyY);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
@@ -631,13 +631,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     }
 
     private void updateElasticTabLensScale(float lensCenterX, float lensWidth, float totalStretch) {
-        final float travelFactor = Math.min(1f, totalStretch / Math.max(1f, dp(10)));
-        final float active = Math.max(elasticPressValue, travelFactor);
-        final float boost = Math.max(0f,
-                elasticPressValue * .050f
-                + travelFactor * .028f
-                + Math.max(0f, elasticJellyValue) * .030f);
-        final float sink = active * .036f;
+        // Never shrink non-selected or departing tabs downward (< 1f) — deactivation is
+        // conveyed smoothly via outline crossfade/tint without twitching the dock on taps.
+        final boolean interactiveLens = elasticDragging || elasticPressValue > .02f;
+        final float boost = interactiveLens
+                ? Math.max(0f, elasticPressValue * .042f + Math.min(.022f, totalStretch / Math.max(1f, dp(10)) * .022f))
+                : 0f;
         final float span = Math.max(dp(28), lensWidth * .86f);
         for (int i = 0, n = getChildCount(); i < n; i++) {
             final View child = getChildAt(i);
@@ -646,7 +645,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             }
             final float dist = Math.abs(getCenterX(child) - lensCenterX);
             final float overlap = Math.max(0f, Math.min(1f, 1f - dist / span));
-            final float targetScale = 1f + overlap * boost - (1f - overlap) * sink;
+            final float targetScale = 1f + overlap * boost;
             if (Math.abs(child.getScaleX() - targetScale) > .001f) {
                 child.setScaleX(targetScale);
                 child.setScaleY(targetScale);

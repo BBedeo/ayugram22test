@@ -611,23 +611,22 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> {
                                 if (dark) {
-                                    // Balanced cool sapphire crystal that never collapses into a
-                                    // sunken black cutout over dark screens while staying crisp
-                                    // and transparent over bright scrolled items.
-                                    return canRefract ? 0x1CE0EEFF : 0x32E0EEFF;
+                                    // Clear luminous sapphire crystal over dark screens while staying
+                                    // optically glassy and crisp over bright scrolled items.
+                                    return canRefract ? 0x24E2F0FF : 0x38E2F0FF;
                                 }
                                 final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                                 final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.84f);
                                 return Theme.multAlpha(lifted, canRefract ? .46f : .56f);
                             })
-                            // Fine optical hairline catching key top-left & bounce bottom-right
-                            // while curved Fresnel arcs in AGSL supply the 3D crystal rim.
-                            .setStrokeColorTop(0x46FFFFFF, 0x1EFFFFFF)
-                            .setStrokeColorBottom(0x22FFFFFF, 0x10FFFFFF)
+                            // Crisp crystal rim catching upper crown & lateral caps around the tab label
+                            // while curved Fresnel arcs in AGSL render 3D glass depth.
+                            .setStrokeColorTop(0x64FFFFFF, 0x2AFFFFFF)
+                            .setStrokeColorBottom(0x34FFFFFF, 0x16FFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
-                            .setShadowColor(0x12000000, 0x24000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(3.6f), 0, AndroidUtilities.dpf2(1.2f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.34f), AndroidUtilities.dpf2(.24f)));
+                            .setShadowColor(0x16000000, 0x2E000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(5.5f), 0, AndroidUtilities.dpf2(1.8f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.44f), AndroidUtilities.dpf2(.30f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
             capsule.setLightAngle(GlassRim.LIGHT_TOP_LEFT);
@@ -640,8 +639,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(19));
-                capsule.setIntensity(3.15f);
+                capsule.setThickness(dp(22));
+                capsule.setIntensity(3.45f);
             }
             tabsView.setElasticPillGlass(capsule);
         }
@@ -676,6 +675,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         // В M3 панель во всю ширину,
         // высота досчитывается вместе с нижним системным отступом в applyTabsBottomInset
         tabsViewWrapper.addView(tabsView, LayoutHelper.createFrame(MainTabsUiHelper.getTabsViewWidth(), MainTabsUiHelper.getTabsViewHeightDp(), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
+        tabsViewWrapper.setClipChildren(false);
         tabsViewWrapper.setClipToPadding(false);
         contentView.addView(tabsViewWrapper, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
 

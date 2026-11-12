@@ -33,26 +33,27 @@ half4 main(in float2 fragCoord) {
   float minHalf = max(min(size.x, size.y), 4.0);
   float t = clamp(thickness, 4.0, minHalf * 0.90);
   float lensDepth = clamp(-sd / minHalf, 0.0, 1.0);
-  float rimT = clamp(1.0 + sd / max(t, minHalf * 0.68), 0.0, 1.0);
-  float lip = pow(max(rimT, 0.0001), 1.32);
+  float rimT = clamp(1.0 + sd / max(t * 1.15, minHalf * 0.82), 0.0, 1.0);
+  float lip = pow(max(rimT, 0.0001), 1.12);
   float press = clamp(glass_press, 0.0, 1.0);
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Convex droplet magnification in center + curved glass meniscus bend around the outer shoulder.
-  float magFactor = (0.088 + lift * 0.095) * (0.28 + 0.72 * lensDepth);
+  // Subtle reading clarity at rest; unmistakable crystal droplet magnification &
+  // radial curved meniscus refraction around words, icons, badges, and avatar when dragging.
+  float magFactor = (0.045 + lift * 0.165) * (0.28 + 0.72 * lensDepth);
   float2 refractOffset = -p * magFactor
-      + edgeDir * lip * t * (0.30 + lift * 0.22)
-      + float2(move * t * 0.24, 0.0) * lip;
+      + edgeDir * lip * t * (0.14 + lift * 0.44)
+      + float2(move * t * 0.30, 0.0) * lip;
 
   float2 uv = fragCoord + refractOffset;
-  float2 disp = edgeDir * (1.8 + lift * 2.4) * lip + float2(move * 1.1, 0.0) * lip;
+  float2 disp = edgeDir * (1.2 + lift * 4.2) * lip + float2(move * 2.2, 0.0) * lip;
 
   half4 gC = img.eval(uv);
   half4 rC = img.eval(uv + disp);
   half4 bC = img.eval(uv - disp);
 
-  float fringe = 0.72 * lip;
+  float fringe = (0.34 + 0.56 * lift) * lip;
   half r = mix(gC.r, rC.r, half(fringe));
   half b = mix(gC.b, bC.b, half(fringe));
   half rA = mix(gC.a, rC.a, half(fringe));
@@ -60,32 +61,33 @@ half4 main(in float2 fragCoord) {
   half contentA = max(gC.a, max(rA, bA));
   half4 refracted = half4(min(half3(contentA), half3(r, gC.g, b)), contentA) * half(pillAA);
 
-  // Top-surface curved crystal reflections composited OVER refracted glyphs so icons,
-  // badges, and letters visibly sit inside the 3D glass bead rather than painted above it.
+  // Top-surface iOS specular rim framing the sides of words & icons + curved dome gloss
+  // composited OVER refracted glyphs so text and icons sit authentically under curved glass.
   float2 invSize = 1.0 / max(size, float2(1.0));
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
-  float angle = -2.356 + move * 0.40;
+  float angle = -2.356 + move * 0.42;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.6);
-  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 4.0) * 0.65;
+  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.1);
+  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 3.5) * 0.70;
+  float capMask = pow(max(abs(edgeDir.x) * 0.80 + 0.20, 0.0001), 1.40) * 0.52;
 
   float d = -sd;
-  float edgeGlow = gaussian((d - 1.3) / 1.45);
-  float bevelGlow = gaussian((d - 4.5) / 4.2) * 0.30;
-  float rimGlint = (keyArc * 0.44 + catchArc * 0.28 + (0.045 + 0.055 * lift))
-      * (edgeGlow + bevelGlow) * (0.65 + 0.35 * lift);
+  float edgeGlow = gaussian((d - 1.6) / 1.75);
+  float bevelGlow = gaussian((d - 5.5) / 5.2) * 0.38;
+  float rimGlint = (keyArc * 0.56 + catchArc * 0.36 + capMask + (0.07 + 0.09 * lift))
+      * (edgeGlow + bevelGlow) * (0.72 + 0.38 * lift);
 
-  float crown = smoothstep(0.10, -0.92, relCenter.y)
-      * smoothstep(-1.05, -0.25, relCenter.y)
-      * (0.042 + 0.022 * lift) * (1.0 - lip * 0.35);
+  float crown = smoothstep(0.18, -0.92, relCenter.y)
+      * smoothstep(-1.08, -0.22, relCenter.y)
+      * (0.068 + 0.042 * lift) * (1.0 - lip * 0.30);
   float sweepCoord = relCenter.x * 0.78 + relCenter.y * 0.45 - move * 0.38;
   float sweep = gaussian(sweepCoord / 0.24)
-      * (0.14 * abs(move) + 0.05 * press) * (0.35 + 0.65 * lip);
+      * (0.22 * abs(move) + 0.08 * press) * (0.35 + 0.65 * lip);
 
-  float darkRim = gaussian((d - 0.6) / 1.1) * (0.10 + 0.06 * lift);
-  float specAlpha = clamp(rimGlint + crown + sweep, 0.0, 0.72) * pillAA;
-  half3 specRGB = mix(half3(0.86, 0.94, 1.0), half3(1.0, 0.99, 0.97),
+  float darkRim = gaussian((d - 4.2) / 2.4) * (0.14 + 0.08 * lift);
+  float specAlpha = clamp(rimGlint + crown + sweep, 0.0, 0.86) * pillAA;
+  half3 specRGB = mix(half3(0.85, 0.94, 1.0), half3(1.0, 0.99, 0.96),
       half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0))) * half(specAlpha);
 
   half3 shadowed = refracted.rgb * half(1.0 - darkRim * float(refracted.a));

@@ -71,7 +71,7 @@ checks = {
         and "createTabLensSource()" in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
-        and "capsule.setIntensity(3.15f);" in main
+        and "capsule.setIntensity(3.45f);" in main
         and "source != iBlur3SourceTabGlass" in main
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "iBlur3SourceTabLens.updateDisplayListIfNeeded();" in main
@@ -87,8 +87,9 @@ checks = {
         and "totalStretch / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider or chalky wireframe outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.34f), AndroidUtilities.dpf2(.24f))" in main
-        and "canRefract ? 0x1CE0EEFF : 0x32E0EEFF" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.44f), AndroidUtilities.dpf2(.30f))" in main
+        and "canRefract ? 0x24E2F0FF : 0x38E2F0FF" in main
+        and "tabsViewWrapper.setClipChildren(false);" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -101,6 +102,7 @@ checks = {
         and "img.eval(uv)" in pill_shader
         and "glass_motion" in pill_shader
         and "float rimSpec =" in pill_shader
+        and "float capBoost =" in pill_shader
         and "float meniscus =" in pill_shader
         and "float sweep = gaussian(sweepCoord" in pill_shader
         and "float rimCore = gaussian(" in pill_shader
@@ -109,6 +111,7 @@ checks = {
         and "glass_press" in pill_shader
         and "half4 main" in pill_shader
         and "uniform float radius;" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
+        and "capMask" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
         and "specRGB" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
         and "outAlpha" in (root / "TMessagesProj/src/main/res/raw/liquid_glass_pill_content_shader.agsl").read_text(encoding="utf-8")
         and "uniform shader img;" in common_shader,
@@ -144,7 +147,8 @@ checks = {
         and "final float selectedFactor = hasGestureSelectedOverride" in tab
         and "elasticSmoothedStretch" in nav
         and "leftHeadroom" in nav
-        and "final float sink =" in nav
+        and "final float sink =" not in nav
+        and "final float targetScale = 1f + overlap * boost;" in nav
         and "finishElasticTouch(true, false);" in nav,
     "Release keeps finger velocity and settles with a controlled spring":
         "VelocityTracker" in nav
