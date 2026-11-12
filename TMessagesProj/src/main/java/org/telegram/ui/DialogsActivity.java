@@ -686,6 +686,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private boolean checkPermission = true;
 
     private int currentConnectionState;
+    private boolean exFullGramLocalTestMode;
 
     private boolean disableActionBarScrolling;
 
@@ -2827,7 +2828,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
 
-        Utilities.globalQueue.postRunnable(() -> getMessagesController().getBlockedPeers(false));
+        exFullGramLocalTestMode = app.exteraless.demo.DemoBackend.isTestAccount(currentAccount);
+        if (!exFullGramLocalTestMode) {
+            Utilities.globalQueue.postRunnable(() -> getMessagesController().getBlockedPeers(false));
+        }
 
         if (arguments != null) {
             onlySelect = arguments.getBoolean("onlySelect", false);
@@ -2901,7 +2905,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 .add(NotificationCenter.updateInterfaces)
                 .add(NotificationCenter.encryptedChatUpdated)
                 .add(NotificationCenter.contactsDidLoad)
-                .add(NotificationCenter.appDidLogout)
                 .add(NotificationCenter.openedChatChanged)
                 .add(NotificationCenter.notificationsSettingsUpdated)
                 .add(NotificationCenter.messageReceivedByAck)
@@ -2923,6 +2926,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 .add(NotificationCenter.currentUserPremiumStatusChanged)
                 .add(NotificationCenter.mainUserInfoChanged);
 
+            if (!exFullGramLocalTestMode) {
+                observersGroup.add(NotificationCenter.appDidLogout);
+            }
             observersGroup.addGlobal(NotificationCenter.didSetPasscode);
         }
         observersGroup
@@ -2946,6 +2952,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
             observersGroup.add(NotificationCenter.chatlistFolderUpdate);
             observersGroup.add(NotificationCenter.dialogTranslate);
+        }
+
+        // Local Test Mode must never trigger Telegram network initialization.
+        // It only reads the dialogs that DemoBackend wrote to the local database.
+        if (exFullGramLocalTestMode) {
+            dialogsLoaded[currentAccount] = false;
+            getMessagesController().loadDialogs(0, 0, 100, true);
+            dialogsLoaded[currentAccount] = true;
+
+            additionNavigationBarHeight = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() && !MainTabsLayout.isBottomNavigationFloating()
+                    ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+            additionFloatingButtonOffset = hasMainTabs && MainTabsLayout.isBottomNavigationVisible()
+                    ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
+            return true;
         }
 
         loadDialogs(getAccountInstance());
