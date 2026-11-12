@@ -86,7 +86,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     @Override
     public View createView(Context context) {
         View view = super.createView(context);
-        getMessagesController().getContentSettings(null);
+        // Test accounts are offline: opening mod settings must not initiate
+        // Telegram server calls just to fetch unrelated content settings.
+        if (!app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+            getMessagesController().getContentSettings(null);
+        }
         if (actionBar != null && fragmentView instanceof android.widget.FrameLayout) {
             // 1:1 с MainPreferencesActivity.createView из 12.9.0.
             actionBar.setBackground(null);
