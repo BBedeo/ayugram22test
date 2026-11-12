@@ -75,6 +75,8 @@
     <string name="OEAppearanceGlassLightAngle">Light angle</string>
     <string name="OEAppearanceGlassMin">Min</string>
     <string name="OEAppearanceGlassMax">Max</string>
+    <string name="OEAppearanceElasticDragPills">Elastic drag controls</string>
+    <string name="OEAppearanceElasticDragPillsInfo">Hold and drag interactive pills; the indicator follows your finger and springs back. Switching only happens on release. Independent of Liquid Glass.</string>
     <!-- Blur &amp; Effects -->
     <string name="OEAppearanceBlur">Blur Options</string>
     <string name="OEAppearanceForceBlur">Force Blur</string>

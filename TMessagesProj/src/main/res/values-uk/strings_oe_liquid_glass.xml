@@ -20,4 +20,6 @@
     <string name="OEAppearanceCalls">Дзвінки</string>
     <string name="OEAppearanceHideVoIPControlLabels">Приховати підписи кнопок виклику</string>
     <string name="OEAppearanceHideVoIPControlLabelsInfo">Приховує чотири підписи під кнопками приватного виклику. Назви залишаються доступними екранному диктору. Діє після відкриття екрана виклику.</string>
+    <string name="OEAppearanceElasticDragPills">Пружні пігулки під час перетягування</string>
+    <string name="OEAppearanceElasticDragPillsInfo">Утримуйте та рухайте пігулку: вона слідує за пальцем і плавно повертається. Вкладка змінюється лише після відпускання. Не залежить від рідкого скла.</string>
 </resources>

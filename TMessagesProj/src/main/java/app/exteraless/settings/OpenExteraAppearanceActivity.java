@@ -87,6 +87,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int fabShapeRow;
     private int useSystemFontsRow;
     private int gooeyAvatarRow;
+    private int elasticDragPillsRow;
     private int customThemesRow;
     private int appearanceDividerRow;
 
@@ -256,6 +257,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             iosNavBarRow = iosChatHeaderRow = -1;
         }
         gooeyAvatarRow = addRow("gooeyAvatar");
+        elasticDragPillsRow = addRow("elasticDragPills");
         customThemesRow = addRow("customThemes");
         appearanceDividerRow = addRow();
 
@@ -909,6 +911,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             clearTypefaces = true;
         } else if (position == gooeyAvatarRow) {
             item = AppearanceConfig.gooeyAvatarAnimation;
+        } else if (position == elasticDragPillsRow) {
+            item = AppearanceConfig.elasticDragPills;
         } else if (position == customThemesRow) {
             item = AppearanceConfig.customThemes;
         } else if (position == separateHeadersRow) {
@@ -1101,6 +1105,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceUseSystemFonts), NekoConfig.typeface.Bool(), true);
                     } else if (position == gooeyAvatarRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceGooeyAvatar), AppearanceConfig.gooeyAvatarAnimation.Bool(), true);
+                    } else if (position == elasticDragPillsRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceElasticDragPills),
+                                getString(R.string.OEAppearanceElasticDragPillsInfo),
+                                AppearanceConfig.elasticDragPills.Bool(), true, true);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == hideVoIPLabelsRow) {

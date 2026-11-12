@@ -256,6 +256,14 @@ object AppearanceConfig {
     @JvmField
     val liquidGlassAdaptive = addConfig("OEAppearanceGlassAdaptive", ConfigItem.configTypeBool, true)
 
+    /**
+     * Optional elastic drag gestures for navigation pills, sliders and call
+     * action surfaces. Independent of Liquid Glass; OFF for existing users.
+     */
+    @JvmField
+    val elasticDragPills =
+        addConfig("OEAppearanceElasticDragPills", ConfigItem.configTypeBool, false)
+
     /** Стеклянное меню сообщения. Дефолт true, как в exteraGram (BooleanPref(1)). */
     @JvmField
     val glassMessageMenu =

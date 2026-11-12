@@ -20,4 +20,6 @@
     <string name="OEAppearanceCalls">Звонки</string>
     <string name="OEAppearanceHideVoIPControlLabels">Скрыть подписи кнопок звонка</string>
     <string name="OEAppearanceHideVoIPControlLabelsInfo">Убирает четыре подписи под кнопками во время личного звонка. Названия доступны экранному диктору. Применяется при открытии экрана звонка.</string>
+    <string name="OEAppearanceElasticDragPills">Упругие пилюли при перетаскивании</string>
+    <string name="OEAppearanceElasticDragPillsInfo">Удерживайте и перемещайте пилюлю: она следует за пальцем и упруго возвращается. Вкладка меняется только после отпускания. Не зависит от жидкого стекла.</string>
 </resources>
