@@ -21,6 +21,15 @@ public class VoIPButtonsLayout extends FrameLayout {
 
     private int childSize = 68;
     private boolean startPadding = true;
+    private boolean compact;
+
+    /** Without captions, reclaim unused space below the circular controls. */
+    public void setCompact(boolean compact) {
+        if (this.compact != compact) {
+            this.compact = compact;
+            requestLayout();
+        }
+    }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
@@ -52,7 +61,7 @@ public class VoIPButtonsLayout extends FrameLayout {
             }
         }
 
-        int h = Math.max(maxChildHeigth, AndroidUtilities.dp(80));
+        int h = Math.max(maxChildHeigth, AndroidUtilities.dp(compact ? 60 : 80));
         setMeasuredDimension(width, h);
     }
 
