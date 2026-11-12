@@ -119,6 +119,15 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         }
     }
 
+    /**
+     * Exact width used by this tab's own non-M3 selected/long-press contour.
+     * The travelling elastic lens must reuse this instead of getWidth(), or
+     * the two outlines differ by a few dp while ListAnimator is active.
+     */
+    public float getSelectorVisualWidth() {
+        return hasVisualWidth ? visualWidth : getWidth();
+    }
+
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
