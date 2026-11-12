@@ -491,16 +491,16 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                             .setBackgroundColor((r, dark) -> Theme.multAlpha(
                                     Theme.getColor(Theme.key_glass_targetMainTabs, r),
                                     canRefract
-                                            ? (dark ? .055f : .04f)
+                                            ? (dark ? .115f : .085f)
                                             : (dark ? .16f : .13f)))
                             // One native optical rim only. Refraction comes from
                             // LiquidGlassEffect, not from painted gradients.
-                            .setStrokeColorTop(0x12FFFFFF, 0x18FFFFFF)
-                            .setStrokeColorBottom(0x00FFFFFF, 0x03FFFFFF)
+                            .setStrokeColorTop(0x2BFFFFFF, 0x34FFFFFF)
+                            .setStrokeColorBottom(0x04FFFFFF, 0x08FFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
-                            .setShadowColor(0x06000000, 0x0A000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(.7f), 0, AndroidUtilities.dpf2(.2f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.16f), AndroidUtilities.dpf2(.06f)));
+                            .setShadowColor(0x0B000000, 0x10000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(.9f), 0, AndroidUtilities.dpf2(.25f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(.28f), AndroidUtilities.dpf2(.10f)));
             capsule.setLiquidGlassEffectAllowed();
             if (canRefract) {
                 // Elastic pills are themselves a liquid-glass interaction.
@@ -511,8 +511,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(11));
-                capsule.setIntensity(1.42f);
+                capsule.setThickness(dp(10));
+                capsule.setIntensity(1.58f);
             }
             tabsView.setElasticPillGlass(capsule);
         }
