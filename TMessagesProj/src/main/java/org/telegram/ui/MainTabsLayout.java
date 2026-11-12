@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,9 +28,11 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedLinearLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.glass.GlassTabView;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 
 import app.exteraless.appearance.MainTabsUiHelper;
 import app.exteraless.appearance.ElasticPillGesture;
+import app.exteraless.appearance.ElasticGlassPillRenderer;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -96,6 +99,17 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     }
 
     private final Theme.ResourcesProvider resourcesProvider;
+    private final ElasticGlassPillRenderer elasticGlassPill = new ElasticGlassPillRenderer();
+    private BlurredBackgroundDrawable elasticPillGlass;
+    private float selectedTabDestinationX;
+
+    /** A separate native backdrop lens is layered ABOVE the panel and BELOW the tab icons. */
+    public void setElasticPillGlass(BlurredBackgroundDrawable glass) {
+        if (elasticPillGlass != null) elasticPillGlass.setCallback(null);
+        elasticPillGlass = glass;
+        if (glass != null) glass.setCallback(this);
+        invalidate();
+    }
 
     public MainTabsLayout(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -323,6 +337,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     protected void onItemsChanged() {
         super.onItemsChanged();
         checkVisualWidth();
+        if (ElasticPillGesture.enabled()) {
+            setSkipDrawSelector(true);
+            if (!isInLongPress) syncElasticPillToSelected(false);
+        }
     }
 
     private void checkVisualWidth() {
@@ -359,6 +377,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final View selected = findSelectedTab();
         if (selected == null || selected.getWidth() == 0) return;
         final float cx = getCenterX(selected);
+        selectedTabDestinationX = cx;
         if (!elasticPillInitialized || !animated) {
             selectedTabPositionX.cancel();
             selectedTabPositionOffsetX.cancel();
@@ -419,14 +438,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
     @Override
     protected void dispatchDraw(@NonNull Canvas canvas) {
-        if (drawCustomSelector) {
+        if (ElasticPillGesture.enabled()) {
+            drawElasticGlassSelector(canvas);
+        } else if (drawCustomSelector) {
+            // Preserve the original long-press indicator when this optional
+            // appearance feature is disabled.
             final float x = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
-            float sWidth = getInterpolatedWidthByX(x, this);
-            if (ElasticPillGesture.enabled() && isInLongPress) {
-                final View selected = findSelectedTab();
-                final float anchor = selected == null ? x : getCenterX(selected);
-                sWidth += Math.min(dp(26), Math.abs(x - anchor) * .24f);
-            }
+            final float sWidth = getInterpolatedWidthByX(x, this);
             if (MainTabsUiHelper.isMaterial3NavigationBar()) {
                 MainTabsUiHelper.setMainTabSelectedIndicatorBounds(selectorRect, sWidth,
                         getHeight() - getPaddingTop() - getPaddingBottom());
@@ -448,6 +466,39 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             dividerPaint.setColor(Theme.getDividerColor(resourcesProvider));
             canvas.drawLine(0, 1, getMeasuredWidth(), 1, dividerPaint);
         }
+    }
+
+    /**
+     * A large, clearly visible capsule similar to the reference: native
+     * frosted/refractive surface, luminous rim, and a bridge that lengthens
+     * between states. Width comes from actual child geometry (2..6 tabs).
+     */
+    private void drawElasticGlassSelector(Canvas canvas) {
+        final View selected = findSelectedTab();
+        if (selected == null || selected.getWidth() <= 0) return;
+        if (!elasticPillInitialized) syncElasticPillToSelected(false);
+        final float x = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
+        final float selectedCenter = getCenterX(selected);
+        final float destination = isInLongPress ? selectedCenter : selectedTabDestinationX;
+        final float travel = x - destination;
+        final float span = Math.abs(travel);
+        final float extension = Math.min(dp(isInLongPress ? 100 : 46), span * (isInLongPress ? .58f : .32f));
+        final float center = x - Math.signum(travel) * extension * .23f;
+        final float tabWidth = Math.max(dp(55), getInterpolatedWidthByX(x, this) - dp(5));
+        final float width = Math.min(getWidth() - dp(8), tabWidth + extension);
+        final float available = getHeight() - getPaddingTop() - getPaddingBottom();
+        final float height = Math.max(dp(24), Math.min(dp(56), available - dp(8)));
+        final float cy = getPaddingTop() + available * .5f;
+        selectorRect.set(center - width * .5f, cy - height * .5f,
+                center + width * .5f, cy + height * .5f);
+        // Keep the optical element inside the bar while its contents move.
+        if (selectorRect.left < dp(2)) selectorRect.offset(dp(2) - selectorRect.left, 0);
+        if (selectorRect.right > getWidth() - dp(2)) {
+            selectorRect.offset(getWidth() - dp(2) - selectorRect.right, 0);
+        }
+        final boolean dark = Theme.isCurrentThemeDark();
+        elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass, dark,
+                Math.min(1f, extension / dp(72)));
     }
 
     private boolean drawTopDivider = true;
@@ -533,7 +584,16 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private void checkLongMove(float x_, float y, boolean start, boolean end) {
         final float x = clampXToChildrenCenters(x_, this);
         final View found = findNearestVisibleChildByX(x, this);
-        if (start) {
+        if (start && ElasticPillGesture.enabled()) {
+            // Start directly under the finger. Upstream's offset spring was
+            // originally designed for a *hidden* 9%-alpha selector; reusing
+            // it makes a real glass pill appear to jump when first held.
+            selectedTabPositionX.cancel();
+            selectedTabPositionOffsetX.cancel();
+            animatedLongSelectedViewOffsetX = 0f;
+            animatedLongSelectedViewCenterX = x;
+            invalidate();
+        } else if (start) {
             View selected = findSelectedTab();
             if (selected != null) {
                 animatedLongSelectedViewCenterX = selected.getX() + selected.getWidth() / 2f;
@@ -582,7 +642,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         public boolean needClickAt(View view, float x, float y) {
             lastLongSelectedView = null;
             final View found = findChildUnder(MainTabsLayout.this, x, y);
-            return found != null && !tabsWithIgnoreClick.contains(found);
+            // ExFullGram explicitly ignores upstream long-press click logic
+            // for these tabs. Opt-in drag needs to recognise them again.
+            return found != null && (ElasticPillGesture.enabled()
+                    || !tabsWithIgnoreClick.contains(found));
         }
 
         @Override
