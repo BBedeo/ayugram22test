@@ -228,6 +228,24 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
     private float liquidShineOverride = Float.NaN;
     private float liquidLightAngleOverride = Float.NaN;
     private float liquidMotionPhaseOverride = Float.NaN;
+    private boolean elasticPillLens;
+
+    /**
+     * Select a distinct AGSL material for the travelling navbar pill only.
+     * Leave the shared Telegram renderer and every other glass untouched.
+     */
+    public BlurredBackgroundDrawable setElasticPillLens(boolean enabled) {
+        if (elasticPillLens != enabled) {
+            elasticPillLens = enabled;
+            if (renderNodeImpl != null) {
+                renderNodeImpl.setLiquidGlassEnabled(false);
+                renderNodeImpl.invalidate();
+            }
+            implInvalidated = true;
+            invalidateSelf();
+        }
+        return this;
+    }
 
     /**
      * Optional per-surface optics for forced liquid lenses. This lets an
@@ -1310,7 +1328,7 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 return;
             }
             if (enabled) {
-                liquidGlassEffect = new LiquidGlassEffect(renderNodeFill);
+                liquidGlassEffect = new LiquidGlassEffect(renderNodeFill, elasticPillLens);
             } else {
                 liquidGlassEffect = null;
                 renderNodeFill.setRenderEffect(null);
