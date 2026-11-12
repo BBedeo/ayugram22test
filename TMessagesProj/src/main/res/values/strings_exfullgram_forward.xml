@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ExFullGramForwardMultiSelect">Multi-select recipients on tap</string>
+    <string name="ExFullGramForwardMultiSelectInfo">On: ExFullGram mode — each tap adds or removes a recipient. Off: X-TERRA mode — the first tap selects a single recipient and long-press starts multi-select.</string>
+    <string name="ExFullGramForwardSendAsCopy">Send without forward attribution</string>
+</resources>
