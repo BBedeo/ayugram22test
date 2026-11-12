@@ -913,6 +913,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             item = AppearanceConfig.gooeyAvatarAnimation;
         } else if (position == elasticDragPillsRow) {
             item = AppearanceConfig.elasticDragPills;
+            // Apply the indicator geometry to all already-open screens.
+            rebuild = true;
         } else if (position == customThemesRow) {
             item = AppearanceConfig.customThemes;
         } else if (position == separateHeadersRow) {
