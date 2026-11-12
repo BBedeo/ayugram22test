@@ -2957,9 +2957,21 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // Local Test Mode must never trigger Telegram network initialization.
         // It only reads the dialogs that DemoBackend wrote to the local database.
         if (exFullGramLocalTestMode) {
-            dialogsLoaded[currentAccount] = false;
-            getMessagesController().loadDialogs(0, 0, 100, true);
-            dialogsLoaded[currentAccount] = true;
+            final int testAccount = currentAccount;
+            if (!app.exteraless.demo.DemoBackend.isAccountReady(testAccount)) {
+                app.exteraless.demo.DemoBackend.ensureReady(testAccount, () -> {
+                    if (currentAccount != testAccount || !app.exteraless.demo.DemoBackend.isTestAccount(testAccount)) {
+                        return;
+                    }
+                    dialogsLoaded[testAccount] = false;
+                    getMessagesController().loadDialogs(0, 0, 100, true);
+                    dialogsLoaded[testAccount] = true;
+                });
+            } else {
+                dialogsLoaded[testAccount] = false;
+                getMessagesController().loadDialogs(0, 0, 100, true);
+                dialogsLoaded[testAccount] = true;
+            }
 
             additionNavigationBarHeight = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() && !MainTabsLayout.isBottomNavigationFloating()
                     ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
