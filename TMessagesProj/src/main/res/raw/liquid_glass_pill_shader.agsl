@@ -1,0 +1,110 @@
+// ExFullGram elastic navigation lens, isolated from the shared glass shader.
+// Uses the captured Telegram page as its refractive input, not a fake fill.
+uniform shader img;
+
+uniform float2 center;
+uniform float2 size;
+uniform float4 radius;
+uniform float thickness;
+uniform float refract_index;
+uniform float refract_intensity;
+uniform float glass_press;
+uniform float glass_highlight;
+uniform float glass_light_angle;
+uniform float glass_motion;
+uniform float glass_adaptive;
+uniform float4 foreground_color_premultiplied;
+
+float roundedDistance(float2 p, float4 r) {
+    r.xy = p.x > 0.0 ? r.xy : r.zw;
+    r.x = p.y > 0.0 ? r.x : r.y;
+    float2 q = abs(p) - size + r.x;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r.x;
+}
+
+half4 sourceOver(half4 src, half4 dst) {
+    return half4(src.rgb + dst.rgb * (1.0 - src.a),
+                 src.a + dst.a * (1.0 - src.a));
+}
+
+float gaussian(float x) {
+    return exp(-x * x);
+}
+
+half4 main(float2 fragCoord) {
+    float2 p = fragCoord - center;
+    float raw = roundedDistance(p, radius);
+    float sd = min(raw, 0.0);
+    float t = max(thickness, 1.0);
+
+    float2 slope = float2(
+        roundedDistance(p + float2(1.0, 0.0), radius) - raw,
+        roundedDistance(p + float2(0.0, 1.0), radius) - raw
+    );
+    float2 edgeNormal = normalize(slope + float2(0.0001, 0.0001));
+
+    // Curved refractive band. Motion mildly pulls the refraction forward.
+    float cosN = clamp(1.0 + sd / t, 0.0, 1.0);
+    float sinN = sqrt(max(0.0, 1.0 - cosN * cosN));
+    float3 normal = normalize(float3(slope * cosN, sinN + 0.001));
+    float3 ray = refract(float3(0.0, 0.0, -1.0), normal,
+                         1.0 / max(refract_index, 1.05));
+    float h = sd < -t ? t : sqrt(max(0.0, sd * (-2.0 * t - sd)));
+    float rayDepth = (h + t * 7.0) / max(0.2, -ray.z);
+    float edgeBand = 1.0 - smoothstep(0.0, t * 1.35, -sd);
+    float move = clamp(glass_motion, -1.0, 1.0);
+    float2 uv = fragCoord + ray.xy * rayDepth * refract_intensity
+                * (1.0 + abs(move) * 0.16);
+    uv += float2(move * 3.0, 0.0) * edgeBand;
+    float2 uvMin = center - size + 0.5;
+    float2 uvMax = center + size - 0.5;
+    uv = clamp(uv, uvMin, uvMax);
+
+    half4 backdrop = img.eval(uv);
+
+    // Edge-only chromatic dispersion, sampled from the same real backdrop.
+    // Work is conditional and confined to the small navigation lens.
+    if (edgeBand > 0.13 && refract_intensity > 0.01) {
+        float2 chroma = edgeNormal * t * 0.14 * edgeBand;
+        half4 redSample = img.eval(clamp(uv + chroma, uvMin, uvMax));
+        half4 blueSample = img.eval(clamp(uv - chroma, uvMin, uvMax));
+        backdrop.r = mix(backdrop.r, redSample.r, half(edgeBand * 0.65));
+        backdrop.b = mix(backdrop.b, blueSample.b, half(edgeBand * 0.65));
+    }
+
+    half4 surface = sourceOver(half4(foreground_color_premultiplied), backdrop);
+
+    // Visible interior optical depth on a uniform dark screen, without
+    // introducing a solid outline or painting a flat opaque overlay.
+    float2 relative = p / max(size, float2(1.0));
+    float2 light = float2(cos(glass_light_angle + move * 0.34),
+                          sin(glass_light_angle + move * 0.34));
+    float facing = clamp(dot(edgeNormal, light) * 0.5 + 0.5, 0.0, 1.0);
+    float grazing = gaussian((-sd - t * 0.14) / (t * 0.50));
+    float edgeLight = pow(facing, 3.0) * grazing;
+
+    // Broad overhead curved reflection and a small, moving interior glint.
+    float upper = gaussian((relative.y + 0.70) / 0.25);
+    float upperFalloff = 0.53 + 0.47 * gaussian((relative.x + 0.24) / 0.77);
+    float arch = upper * upperFalloff;
+    float glintX = (relative.x - (0.05 + move * 0.52)) / 0.26;
+    float glintY = (relative.y + 0.49) / 0.31;
+    float glint = gaussian(glintX) * gaussian(glintY);
+    float lowerBounce = gaussian((relative.y - 0.78) / 0.22)
+                        * gaussian(relative.x / 0.90);
+
+    // The optically active band is also driven by movement, so dragging
+    // sweeps the light across the curved surface and then it settles.
+    float active = clamp(abs(move), 0.0, 1.0);
+    float illumination = glass_highlight
+        * (0.26 * edgeLight + 0.12 * arch + 0.17 * glint
+           + 0.055 * lowerBounce + active * glint * 0.20);
+    if (glass_adaptive > 0.5) {
+        float luma = dot(float3(backdrop.rgb), float3(0.2126, 0.7152, 0.0722));
+        illumination *= clamp(1.17 - luma * 0.36, 0.82, 1.20);
+    }
+    surface.rgb = min(half3(1.0),
+                      surface.rgb + half3(0.91, 0.96, 1.0)
+                      * half(illumination * float(surface.a)));
+    return surface;
+}
