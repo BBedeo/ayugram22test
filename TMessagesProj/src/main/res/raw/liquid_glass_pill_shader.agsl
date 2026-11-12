@@ -99,7 +99,8 @@ half4 main(float2 fragCoord) {
     float active = clamp(abs(move), 0.0, 1.0);
     float illumination = glass_highlight
         * (0.26 * edgeLight + 0.12 * arch + 0.17 * glint
-           + 0.055 * lowerBounce + active * glint * 0.20);
+           + 0.055 * lowerBounce + active * glint * 0.20)
+        * (1.0 + clamp(glass_press, 0.0, 1.0) * 0.34);
     if (glass_adaptive > 0.5) {
         float luma = dot(float3(backdrop.rgb), float3(0.2126, 0.7152, 0.0722));
         illumination *= clamp(1.17 - luma * 0.36, 0.82, 1.20);
