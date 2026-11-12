@@ -85,3 +85,43 @@ work in both live and Test Mode as well as per-account settings profiles.
 Use Telegram's existing capture + runtime refraction shader; never replace
 Liquid Glass with a dark overlay and never sample text without a valid backdrop.
 Provide sensible power-saver, API-level and readability fallbacks.
+
+
+## Visual-reference fidelity contract (scoped rule)
+
+This section applies **only** when the user supplies a visual reference
+(screenshot, video frame, Figma mockup, presentation image, etc.) and asks to
+reproduce it closely / identically. It does **not** change the completion
+standard for ordinary tasks that have no visual acceptance reference.
+
+- Treat "хочу вот так", "сделай как на скрине", "повтори 1:1", and equivalent
+  requests as a visual specification, not loose inspiration, unless the user
+  explicitly says an approximation is acceptable.
+- The user is not required to provide code, measurements, or a technical
+  drawing. Derive measurable constraints yourself: silhouette, relative size,
+  spacing, alignment, optical depth, transparency, blur/refraction, highlights,
+  animation timing, deformation, and interaction semantics.
+- A successful Gradle build, static guard, or plausible-looking code is **not**
+  evidence that the visual-reference task is complete.
+- For this scoped class of task, use these status labels internally and in
+  progress reports when useful:
+  1. coded / not visually verified;
+  2. builds successfully;
+  3. visually compared / discrepancies remain;
+  4. visually matched within platform limits.
+  Only state 4 may be described as complete for that specific reference task.
+- Before saying "готово", "сделано", "1:1", "идеально", or equivalent about a
+  reference-matching task, compare a screenshot/video from the latest real
+  Android build against the supplied reference. If device evidence is not yet
+  available, say "implemented, not visually verified" instead.
+- Do not hide known gaps behind implementation language. If geometry, material,
+  motion, or interaction still differs from the reference, list the remaining
+  discrepancies explicitly and continue fixing them when the task is still in
+  scope.
+- Preserve the original ExFullGram UI when an optional reference-based visual
+  feature is disabled.
+- The Figma acceptance board for this workflow is:
+  https://www.figma.com/design/WhGugsuIwY8estzyP3Biyq
+  Use its Reference vs Implementation comparison and checklist as the review
+  structure. The user's supplied visual remains authoritative; external UI kits
+  are only supporting references.
