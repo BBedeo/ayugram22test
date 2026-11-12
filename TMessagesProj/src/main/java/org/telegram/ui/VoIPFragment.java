@@ -1163,7 +1163,7 @@ public class VoIPFragment implements
 
         addIcon = new ImageView(context);
         addIcon.setBackground(LiquidGlassTuning.isActive()
-                ? new VoIPCallGlass.IconBackground()
+                ? new VoIPCallGlass.IconBackground(backgroundProvider)
                 : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         addIcon.setImageResource(R.drawable.msg_addcontact);
         addIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
@@ -1172,7 +1172,7 @@ public class VoIPFragment implements
 
         backIcon = new ImageView(context);
         backIcon.setBackground(LiquidGlassTuning.isActive()
-                ? new VoIPCallGlass.IconBackground()
+                ? new VoIPCallGlass.IconBackground(backgroundProvider)
                 : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         backIcon.setImageResource(R.drawable.msg_call_minimize_shadow);
         backIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
@@ -1194,7 +1194,7 @@ public class VoIPFragment implements
         };
         speakerPhoneIcon.setContentDescription(LocaleController.getString(R.string.VoipSpeaker));
         speakerPhoneIcon.setBackground(LiquidGlassTuning.isActive()
-                ? new VoIPCallGlass.IconBackground()
+                ? new VoIPCallGlass.IconBackground(backgroundProvider)
                 : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         speakerPhoneIcon.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
         frameLayout.addView(speakerPhoneIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.RIGHT, 0, 56, 0, 0));
