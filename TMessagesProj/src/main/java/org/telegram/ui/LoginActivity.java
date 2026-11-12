@@ -1745,14 +1745,18 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         UserConfig.getInstance(currentAccount).clearConfig();
         UserConfig.getInstance(currentAccount).syncContacts = false;
         UserConfig.getInstance(currentAccount).setCurrentUser(testUser);
+        UserConfig.getInstance(currentAccount).loginTime = (int) (System.currentTimeMillis() / 1000L);
         UserConfig.getInstance(currentAccount).saveConfig(true);
         ConnectionsManager.getInstance(currentAccount).setUserId(testUser.id);
 
-        // Test Mode is entirely local: reset the Telegram cache for this account,
-        // seed test data and link it to any other local Test Accounts.
-        app.exteraless.demo.DemoBackend.reset(currentAccount);
-
-        needFinishActivity(false, false, 0);
+        // Do not open the main UI until the asynchronous storage cleanup is fully
+        // finished and the local dialogs have been written back.
+        app.exteraless.demo.DemoBackend.reset(currentAccount, () -> {
+            if (getParentActivity() == null) {
+                return;
+            }
+            needFinishActivity(false, false, 0);
+        });
     }
 
     private void onAuthSuccess(TLRPC.TL_auth_authorization res) {
