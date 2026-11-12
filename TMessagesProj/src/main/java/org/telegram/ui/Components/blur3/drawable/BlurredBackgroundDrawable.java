@@ -1411,11 +1411,12 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
 
             if (liquidGlassEffect != null && Build.VERSION.SDK_INT >= 33) {
                 final RectF body = boundProps.body;
+                final float thicknessFactor = elasticPillLens ? 0.44f : 0.20f;
                 final int thickness = Math.max(Math.min(
                     boundProps.liquidThickness <= 0
                             ? dp(LiquidGlassTuning.isActive() ? LiquidGlassTuning.thicknessDp() : 11)
                             : boundProps.liquidThickness,
-                    (int) (Math.min(body.width(), body.height()) / 5)), 1);
+                    (int) (Math.min(body.width(), body.height()) * thicknessFactor)), 1);
 
                 if (boundProps.hasArrow()) {
                     // the stripe the arrow changes, with the lens' band past its fillets, but clear of the corners

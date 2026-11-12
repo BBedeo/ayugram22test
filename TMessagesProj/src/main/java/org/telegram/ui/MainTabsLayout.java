@@ -689,7 +689,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 pillContentShader.setFloatUniform("center", cx, cy);
                 pillContentShader.setFloatUniform("size", hw, hh);
                 pillContentShader.setFloatUniform("radius", hh);
-                pillContentShader.setFloatUniform("thickness", Math.min(dp(12), hh * .45f));
+                pillContentShader.setFloatUniform("thickness", Math.min(dp(20), hh * .78f));
                 pillContentShader.setFloatUniform("glass_press", press);
                 pillContentShader.setFloatUniform("glass_motion", motion);
                 pillRefractNode.setRenderEffect(
@@ -1298,6 +1298,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             if (!releasedOnTab) {
                 elasticReleaseVelocityX = 0f;
                 syncElasticPillToSelected(true);
+            } else {
+                // Soft iOS droplet settle even when releasing carefully on target tab.
+                elasticJellyBounce.setStartVelocity(1.35f);
+                elasticJellyBounce.animateToFinalPosition(0f);
             }
         } else {
             elasticReleaseVelocityX = 0f;

@@ -491,25 +491,24 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             BlurredBackgroundDrawable capsule = iBlur3FactoryGlass.create(tabsView,
                     new BlurredBackgroundProviderBuilder(resourceProvider)
                             .setBackgroundColor((r, dark) -> {
-                                final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                                 if (dark) {
-                                    // Sheer crystal-clear dark glass (~89% transparent) so the
-                                    // interior never turns matte grey and refracted backdrop
-                                    // content stays vivid while curved edges catch light.
-                                    final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.28f);
-                                    return Theme.multAlpha(lifted, canRefract ? .11f : .26f);
+                                    // Pure crystal tint over live refracted backdrop (~4% alpha when shader
+                                    // is active) so underlying content & icons shine through without matte fog.
+                                    return canRefract ? 0x0AFFFFFF : 0x2AFFFFFF;
                                 }
-                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.65f);
-                                return Theme.multAlpha(lifted, canRefract ? .14f : .28f);
+                                final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
+                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.72f);
+                                return Theme.multAlpha(lifted, canRefract ? .14f : .30f);
                             })
-                            // Subtle optical rim only; refraction and curved Fresnel glow
-                            // come from LiquidGlassEffect, not a heavy 2D outline.
-                            .setStrokeColorTop(0x26FFFFFF, 0x24FFFFFF)
-                            .setStrokeColorBottom(0x06FFFFFF, 0x0AFFFFFF)
+                            // Combine Telegram's native baked GlassRim crescents (~1.1dp/0.95dp) with
+                            // the AGSL dynamic specular glint and subtle elevation shadow so the lens
+                            // gleams like solid 3D glass instead of flat plastic.
+                            .setStrokeColorTop(0xDCFFFFFF, 0x8AFFFFFF)
+                            .setStrokeColorBottom(0x88FFFFFF, 0x4EFFFFFF)
                             .setStrokeColorFull(0x00000000, 0x00000000)
-                            .setShadowColor(0x0B000000, 0x10000000)
-                            .setShadowLayer(AndroidUtilities.dpf2(.9f), 0, AndroidUtilities.dpf2(.25f))
-                            .setStrokeWidth(AndroidUtilities.dpf2(.24f), AndroidUtilities.dpf2(.08f)));
+                            .setShadowColor(0x14000000, 0x28000000)
+                            .setShadowLayer(AndroidUtilities.dpf2(2.4f), 0, AndroidUtilities.dpf2(.6f))
+                            .setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.95f)));
             capsule.setLiquidGlassEffectAllowed();
             capsule.setElasticPillLens(true);
             if (canRefract) {
@@ -521,8 +520,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                         true,
                         LiquidGlassTuning.material(),
                         LiquidGlassTuning.settingsSignature()));
-                capsule.setThickness(dp(14));
-                capsule.setIntensity(2.65f);
+                capsule.setThickness(dp(18));
+                capsule.setIntensity(3.15f);
             }
             tabsView.setElasticPillGlass(capsule);
         }

@@ -64,7 +64,7 @@ public final class ElasticGlassPillRenderer {
         // The highlight is part of the optical material, not a 2D stroked rim.
         final float baseAngle = 315f;
         final float angle = (float) Math.toRadians(baseAngle + phase * 24f) + tiltRadians;
-        final float shine = dark ? .76f : .82f;
+        final float shine = dark ? .86f : .92f;
         nativeGlass.setLiquidOptics(shine, angle, phase);
 
         // A stationary finger still compresses the optical surface; both

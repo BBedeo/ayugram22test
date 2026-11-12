@@ -69,7 +69,7 @@ checks = {
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
-        and "capsule.setIntensity(2.65f);" in main
+        and "capsule.setIntensity(3.15f);" in main
         and "source != iBlur3SourceTabGlass" in main
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
@@ -80,12 +80,12 @@ checks = {
         and "liquidLightAngleOverride" in blur_drawable
         and "nativeGlass.setLiquidOptics" in pill
         and "baseAngle = 315f" in pill
-        and "dark ? .76f : .82f" in pill
+        and "dark ? .86f : .92f" in pill
         and "totalStretch / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.24f), AndroidUtilities.dpf2(.08f))" in main
-        and "canRefract ? .11f : .26f" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(1.1f), AndroidUtilities.dpf2(.95f))" in main
+        and "canRefract ? 0x0AFFFFFF : 0x2AFFFFFF" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -96,12 +96,12 @@ checks = {
         and pill_shader.count("float move =") == 1
         and "img.eval(uv)" in pill_shader
         and "glass_motion" in pill_shader
-        and "float glint = gaussian(glintX)" in pill_shader
-        and "float bowedArc = gaussian(" in pill_shader
-        and "float sweep = gaussian(diagonal" in pill_shader
-        and "float bodyLight = 0.014" in pill_shader
-        and "redSample.r" in pill_shader
-        and "blueSample.b" in pill_shader
+        and "float rimSpec =" in pill_shader
+        and "float meniscus =" in pill_shader
+        and "float sweep = gaussian(sweepCoord" in pill_shader
+        and "float rimCore = gaussian(" in pill_shader
+        and "rChan" in pill_shader
+        and "bChan" in pill_shader
         and "glass_press" in pill_shader
         and "half4 main" in pill_shader
         and "uniform shader img;" in common_shader,
