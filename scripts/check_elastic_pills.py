@@ -96,6 +96,9 @@ checks = {
         and "img.eval(uv)" in pill_shader
         and "glass_motion" in pill_shader
         and "float glint = gaussian(glintX)" in pill_shader
+        and "float bowedArc = gaussian(" in pill_shader
+        and "float sweep = gaussian(diagonal" in pill_shader
+        and "float bodyLight = 0.060" in pill_shader
         and "redSample.r" in pill_shader
         and "blueSample.b" in pill_shader
         and "glass_press" in pill_shader
