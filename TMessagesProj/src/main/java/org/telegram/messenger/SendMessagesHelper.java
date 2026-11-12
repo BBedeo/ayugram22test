@@ -4534,7 +4534,13 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         }
         SendMessageParams replacement = hookResult.replacement(SendMessageParams.class);
         final SendMessageParams sendMessageParams = replacement != null ? replacement : originalParams;
-        if (app.exteraless.demo.DemoBackend.sendLocalMessage(currentAccount, sendMessageParams)) return;
+        if (app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
+            // Keep Test Mode on the same outgoing feature pipeline as regular
+            // accounts. Only the final transport is replaced by local storage.
+            app.exteraless.chats.DeletedReplyQuote.rewrite(currentAccount, sendMessageParams);
+            app.exteraless.chats.LinkedCustomEmoji.replaceForSend(currentAccount, sendMessageParams.peer, sendMessageParams.entities);
+            if (app.exteraless.demo.DemoBackend.sendLocalMessage(currentAccount, sendMessageParams)) return;
+        }
         if (app.exteraless.privacy.BotAccountRouter.guardSend(currentAccount, sendMessageParams.peer, () -> sendMessage(sendMessageParams))) return;
         app.exteraless.chats.DeletedReplyQuote.rewrite(currentAccount, sendMessageParams);
         app.exteraless.chats.LinkedCustomEmoji.replaceForSend(currentAccount, sendMessageParams.peer, sendMessageParams.entities);
