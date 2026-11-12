@@ -529,28 +529,38 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         if (selected == null || selected.getWidth() <= 0) return;
         if (!elasticPillInitialized) syncElasticPillToSelected(false);
         final float centerX = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
-        // Every item has a separate measured slot. Never span multiple slots
-        // at rest, or paint glass over the neighboring tab's label.
+        // At rest the lens is EXACTLY the native selector. During travel only,
+        // add a small directional stretch so it behaves like a moving liquid
+        // lens instead of a rigid oval sliding on rails.
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
-        final float extension = Math.min(dp(14), travelled * .15f);
-        // Use the EXACT same resting geometry as GlassTabView's original
-        // long-press selector. No optical inset here: even 2-4dp is visible
-        // when comparing the contours frame-for-frame.
+        final float extension = Math.min(dp(16), travelled * .17f);
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float height = availableHeight;
+        final float verticalCompression = Math.min(dp(1.4f), extension * .09f);
+        final float height = Math.max(1f, availableHeight - verticalCompression);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
-        final float availableWidth = Math.max(dp(28), widthAtX);
-        final float width = availableWidth + extension;
+        final float baseWidth = Math.max(dp(28), widthAtX);
         final float cy = getPaddingTop() + availableHeight * .5f;
-        selectorRect.set(centerX - width * .5f, cy - height * .5f,
-                centerX + width * .5f, cy + height * .5f);
+
+        final float direction = elasticDragging
+                ? Math.signum(centerX - selectedTabDestinationX)
+                : Math.signum(selectedTabDestinationX - centerX);
+        final float trailingStretch = direction == 0f ? extension * .5f : extension * .30f;
+        final float leadingStretch = extension - trailingStretch;
+        final float leftStretch = direction < 0f ? leadingStretch : trailingStretch;
+        final float rightStretch = direction > 0f ? leadingStretch : trailingStretch;
+
+        selectorRect.set(
+                centerX - baseWidth * .5f - leftStretch,
+                cy - height * .5f,
+                centerX + baseWidth * .5f + rightStretch,
+                cy + height * .5f);
         final float edge = dp(3);
         if (selectorRect.left < edge) selectorRect.offset(edge - selectorRect.left, 0);
         if (selectorRect.right > getWidth() - edge) {
             selectorRect.offset(getWidth() - edge - selectorRect.right, 0);
         }
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
-                Theme.isCurrentThemeDark(), extension / dp(14));
+                Theme.isCurrentThemeDark(), extension / dp(16));
     }
 
         private boolean drawTopDivider = true;
