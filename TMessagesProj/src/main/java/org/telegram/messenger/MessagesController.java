@@ -12328,7 +12328,10 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             reload = resCount == 0 && (!isInitialLoading || (SystemClock.elapsedRealtime() - lastServerQueryTime.get(dialogId, 0L)) > 60 * 1000 || (isCache && isTopic));
         }
-        if (!DialogObject.isEncryptedDialog(dialogId) && isCache && reload) {
+        // ExFullGram Test accounts are fully local. A cache miss must be treated as
+        // the end of local history instead of falling through to Telegram network APIs.
+        if (!DialogObject.isEncryptedDialog(dialogId) && isCache && reload
+                && !app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
             if (mode == ChatActivity.MODE_SCHEDULED) {
                 lastScheduledServerQueryTime.put(dialogId, SystemClock.elapsedRealtime());
             } else if (mode == ChatActivity.MODE_QUICK_REPLIES) {
