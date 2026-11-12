@@ -48,3 +48,27 @@ Then check on an Android device, for both a normal chat and Test chat:
 7. No Telegram network traffic or stalled loading in local Test accounts.
 
 Static checks alone do not prove visual parity or successful Android compilation.
+
+## New settings search and account profiles
+
+- Every new ExFullGram settings page must be reachable from the ExFullGram
+  settings home, included in `SettingsHelper.onCreateSearchArray()`, and
+  provide stable searchable row keys plus localized `getSearchPrefix()`
+  resources. Add its deep-link route to `SettingsHelper.processDeepLink()`.
+- All settings belonging to the `nkmrcfg` family (NekoConfig, NaConfig and
+  ExFullGram's ConfigItem-backed settings) are part of account-scoped mod
+  profiles when the user enables **Separate settings for each account**.
+- Profiles are keyed by Test/live identity + Telegram user ID, not just account
+  slot. Do not share preferences accidentally when a slot is reused.
+- Account changes must go through `AccountSettingsProfiles.beforeAccountSwitch`
+  before `UserConfig.selectedAccount` changes. Keep
+  `AccountSettingsProfiles.initialize` at app startup.
+- New settings written to a different SharedPreferences namespace must opt
+  into profile support deliberately; never clone auth, passcodes, Telegram
+  session/network state or chat databases as if they were cosmetic settings.
+- When adding settings to compare/merge, maintain a native themed interface,
+  per-setting left/right choice and confirmation before overwriting.
+- Account-specific settings should persist after cold starts and account
+  switching. Test account reset must not erase its settings profile.
+- Some appearance changes require app restart because Telegram caches view
+  resources. Do not claim live theme refresh without device verification.
