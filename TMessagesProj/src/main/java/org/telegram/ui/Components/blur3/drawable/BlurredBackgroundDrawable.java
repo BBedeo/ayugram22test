@@ -782,6 +782,13 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
     @Override
     protected void onGlassSettingsChanged(GlassSettings glassSettings) {
         implInvalidated = true;
+        // Switching an ExFullGram material does not necessarily swap the
+        // LiquidGlassEffect instance, but it DOES change its shader uniforms.
+        // Force a real GPU re-record so refraction and the new tint take effect
+        // on reused views, including after switching live/Test identities.
+        if (renderNodeImpl != null) {
+            renderNodeImpl.invalidate();
+        }
         // the tint depends on them too
         updateColors();
         invalidateSelf();
