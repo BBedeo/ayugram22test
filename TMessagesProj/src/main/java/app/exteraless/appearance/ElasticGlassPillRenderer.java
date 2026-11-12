@@ -16,9 +16,10 @@ public final class ElasticGlassPillRenderer {
     private float lastRadius = -1f;
     private float lastCenterX = Float.NaN;
     private float lightVelocity;
+    private float opticalPress;
 
     public void draw(Canvas canvas, RectF bounds, BlurredBackgroundDrawable nativeGlass,
-                     boolean dark, float stretching) {
+                     boolean dark, float stretching, boolean pressed) {
         if (bounds.width() < 2f || bounds.height() < 2f || nativeGlass == null) return;
 
         final float radius = bounds.height() * .5f;
@@ -50,6 +51,17 @@ public final class ElasticGlassPillRenderer {
         final float angle = (float) Math.toRadians(baseAngle + phase * 24f);
         final float shine = dark ? .76f : .82f;
         nativeGlass.setLiquidOptics(shine, angle, phase);
+
+        // A stationary finger still compresses the optical surface; both
+        // down and release ease over several native frames. No extra overlay
+        // View is added and long-press remains the original tab listener.
+        final float targetPress = pressed ? 1f : 0f;
+        opticalPress += (targetPress - opticalPress) * (pressed ? .30f : .22f);
+        if (Math.abs(targetPress - opticalPress) < .018f) {
+            opticalPress = targetPress;
+        }
+        final float pressure = Math.round(opticalPress * 100f) / 100f;
+        nativeGlass.setElasticPressProgress(pressure);
 
         nativeGlass.draw(canvas);
     }
