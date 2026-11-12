@@ -41,6 +41,7 @@ import org.telegram.ui.Components.blur3.utils.NinePatchBuilder;
 import org.telegram.utils.glass.GlassDrawable;
 import org.telegram.utils.glass.GlassEngine;
 import org.telegram.utils.glass.GlassSettings;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.utils.glass.fade.GlassFadeBlurredDrawable;
 import org.telegram.utils.glass.source.GlassSource;
 import org.telegram.utils.glass.source.GlassSourceBitmap;
@@ -1311,7 +1312,7 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                     body.left - b.left, body.top - b.top,
                     boundProps.shaderRadii[0], boundProps.shaderRadii[2], boundProps.shaderRadii[4], boundProps.shaderRadii[6],
                     thickness,
-                    boundProps.liquidIntensity,
+                    boundProps.liquidIntensity * LiquidGlassTuning.refractionScale(),
                     boundProps.liquidIndex,
                     backgroundColor,
                     originX - sL, originY - sT,

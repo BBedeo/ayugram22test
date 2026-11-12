@@ -6,6 +6,7 @@ import android.view.ViewGroup;
 import androidx.annotation.Nullable;
 
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 import org.telegram.utils.glass.source.GlassSource;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
@@ -164,7 +165,9 @@ public class BlurredBackgroundDrawableViewFactory {
 
     public BlurredBackgroundDrawable create(View view, BlurredBackgroundColorProvider provider, boolean multiwindow) {
         final BlurredBackgroundDrawable drawable = createDrawable();
-        if (isLiquidGlassEffectAllowed) {
+        if (isLiquidGlassEffectAllowed || LiquidGlassTuning.isActive()) {
+            // Opt in all shared glass-backed Telegram surfaces. Factories with
+            // only static color sources keep the normal fallback.
             // drawn while the glass settings have it on
             drawable.setLiquidGlassEffectAllowed();
         }

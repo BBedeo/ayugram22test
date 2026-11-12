@@ -72,3 +72,16 @@ Static checks alone do not prove visual parity or successful Android compilation
   switching. Test account reset must not erase its settings profile.
 - Some appearance changes require app restart because Telegram caches view
   resources. Do not claim live theme refresh without device verification.
+
+
+## Optional visual features
+
+Before implementing a substantial new user-facing feature, ask the user whether
+they want a configurable setting or always-on native behavior. Liquid Glass is
+an optional ExFullGram design setting, default OFF. Its visual appearance must
+stay byte-for-byte compatible with upstream when off, and the setting must
+work in both live and Test Mode as well as per-account settings profiles.
+
+Use Telegram's existing capture + runtime refraction shader; never replace
+Liquid Glass with a dark overlay and never sample text without a valid backdrop.
+Provide sensible power-saver, API-level and readability fallbacks.

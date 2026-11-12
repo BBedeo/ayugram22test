@@ -35,7 +35,7 @@ public abstract class GlassMenuHelper {
     }
 
     public static boolean isEnabled(int currentAccount, Theme.ResourcesProvider resourcesProvider) {
-        return AppearanceConfig.glassMessageMenu()
+        return (AppearanceConfig.glassMessageMenu() || LiquidGlassTuning.isActive())
             && BlurredBackgroundProviderImpl.checkBlurEnabled(currentAccount, resourcesProvider);
     }
 
@@ -44,13 +44,17 @@ public abstract class GlassMenuHelper {
      * обводки нет совсем.
      */
     private static BlurredBackgroundProviderBuilder scrimMenuGlass(Theme.ResourcesProvider resourcesProvider) {
+        final boolean liquid = LiquidGlassTuning.isActive();
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> Theme.multAlpha(
-                Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground), isDark ? 0.85f : 0.76f))
-            .setStrokeColorTop(0, 0)
-            .setStrokeColorBottom(0, 0)
+                Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground),
+                LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.85f : 0.76f)))
+            // No extra rim when universal glass is disabled: preserve old menu.
+            .setStrokeColorTop(liquid ? 0x8AFFFFFF : 0, liquid ? 0x5CFFFFFF : 0)
+            .setStrokeColorBottom(liquid ? 0x24FFFFFF : 0, liquid ? 0x18FFFFFF : 0)
             .setStrokeColorFull(0, 0)
-            .setStrokeWidth(0.0f, 0.0f);
+            .setStrokeWidth(liquid ? AndroidUtilities.dpf2(0.85f) : 0.0f,
+                    liquid ? AndroidUtilities.dpf2(0.7f) : 0.0f);
     }
 
     public static BlurredBackgroundProvider scrimMenuBackground(Theme.ResourcesProvider resourcesProvider) {
