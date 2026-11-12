@@ -17,6 +17,9 @@ import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.animation.OvershootInterpolator;
+
+import app.exteraless.appearance.LiquidGlassTuning;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -36,6 +39,7 @@ import org.telegram.ui.Components.LayoutHelper;
 public class VoIPToggleButton extends FrameLayout {
 
     Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final VoIPCallGlass.Painter callGlass = new VoIPCallGlass.Painter();
     private boolean drawBackground = true;
     private boolean drawRipple = true;
     private boolean animateBackground;
@@ -83,6 +87,7 @@ public class VoIPToggleButton extends FrameLayout {
         super(context);
         this.diameter = diameter;
         setWillNotDraw(false);
+        setMinimumHeight(dp(diameter));
 
         textLayoutContainer = new FrameLayout(context);
         addView(textLayoutContainer);
@@ -113,6 +118,13 @@ public class VoIPToggleButton extends FrameLayout {
         }
     }
 
+    /** Independent call UI preference; does not change screen-reader labels. */
+    public void setLabelsHidden(boolean hidden) {
+        textLayoutContainer.animate().cancel();
+        textLayoutContainer.setVisibility(hidden ? GONE : VISIBLE);
+        requestLayout();
+    }
+
     public void setDrawBackground(boolean value) {
         drawBackground = value;
     }
@@ -125,7 +137,11 @@ public class VoIPToggleButton extends FrameLayout {
         if (pressedScaleAnimator != null) {
             pressedScaleAnimator.cancel();
         }
-        pressedScaleAnimator = ValueAnimator.ofFloat(pressedScale, pressed ? 0.8f : 1f);
+        pressedScaleAnimator = ValueAnimator.ofFloat(pressedScale,
+                pressed ? (LiquidGlassTuning.motionEnabled() ? .88f : .8f) : 1f);
+        if (LiquidGlassTuning.motionEnabled() && !pressed) {
+            pressedScaleAnimator.setInterpolator(new OvershootInterpolator(1.15f));
+        }
         pressedScaleAnimator.addUpdateListener(animation -> {
             pressedScale = (float) animation.getAnimatedValue();
             invalidate();
@@ -138,7 +154,14 @@ public class VoIPToggleButton extends FrameLayout {
     @Override
     protected void onDraw(Canvas canvas) {
         canvas.save();
-        canvas.scale(pressedScale, pressedScale, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
+        final boolean glassMotion = LiquidGlassTuning.motionEnabled();
+        final float press = glassMotion ? Math.max(0f, Math.min(1f, (1f - pressedScale) / .12f)) : 0f;
+        if (glassMotion) {
+            canvas.scale(pressedScale * (1f + press * .075f),
+                    pressedScale * (1f - press * .085f), getMeasuredWidth() / 2f, dp(diameter) / 2f);
+        } else {
+            canvas.scale(pressedScale, pressedScale, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
+        }
 
         if (animateBackground && replaceProgress != 0) {
             circlePaint.setColor(ColorUtils.blendARGB(backgroundColor, animateToBackgroundColor, replaceProgress));
@@ -150,7 +173,11 @@ public class VoIPToggleButton extends FrameLayout {
         float cy = dp(diameter) / 2f;
         float radius = dp(diameter) / 2f;
         if (drawBackground) {
-            canvas.drawCircle(cx, cy, radius, circlePaint);
+            if (LiquidGlassTuning.isActive()) {
+                callGlass.drawFace(canvas, cx, cy, radius, circlePaint.getColor(), press);
+            } else {
+                canvas.drawCircle(cx, cy, radius, circlePaint);
+            }
         }
         if (rippleDrawable == null) {
             rippleDrawable = Theme.createSimpleSelectorCircleDrawable(dp(diameter), 0, Color.BLACK);
