@@ -29,6 +29,8 @@ jobs:
           submodules: recursive
       - name: Check Test Mode native UI parity
         run: python3 scripts/check_test_mode_parity.py
+      - name: Check Account settings profiles and global search
+        run: python3 scripts/check_account_profiles.py
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
