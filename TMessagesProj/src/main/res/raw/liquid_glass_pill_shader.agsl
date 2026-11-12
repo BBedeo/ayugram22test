@@ -80,53 +80,51 @@ half4 main(float2 fragCoord) {
 
     // Subtle internal-reflection meniscus just inside the bright bevel gives
     // real 3D glass thickness even over flat dark scenes.
-    float meniscus = gaussian((-sd - t * 0.55) / (t * 0.28));
-    surface.rgb = max(half3(0.0), surface.rgb - half3(0.065 * meniscus));
+    float meniscus = gaussian((-sd - t * 0.42) / (t * 0.20));
+    surface.rgb = max(half3(0.0), surface.rgb - half3(0.075 * meniscus));
 
-    // A glass body must remain visibly luminous even if the captured
-    // backdrop is a solid dark color. Shape-dependent caustics live inside
-    // this dedicated GPU lens: no flat fill, painted outline or bitmap.
+    // A glass body must stay crystal-clear in the center while catching
+    // crisp iOS-style specular Fresnel light on its curved bevels and motion caustics.
     float2 relative = relCenter;
     float2 light = float2(cos(glass_light_angle + move * 0.34),
                           sin(glass_light_angle + move * 0.34));
     float facing = clamp(dot(edgeNormal, light) * 0.5 + 0.5, 0.0, 1.0);
-    float grazing = gaussian((-sd - t * 0.16) / (t * 0.50));
-    float lip = gaussian(-sd / max(2.2, t * 0.14));
-    float edgeLight = pow(facing, 2.5) * grazing
-                    + pow(1.0 - facing, 3.0) * grazing * 0.34
-                    + pow(facing, 2.0) * lip * 0.38;
+    float grazing = gaussian((-sd - t * 0.14) / (t * 0.38));
+    float lip = gaussian(-sd / max(2.0, t * 0.11));
+    float edgeLight = pow(facing, 2.8) * grazing
+                    + pow(1.0 - facing, 3.4) * grazing * 0.42
+                    + pow(facing, 2.2) * lip * 0.55;
 
-    // The bowed line of reflected overhead light sits smoothly inside
-    // the upper dome and sweeps gently during horizontal drag.
-    float bowedHeight = -0.52 + 0.18 * relative.x * relative.x
+    // Subtle overhead dome reflection tucked near the upper curve.
+    float bowedHeight = -0.56 + 0.18 * relative.x * relative.x
                         + move * 0.10;
-    float bowedArc = gaussian((relative.y - bowedHeight) / 0.18);
-    bowedArc *= 0.62 + 0.38 * gaussian((relative.x + 0.24) / 0.88);
+    float bowedArc = gaussian((relative.y - bowedHeight) / 0.16);
+    bowedArc *= 0.58 + 0.42 * gaussian((relative.x + 0.24) / 0.86);
 
-    // A second elongated directional caustic follows velocity. At rest it
-    // becomes a soft diagonal reflection instead of vanishing entirely.
+    // Directional caustic sweeps smoothly during drag and touch press,
+    // leaving the resting interior clear rather than milky grey.
     float diagonal = relative.x + relative.y * 0.38 - 0.12 - move * 0.62;
-    float sweep = gaussian(diagonal / 0.23)
-                  * gaussian((relative.y + 0.22) / 0.78);
-    float glintX = (relative.x - (0.08 + move * 0.56)) / 0.32;
-    float glintY = (relative.y + 0.36 + move * 0.09) / 0.34;
+    float sweep = gaussian(diagonal / 0.22)
+                  * gaussian((relative.y + 0.22) / 0.76);
+    float glintX = (relative.x - (0.08 + move * 0.56)) / 0.30;
+    float glintY = (relative.y + 0.36 + move * 0.09) / 0.32;
     float glint = gaussian(glintX) * gaussian(glintY);
-    float underside = gaussian((relative.y - 0.72) / 0.25)
-                      * gaussian(relative.x / 0.92);
-    float bodyLight = 0.060 + 0.050 * (1.0 - clamp(relative.y * relative.y, 0.0, 1.0));
+    float underside = gaussian((relative.y - 0.74) / 0.22)
+                      * gaussian(relative.x / 0.90);
+    float bodyLight = 0.018 + 0.016 * (1.0 - clamp(relative.y * relative.y, 0.0, 1.0));
     float active = clamp(abs(move), 0.0, 1.0);
 
-    // Multi-layered curved caustics give optical glass depth even over
-    // a flat dark screen without painting a static opaque overlay.
+    // Crisp rim speculars + motion-driven caustics; keep center transparent.
     float illumination = glass_highlight * (
           bodyLight
-        + 0.42 * edgeLight
-        + 0.27 * bowedArc
-        + 0.26 * glint
-        + 0.24 * sweep
-        + 0.085 * underside
-        + 0.20 * active * sweep
-        ) * (1.0 + press * 0.38);
+        + 0.48 * edgeLight
+        + 0.17 * bowedArc
+        + 0.16 * glint
+        + 0.14 * sweep
+        + 0.075 * underside
+        + 0.26 * active * sweep
+        + 0.18 * press * glint
+        ) * (1.0 + press * 0.28);
     if (glass_adaptive > 0.5) {
         float luma = dot(float3(backdrop.rgb), float3(0.2126, 0.7152, 0.0722));
         illumination *= clamp(1.18 - luma * 0.38, 0.82, 1.22);

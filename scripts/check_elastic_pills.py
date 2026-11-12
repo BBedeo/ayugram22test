@@ -55,7 +55,7 @@ checks = {
     "Elastic pill reuses exact native long-press tab geometry":
         "getInterpolatedWidthByX(centerX, this)" in nav
         and "final float height = Math.max(1f, availableHeight - verticalCompression + jellyY)" in nav
-        and "verticalCompression = Math.min(dp(2.4f), totalStretch * .12f)" in nav
+        and "verticalCompression = Math.min(dp(1.8f), totalStretch * .10f)" in nav
         and "final float baseWidth = Math.max(dp(28), widthAtX + jellyX)" in nav
         and "getSelectorVisualWidth()" in nav
         and "public float getSelectorVisualWidth()" in tab
@@ -85,7 +85,7 @@ checks = {
     "Elastic lens never falls back to SOLID divider outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
         and ".setStrokeWidth(AndroidUtilities.dpf2(.24f), AndroidUtilities.dpf2(.08f))" in main
-        and "canRefract ? .20f : .34f" in main,
+        and "canRefract ? .11f : .26f" in main,
     "Elastic navigation uses isolated shader without replacing shared glass":
         "R.raw.liquid_glass_pill_shader" in glass_effect
         and "R.raw.liquid_glass_shader" in glass_effect
@@ -99,7 +99,7 @@ checks = {
         and "float glint = gaussian(glintX)" in pill_shader
         and "float bowedArc = gaussian(" in pill_shader
         and "float sweep = gaussian(diagonal" in pill_shader
-        and "float bodyLight = 0.060" in pill_shader
+        and "float bodyLight = 0.018" in pill_shader
         and "redSample.r" in pill_shader
         and "blueSample.b" in pill_shader
         and "glass_press" in pill_shader
@@ -138,9 +138,10 @@ checks = {
         "VelocityTracker" in nav
         and "computeCurrentVelocity(1000)" in nav
         and "setStartVelocity(elasticReleaseVelocityX)" in nav
-        and ".setStiffness(260f)" in nav
-        and ".setDampingRatio(.52f)" in nav
-        and "elasticJellyBounce" in nav,
+        and ".setStiffness(340f)" in nav
+        and ".setDampingRatio(.72f)" in nav
+        and "elasticJellyBounce" in nav
+        and "elasticPressScale" in nav,
     "Dragging cancels child click; click commits only on finger release":
         "super.dispatchTouchEvent(cancel);" in nav
         and "hovered.performClick();" in nav

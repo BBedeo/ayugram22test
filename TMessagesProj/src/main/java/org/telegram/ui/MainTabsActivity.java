@@ -493,14 +493,14 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                             .setBackgroundColor((r, dark) -> {
                                 final int target = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                                 if (dark) {
-                                    // Keep the interior ~80% transparent so refracted page content
-                                    // shines through vividly, while gently lifting above the raw page
-                                    // so flat dark scenes never look like a dark cutout.
-                                    final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.34f);
-                                    return Theme.multAlpha(lifted, canRefract ? .20f : .34f);
+                                    // Sheer crystal-clear dark glass (~89% transparent) so the
+                                    // interior never turns matte grey and refracted backdrop
+                                    // content stays vivid while curved edges catch light.
+                                    final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.28f);
+                                    return Theme.multAlpha(lifted, canRefract ? .11f : .26f);
                                 }
-                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.60f);
-                                return Theme.multAlpha(lifted, canRefract ? .18f : .30f);
+                                final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.65f);
+                                return Theme.multAlpha(lifted, canRefract ? .14f : .28f);
                             })
                             // Subtle optical rim only; refraction and curved Fresnel glow
                             // come from LiquidGlassEffect, not a heavy 2D outline.

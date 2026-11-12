@@ -386,11 +386,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final boolean changed = elasticSelectedTab != tab;
         elasticSelectedTab = tab;
         setSkipDrawSelector(true);
-        // Spring with visible jelly overshoot and damped settle so releasing
-        // or tapping feels fluid rather than snapping like a magnet.
+        // Balanced iOS-style spring: snappy travel with one subtle overshoot
+        // and clean settle, without excessive gelatinous wobbling.
         selectedTabPositionX.getSpring()
-                .setStiffness(260f)
-                .setDampingRatio(.52f);
+                .setStiffness(340f)
+                .setDampingRatio(.72f);
         if (!isInLongPress && (changed || !elasticPillInitialized)) {
             syncElasticPillToSelected(animated);
         }
@@ -428,17 +428,17 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             // damped spring settle the lens into the destination slot. This
             // makes ACTION_UP visibly continuous instead of teleporting.
             selectedTabPositionX.setStartVelocity(elasticReleaseVelocityX);
-            final float impulse = Math.max(2.2f, Math.min(7.5f,
-                    Math.abs(elasticReleaseVelocityX) * .0055f
-                    + Math.abs(animatedLongSelectedViewCenterX - cx) * .026f));
+            final float impulse = Math.max(1.4f, Math.min(4.2f,
+                    Math.abs(elasticReleaseVelocityX) * .0035f
+                    + Math.abs(animatedLongSelectedViewCenterX - cx) * .016f));
             elasticReleaseVelocityX = 0f;
             selectedTabPositionX.animateToFinalPosition(cx);
             elasticJellyBounce.setStartVelocity(impulse);
             elasticJellyBounce.animateToFinalPosition(0f);
         } else {
             if (elasticReleaseVelocityX != 0f) {
-                elasticJellyBounce.setStartVelocity(Math.max(2.0f, Math.min(5.0f,
-                        Math.abs(elasticReleaseVelocityX) * .005f)));
+                elasticJellyBounce.setStartVelocity(Math.max(1.4f, Math.min(3.0f,
+                        Math.abs(elasticReleaseVelocityX) * .0035f)));
                 elasticJellyBounce.animateToFinalPosition(0f);
             }
             elasticReleaseVelocityX = 0f;
@@ -545,13 +545,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         // spring settle, stretch along motion and apply the jelly squash-bounce.
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
         final float extension = Math.min(dp(16), travelled * .17f);
-        final float velocityStretch = Math.min(dp(9), Math.abs(frameDelta) * .48f);
-        final float totalStretch = Math.min(dp(22), extension + velocityStretch);
+        final float velocityStretch = Math.min(dp(5.5f), Math.abs(frameDelta) * .32f);
+        final float totalStretch = Math.min(dp(18), extension + velocityStretch);
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float pressSwell = (elasticTouchStartedOnPill && !elasticMenuShownDuringTouch) ? dp(1.4f) : 0f;
-        final float jellyX = elasticJellyValue * dp(6.5f) + pressSwell;
-        final float jellyY = -elasticJellyValue * dp(3.0f) + pressSwell * .65f;
-        final float verticalCompression = Math.min(dp(2.4f), totalStretch * .12f);
+        final float pressSwell = elasticPressValue * dp(1.8f);
+        final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell;
+        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .65f;
+        final float verticalCompression = Math.min(dp(1.8f), totalStretch * .10f);
         final float height = Math.max(1f, availableHeight - verticalCompression + jellyY);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
         final float baseWidth = Math.max(dp(28), widthAtX + jellyX);
@@ -641,6 +641,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private float animatedLongSelectedViewOffsetX;
     private float elasticPrevCenterX = Float.NaN;
     private float elasticJellyValue;
+    private float elasticPressValue;
 
     final SpringAnimation elasticJellyBounce = new SpringAnimation(this, new FloatPropertyCompat<MainTabsLayout>("elasticJellyBounce") {
         @Override
@@ -655,11 +656,28 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
     }, 0f);
 
+    final SpringAnimation elasticPressScale = new SpringAnimation(this, new FloatPropertyCompat<MainTabsLayout>("elasticPressScale") {
+        @Override
+        public float getValue(MainTabsLayout object) {
+            return object.elasticPressValue;
+        }
+
+        @Override
+        public void setValue(MainTabsLayout object, float value) {
+            object.elasticPressValue = value;
+            object.invalidate();
+        }
+    }, 0f);
+
     {
         elasticJellyBounce.setMinimumVisibleChange(0.002f);
         elasticJellyBounce.setSpring(new SpringForce(0f)
-                .setStiffness(210f)
-                .setDampingRatio(0.36f));
+                .setStiffness(300f)
+                .setDampingRatio(0.62f));
+        elasticPressScale.setMinimumVisibleChange(0.002f);
+        elasticPressScale.setSpring(new SpringForce(0f)
+                .setStiffness(360f)
+                .setDampingRatio(0.65f));
     }
 
     private boolean isInLongPress;
@@ -923,6 +941,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         if (!ElasticPillGesture.enabled()) return;
         elasticMenuShownDuringTouch = true;
         elasticTouchStartedOnPill = false;
+        elasticPressScale.animateToFinalPosition(0f);
         if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
     }
 
@@ -953,6 +972,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticTouchStartedOnPill = elasticTouchTab instanceof GlassTabView
                     && findSelectedTab() != null
                     && selectorRect.contains(elasticDownX, elasticDownY);
+            if (elasticTouchStartedOnPill) {
+                elasticPressScale.animateToFinalPosition(1f);
+            }
             if (elasticTouchStartedOnPill) invalidate();
             // Preserve the finger's offset from the visible pill, so the
             // glass does not jump when the user begins dragging.
@@ -1021,7 +1043,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     elasticVelocityTracker.computeCurrentVelocity(1000);
                     final float rawVelocity = elasticVelocityTracker.getXVelocity(elasticTouchPointer);
                     final float maxVelocity = dp(1400);
-                    elasticReleaseVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, rawVelocity)) * .62f;
+                    elasticReleaseVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, rawVelocity)) * .38f;
                 }
                 finishElasticTouch(true);
                 if (hovered instanceof GlassTabView) {
@@ -1055,9 +1077,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
     private void finishElasticTouch(boolean releasedOnTab) {
         final boolean hadDrag = elasticDragging;
+        final boolean wasOnPill = elasticTouchStartedOnPill;
         elasticDragging = false;
         elasticTouchStartedOnPill = false;
         elasticMenuShownDuringTouch = false;
+        elasticPressScale.animateToFinalPosition(0f);
         elasticTouchTab = null;
         elasticTouchPointer = -1;
         if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
@@ -1074,6 +1098,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             }
         } else {
             elasticReleaseVelocityX = 0f;
+            if (wasOnPill) {
+                // Releasing a tap or hold directly on the active tab still
+                // settles with a subtle harmonious jelly pulse instead of snapping.
+                elasticJellyBounce.setStartVelocity(1.5f);
+                elasticJellyBounce.animateToFinalPosition(0f);
+            }
         }
         invalidate();
     }
