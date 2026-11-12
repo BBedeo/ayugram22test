@@ -54,7 +54,8 @@ checks = {
         and "elasticSelectedTab != null" in nav,
     "Elastic pill reuses exact native long-press tab geometry":
         "getInterpolatedWidthByX(centerX, this)" in nav
-        and "final float height = availableHeight" in nav
+        and "final float height = Math.max(1f, availableHeight - verticalCompression)" in nav
+        and "verticalCompression = Math.min(dp(1.4f), extension * .09f)" in nav
         and "final float baseWidth = Math.max(dp(28), widthAtX)" in nav
         and "getSelectorVisualWidth()" in nav
         and "public float getSelectorVisualWidth()" in tab
