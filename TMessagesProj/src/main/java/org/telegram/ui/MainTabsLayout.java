@@ -107,6 +107,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private View elasticTouchTab;
     private float elasticDownX, elasticDownY, elasticTouchOffsetX;
     private boolean elasticDragging;
+    private boolean elasticTouchStartedOnPill;
+    private boolean elasticMenuShownDuringTouch;
     private int elasticTouchPointer = -1;
 
     /** A separate native backdrop lens is layered ABOVE the panel and BELOW the tab icons. */
@@ -521,11 +523,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         // at rest, or paint glass over the neighboring tab's label.
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
         final float extension = Math.min(dp(14), travelled * .15f);
+        // Fill the whole nav row with a 1dp top/bottom optical inset.
+        final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
+        final float height = Math.max(1f, availableHeight - dp(2));
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
-        final float availableWidth = Math.max(dp(34), widthAtX - dp(10));
-        final float width = Math.min(availableWidth, dp(70)) + extension;
-        final float availableHeight = getHeight() - getPaddingTop() - getPaddingBottom();
-        final float height = Math.max(dp(25), Math.min(dp(49), availableHeight - dp(12)));
+        final float availableWidth = Math.max(dp(28), widthAtX - dp(6));
+        final float width = Math.min(availableWidth, Math.max(height, dp(70))) + extension;
         final float cy = getPaddingTop() + availableHeight * .5f;
         selectorRect.set(centerX - width * .5f, cy - height * .5f,
                 centerX + width * .5f, cy + height * .5f);
@@ -850,9 +853,19 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     }
 
     /**
-     * Regular taps stay delegated to the original tab views. A genuine
-     * horizontal drag cancels the tapped child and moves only the selected
-     * capsule. The parent ViewPager may not also consume this gesture.
+     * The tab's own stationary long-press listener opened its menu.
+     * This finger is no longer eligible to start an elastic drag.
+     */
+    public void onElasticTabLongPressed() {
+        if (!ElasticPillGesture.enabled()) return;
+        elasticMenuShownDuringTouch = true;
+        elasticTouchStartedOnPill = false;
+        if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+    }
+
+    /**
+     * Only touching INSIDE the visible active pill can begin a drag.
+     * Normal taps and stationary holds remain owned by original tab views.
      */
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
@@ -868,15 +881,26 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticDownX = ev.getX();
             elasticDownY = ev.getY();
             elasticDragging = false;
-            final View selected = findSelectedTab();
-            elasticTouchOffsetX = (selected != null ? getCenterX(selected) : elasticDownX) - elasticDownX;
+            elasticMenuShownDuringTouch = false;
+            // Do not treat every tab rectangle as a draggable surface.
+            elasticTouchStartedOnPill = elasticTouchTab instanceof GlassTabView
+                    && findSelectedTab() != null
+                    && selectorRect.contains(elasticDownX, elasticDownY);
+            // Preserve the finger's offset from the visible pill, so the
+            // glass does not jump when the user begins dragging.
+            elasticTouchOffsetX = animatedLongSelectedViewCenterX - elasticDownX;
             if (elasticTouchTab instanceof GlassTabView && getParent() != null) {
+                // A touch on a navbar button never swipes the page.
                 getParent().requestDisallowInterceptTouchEvent(true);
             }
             return super.dispatchTouchEvent(ev);
         }
 
-        if (!(elasticTouchTab instanceof GlassTabView)) {
+        if (!elasticTouchStartedOnPill || elasticMenuShownDuringTouch) {
+            // Inactive tab buttons remain ordinary tap/long-press controls.
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                finishElasticTouch(false);
+            }
             return super.dispatchTouchEvent(ev);
         }
         if (action == MotionEvent.ACTION_POINTER_DOWN) {
@@ -897,8 +921,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             final float x = ev.getX(index);
             final float y = ev.getY(index);
             final int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
-            if (!elasticDragging && Math.abs(x - elasticDownX) > slop
-                    && Math.abs(x - elasticDownX) >= Math.abs(y - elasticDownY) * .75f) {
+            // Add tolerance for tiny finger movement on a stationary hold.
+            if (!elasticDragging && !elasticMenuShownDuringTouch
+                    && Math.abs(x - elasticDownX) > Math.max(dp(7), slop * 1.25f)
+                    && Math.abs(x - elasticDownX) >= Math.abs(y - elasticDownY) * .90f) {
                 elasticDragging = true;
                 isInLongPress = true;
                 selectedTabPositionX.cancel();
@@ -938,6 +964,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private void finishElasticTouch(boolean releasedOnTab) {
         final boolean hadDrag = elasticDragging;
         elasticDragging = false;
+        elasticTouchStartedOnPill = false;
+        elasticMenuShownDuringTouch = false;
         elasticTouchTab = null;
         elasticTouchPointer = -1;
         if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);

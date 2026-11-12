@@ -24,6 +24,17 @@ slider = read("org/telegram/ui/Components/SeekBarView.java")
 gesture = read("app/exteraless/appearance/ElasticPillGesture.java")
 
 checks = {
+    "Only touching the visible selected pill may start drag":
+        "selectorRect.contains(elasticDownX, elasticDownY)" in nav
+        and "if (!elasticTouchStartedOnPill || elasticMenuShownDuringTouch)" in nav,
+    "Small wobble stays eligible for a long-press menu":
+        "slop * 1.25f" in nav
+        and "tabsView.onElasticTabLongPressed()" in main
+        and "final boolean shown = processLongClick(v, tabIndex);" in main,
+    "Popup menus use native blur with optional Liquid Glass tint":
+        "o.setBlur(true);" in main
+        and "GlassMenuHelper.scrimMenuBackground(resourcesProvider)" in menu
+        and "LiquidGlassTuning.isActive()" in menu,
     "Optional, off by default, independent of Liquid Glass":
         'addConfig("OEAppearanceElasticDragPills", ConfigItem.configTypeBool, false)' in config
         and "universalLiquidGlass" not in gesture,
@@ -37,7 +48,8 @@ checks = {
         and "elasticSelectedTab != null" in nav,
     "Measured tab sizes constrain a single pill's width and height":
         "getInterpolatedWidthByX(centerX, this)" in nav
-        and "Math.min(availableWidth, dp(70)) + extension" in nav
+        and "Math.min(availableWidth, Math.max(height, dp(70))) + extension" in nav
+        and "availableHeight - dp(2)" in nav
         and "Math.min(dp(14), travelled * .15f)" in nav,
     "Native glass sampling is preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main

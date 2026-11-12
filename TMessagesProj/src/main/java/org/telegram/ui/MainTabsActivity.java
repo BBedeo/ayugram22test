@@ -427,10 +427,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             final GlassTabView view = tabs[index];
             final int tabIndex = index;
             tabs[index].setOnLongClickListener(v -> {
-                // Elastic drag owns a held tab. Do not open its normal context
-                // menu and accidentally steal a swipe from the glass capsule.
-                if (ElasticPillGesture.enabled()) return true;
-                return processLongClick(v, tabIndex);
+                // Long-press context menus take priority over elastic drag.
+                final boolean shown = processLongClick(v, tabIndex);
+                if (shown && tabsView != null) tabsView.onElasticTabLongPressed();
+                return shown;
             });
             tabs[index].setOnClickListener(v -> {
                 if (viewPager.isManualScrolling() || viewPager.isTouch()) {

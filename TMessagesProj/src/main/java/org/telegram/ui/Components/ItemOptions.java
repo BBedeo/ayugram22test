@@ -73,6 +73,8 @@ import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
+import app.exteraless.appearance.GlassMenuHelper;
+import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.utils.glass.source.GlassSourceBitmap;
 import org.telegram.ui.Components.blur3.utils.Blur3Utils;
 import org.telegram.ui.ContactsActivity;
@@ -1649,7 +1651,11 @@ public class ItemOptions {
             bindGapBackgroundColor(ThemeBind.multAlpha(Theme.key_actionBarDefaultSubmenuItem, 0.06f));
             BlurredBackgroundDrawable bg = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap)
                 .create(layout, true)
-                .setColorProvider(BlurredBackgroundProviderImpl.scrimMenuBackground(resourcesProvider))
+                // Use the real captured backdrop and glass material when the
+                // user has enabled Liquid Glass, not a static fake menu.
+                .setColorProvider(LiquidGlassTuning.isActive()
+                        ? GlassMenuHelper.scrimMenuBackground(resourcesProvider)
+                        : BlurredBackgroundProviderImpl.scrimMenuBackground(resourcesProvider))
                 .setPadding(dp(8))
                 .setHasPadding(true)
                 .setRadius(dp(12));
