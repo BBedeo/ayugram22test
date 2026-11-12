@@ -1,0 +1,61 @@
+// Refracts tab bar icons, labels and badges passing under the curved
+// edges of the elastic Liquid Glass lens, matching iOS 26 _UILiquidLensView.
+uniform shader img;
+
+uniform float2 center;
+uniform float2 size;
+uniform float radius;
+uniform float thickness;
+uniform float glass_press;
+uniform float glass_motion;
+
+float roundedRectDist(float2 p, float r) {
+    float2 q = abs(p) - size + r;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+
+half4 main(float2 fragCoord) {
+    float2 p = fragCoord - center;
+    float r = min(radius, min(size.x, size.y));
+    float raw = roundedRectDist(p, r);
+    float sd = min(raw, 0.0);
+    float t = max(thickness, 1.0);
+
+    float2 slope = float2(
+        roundedRectDist(p + float2(1.0, 0.0), r) - raw,
+        roundedRectDist(p + float2(0.0, 1.0), r) - raw
+    );
+    float2 edgeNormal = normalize(slope + float2(0.0001, 0.0001));
+    float edgeBand = 1.0 - smoothstep(0.0, t * 1.35, -sd);
+
+    float2 relCenter = p / max(size, float2(1.0));
+    float move = clamp(glass_motion, -1.0, 1.0);
+    float press = clamp(glass_press, 0.0, 1.0);
+
+    // Pull icons inward along the curved bevel to create convex edge wrapping,
+    // plus subtle center magnification under touch/lens dome.
+    float2 uv = fragCoord
+                - edgeNormal * (edgeBand * edgeBand * t * (0.44 + abs(move) * 0.14))
+                - relCenter * ((0.030 + press * 0.045) * t * (1.0 - edgeBand * 0.35));
+    uv += float2(move * 2.5, 0.0) * edgeBand;
+
+    float2 uvMin = center - size + 0.5;
+    float2 uvMax = center + size - 0.5;
+    uv = clamp(uv, uvMin, uvMax);
+
+    half4 base = img.eval(uv);
+
+    // Subtle RGB edge dispersion on icons/badges crossing the glass rim,
+    // keeping premultiplied alpha valid so edges stay crisp without fringing.
+    if (edgeBand > 0.14 && base.a > 0.01) {
+        float2 chroma = edgeNormal * t * 0.18 * edgeBand * (1.0 + abs(move) * 0.40);
+        half4 rS = img.eval(clamp(uv + chroma, uvMin, uvMax));
+        half4 bS = img.eval(clamp(uv - chroma, uvMin, uvMax));
+        half mixW = half(edgeBand * 0.60);
+        base.a = max(base.a, mix(base.a, max(rS.a, bS.a), mixW * 0.45));
+        base.r = min(base.a, mix(base.r, rS.r, mixW));
+        base.b = min(base.a, mix(base.b, bS.b, mixW));
+    }
+
+    return base;
+}

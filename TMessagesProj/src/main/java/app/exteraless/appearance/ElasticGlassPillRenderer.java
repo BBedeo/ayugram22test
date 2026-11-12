@@ -17,6 +17,20 @@ public final class ElasticGlassPillRenderer {
     private float lastCenterX = Float.NaN;
     private float lightVelocity;
     private float opticalPress;
+    private float tiltRadians;
+    private float lastPhase;
+
+    public void setTiltOffset(float radians) {
+        tiltRadians = Math.max(-.35f, Math.min(.35f, radians));
+    }
+
+    public float getOpticalPress() {
+        return opticalPress;
+    }
+
+    public float getLightPhase() {
+        return lastPhase;
+    }
 
     public void draw(Canvas canvas, RectF bounds, BlurredBackgroundDrawable nativeGlass,
                      boolean dark, float stretching, boolean pressed) {
@@ -45,10 +59,11 @@ public final class ElasticGlassPillRenderer {
         }
         // Quantize the phase to avoid tiny float updates keeping the GPU awake.
         final float phase = Math.round(Math.max(-1f, Math.min(1f, lightVelocity)) * 100f) / 100f;
+        lastPhase = phase;
 
         // The highlight is part of the optical material, not a 2D stroked rim.
         final float baseAngle = 315f;
-        final float angle = (float) Math.toRadians(baseAngle + phase * 24f);
+        final float angle = (float) Math.toRadians(baseAngle + phase * 24f) + tiltRadians;
         final float shine = dark ? .76f : .82f;
         nativeGlass.setLiquidOptics(shine, angle, phase);
 

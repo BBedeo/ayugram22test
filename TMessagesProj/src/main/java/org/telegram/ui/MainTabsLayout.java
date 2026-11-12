@@ -8,7 +8,16 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.RenderEffect;
+import android.graphics.RenderNode;
+import android.graphics.RuntimeShader;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.os.Build;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -26,6 +35,8 @@ import android.util.Log;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.LiteMode;
+import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedLinearLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
@@ -501,6 +512,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     protected void dispatchDraw(@NonNull Canvas canvas) {
         if (ElasticPillGesture.enabled()) {
             drawElasticGlassSelector(canvas);
+            if (drawRefractedTabsContent(canvas)) {
+                if (drawTopDivider && MainTabsUiHelper.isMaterial3NavigationBar()) {
+                    dividerPaint.setColor(Theme.getDividerColor(resourcesProvider));
+                    canvas.drawLine(0, 1, getMeasuredWidth(), 1, dividerPaint);
+                }
+                return;
+            }
         } else if (drawCustomSelector) {
             // Preserve the original long-press indicator when this optional
             // appearance feature is disabled.
@@ -617,6 +635,168 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     final Paint dividerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     final Paint selectorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.RectF selectorRect = new android.graphics.RectF();
+    private final Path pillClipPath = new Path();
+    private RenderNode tabsContentNode;
+    private RenderNode pillRefractNode;
+    private RuntimeShader pillContentShader;
+    private boolean pillContentShaderFailed;
+    private float lastPillShaderCx = Float.NaN, lastPillShaderCy = Float.NaN;
+    private float lastPillShaderW = -1f, lastPillShaderH = -1f;
+    private float lastPillShaderPress = -1f, lastPillShaderMotion = Float.NaN;
+
+    private boolean drawRefractedTabsContent(Canvas canvas) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                || LiteMode.isPowerSaverApplied()
+                || pillContentShaderFailed
+                || !canvas.isHardwareAccelerated()
+                || getWidth() <= 0 || getHeight() <= 0
+                || selectorRect.width() < 2f || selectorRect.height() < 2f) {
+            return false;
+        }
+        try {
+            if (tabsContentNode == null) {
+                tabsContentNode = new RenderNode("ElasticTabsContent");
+                pillRefractNode = new RenderNode("ElasticPillRefract");
+                final String code = AndroidUtilities.readRes(R.raw.liquid_glass_pill_content_shader);
+                pillContentShader = new RuntimeShader(code);
+            }
+            final int w = getWidth();
+            final int h = getHeight();
+            tabsContentNode.setPosition(0, 0, w, h);
+            final Canvas contentCanvas = tabsContentNode.beginRecording();
+            super.dispatchDraw(contentCanvas);
+            tabsContentNode.endRecording();
+
+            final float cx = selectorRect.centerX();
+            final float cy = selectorRect.centerY();
+            final float hw = selectorRect.width() * .5f;
+            final float hh = selectorRect.height() * .5f;
+            final float press = elasticGlassPill.getOpticalPress();
+            final float motion = elasticGlassPill.getLightPhase();
+            if (Math.abs(lastPillShaderCx - cx) > .15f
+                    || Math.abs(lastPillShaderCy - cy) > .15f
+                    || Math.abs(lastPillShaderW - hw) > .15f
+                    || Math.abs(lastPillShaderH - hh) > .15f
+                    || Math.abs(lastPillShaderPress - press) > .01f
+                    || Math.abs(lastPillShaderMotion - motion) > .01f
+                    || Float.isNaN(lastPillShaderCx)) {
+                lastPillShaderCx = cx;
+                lastPillShaderCy = cy;
+                lastPillShaderW = hw;
+                lastPillShaderH = hh;
+                lastPillShaderPress = press;
+                lastPillShaderMotion = motion;
+                pillContentShader.setFloatUniform("center", cx, cy);
+                pillContentShader.setFloatUniform("size", hw, hh);
+                pillContentShader.setFloatUniform("radius", hh);
+                pillContentShader.setFloatUniform("thickness", Math.min(dp(12), hh * .45f));
+                pillContentShader.setFloatUniform("glass_press", press);
+                pillContentShader.setFloatUniform("glass_motion", motion);
+                pillRefractNode.setRenderEffect(
+                        RenderEffect.createRuntimeShaderEffect(pillContentShader, "img"));
+            }
+
+            pillRefractNode.setPosition(0, 0, w, h);
+            final Canvas refractCanvas = pillRefractNode.beginRecording();
+            refractCanvas.drawRenderNode(tabsContentNode);
+            pillRefractNode.endRecording();
+
+            final float r = selectorRect.height() * .5f;
+            pillClipPath.rewind();
+            pillClipPath.addRoundRect(selectorRect, r, r, Path.Direction.CW);
+
+            canvas.save();
+            canvas.clipOutPath(pillClipPath);
+            canvas.drawRenderNode(tabsContentNode);
+            canvas.restore();
+
+            canvas.save();
+            canvas.clipPath(pillClipPath);
+            canvas.drawRenderNode(pillRefractNode);
+            canvas.restore();
+            return true;
+        } catch (Throwable ignore) {
+            pillContentShaderFailed = true;
+            return false;
+        }
+    }
+
+    private SensorManager pillTiltManager;
+    private Sensor pillTiltSensor;
+    private float pillTiltSmoothed;
+    private float pillTiltQuantized;
+    private boolean pillTiltRegistered;
+
+    private final SensorEventListener pillTiltListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (!ElasticPillGesture.enabled() || LiteMode.isPowerSaverApplied()) {
+                return;
+            }
+            final float x = event.values[0];
+            final float y = event.values[1];
+            final float target = Math.max(-.30f, Math.min(.30f, x * .032f - y * .014f));
+            pillTiltSmoothed += (target - pillTiltSmoothed) * .14f;
+            final float quantized = Math.round(pillTiltSmoothed * 40f) / 40f;
+            if (Math.abs(quantized - pillTiltQuantized) >= .024f) {
+                pillTiltQuantized = quantized;
+                elasticGlassPill.setTiltOffset(quantized);
+                invalidate();
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
+
+    private void updatePillTiltSensor(boolean active) {
+        final boolean shouldListen = active
+                && ElasticPillGesture.enabled()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && !LiteMode.isPowerSaverApplied()
+                && getWindowVisibility() == View.VISIBLE;
+        if (shouldListen == pillTiltRegistered) {
+            return;
+        }
+        if (shouldListen) {
+            if (pillTiltManager == null) {
+                pillTiltManager = (SensorManager) getContext().getSystemService(Context.SENSOR_SERVICE);
+                if (pillTiltManager != null) {
+                    pillTiltSensor = pillTiltManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+                    if (pillTiltSensor == null) {
+                        pillTiltSensor = pillTiltManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                    }
+                }
+            }
+            if (pillTiltManager != null && pillTiltSensor != null) {
+                pillTiltManager.registerListener(pillTiltListener, pillTiltSensor, SensorManager.SENSOR_DELAY_UI);
+                pillTiltRegistered = true;
+            }
+        } else {
+            if (pillTiltManager != null) {
+                pillTiltManager.unregisterListener(pillTiltListener);
+            }
+            pillTiltRegistered = false;
+        }
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        updatePillTiltSensor(true);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        updatePillTiltSensor(false);
+        super.onDetachedFromWindow();
+    }
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        updatePillTiltSensor(visibility == View.VISIBLE);
+    }
     final SpringAnimation scaleX = new SpringAnimation(this, DynamicAnimation.SCALE_X, 1f);
     final SpringAnimation scaleY = new SpringAnimation(this, DynamicAnimation.SCALE_Y, 1f);
 
