@@ -325,6 +325,9 @@ public class TypefaceHelper {
 
     public static SpannableStringBuilder getTitleText(int currentAccount) {
         String title = (String) NaConfig.INSTANCE.getCustomTitle().defaultValue;
+        if ("exteraless".equalsIgnoreCase(title)) {
+            title = "ExFullGram";
+        }
         // openExtera: заголовок списка чатов (AppearanceConfig.titleText).
         // Перенесено из exteraGram 12.9.0, LocaleUtils.getActionBarTitle(int).
         // 0 — имя приложения (NagramX customTitle), 1 — username, 2 — имя, 3 — «Чаты».
@@ -334,7 +337,7 @@ public class TypefaceHelper {
         } else if (oeTitleText == app.exteraless.appearance.AppearanceConfig.TITLE_TEXT_CUSTOM) {
             String customTitle = NaConfig.INSTANCE.getCustomTitle().String();
             if (!TextUtils.isEmpty(customTitle)) {
-                title = customTitle;
+                title = "exteraless".equalsIgnoreCase(customTitle) ? "ExFullGram" : customTitle;
             }
         } else if (oeTitleText != 0) {
             TLRPC.User self = UserConfig.getInstance(currentAccount).getCurrentUser();
