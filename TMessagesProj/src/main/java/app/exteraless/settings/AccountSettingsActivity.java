@@ -1,5 +1,7 @@
 package app.exteraless.settings;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
