@@ -55,7 +55,8 @@ half4 main(float2 fragCoord) {
     float move = clamp(glass_motion, -1.0, 1.0);
     float2 uv = fragCoord + ray.xy * rayDepth * refract_intensity
                 * (1.0 + abs(move) * 0.16);
-    uv += float2(move * 3.0, 0.0) * edgeBand;
+    uv += float2(move * 3.0, 0.0) * edgeBand
+          + p / max(size, float2(1.0)) * glass_press * t * 0.04;
     float2 uvMin = center - size + 0.5;
     float2 uvMax = center + size - 0.5;
     uv = clamp(uv, uvMin, uvMax);
