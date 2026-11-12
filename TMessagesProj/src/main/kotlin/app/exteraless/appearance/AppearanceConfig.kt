@@ -190,6 +190,28 @@ object AppearanceConfig {
             }
         })
 
+    /** ExFullGram-wide optional native Liquid Glass; OFF by default. */
+    @JvmField
+    val universalLiquidGlass =
+        addConfig("OEAppearanceUniversalLiquidGlass", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun universalLiquidGlass(): Boolean {
+        ensureLoaded()
+        return universalLiquidGlass.Bool()
+    }
+
+    /** 0 = clear, 1 = balanced, 2 = expressive; stored with account profile. */
+    @JvmField
+    val liquidGlassMaterial =
+        addConfig("OEAppearanceLiquidGlassMaterial", ConfigItem.configTypeInt, 1)
+
+    @JvmStatic
+    fun liquidGlassMaterial(): Int {
+        ensureLoaded()
+        return liquidGlassMaterial.Int().coerceIn(0, 2)
+    }
+
     /** Стеклянное меню сообщения. Дефолт true, как в exteraGram (BooleanPref(1)). */
     @JvmField
     val glassMessageMenu =

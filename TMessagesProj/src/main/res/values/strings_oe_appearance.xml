@@ -52,6 +52,14 @@
     <string name="OEAppearanceSwitchStyle">Switches</string>
     <string name="OEAppearanceSliderStyle">Sliders</string>
 
+    <!-- Optional ExFullGram Liquid Glass -->
+    <string name="OEAppearanceUniversalLiquidGlass">Liquid Glass everywhere</string>
+    <string name="OEAppearanceUniversalLiquidGlassInfo">Native refractive glass for tabs, menus, controls and overlays. Android 13+ for full refraction; frosted fallback on older devices.</string>
+    <string name="OEAppearanceLiquidGlassMaterial">Glass appearance</string>
+    <string name="OEAppearanceLiquidGlassClear">Clear · subtle</string>
+    <string name="OEAppearanceLiquidGlassBalanced">Balanced · natural</string>
+    <string name="OEAppearanceLiquidGlassExpressive">Expressive · stronger lens</string>
+
     <!-- Blur &amp; Effects -->
     <string name="OEAppearanceBlur">Blur Options</string>
     <string name="OEAppearanceForceBlur">Force Blur</string>

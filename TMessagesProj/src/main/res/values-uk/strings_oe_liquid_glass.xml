@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OEAppearanceUniversalLiquidGlass">Рідке скло всюди</string>
+    <string name="OEAppearanceUniversalLiquidGlassInfo">Справжнє скло для вкладок, меню й панелей. Повне заломлення на Android 13+, розмиття на старіших пристроях.</string>
+    <string name="OEAppearanceLiquidGlassMaterial">Вигляд скла</string>
+    <string name="OEAppearanceLiquidGlassClear">Прозоре · м’яке</string>
+    <string name="OEAppearanceLiquidGlassBalanced">Збалансоване · природне</string>
+    <string name="OEAppearanceLiquidGlassExpressive">Виразне · сильне заломлення</string>
+</resources>

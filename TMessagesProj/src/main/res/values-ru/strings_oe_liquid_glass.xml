@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OEAppearanceUniversalLiquidGlass">Жидкое стекло повсюду</string>
+    <string name="OEAppearanceUniversalLiquidGlassInfo">Настоящее стекло для вкладок, меню и панелей. Полное преломление на Android 13+, размытие на более старых устройствах.</string>
+    <string name="OEAppearanceLiquidGlassMaterial">Вид стекла</string>
+    <string name="OEAppearanceLiquidGlassClear">Прозрачное · мягкое</string>
+    <string name="OEAppearanceLiquidGlassBalanced">Сбалансированное · естественное</string>
+    <string name="OEAppearanceLiquidGlassExpressive">Выразительное · сильное преломление</string>
+</resources>
