@@ -550,6 +550,11 @@ public class VoIPFragment implements
     }
 
     private void destroy() {
+        // VoIPBackgroundProvider holds strong View references for animated
+        // gradient invalidation. Release these when the call screen closes.
+        if (addIcon != null) backgroundProvider.detach(addIcon);
+        if (backIcon != null) backgroundProvider.detach(backIcon);
+        if (speakerPhoneIcon != null) backgroundProvider.detach(speakerPhoneIcon);
         if (VoIPService.getSharedInstance() != null) {
             VoIPService.getSharedInstance().unregisterStateListener(this);
         }
@@ -1168,6 +1173,7 @@ public class VoIPFragment implements
         addIcon.setImageResource(R.drawable.msg_addcontact);
         addIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
         frameLayout.addView(addIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.RIGHT));
+        if (LiquidGlassTuning.isActive()) backgroundProvider.attach(addIcon);
         ScaleStateListAnimator.apply(addIcon);
 
         backIcon = new ImageView(context);
@@ -1178,6 +1184,7 @@ public class VoIPFragment implements
         backIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
         backIcon.setContentDescription(LocaleController.getString(R.string.Back));
         frameLayout.addView(backIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.LEFT));
+        if (LiquidGlassTuning.isActive()) backgroundProvider.attach(backIcon);
         ScaleStateListAnimator.apply(backIcon);
 
         speakerPhoneIcon = new ImageView(context) {
@@ -1198,6 +1205,7 @@ public class VoIPFragment implements
                 : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
         speakerPhoneIcon.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
         frameLayout.addView(speakerPhoneIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.RIGHT, 0, 56, 0, 0));
+        if (LiquidGlassTuning.isActive()) backgroundProvider.attach(speakerPhoneIcon);
         speakerPhoneIcon.setAlpha(0f);
         speakerPhoneIcon.setOnClickListener(view -> {
             if (speakerPhoneIcon.getTag() == null) {
