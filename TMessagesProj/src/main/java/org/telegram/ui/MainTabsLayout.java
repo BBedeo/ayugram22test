@@ -29,6 +29,7 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.glass.GlassTabView;
 
 import app.exteraless.appearance.MainTabsUiHelper;
+import app.exteraless.appearance.ElasticPillGesture;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -311,6 +312,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
         checkVisualWidth();
+        if (ElasticPillGesture.enabled()) {
+            // Use the measured geometry, not a hard-coded number of tabs.
+            setSkipDrawSelector(true);
+            if (!isInLongPress) syncElasticPillToSelected(false);
+        }
     }
 
     @Override
@@ -341,6 +347,28 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 ((GlassTabView) child).setSelected(child == tab, animated);
             }
         }
+        if (ElasticPillGesture.enabled()) {
+            setSkipDrawSelector(true);
+            if (!isInLongPress) syncElasticPillToSelected(animated);
+        }
+    }
+
+    private boolean elasticPillInitialized;
+
+    private void syncElasticPillToSelected(boolean animated) {
+        final View selected = findSelectedTab();
+        if (selected == null || selected.getWidth() == 0) return;
+        final float cx = getCenterX(selected);
+        if (!elasticPillInitialized || !animated) {
+            selectedTabPositionX.cancel();
+            selectedTabPositionOffsetX.cancel();
+            animatedLongSelectedViewCenterX = cx;
+            animatedLongSelectedViewOffsetX = 0;
+            elasticPillInitialized = true;
+        } else {
+            selectedTabPositionX.animateToFinalPosition(cx);
+        }
+        invalidate();
     }
 
     private View findSelectedTab() {
@@ -359,10 +387,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         return null;
     }
 
-    private final Runnable restoreDrawSelector = () -> setSkipDrawSelector(false);
+    private final Runnable restoreDrawSelector = () -> setSkipDrawSelector(ElasticPillGesture.enabled());
 
     private boolean drawCustomSelector;
     private void setSkipDrawSelector(boolean skipDrawSelector) {
+        // The opt-in mode has ONE travelling selection pill, rather than
+        // individually fading selected backgrounds in each tab.
+        skipDrawSelector |= ElasticPillGesture.enabled();
         drawCustomSelector = skipDrawSelector;
         if (drawCustomSelector) {
             selectorPaint.setColor(Theme.multAlpha(Theme.getColor(Theme.key_glass_tabSelected, resourcesProvider), 0.09f));
@@ -390,7 +421,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     protected void dispatchDraw(@NonNull Canvas canvas) {
         if (drawCustomSelector) {
             final float x = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
-            final float sWidth = getInterpolatedWidthByX(x, this);
+            float sWidth = getInterpolatedWidthByX(x, this);
+            if (ElasticPillGesture.enabled() && isInLongPress) {
+                final View selected = findSelectedTab();
+                final float anchor = selected == null ? x : getCenterX(selected);
+                sWidth += Math.min(dp(26), Math.abs(x - anchor) * .24f);
+            }
             if (MainTabsUiHelper.isMaterial3NavigationBar()) {
                 MainTabsUiHelper.setMainTabSelectedIndicatorBounds(selectorRect, sWidth,
                         getHeight() - getPaddingTop() - getPaddingBottom());
@@ -503,7 +539,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 animatedLongSelectedViewCenterX = selected.getX() + selected.getWidth() / 2f;
                 animatedLongSelectedViewOffsetX = animatedLongSelectedViewCenterX - x;
                 selectedTabPositionOffsetX.animateToFinalPosition(0);
-                if (selected != found && found != null) {
+                if (!ElasticPillGesture.enabled() && selected != found && found != null) {
                     found.performClick();
                 }
             }
@@ -517,7 +553,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
         if (found != null) {
             lastLongSelectedView = found;
-            setTabSelected(found, true);
+            // Do not navigate or animate the tab's icon while the pill is held.
+            // Commit the nearest tab only on ACTION_UP via performClick().
+            if (!ElasticPillGesture.enabled()) setTabSelected(found, true);
 
             if (end) {
                 final float vw = found.getWidth();
@@ -612,7 +650,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
 
         private void longTouchStart() {
-            animatorIsScaled.setValue(true, true);
+            if (!ElasticPillGesture.enabled()) animatorIsScaled.setValue(true, true);
 
             /*
             if (!scaleX.isRunning()) {
@@ -625,7 +663,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
 
         private void longTouchEnd() {
-            animatorIsScaled.setValue(false, true);
+            if (!ElasticPillGesture.enabled()) animatorIsScaled.setValue(false, true);
 
             /*
             if (!scaleX.isRunning()) {
@@ -706,6 +744,21 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ElasticPillGesture.enabled() && getParent() != null) {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (findChildUnder(this, ev.getX(), ev.getY()) != null) {
+                        // A held navigation pill must not swipe the screen or
+                        // trigger the ViewPager's page-change gesture.
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    getParent().requestDisallowInterceptTouchEvent(false);
+                    break;
+            }
+        }
         clickHelper.onTouchEvent(this, ev);
         return super.dispatchTouchEvent(ev);
     }
