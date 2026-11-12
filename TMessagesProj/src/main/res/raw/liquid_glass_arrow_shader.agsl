@@ -11,6 +11,7 @@ uniform float glass_press;
 uniform float glass_highlight;
 uniform float glass_light_angle;
 uniform float glass_motion;
+uniform float glass_adaptive;
 uniform float4 foreground_color_premultiplied;
 // the arrow: its height, the radius of its tip, of the fillets at the edge, the half width of the stripe it changes
 uniform float4 arrow;
@@ -101,7 +102,10 @@ half4 main(in float2 fragCoord) {
   float2 tip = arrow_axis.zw * arrow.x;
   uv = clamp(uv, center - size + 0.5 + min(tip, 0.0), center + size - 0.5 + max(tip, 0.0));
 
-  half4 surface = srcOver(half4(foreground_color_premultiplied), img.eval(uv));
+  // Sample the real captured backdrop once; adaptive light uses that same
+  // pixel, without expensive CPU screenshots or an extra GPU texture read.
+  half4 backdrop = img.eval(uv);
+  half4 surface = srcOver(half4(foreground_color_premultiplied), backdrop);
   // Directional Fresnel glint; no continuous animation and no GPU readback.
   // A pressed view sweeps the virtual highlight and bends its optical surface.
   if (glass_highlight > 0.001) {
@@ -111,6 +115,10 @@ half4 main(in float2 fragCoord) {
       half facing = clamp(dot(edgeNormal, sourceDir) * 0.5 + 0.5, 0.0, 1.0);
       half edge = clamp((thickness + sd) / max(thickness, 0.001), 0.0, 1.0);
       half glint = facing * facing * facing * edge * glass_highlight * (0.13 + glass_press * 0.17);
+      if (glass_adaptive > 0.5) {
+          half backdropLuma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
+          glint *= clamp(1.32 - backdropLuma * 0.62, 0.70, 1.32);
+      }
       surface.rgb = min(half3(1.0), surface.rgb + half3(glint * surface.a));
   }
   return surface;

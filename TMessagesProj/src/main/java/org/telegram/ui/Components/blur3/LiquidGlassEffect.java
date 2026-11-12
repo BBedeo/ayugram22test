@@ -43,7 +43,7 @@ public class LiquidGlassEffect {
     private float thickness;
     private float intensity;
     private float index;
-    private float glassPress, glassHighlight, glassLightAngle, glassMotion;
+    private float glassPress, glassHighlight, glassLightAngle, glassMotion, glassAdaptive;
     private int foregroundColor;
 
     private float arrowHeight, arrowTipRadius, arrowFilletRadius, arrowStripe;
@@ -88,7 +88,7 @@ public class LiquidGlassEffect {
         float intensity,
         float index,
         int foregroundColor,
-        float press, float highlight, float lightAngle, float motion,
+        float press, float highlight, float lightAngle, float motion, float adaptive,
 
         float nodeOffsetX, float nodeOffsetY,
         int downsample
@@ -119,6 +119,7 @@ public class LiquidGlassEffect {
             Math.abs(this.glassHighlight - highlight) > .015f ||
             Math.abs(this.glassLightAngle - lightAngle) > .015f ||
             Math.abs(this.glassMotion - motion) > .015f ||
+            Math.abs(this.glassAdaptive - adaptive) > .015f ||
             this.foregroundColor != foregroundColor ||
             arrowChanged
         ) {
@@ -157,6 +158,7 @@ public class LiquidGlassEffect {
             shader.setFloatUniform("glass_highlight", this.glassHighlight = highlight);
             shader.setFloatUniform("glass_light_angle", this.glassLightAngle = lightAngle);
             shader.setFloatUniform("glass_motion", this.glassMotion = motion);
+            shader.setFloatUniform("glass_adaptive", this.glassAdaptive = adaptive);
             shader.setFloatUniform("foreground_color_premultiplied", r, g, b, a);
             if (shader == arrowShader) {
                 shader.setFloatUniform("arrow", arrowHeight * scale, arrowTipRadius * scale, arrowFilletRadius * scale, arrowStripe * scale);

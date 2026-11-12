@@ -1376,7 +1376,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                     LiquidGlassTuning.motionEnabled() ? pressProgress : 0f,
                     LiquidGlassTuning.shine(),
                     LiquidGlassTuning.lightAngleRadians(),
-                    LiquidGlassTuning.motionEnabled() ? pressProgress * .5f : 0f,
+                    LiquidGlassTuning.motionEnabled()
+                            ? pressProgress * .5f + (getSourceOffsetX() + getSourceOffsetY()) * .0015f : 0f,
+                    LiquidGlassTuning.adaptiveLightEnabled() ? 1f : 0f,
                     originX - sL, originY - sT,
                     downsample
                 );

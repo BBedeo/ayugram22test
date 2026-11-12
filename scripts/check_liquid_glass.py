@@ -44,7 +44,7 @@ checks = {
     "Native GlassEngine respects opt-in and invalidates when material changes":
         'LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || exGlass' in engine
         and 'glassSettings.liquidMaterial != material' in engine
-        and 'new GlassSettings(isBlurEnabled, isLiquidGlassEnabled, material)' in engine,
+        and 'new GlassSettings(isBlurEnabled, isLiquidGlassEnabled, material, controls)' in engine,
     "Precision values and profile changes invalidate existing GPU surfaces":
         'liquidControls == settings.liquidControls' in state
         and 'glassSettings.liquidControls != controls' in engine
@@ -61,7 +61,9 @@ checks = {
         'onStateChange(int[] state)' in drawable
         and 'ValueAnimator.ofFloat(pressProgress' in drawable
         and 'glass_press' in shader
-        and 'glass_motion' in arrow,
+        and 'glass_motion' in arrow
+        and 'glass_adaptive' in shader
+        and 'backdropLuma' in shader,
     "Fine-tuning uses native shader plus adjustable capture blur":
         'LiquidGlassTuning.blurScale()' in read(JAVA / "org/telegram/utils/glass/source/GlassSourceRenderNode.java")
         and 'LiquidGlassTuning.refractionScale()' in drawable,
