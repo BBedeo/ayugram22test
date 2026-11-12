@@ -3,6 +3,7 @@ package org.telegram.ui.Components.blur3.drawable;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.dpf2;
 
+import android.animation.ValueAnimator;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
@@ -70,6 +71,54 @@ import java.util.Arrays;
  * The rim is always a nine-patch over the result ({@link GlassRimRenderer}).
  */
 public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Colorable, GlassOutlineStyle.Listener {
+    private ValueAnimator pressAnimator;
+    private boolean pressTarget;
+    private float pressProgress;
+
+    @Override
+    public boolean isStateful() {
+        // When used as a View background, Android dispatches pressed states
+        // automatically. No replacement touch listeners or click interception.
+        return true;
+    }
+
+    @Override
+    protected boolean onStateChange(int[] state) {
+        boolean pressed = false;
+        for (int s : state) {
+            if (s == android.R.attr.state_pressed) {
+                pressed = true;
+                break;
+            }
+        }
+        if (pressTarget == pressed) return false;
+        pressTarget = pressed;
+        if (pressAnimator != null) {
+            pressAnimator.cancel();
+            pressAnimator = null;
+        }
+        if (!LiquidGlassTuning.motionEnabled()
+                || (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled())) {
+            pressProgress = 0f;
+            invalidateDisplayList();
+            invalidateSelf();
+            return true;
+        }
+        pressAnimator = ValueAnimator.ofFloat(pressProgress, pressed ? 1f : 0f);
+        pressAnimator.setDuration(pressed ? 170 : 260);
+        pressAnimator.addUpdateListener(a -> {
+            final float next = (float) a.getAnimatedValue();
+            // No continuous redraw while idle; press animation only.
+            if (Math.abs(next - pressProgress) >= .025f || next == 0f || next == 1f) {
+                pressProgress = next;
+                invalidateDisplayList();
+                invalidateSelf();
+            }
+        });
+        pressAnimator.start();
+        return true;
+    }
+
     private final GlassSource glassSource;
     private final GlassSource frostedSource;
     private final GlassSource staticSource;
@@ -339,10 +388,10 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
         final boolean glare = outlineStyle == GlassOutlineStyle.GLARE;
         final boolean solid = outlineStyle == GlassOutlineStyle.SOLID;
 
-        backgroundColor = colorProvider.getBackgroundColor();
+        backgroundColor = LiquidGlassTuning.adaptTint(colorProvider.getBackgroundColor());
         shadowColor = glare ? colorProvider.getShadowColor() : 0;
-        strokeColorTop = glare ? colorProvider.getStrokeColorTop() : 0;
-        strokeColorBottom = glare ? colorProvider.getStrokeColorBottom() : 0;
+        strokeColorTop = glare ? LiquidGlassTuning.adaptHighlight(colorProvider.getStrokeColorTop()) : 0;
+        strokeColorBottom = glare ? LiquidGlassTuning.adaptHighlight(colorProvider.getStrokeColorBottom()) : 0;
         strokeColorFull = solid ? colorProvider.getStrokeColorFull() : 0;
         // the outline and the shadow may follow the theme too (e.g. compact mode's glass)
         outlineShadowColor = glare ? colorProvider.getOutlineShadowColor() : 0;
@@ -1299,7 +1348,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
             if (liquidGlassEffect != null && Build.VERSION.SDK_INT >= 33) {
                 final RectF body = boundProps.body;
                 final int thickness = Math.max(Math.min(
-                    boundProps.liquidThickness <= 0 ? dp(11) : boundProps.liquidThickness,
+                    boundProps.liquidThickness <= 0
+                            ? dp(LiquidGlassTuning.isActive() ? LiquidGlassTuning.thicknessDp() : 11)
+                            : boundProps.liquidThickness,
                     (int) (Math.min(body.width(), body.height()) / 5)), 1);
 
                 if (boundProps.hasArrow()) {
@@ -1322,6 +1373,10 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                     boundProps.liquidIntensity * LiquidGlassTuning.refractionScale(),
                     boundProps.liquidIndex,
                     backgroundColor,
+                    LiquidGlassTuning.motionEnabled() ? pressProgress : 0f,
+                    LiquidGlassTuning.shine(),
+                    LiquidGlassTuning.lightAngleRadians(),
+                    LiquidGlassTuning.motionEnabled() ? pressProgress * .5f : 0f,
                     originX - sL, originY - sT,
                     downsample
                 );

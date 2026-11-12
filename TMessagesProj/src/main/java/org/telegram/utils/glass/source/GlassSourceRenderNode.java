@@ -75,12 +75,16 @@ public final class GlassSourceRenderNode implements GlassSource, BlurredBackgrou
 
     @RequiresApi(api = Build.VERSION_CODES.S)
     public void setBlur(float radius) {
+        radius *= app.exteraless.appearance.LiquidGlassTuning.blurScale();
         renderNode.setRenderEffect(radius > 0 ? RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP) : null);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.S)
     public void setBlur(float radius, RenderEffect effect) {
-        renderNode.setRenderEffect(RenderEffect.createChainEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP), effect));
+        radius *= app.exteraless.appearance.LiquidGlassTuning.blurScale();
+        renderNode.setRenderEffect(radius > 0
+                ? RenderEffect.createChainEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP), effect)
+                : effect);
     }
 
 

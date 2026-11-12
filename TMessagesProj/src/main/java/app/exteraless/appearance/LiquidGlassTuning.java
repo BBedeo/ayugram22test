@@ -1,6 +1,7 @@
 package app.exteraless.appearance;
 
 import android.os.Build;
+import android.graphics.Color;
 import org.telegram.messenger.LiteMode;
 
 /** Central opt-in policy for Telegram's native glass renderer, never a fake overlay. */
@@ -19,39 +20,108 @@ public final class LiquidGlassTuning {
         return isActive() ? AppearanceConfig.liquidGlassMaterial() : -1;
     }
 
+    private static float clamp(float v, float lo, float hi) {
+        return Math.max(lo, Math.min(v, hi));
+    }
+
+    public static boolean motionEnabled() {
+        return isActive() && AppearanceConfig.liquidGlassMotion.Bool()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU;
+    }
+
+    public static boolean adaptiveLightEnabled() {
+        return isActive() && AppearanceConfig.liquidGlassAdaptive.Bool();
+    }
+
+    public static float blurScale() {
+        return isActive() ? clamp(AppearanceConfig.liquidGlassBlur.Int() / 60f, 0f, 1.7f) : 1f;
+    }
+
+    public static int thicknessDp() {
+        return Math.max(3, Math.min(24, AppearanceConfig.liquidGlassThickness.Int()));
+    }
+
+    public static float shine() {
+        if (!isActive()) return 0f;
+        return clamp(AppearanceConfig.liquidGlassHighlight.Int() / 100f, 0f, 1f);
+    }
+
+    public static float lightAngleRadians() {
+        if (!isActive()) return 0f;
+        float degrees = AppearanceConfig.liquidGlassLightAngle.Int();
+        if (adaptiveLightEnabled()) degrees += 9f;
+        return (float) Math.toRadians(degrees);
+    }
+
+    /**
+     * Tint-aware adaptive material. We do not read pixels synchronously from
+     * the GPU; the known theme tint is a cheap and stable lighting estimate.
+     */
+    public static int adaptTint(int color) {
+        if (!adaptiveLightEnabled()) return color;
+        float luma = (Color.red(color) * .2126f + Color.green(color) * .7152f
+                + Color.blue(color) * .0722f) / 255f;
+        float density = .97f + (luma - .5f) * .08f;
+        return Color.argb(Math.round(clamp(Color.alpha(color) * density, 0, 255)),
+                Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    public static int adaptHighlight(int color) {
+        if (!isActive()) return color;
+        float gain = .55f + shine() * .9f;
+        if (adaptiveLightEnabled()) {
+            float luma = (Color.red(color) * .2126f + Color.green(color) * .7152f
+                    + Color.blue(color) * .0722f) / 255f;
+            gain *= 1.08f - .22f * luma;
+        }
+        return Color.argb(Math.round(clamp(Color.alpha(color) * gain, 0, 255)),
+                Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    private static float tuneTransparency(float base, float min) {
+        final float factor = 1.45f - clamp(AppearanceConfig.liquidGlassTransparency.Int(), 0, 100) * .009f;
+        return clamp(base * factor, min, .94f);
+    }
+
     /** Preserve all prior theme colors when the optional effect is disabled. */
     public static float tintAlpha(boolean dark, float original) {
         if (!isActive()) return original;
+        final float base;
         switch (AppearanceConfig.liquidGlassMaterial()) {
-            case 0: return dark ? 0.38f : 0.29f;
-            case 2: return dark ? 0.61f : 0.48f;
-            default: return dark ? 0.49f : 0.39f;
+            case 0: base = dark ? .38f : .29f; break;
+            case 2: base = dark ? .61f : .48f; break;
+            default: base = dark ? .49f : .39f; break;
         }
+        return tuneTransparency(base, dark ? .24f : .20f);
     }
 
     /** Text-heavy floating surfaces need more opacity than navigation chrome. */
     public static float tintAlphaMenu(boolean dark, float original) {
         if (!isActive()) return original;
+        final float base;
         switch (AppearanceConfig.liquidGlassMaterial()) {
-            case 0: return dark ? 0.63f : 0.58f;
-            case 2: return dark ? 0.80f : 0.73f;
-            default: return dark ? 0.71f : 0.65f;
+            case 0: base = dark ? .63f : .58f; break;
+            case 2: base = dark ? .80f : .73f; break;
+            default: base = dark ? .71f : .65f; break;
         }
+        return tuneTransparency(base, .48f);
     }
 
     /** Hints and notifications may contain white text over arbitrary imagery. */
     public static float tintAlphaOverlay(boolean dark, float original) {
         if (!isActive()) return original;
-        return dark ? 0.83f : 0.76f;
+        return tuneTransparency(dark ? .83f : .76f, .62f);
     }
 
     /** Per-material multiplier for Telegram's existing refraction intensity. */
     public static float refractionScale() {
         if (!isActive()) return 1.0f;
+        float preset;
         switch (AppearanceConfig.liquidGlassMaterial()) {
-            case 0: return 0.72f;
-            case 2: return 1.20f;
-            default: return 1.0f;
+            case 0: preset = .72f; break;
+            case 2: preset = 1.20f; break;
+            default: preset = 1f; break;
         }
+        return clamp(preset * AppearanceConfig.liquidGlassStrength.Int() / 75f, 0f, 2.2f);
     }
 }

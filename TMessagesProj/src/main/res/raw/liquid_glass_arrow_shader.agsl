@@ -7,6 +7,10 @@ uniform float4 radius;
 uniform float thickness;
 uniform float refract_index;
 uniform float refract_intensity;
+uniform float glass_press;
+uniform float glass_highlight;
+uniform float glass_light_angle;
+uniform float glass_motion;
 uniform float4 foreground_color_premultiplied;
 // the arrow: its height, the radius of its tip, of the fillets at the edge, the half width of the stripe it changes
 uniform float4 arrow;
@@ -88,11 +92,26 @@ half4 main(in float2 fragCoord) {
   half h = sd < -thickness ? thickness : sqrt(sd * (-2.0 * thickness - sd));
   half refract_length = (h + 8.0 * thickness) / -refract_vec.z;
 
-  uv += refract_vec.xy * refract_length * refract_intensity;
+  // A subtle optical stretch is triggered only while the glass is pressed.
+  // The rounded path and hit targets stay unchanged; only the image bends.
+  float2 elastic = (p / max(size, float2(1.0))) * min(size.x, size.y) * glass_press * 0.038;
+  uv += refract_vec.xy * refract_length * refract_intensity * (1.0 + glass_press * 0.36) + elastic;
   // on a small shape the edge samples past the far side: stay within the shape, whatever the grid of a downsampled node
   // and the arrow
   float2 tip = arrow_axis.zw * arrow.x;
   uv = clamp(uv, center - size + 0.5 + min(tip, 0.0), center + size - 0.5 + max(tip, 0.0));
 
-  return srcOver(half4(foreground_color_premultiplied), img.eval(uv));
+  half4 surface = srcOver(half4(foreground_color_premultiplied), img.eval(uv));
+  // Directional Fresnel glint; no continuous animation and no GPU readback.
+  // A pressed view sweeps the virtual highlight and bends its optical surface.
+  if (glass_highlight > 0.001) {
+      half2 edgeNormal = normalize(half2(sdX - sdRaw, sdY - sdRaw) + half2(0.001, 0.001));
+      float angle = glass_light_angle + glass_motion * 0.85;
+      half2 sourceDir = half2(cos(angle), sin(angle));
+      half facing = clamp(dot(edgeNormal, sourceDir) * 0.5 + 0.5, 0.0, 1.0);
+      half edge = clamp((thickness + sd) / max(thickness, 0.001), 0.0, 1.0);
+      half glint = facing * facing * facing * edge * glass_highlight * (0.13 + glass_press * 0.17);
+      surface.rgb = min(half3(1.0), surface.rgb + half3(glint * surface.a));
+  }
+  return surface;
 }

@@ -43,6 +43,7 @@ public class LiquidGlassEffect {
     private float thickness;
     private float intensity;
     private float index;
+    private float glassPress, glassHighlight, glassLightAngle, glassMotion;
     private int foregroundColor;
 
     private float arrowHeight, arrowTipRadius, arrowFilletRadius, arrowStripe;
@@ -87,6 +88,7 @@ public class LiquidGlassEffect {
         float intensity,
         float index,
         int foregroundColor,
+        float press, float highlight, float lightAngle, float motion,
 
         float nodeOffsetX, float nodeOffsetY,
         int downsample
@@ -113,6 +115,10 @@ public class LiquidGlassEffect {
             Math.abs(this.thickness - thickness) > 0.1f ||
             Math.abs(this.intensity - intensity) > 0.1f ||
             Math.abs(this.index - index) > 0.1f ||
+            Math.abs(this.glassPress - press) > .015f ||
+            Math.abs(this.glassHighlight - highlight) > .015f ||
+            Math.abs(this.glassLightAngle - lightAngle) > .015f ||
+            Math.abs(this.glassMotion - motion) > .015f ||
             this.foregroundColor != foregroundColor ||
             arrowChanged
         ) {
@@ -147,6 +153,10 @@ public class LiquidGlassEffect {
             shader.setFloatUniform("thickness", thickness * scale);
             shader.setFloatUniform("refract_intensity", this.intensity = intensity);
             shader.setFloatUniform("refract_index", this.index = index);
+            shader.setFloatUniform("glass_press", this.glassPress = press);
+            shader.setFloatUniform("glass_highlight", this.glassHighlight = highlight);
+            shader.setFloatUniform("glass_light_angle", this.glassLightAngle = lightAngle);
+            shader.setFloatUniform("glass_motion", this.glassMotion = motion);
             shader.setFloatUniform("foreground_color_premultiplied", r, g, b, a);
             if (shader == arrowShader) {
                 shader.setFloatUniform("arrow", arrowHeight * scale, arrowTipRadius * scale, arrowFilletRadius * scale, arrowStripe * scale);
