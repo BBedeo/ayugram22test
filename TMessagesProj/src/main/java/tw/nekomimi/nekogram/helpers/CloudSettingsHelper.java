@@ -51,7 +51,13 @@ import java.util.zip.GZIPOutputStream;
 import tw.nekomimi.nekogram.utils.GsonUtil;
 
 public class CloudSettingsHelper {
-    public static final SharedPreferences.OnSharedPreferenceChangeListener listener = (preferences, key) -> CloudSettingsHelper.getInstance().doAutoSync();
+    public static final SharedPreferences.OnSharedPreferenceChangeListener listener = (preferences, key) -> {
+        // Switching ExFullGram account profiles writes many keys at once.
+        // It must not upload one account's settings to cloud as another's.
+        if (!app.exteraless.settings.AccountSettingsProfiles.isApplying()) {
+            CloudSettingsHelper.getInstance().doAutoSync();
+        }
+    };
     private static final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekocloud", Context.MODE_PRIVATE);
     private final SparseArray<Long> cloudSyncedDate = new SparseArray<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
