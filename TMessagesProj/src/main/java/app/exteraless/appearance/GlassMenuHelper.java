@@ -48,7 +48,7 @@ public abstract class GlassMenuHelper {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> Theme.multAlpha(
                 Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground),
-                LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.85f : 0.76f)))
+                LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.85f : 0.76f)))
             // No extra rim when universal glass is disabled: preserve old menu.
             .setStrokeColorTop(liquid ? 0x8AFFFFFF : 0, liquid ? 0x5CFFFFFF : 0)
             .setStrokeColorBottom(liquid ? 0x24FFFFFF : 0, liquid ? 0x18FFFFFF : 0)

@@ -24,6 +24,22 @@ public final class LiquidGlassTuning {
         }
     }
 
+    /** Text-heavy floating surfaces need more opacity than navigation chrome. */
+    public static float tintAlphaMenu(boolean dark, float original) {
+        if (!isActive()) return original;
+        switch (AppearanceConfig.liquidGlassMaterial()) {
+            case 0: return dark ? 0.63f : 0.58f;
+            case 2: return dark ? 0.80f : 0.73f;
+            default: return dark ? 0.71f : 0.65f;
+        }
+    }
+
+    /** Hints and notifications may contain white text over arbitrary imagery. */
+    public static float tintAlphaOverlay(boolean dark, float original) {
+        if (!isActive()) return original;
+        return dark ? 0.83f : 0.76f;
+    }
+
     /** Per-material multiplier for Telegram's existing refraction intensity. */
     public static float refractionScale() {
         if (!isActive()) return 1.0f;
