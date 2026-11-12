@@ -29,6 +29,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.math.MathUtils;
 
+import org.telegram.messenger.LiteMode;
 import org.telegram.messenger.utils.RadiiUtils;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.Blur3HashImpl;
@@ -902,7 +903,16 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
         final int generation = GlassEngine.getGlassSettingsGenerationId();
         if (glassSettingsGeneration != generation) {
             glassSettingsGeneration = generation;
-            setGlassSettings(GlassEngine.getCurrentGlassSettings());
+            GlassSettings settings = GlassEngine.getCurrentGlassSettings();
+            if (elasticPillLens && Build.VERSION.SDK_INT >= 33
+                    && !LiteMode.isPowerSaverApplied()) {
+                // Preserve the pill's independently enabled real glass lens
+                // across theme/material changes. Every other drawable keeps
+                // the engine settings, and power saving still wins.
+                settings = new GlassSettings(true, true,
+                        settings.liquidMaterial, settings.liquidControls);
+            }
+            setGlassSettings(settings);
         }
     }
 
