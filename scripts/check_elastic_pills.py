@@ -65,7 +65,7 @@ checks = {
         "iBlur3FactoryGlass.create(tabsView," in main
         and "capsule.setLiquidGlassEffectAllowed();" in main
         and "capsule.setGlassSettings(new GlassSettings(" in main
-        and "capsule.setIntensity(1.42f);" in main
+        and "capsule.setIntensity(1.58f);" in main
         and "source != iBlur3SourceTabGlass" in main
         and "iBlur3SourceTabGlass.updateDisplayListIfNeeded();" in main
         and "elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass" in nav
@@ -76,11 +76,12 @@ checks = {
         and "liquidLightAngleOverride" in blur_drawable
         and "nativeGlass.setLiquidOptics" in pill
         and "baseAngle = 315f" in pill
+        and "dark ? .76f : .82f" in pill
         and "direction * extension / dp(16)" in nav,
     "Elastic lens never falls back to SOLID divider outline":
         ".setStrokeColorFull(0x00000000, 0x00000000)" in main
-        and ".setStrokeWidth(AndroidUtilities.dpf2(.16f), AndroidUtilities.dpf2(.06f))" in main
-        and "? (dark ? .055f : .04f)" in main,
+        and ".setStrokeWidth(AndroidUtilities.dpf2(.28f), AndroidUtilities.dpf2(.10f))" in main
+        and "? (dark ? .115f : .085f)" in main,
     "No fake painted double rim over the native lens":
         "canvas.drawArc(" not in pill
         and "LinearGradient" not in pill
