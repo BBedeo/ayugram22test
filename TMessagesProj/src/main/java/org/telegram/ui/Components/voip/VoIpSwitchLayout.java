@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.animation.OvershootInterpolator;
 
 import app.exteraless.appearance.LiquidGlassTuning;
+import app.exteraless.appearance.ElasticPillGesture;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -406,13 +407,15 @@ public class VoIpSwitchLayout extends FrameLayout {
 
         private ValueAnimator pressedScaleAnimator;
         private float pressedScale = 1.0f;
+        private final ElasticPillGesture elasticDrag = new ElasticPillGesture(this);
 
         private void setPressedBtn(boolean pressed) {
             if (pressedScaleAnimator != null) {
                 pressedScaleAnimator.cancel();
             }
             pressedScaleAnimator = ValueAnimator.ofFloat(pressedScale,
-                    pressed ? (LiquidGlassTuning.motionEnabled() ? .88f : .8f) : 1f);
+                    pressed ? (ElasticPillGesture.enabled() ? .98f
+                            : LiquidGlassTuning.motionEnabled() ? .88f : .8f) : 1f);
             if (LiquidGlassTuning.motionEnabled() && !pressed) {
                 pressedScaleAnimator.setInterpolator(new OvershootInterpolator(1.15f));
             }
@@ -427,6 +430,7 @@ public class VoIpSwitchLayout extends FrameLayout {
         @Override
         protected void onDraw(Canvas canvas) {
             canvas.save();
+            elasticDrag.transform(canvas, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f, AndroidUtilities.dp(ITEM_SIZE));
             final boolean glassMotion = LiquidGlassTuning.motionEnabled();
             final float press = glassMotion
                     ? Math.max(0f, Math.min(1f, (1f - pressedScale) / .12f)) : 0f;
@@ -540,17 +544,34 @@ public class VoIpSwitchLayout extends FrameLayout {
                     setPressedBtn(true);
                     startX = event.getX();
                     startY = event.getY();
+                    if (ElasticPillGesture.enabled()) {
+                        elasticDrag.down(startX, startY);
+                        if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    if (ElasticPillGesture.enabled()) {
+                        elasticDrag.move(event.getX(), event.getY());
+                    }
                     break;
                 case MotionEvent.ACTION_UP:
                     setPressedBtn(false);
+                    final boolean dragged = ElasticPillGesture.enabled() && elasticDrag.up();
+                    if (getParent() != null && ElasticPillGesture.enabled()) {
+                        getParent().requestDisallowInterceptTouchEvent(false);
+                    }
                     float endX = event.getX();
                     float endY = event.getY();
-                    if (isClick(startX, endX, startY, endY) && !isAnimating()) {
+                    if (!dragged && isClick(startX, endX, startY, endY) && !isAnimating()) {
                         if (onBtnClickedListener != null) onBtnClickedListener.onClicked(this);
                     }
                     break;
                 case MotionEvent.ACTION_CANCEL:
                     setPressedBtn(false);
+                    if (ElasticPillGesture.enabled()) {
+                        elasticDrag.up();
+                        if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+                    }
                     break;
             }
             return true;
