@@ -54,6 +54,8 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import app.exteraless.appearance.ElasticCallIconView;
+import app.exteraless.appearance.ElasticPillGesture;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -1166,7 +1168,7 @@ public class VoIPFragment implements
         int horizontalMargin = isTablet() ? 100 : 27;
         frameLayout.addView(acceptDeclineView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 186, Gravity.BOTTOM, horizontalMargin, 0, horizontalMargin, 0));
 
-        addIcon = new ImageView(context);
+        addIcon = new ElasticCallIconView(context);
         addIcon.setBackground(LiquidGlassTuning.isActive()
                 ? new VoIPCallGlass.IconBackground(backgroundProvider)
                 : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
@@ -1174,9 +1176,9 @@ public class VoIPFragment implements
         addIcon.setPadding(dp(16), dp(16), dp(16), dp(16));
         frameLayout.addView(addIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.RIGHT));
         if (LiquidGlassTuning.isActive()) backgroundProvider.attach(addIcon);
-        ScaleStateListAnimator.apply(addIcon);
+        if (!ElasticPillGesture.enabled()) ScaleStateListAnimator.apply(addIcon);
 
-        backIcon = new ImageView(context);
+        backIcon = new ElasticCallIconView(context);
         backIcon.setBackground(LiquidGlassTuning.isActive()
                 ? new VoIPCallGlass.IconBackground(backgroundProvider)
                 : Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(Color.WHITE, (int) (255 * 0.3f))));
@@ -1185,9 +1187,9 @@ public class VoIPFragment implements
         backIcon.setContentDescription(LocaleController.getString(R.string.Back));
         frameLayout.addView(backIcon, LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.LEFT));
         if (LiquidGlassTuning.isActive()) backgroundProvider.attach(backIcon);
-        ScaleStateListAnimator.apply(backIcon);
+        if (!ElasticPillGesture.enabled()) ScaleStateListAnimator.apply(backIcon);
 
-        speakerPhoneIcon = new ImageView(context) {
+        speakerPhoneIcon = new ElasticCallIconView(context) {
             @Override
             public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
                 super.onInitializeAccessibilityNodeInfo(info);
