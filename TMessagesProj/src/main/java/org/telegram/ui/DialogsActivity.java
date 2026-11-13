@@ -1158,7 +1158,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             updateStoriesViewAlpha(storiesAlpha);
             if (dialogsTopFadeView != null) {
                 final float topFadeAlpha = shouldUseDialogsHeaderGlass()
-                        ? (1f - Math.min(1f, progressToActionMode)) * (1f - Math.min(1f, rightSlidingProgress))
+                        ? (1f - Math.min(1f, progressToActionMode)) * (1f - Math.min(1f, getRightSlidingProgress()))
                         : 0f;
                 dialogsTopFadeView.setAlpha(topFadeAlpha);
                 dialogsTopFadeView.setVisibility(topFadeAlpha > 0.01f ? View.VISIBLE : View.GONE);

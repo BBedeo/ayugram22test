@@ -121,8 +121,9 @@ checks = {
         and "if (!checkBlurEnabled(r))" in provider
         and "LiquidGlassTuning.tintAlpha(isDark, baseAlpha)" in provider
     ),
-    "SimpleTextView exposes full content width including drawables": (
+    "SimpleTextView exposes full content width including drawables and gravity": (
         "public int getFullContentWidth()" in simple_text
+        and "public int getGravity()" in simple_text
         and "leftDrawable.getIntrinsicWidth()" in simple_text
         and "rightDrawable.getIntrinsicWidth()" in simple_text
     ),
@@ -144,6 +145,7 @@ checks = {
         and "dialogsTopFadeView" in dialogs
         and "topFadeDrawable.setOverrideFadeColor(getThemedColor(Theme.key_windowBackgroundWhite));" in dialogs
         and "checkUi_searchFieldStyle();" in dialogs
+        and "getRightSlidingProgress()" in dialogs
         and "(headerGlass && (child instanceof ViewPage || child == searchViewPager))" in dialogs
     ),
 }
