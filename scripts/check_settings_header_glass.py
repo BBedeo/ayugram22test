@@ -376,7 +376,9 @@ def main() -> None:
         and "applyHoverSelection(" in item_src
         and "event.getRawX()" in item_src
         and "CLOCK_TICK" in item_src
+        and "import org.telegram.messenger.R;" in ab_menu_src
         and "setDefaultDragOpenForMoreIcon(icon == R.drawable.ic_ab_other);" in ab_menu_src
+        and "import org.telegram.messenger.R;" in simple_menu_src
         and "setDefaultDragOpenForMoreIcon(icon == R.drawable.ic_ab_other);" in simple_menu_src
         and "setDragSelectEnabled(boolean enabled)" in popup_win_src
         and "updateIntraDragHover(" in popup_win_src,
