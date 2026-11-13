@@ -1886,11 +1886,14 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
     private void fillNextCodeParams(Bundle params, TLRPC.auth_SentCode res, boolean animate) {
         if (res instanceof TLRPC.TL_auth_sentCodePaymentRequired) {
             final TLRPC.TL_auth_sentCodePaymentRequired auth = (TLRPC.TL_auth_sentCodePaymentRequired) res;
+            params.putString("product", auth.store_product);
             params.putString("phoneHash", auth.phone_code_hash);
-            params.putInt("type", AUTH_TYPE_SMS);
-            params.putInt("length", 5);
-            params.putInt("timeout", 60000);
-            setPage(VIEW_CODE_SMS, animate, params, false);
+            params.putString("support_email_address", auth.support_email_address);
+            params.putString("support_email_subject", auth.support_email_subject);
+            params.putString("currency", auth.currency);
+            params.putInt("premium_days", auth.premium_days);
+            params.putLong("amount", auth.amount);
+            setPage(VIEW_PAY, true, params, true);
             return;
         }
         /*if (res.type instanceof TLRPC.TL_auth_sentCodeTypeFirebaseSms && !res.type.verifiedFirebase && !isRequestingFirebaseSms) {
@@ -4560,11 +4563,14 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                         fillNextCodeParams(nextCodeParams, nextCodeAuth);
                     } else if (response instanceof TLRPC.TL_auth_sentCodePaymentRequired) {
                         final TLRPC.TL_auth_sentCodePaymentRequired auth = (TLRPC.TL_auth_sentCodePaymentRequired) response;
+                        params.putString("product", auth.store_product);
                         params.putString("phoneHash", auth.phone_code_hash);
-                        params.putInt("type", AUTH_TYPE_SMS);
-                        params.putInt("length", 5);
-                        params.putInt("timeout", 60000);
-                        setPage(VIEW_CODE_SMS, true, params, false);
+                        params.putString("support_email_address", auth.support_email_address);
+                        params.putString("support_email_subject", auth.support_email_subject);
+                        params.putString("currency", auth.currency);
+                        params.putInt("premium_days", auth.premium_days);
+                        params.putLong("amount", auth.amount);
+                        setPage(VIEW_PAY, true, params, true);
                     }
                 } else {
                     if (error.text != null) {
