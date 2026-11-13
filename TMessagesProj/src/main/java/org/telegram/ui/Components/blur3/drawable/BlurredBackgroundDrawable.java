@@ -1436,7 +1436,7 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 final RectF body = boundProps.body;
                 final float thicknessFactor = elasticPillLens ? 0.44f : (headerGlassLens ? 0.40f : 0.20f);
                 final int defaultThicknessDp = LiquidGlassTuning.isActive()
-                        ? LiquidGlassTuning.thicknessDp()
+                        ? LiquidGlassTuning.thicknessDp(headerGlassLens)
                         : (headerGlassLens ? 15 : 11);
                 final int thickness = Math.max(Math.min(
                     boundProps.liquidThickness <= 0
@@ -1456,19 +1456,23 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 } else {
                     liquidGlassEffect.clearArrow();
                 }
+                final float refractionMult = headerGlassLens
+                        ? LiquidGlassTuning.headerRefractionScale()
+                        : LiquidGlassTuning.refractionScale();
                 liquidGlassEffect.update(
                     body.width(), body.height(),
                     body.left - b.left, body.top - b.top,
                     boundProps.shaderRadii[0], boundProps.shaderRadii[2], boundProps.shaderRadii[4], boundProps.shaderRadii[6],
                     thickness,
-                    boundProps.liquidIntensity * LiquidGlassTuning.refractionScale(),
+                    boundProps.liquidIntensity * refractionMult,
                     boundProps.liquidIndex,
                     backgroundColor,
                     Float.isNaN(elasticPressOverride)
                             ? (LiquidGlassTuning.motionEnabled() ? pressProgress : 0f)
                             : elasticPressOverride,
                     Float.isNaN(liquidShineOverride)
-                            ? LiquidGlassTuning.shine() : liquidShineOverride,
+                            ? (headerGlassLens ? LiquidGlassTuning.headerShine() : LiquidGlassTuning.shine())
+                            : liquidShineOverride,
                     Float.isNaN(liquidLightAngleOverride)
                             ? LiquidGlassTuning.lightAngleRadians() : liquidLightAngleOverride,
                     Float.isNaN(liquidMotionPhaseOverride)

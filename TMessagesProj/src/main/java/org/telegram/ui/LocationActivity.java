@@ -1320,7 +1320,8 @@ public class LocationActivity extends BaseFragment implements NotificationCenter
         final BlurredBackgroundDrawable glass = getBaseSimpleGlass().factory.create(view)
             .setColorProvider(BlurredBackgroundProviderImpl.simpleActionBar(getResourceProvider()))
             .setRadius(dp(MAP_BUTTON_DP / 2f))
-            .setPadding(dp(MAP_BUTTON_PADDING_DP));
+            .setPadding(dp(MAP_BUTTON_PADDING_DP))
+            .setHeaderGlassLens(true);
         view.setBackground(glass);
         ScaleStateListAnimator.apply(view);
         return glass;

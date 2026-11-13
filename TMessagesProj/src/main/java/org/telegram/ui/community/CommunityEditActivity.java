@@ -179,6 +179,7 @@ public class CommunityEditActivity extends BaseFragment implements ImageUpdater.
         sourceColor.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
         BlurredBackgroundDrawableViewFactory factory = new BlurredBackgroundDrawableViewFactory(sourceColor);
         actionBar.setupGlass(factory, BlurredBackgroundProviderImpl.topPanelChatActivity(resourceProvider));
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
         actionBar.setGlassOnlyBack();
 
         containerView = new FrameLayout(context) {

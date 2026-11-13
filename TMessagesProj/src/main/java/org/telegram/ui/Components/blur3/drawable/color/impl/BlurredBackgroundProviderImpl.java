@@ -67,12 +67,12 @@ public class BlurredBackgroundProviderImpl {
                 if (isHeaderLiquidShaderActive(r)) {
                     // Crystal-clear floating lens tint: keep the core highly transparent so
                     // scrolling avatars visibly refract through the capsule while preserving contrast.
-                    final float baseAlpha = isDark ? 0.24f : 0.30f;
-                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, baseAlpha);
+                    final float baseAlpha = isDark ? 0.16f : 0.28f;
+                    final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
                     final int crystalTarget = isDark
                         ? ColorUtils.blendARGB(colorTarget, 0xFFDCE8F6, 0.24f)
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
-                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 16 : 24, isDark ? 105 : 138);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 14 : 24, isDark ? 92 : 128);
                     return ColorUtils.setAlphaComponent(crystalTarget, a);
                 }
                 final float fallbackAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);
@@ -321,12 +321,12 @@ public class BlurredBackgroundProviderImpl {
                     return solveSrcColor(colorBg, colorTarget, fallbackAlpha);
                 }
                 if (isHeaderLiquidShaderActive(r)) {
-                    final float baseAlpha = isDark ? 0.24f : 0.30f;
-                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, baseAlpha);
+                    final float baseAlpha = isDark ? 0.16f : 0.28f;
+                    final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
                     final int crystalTarget = isDark
                         ? ColorUtils.blendARGB(colorTarget, 0xFFDCE8F6, 0.24f)
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
-                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 16 : 24, isDark ? 105 : 138);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 14 : 24, isDark ? 92 : 128);
                     return ColorUtils.setAlphaComponent(crystalTarget, a);
                 }
                 final float frostedAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);

@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 JAVA = ROOT / "TMessagesProj/src/main/java"
 
 MODIFIED_FILES = [
+    "app/exteraless/appearance/LiquidGlassTuning.java",
+    "org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java",
     "org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java",
     "org/telegram/ui/ActionBar/SimpleActionBar.java",
     "org/telegram/ui/ActionBar/ActionBar.java",
@@ -25,6 +27,7 @@ MODIFIED_FILES = [
     "org/telegram/ui/ActionBar/BaseFragment.java",
     "org/telegram/utils/glass/BaseFragmentSimpleGlass.java",
     "org/telegram/ui/Components/BlurredRecyclerView.java",
+    "org/telegram/ui/Components/FragmentSearchField.java",
     "app/exteraless/appearance/SectionCardRecyclerView.java",
     "tw/nekomimi/nekogram/settings/BaseNekoSettingsActivity.java",
     "app/exteraless/settings/OpenExteraSettingsActivity.java",
@@ -39,6 +42,14 @@ MODIFIED_FILES = [
     "app/exteraless/settings/InlineResultsActivity.java",
     "app/exteraless/plugins/ui/PluginActivityLogActivity.java",
     "app/exteraless/plugins/ui/PluginPermissionsActivity.java",
+    "org/telegram/ui/ChatActivity.java",
+    "org/telegram/ui/ChannelAdminLogActivity.java",
+    "app/exteraless/appicons/AppIconsActivity.java",
+    "org/telegram/ui/community/CommunityCreateActivity.java",
+    "org/telegram/ui/community/CommunityEditActivity.java",
+    "org/telegram/ui/Components/ChatAttachAlert.java",
+    "tw/nekomimi/nekogram/ui/NekoDelegateFragment.java",
+    "org/telegram/ui/LocationActivity.java",
 ]
 
 
@@ -262,6 +273,7 @@ def main() -> None:
                 "checkBlurEnabled(r)",
                 "isHeaderLiquidShaderActive(r)",
                 "LiquidGlassTuning.tintAlpha(",
+                "LiquidGlassTuning.tintAlphaHeader(",
                 "ColorUtils.blendARGB(",
                 "ColorUtils.setAlphaComponent(",
                 "solveSrcColor(",
@@ -273,10 +285,35 @@ def main() -> None:
     create_btns = method_body(simple_src, r"private void createButtonsGlass\(")
     create_menu = method_body(simple_src, r"public BlurredBackgroundDrawable createMenuGlass\(View owner\)")
     check(
-        "SimpleActionBar always enables header glass lens for buttons and menus",
-        create_btns.count(".setHeaderGlassLens(true)") >= 3
-        and ".setHeaderGlassLens(true)" in create_menu,
+        "SimpleActionBar creates header glass lens pills (including glassTitle) and drives tactile press swell",
+        create_btns.count(".setHeaderGlassLens(true)") >= 4
+        and ".setHeaderGlassLens(true)" in create_menu
+        and "private BlurredBackgroundDrawable glassTitle;" in simple_src
+        and "public void setDrawGlassTitle(boolean draw)" in simple_src
+        and "private float computeTitlePill(RectF rect)" in simple_src
+        and "backPressAnimator" in simple_src
+        and "menuPressAnimator" in simple_src
+        and "donePressAnimator" in simple_src
+        and "titlePressAnimator" in simple_src
+        and "canvas.scale(pressScale, pressScale" in simple_src
+        and "app.exteraless.appearance.LiquidGlassTuning.motionEnabled()" in simple_src,
     )
+
+    for rel_lens in (
+        "org/telegram/ui/ChatActivity.java",
+        "org/telegram/ui/ChannelAdminLogActivity.java",
+        "app/exteraless/appicons/AppIconsActivity.java",
+        "org/telegram/ui/community/CommunityCreateActivity.java",
+        "org/telegram/ui/community/CommunityEditActivity.java",
+        "org/telegram/ui/Components/ChatAttachAlert.java",
+        "tw/nekomimi/nekogram/ui/NekoDelegateFragment.java",
+        "org/telegram/ui/LocationActivity.java",
+    ):
+        src_lens = read(rel_lens)
+        check(
+            f"{rel_lens} enables header glass lens for floating buttons/headers",
+            "setHeaderGlassLens(" in src_lens,
+        )
 
     ab_src = read("org/telegram/ui/ActionBar/ActionBar.java")
     ab_layout_method = method_body(ab_src, r"protected void onLayout\(boolean changed")

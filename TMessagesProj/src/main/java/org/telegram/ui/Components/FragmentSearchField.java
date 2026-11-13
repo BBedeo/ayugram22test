@@ -216,14 +216,27 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
             bg.draw(canvas);
         }
         if (blurredBackgroundDrawable != null) {
+            final int pressSwell = LiquidGlassTuning.motionEnabled()
+                    ? Math.round(dp(1.8f) * animatorGlassPressed.getFloatValue())
+                    : 0;
             blurredBackgroundDrawable.setBounds(
-                    getPaddingLeft() - dp(4),
-                    getPaddingTop() - dp(4),
-                    getWidth() - getPaddingRight() + dp(4),
-                    (getHeight() - getPaddingBottom()) + dp(4));
+                    getPaddingLeft() - dp(4) - pressSwell,
+                    getPaddingTop() - dp(4) - pressSwell,
+                    getWidth() - getPaddingRight() + dp(4) + pressSwell,
+                    (getHeight() - getPaddingBottom()) + dp(4) + pressSwell);
             blurredBackgroundDrawable.draw(canvas);
         }
-        super.dispatchDraw(canvas);
+        final float pressScale = LiquidGlassTuning.motionEnabled()
+                ? (1f + 0.015f * animatorGlassPressed.getFloatValue())
+                : 1f;
+        if (pressScale > 1.0005f) {
+            canvas.save();
+            canvas.scale(pressScale, pressScale, getWidth() / 2f, getHeight() / 2f);
+            super.dispatchDraw(canvas);
+            canvas.restore();
+        } else {
+            super.dispatchDraw(canvas);
+        }
         canvas.restore();
     }
 
@@ -232,6 +245,9 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
     public void setupBlurredBackground(BlurredBackgroundDrawable drawable) {
         drawable.setRadius(dp(20));
         drawable.setPadding(dp(4));
+        if (LiquidGlassTuning.isActive()) {
+            drawable.setHeaderGlassLens(true);
+        }
         blurredBackgroundDrawable = drawable;
         applyBlurredBackgroundVisibility();
     }
@@ -389,7 +405,7 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
             checkUi_editTextPaddings();
         } else if (id == ANIMATOR_ID_GLASS_PRESSED) {
             if (blurredBackgroundDrawable != null) {
-                blurredBackgroundDrawable.setElasticPressProgress(factor * 0.72f);
+                blurredBackgroundDrawable.setElasticPressProgress(factor * 0.85f);
                 invalidate();
             }
         }
