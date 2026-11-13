@@ -3,6 +3,7 @@ package org.telegram.ui.Components.blur3.drawable.color.impl;
 import static org.telegram.messenger.AndroidUtilities.dpf2;
 
 import android.graphics.Color;
+import android.os.Build;
 
 import androidx.core.graphics.ColorUtils;
 import androidx.core.math.MathUtils;
@@ -49,24 +50,74 @@ public class BlurredBackgroundProviderImpl {
             .build();
     }
 
+    private static boolean isHeaderLiquidShaderActive(Theme.ResourcesProvider r) {
+        return Build.VERSION.SDK_INT >= 33
+            && checkBlurEnabled(r)
+            && (LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || LiquidGlassTuning.isActive());
+    }
+
     public static BlurredBackgroundProvider dialogsHeaderGlass(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
                 if (!checkBlurEnabled(r)) {
-                    return isDark ? Theme.blendOver(colorBg, 0x18FFFFFF) : Theme.blendOver(colorBg, 0x09000000);
+                    return isDark ? Theme.blendOver(colorBg, 0x16FFFFFF) : Theme.blendOver(colorBg, 0x0A000000);
                 }
-                final float baseAlpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.68f : 0.78f;
-                final float alpha = LiquidGlassTuning.tintAlpha(isDark, baseAlpha);
-                final int liftedTarget = Theme.blendOver(colorTarget, isDark ? 0x12FFFFFF : 0x52FFFFFF);
-                return solveSrcColor(colorBg, liftedTarget, alpha);
+                if (isHeaderLiquidShaderActive(r)) {
+                    // Crystal-clear floating lens tint: keep the core highly transparent so
+                    // scrolling avatars visibly refract through the capsule while preserving contrast.
+                    final float baseAlpha = isDark ? 0.24f : 0.30f;
+                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, baseAlpha);
+                    final int crystalTarget = isDark
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFDCE8F6, 0.24f)
+                        : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 16 : 24, isDark ? 105 : 138);
+                    return ColorUtils.setAlphaComponent(crystalTarget, a);
+                }
+                final float fallbackAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);
+                final int frostedTarget = isDark ? colorTarget : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
+                return ColorUtils.setAlphaComponent(frostedTarget,
+                    MathUtils.clamp(Math.round(255f * fallbackAlpha), isDark ? 64 : 90, 220));
             })
-            .setStrokeColorTop(0x16000000, 0x14FFFFFF)
-            .setStrokeColorBottom(0x24000000, 0x1EFFFFFF)
-            .setShadowColor(0x26000000, 0x26000000)
-            .setShadowLayer(dpf2(3.2f), 0, dpf2(0.95f))
+            .setStrokeColorTop((r, isDark) -> {
+                if (isHeaderLiquidShaderActive(r)) {
+                    // In dark liquid glass mode let the AGSL Fresnel catchlights handle the rim cleanly.
+                    return isDark ? 0 : 0x0D000000;
+                }
+                return isDark ? 0x10FFFFFF : 0x14000000;
+            })
+            .setStrokeColorBottom((r, isDark) -> {
+                if (isHeaderLiquidShaderActive(r)) {
+                    return isDark ? 0 : 0x16000000;
+                }
+                return isDark ? 0x16FFFFFF : 0x1E000000;
+            })
+            .setShadowColor(0x20000000, 0x26000000)
+            .setShadowLayer(dpf2(4.0f), 0, dpf2(1.1f))
             .setStrokeWidth(dpf2(0.45f), dpf2(0.45f))
+            .build();
+    }
+
+    public static BlurredBackgroundProvider dialogsMenuGlass(Theme.ResourcesProvider resourcesProvider) {
+        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+            .setBackgroundColor((r, isDark) -> {
+                final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
+                if (!checkBlurEnabled(r)) {
+                    return ColorUtils.setAlphaComponent(colorSubmenu, 255);
+                }
+                final float baseAlpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.72f : 0.80f;
+                final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, baseAlpha);
+                final int tinted = isDark
+                    ? ColorUtils.blendARGB(colorSubmenu, 0xFF1A232E, 0.25f)
+                    : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.65f);
+                return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), 90, 235));
+            })
+            .setStrokeColorTop(0x16000000, 0x18FFFFFF)
+            .setStrokeColorBottom(0x20000000, 0x0EFFFFFF)
+            .setShadowColor(0x2A000000, 0x38000000)
+            .setShadowLayer(dpf2(9.0f), 0, dpf2(2.6f))
+            .setStrokeWidth(dpf2(0.55f), dpf2(0.45f))
             .build();
     }
 

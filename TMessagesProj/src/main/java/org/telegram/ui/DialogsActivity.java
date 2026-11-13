@@ -165,6 +165,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.MenuDrawable;
+import org.telegram.ui.ActionBar.SimpleActionBarMenuOverlay;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeBind;
@@ -214,6 +215,7 @@ import org.telegram.ui.Components.blur3.capture.IBlur3Capture;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
 import org.telegram.utils.glass.source.GlassSourceColor;
+import org.telegram.utils.glass.source.GlassSourceCrossfade;
 import org.telegram.utils.glass.source.GlassSourceRenderNode;
 import org.telegram.ui.Components.blur3.utils.Blur3Utils;
 import org.telegram.ui.Components.chat.ChatInputViewsContainer;
@@ -3691,6 +3693,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 actionBar.setCompactGlassTitlePill(true);
                 actionBar.setClipContent(false);
                 actionBar.setClipToPadding(false);
+                if (iBlur3SourceGlassFrosted != null) {
+                    final GlassSourceCrossfade menuSource = new GlassSourceCrossfade(
+                        iBlur3SourceGlass != null ? iBlur3SourceGlass : iBlur3SourceGlassFrosted,
+                        iBlur3SourceGlassFrosted);
+                    final BlurredBackgroundDrawableViewFactory menuFactory = new BlurredBackgroundDrawableViewFactory(menuSource);
+                    menuFactory.setLiquidGlassEffectAllowed(true);
+                    menuFactory.setOutset(dp(16));
+                    menuFactory.setGlassEngine(glassEngine);
+                    actionBar.setMenuGlass(menuFactory, menuSource);
+                }
+                actionBar.setMenuGlassColorProvider(BlurredBackgroundProviderImpl.dialogsMenuGlass(resourceProvider));
+                actionBar.setMenuRise(dp(8));
             }
         //}
         actionBar.setTitleActionRunnable(() -> {
@@ -7616,6 +7630,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onPause() {
         super.onPause();
+        if (actionBar != null && actionBar.isMenuOverlayOpened()) {
+            actionBar.closeMenuOverlay(false);
+        }
         if (storiesBulletin != null) {
             storiesBulletin.hide();
             storiesBulletin = null;
@@ -7643,6 +7660,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public boolean onBackPressed(boolean invoked) {
+        if (actionBar != null && actionBar.isMenuOverlayOpened()) {
+            if (invoked) {
+                actionBar.closeMenuOverlay(true);
+            }
+            return false;
+        }
         // Сначала закрывается шторка.
         if (drawerContainer() != null && drawerContainer().isDrawerOpen()) {
             if (invoked) {
@@ -7702,6 +7725,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public void onBecomeFullyHidden() {
+        if (actionBar != null && actionBar.isMenuOverlayOpened()) {
+            actionBar.closeMenuOverlay(false);
+        }
         if (closeSearchFieldOnHide) {
             if (actionBar != null) {
                 actionBar.closeSearchField();
@@ -7852,6 +7878,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void showSearch(boolean show, boolean startFromDownloads, boolean animated, boolean forceNotOnlyDialogs) {
+        if (show && actionBar != null && actionBar.isMenuOverlayOpened()) {
+            actionBar.closeMenuOverlay(animated);
+        }
         animatorSearchVisible.setValue(show, animated);
 
         if (!show) {
@@ -7975,10 +8004,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
             animators.add(valueAnimator);
             searchAnimator.playTogether(animators);
-            searchAnimator.setDuration(show ? 200 : 180);
-            searchAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
+            searchAnimator.setDuration(shouldUseDialogsHeaderGlass() ? (show ? 320 : 280) : (show ? 200 : 180));
+            searchAnimator.setInterpolator(shouldUseDialogsHeaderGlass() ? CubicBezierInterpolator.EASE_OUT_QUINT : CubicBezierInterpolator.EASE_OUT);
 
-            if (!show) {
+            if (!show && !shouldUseDialogsHeaderGlass()) {
                 searchAnimator.setStartDelay(20);
             }
             searchAnimator.addListener(new AnimatorListenerAdapter() {
@@ -13942,7 +13971,26 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    private void showDialogsOptionsMenu(ItemOptions io) {
+        if (io == null) {
+            return;
+        }
+        if (shouldUseDialogsHeaderGlass() && actionBar != null && optionsItem != null) {
+            final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+            if (overlay != null && io.openInOverlay(actionBar, optionsItem, overlay, () -> invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS))) {
+                invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS);
+                return;
+            }
+        }
+        io.show();
+        io.setTranslationY(-dp(64));
+    }
+
     private void showItemOptions() {
+        if (actionBar != null && actionBar.isMenuOverlayOpened()) {
+            actionBar.closeMenuOverlay(true);
+            return;
+        }
         ItemOptions io = ItemOptions.makeOptions(this, optionsItem, true);
         io.setColors(getThemedColor(Theme.key_actionBarDefaultTitle), getThemedColor(Theme.key_actionBarDefaultTitle));
         if (Theme.getActiveTheme().isMonet()) {
@@ -13984,16 +14032,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     }
                 });
             }
-            io.show();
-            io.setTranslationY(-dp(64));
+            showDialogsOptionsMenu(io);
             return;
         }
 
         if (isArchive()) {
             io.add(R.drawable.msg_customize, getString(R.string.ArchiveSettings), () -> presentFragment(new ArchiveSettingsActivity()));
             io.add(R.drawable.msg_help, getString(R.string.HowDoesItWork), this::showArchiveHelp);
-            io.show();
-            io.setTranslationY(-dp(64));
+            showDialogsOptionsMenu(io);
             return;
         }
 
@@ -14186,8 +14232,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // exteraless plugins: пункты плагинов (MAIN_MENU) в конце меню «⋮».
         app.exteraless.plugins.menus.MenuInjector.appendMainMenuItems(io, currentAccount, this);
 
-        io.show();
-        io.setTranslationY(-dp(64));
+        showDialogsOptionsMenu(io);
     }
 
     @Override
@@ -14670,7 +14715,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 + (searchTabsAndFiltersLayout != null ? searchTabsAndFiltersLayout.getMeasuredHeight() : 0)
                 + dp(30);
 
-            iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), lerp(actionBarHeight, actionBarHeightSearch, animatorSearchVisible.getFloatValue()) + additionalList );
+            int captureBottom = lerp(actionBarHeight, actionBarHeightSearch, animatorSearchVisible.getFloatValue());
+            if (actionBar != null && actionBar.getOpenMenuOverlay() != null) {
+                captureBottom = Math.max(captureBottom, Math.min(Math.max(0, fragmentView.getMeasuredHeight() - additionalList), dp(640)));
+            }
+
+            iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), captureBottom + additionalList);
 
             boolean hasBottomBlur = false;
             if (hasMainTabs && MainTabsLayout.isBottomNavigationVisible()) {

@@ -60,10 +60,13 @@ import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.INavigationLayout;
+import org.telegram.ui.ActionBar.MenuOverlayHost;
+import org.telegram.ui.ActionBar.SimpleActionBarMenuOverlay;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Cells.SharedPhotoVideoCell2;
@@ -1386,15 +1389,7 @@ public class ItemOptions {
         this.offsetByContainer = true;
         return this;
     }
-    public ItemOptions show() {
-        if (actionBarPopupWindow != null || linearLayout != null) {
-            return this;
-        }
-
-        if (getItemsCount() <= 0) {
-            return this;
-        }
-
+    private void prepareItemsForShow() {
         setupSelectors();
 
         if (fixedWidthDp > 0) {
@@ -1419,6 +1414,46 @@ public class ItemOptions {
                 }
             }
         }
+    }
+
+    public boolean openInOverlay(@Nullable MenuOverlayHost host, @Nullable ActionBarMenuItem item, @Nullable SimpleActionBarMenuOverlay overlay, @Nullable Runnable onOverlayClosed) {
+        if (host == null || overlay == null || actionBarPopupWindow != null || linearLayout != null || getItemsCount() <= 0 || lastLayout == null) {
+            return false;
+        }
+        prepareItemsForShow();
+        if (lastLayout.getParent() instanceof ViewGroup) {
+            ((ViewGroup) lastLayout.getParent()).removeView(lastLayout);
+        }
+        final Runnable prevDismiss = dismissListener;
+        final boolean[] closingRequested = { false };
+        dismissListener = () -> {
+            if (!closingRequested[0]) {
+                closingRequested[0] = true;
+                overlay.close(true);
+            }
+        };
+        overlay.setOnClosed(() -> {
+            if (onOverlayClosed != null) {
+                onOverlayClosed.run();
+            }
+            if (prevDismiss != null) {
+                prevDismiss.run();
+            }
+        });
+        overlay.open(host, item, lastLayout);
+        return true;
+    }
+
+    public ItemOptions show() {
+        if (actionBarPopupWindow != null || linearLayout != null) {
+            return this;
+        }
+
+        if (getItemsCount() <= 0) {
+            return this;
+        }
+
+        prepareItemsForShow();
 
         if ((blur || blurForMenu) && scrimBlur3SourceBitmap == null) {
             scrimBlur3SourceBitmap = new GlassSourceBitmap();

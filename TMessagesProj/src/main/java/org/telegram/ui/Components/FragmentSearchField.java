@@ -23,6 +23,7 @@ import android.transition.Visibility;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -49,6 +50,8 @@ import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
 import java.util.HashSet;
 
+import app.exteraless.appearance.LiquidGlassTuning;
+
 @SuppressLint("ViewConstructor")
 public class FragmentSearchField extends FrameLayout implements FactorAnimator.Target, Theme.Colorable {
     private app.exteraless.pillstack.PillStackController pillStackController;
@@ -66,10 +69,12 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
     private static final int ANIMATOR_ID_CLOSE_BUTTON_VISIBLE = 0;
     private static final int ANIMATOR_ID_SEARCH_ICON_VISIBLE = 1;
     private static final int ANIMATOR_ID_SEARCH_FILTERS_WIDTH = 2;
+    private static final int ANIMATOR_ID_GLASS_PRESSED = 3;
 
     private final BoolAnimator animatorCloseIconVisible = new BoolAnimator(ANIMATOR_ID_CLOSE_BUTTON_VISIBLE, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380, false);
     private final BoolAnimator animatorSearchIconVisible = new BoolAnimator(ANIMATOR_ID_SEARCH_ICON_VISIBLE, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380, true);
     private final FactorAnimator animatorSearchFiltersWidth = new FactorAnimator(ANIMATOR_ID_SEARCH_FILTERS_WIDTH, this, AnimatorUtils.DECELERATE_INTERPOLATOR, 280);
+    private final BoolAnimator animatorGlassPressed = new BoolAnimator(ANIMATOR_ID_GLASS_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 240, false);
 
     private final Theme.ResourcesProvider resourcesProvider;
 
@@ -361,6 +366,19 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (blurredBackgroundDrawable != null && LiquidGlassTuning.motionEnabled()) {
+            final int action = ev.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                animatorGlassPressed.setValue(true, true);
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                animatorGlassPressed.setValue(false, true);
+            }
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
         if (id == ANIMATOR_ID_CLOSE_BUTTON_VISIBLE) {
             FragmentFloatingButton.setAnimatedVisibility(closeIcon, factor);
@@ -369,6 +387,11 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
             FragmentFloatingButton.setAnimatedVisibility(searchIcon, factor);
         } else if (id == ANIMATOR_ID_SEARCH_FILTERS_WIDTH) {
             checkUi_editTextPaddings();
+        } else if (id == ANIMATOR_ID_GLASS_PRESSED) {
+            if (blurredBackgroundDrawable != null) {
+                blurredBackgroundDrawable.setElasticPressProgress(factor * 0.72f);
+                invalidate();
+            }
         }
     }
 

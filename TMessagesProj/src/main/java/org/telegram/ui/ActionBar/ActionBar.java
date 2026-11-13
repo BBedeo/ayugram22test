@@ -88,6 +88,7 @@ import me.vkryl.android.animator.ReplaceAnimator;
 import java.util.HashSet;
 
 import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.appearance.LiquidGlassTuning;
 import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
 
@@ -350,6 +351,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         invalidate();
     }
 
+    private BlurredBackgroundColorProvider menuGlassColorProvider;
+
     /**
      * The glass of the menus in the overlay: the glass of the buttons going over to frosted glass by {@code source}'s
      * progress; without a factory the menus are on the glass of the buttons.
@@ -357,6 +360,10 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     public void setMenuGlass(BlurredBackgroundDrawableViewFactory factory, GlassSourceCrossfade source) {
         menuGlassFactory = factory;
         menuGlassSource = source;
+    }
+
+    public void setMenuGlassColorProvider(@Nullable BlurredBackgroundColorProvider provider) {
+        menuGlassColorProvider = provider;
     }
 
     public void setMenuRise(int rise) {
@@ -379,7 +386,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     @Override
     public BlurredBackgroundColorProvider getMenuGlassColorProvider() {
-        return glassColorProvider;
+        return menuGlassColorProvider != null ? menuGlassColorProvider : glassColorProvider;
     }
 
     @Override
@@ -2240,6 +2247,29 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (headerGlassLens && LiquidGlassTuning.motionEnabled()) {
+            final int action = ev.getActionMasked();
+            final float x = ev.getX();
+            final float y = ev.getY();
+            if (action == MotionEvent.ACTION_DOWN) {
+                animatorBackGlassPressed.setValue(
+                    glassDrawableBack != null && glassDrawableBack.getAlpha() > 12 && glassDrawableBack.getBounds().contains((int) x, (int) y),
+                    true);
+                animatorMenuGlassPressed.setValue(
+                    glassDrawableMenu != null && glassDrawableMenu.getAlpha() > 12 && glassDrawableMenu.getBounds().contains((int) x, (int) y),
+                    true);
+            } else if (action == MotionEvent.ACTION_MOVE) {
+                if (animatorBackGlassPressed.getValue() && (glassDrawableBack == null || !glassDrawableBack.getBounds().contains((int) x, (int) y))) {
+                    animatorBackGlassPressed.setValue(false, true);
+                }
+                if (animatorMenuGlassPressed.getValue() && (glassDrawableMenu == null || !glassDrawableMenu.getBounds().contains((int) x, (int) y))) {
+                    animatorMenuGlassPressed.setValue(false, true);
+                }
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                animatorBackGlassPressed.setValue(false, true);
+                animatorMenuGlassPressed.setValue(false, true);
+            }
+        }
         if (glassMode && (chatAvatarContainer != null || compactGlassTitlePill) && !actionModeVisible && !isSearchFieldVisible) {
             if (ev.getAction() == MotionEvent.ACTION_DOWN) {
                 final int x = (int) ev.getX();
@@ -2596,6 +2626,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     private final FactorAnimator animatorMenuItemsWidth = new FactorAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 320);
     private final BoolAnimator animatorHasMenuItems = new BoolAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 320);
+    private final BoolAnimator animatorBackGlassPressed = new BoolAnimator(10, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
+    private final BoolAnimator animatorMenuGlassPressed = new BoolAnimator(11, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
 
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
@@ -2924,12 +2956,18 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             final int backAlphaInt = compactGlassTitlePill ? Math.round(255 * backAlphaFactor) : 255;
             if (backAlphaInt > 0) {
                 glassDrawableBack.setBounds(0, t, s + p * 2, b);
+                if (headerGlassLens) {
+                    glassDrawableBack.setElasticPressProgress(animatorBackGlassPressed.getFloatValue() * 0.85f);
+                }
                 glassDrawableBack.setAlpha(backAlphaInt);
                 glassDrawableBack.draw(canvas);
             }
         }
         if (hasMenuPill && menuAlphaInt > 0) {
             glassDrawableMenu.setBounds(menuLeft, menuTop, menuRight, menuBottom);
+            if (headerGlassLens) {
+                glassDrawableMenu.setElasticPressProgress(animatorMenuGlassPressed.getFloatValue() * 0.85f);
+            }
             glassDrawableMenu.setAlpha(menuAlphaInt);
             glassDrawableMenu.draw(canvas);
         }

@@ -74,82 +74,83 @@ half4 main(in float2 fragCoord) {
   float2 isoRel = clamp(p / minHalf, float2(-2.2), float2(2.2));
 
   // Crisp readable core with vivid perimeter Snell lens refraction.
-  float2 uv = fragCoord + ray.xy * (0.50 * rayDepth * refract_intensity)
-      * (0.58 + lift * 0.42);
-  uv -= isoRel * (0.015 + lift * 0.032) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.35 * bevel);
+  float2 uv = fragCoord + ray.xy * (0.52 * rayDepth * refract_intensity)
+      * (0.72 + lift * 0.34);
+  uv -= isoRel * (0.018 + lift * 0.034) * t * (0.26 + 0.74 * domeT) * (1.0 - 0.35 * bevel);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
   uv = clamp(uv, uvMin, uvMax);
 
   // Symmetric RGB chromatic dispersion across curved edges + inset opposite-side reflection.
-  float2 disp = ray.xy * uDp * (1.30 + lift * 1.90) * bevel * insetFade;
+  float2 disp = ray.xy * uDp * (1.85 + lift * 2.15) * bevel * insetFade;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  float dispMix = clamp((0.36 + 0.44 * lift) * bevel * insetFade, 0.0, 0.86);
+  float dispMix = clamp((0.50 + 0.40 * lift) * bevel * insetFade, 0.0, 0.88);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
-  float oppDepthPx = (1.6 + clamp(dDp - 1.6, 0.0, 3.0) * 2.4) * uDp;
-  float hReflWeight = gaussian((dDp - 2.60) / 0.88)
-      * pow(abs(edgeDir.x), 1.65)
-      * smoothstep(0.65, 0.92, abs(relCenter.x))
+  float oppDepthPx = (1.9 + clamp(dDp - 1.4, 0.0, 3.0) * 2.1) * uDp;
+  float hReflWeight = gaussian((dDp - 2.45) / 0.92)
+      * pow(abs(edgeDir.x), 1.55)
+      * smoothstep(0.58, 0.90, abs(relCenter.x))
       * insetFade;
   float2 mirrorSideUV = clamp(
       center + float2(-sign(p.x) * max(0.0, size.x - oppDepthPx), p.y * 0.78),
       uvMin, uvMax);
   half4 sideMirror = img.eval(mirrorSideUV);
-  backdrop.rgb = mix(backdrop.rgb, sideMirror.rgb, half(hReflWeight * (0.10 + 0.10 * lift)));
+  backdrop.rgb = mix(backdrop.rgb, sideMirror.rgb, half(hReflWeight * (0.16 + 0.14 * lift)));
 
-  float vReflWeight = gaussian((dDp - 2.45) / 0.88)
-      * pow(abs(edgeDir.y), 1.80)
-      * (1.0 - abs(relCenter.x) * 0.25)
+  float vReflWeight = gaussian((dDp - 2.35) / 0.95)
+      * pow(abs(edgeDir.y), 1.70)
+      * (1.0 - abs(relCenter.x) * 0.22)
       * insetFade;
   float2 mirrorVertUV = clamp(
       center + float2(p.x * 0.94, -sign(p.y) * max(0.0, size.y - oppDepthPx)),
       uvMin, uvMax);
   half4 vertMirror = img.eval(mirrorVertUV);
-  backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.07 + 0.07 * lift)));
+  backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.14 + 0.12 * lift)));
 
-  // Vibrant optical saturation without muddy plastic wash.
+  // Vibrant optical saturation without muddy matte wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
-  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.18 + 0.14 * lift)), half3(0.0), half3(1.0));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.24 + 0.16 * lift)), half3(0.0), half3(1.0));
 
   float bgLumaF = float(luma);
   float fgAlpha = clamp(float(foreground_color_premultiplied.a), 0.001, 1.0);
   float fgLumaF = float(dot(foreground_color_premultiplied.rgb / half(fgAlpha), half3(0.2126, 0.7152, 0.0722)));
-  float darkTint = 1.0 - smoothstep(0.35, 0.65, fgLumaF);
-  float bgAdaptive = mix(1.0, mix(0.68, 0.48, darkTint), smoothstep(0.12, 0.65, bgLumaF));
-  half4 fgTint = half4(foreground_color_premultiplied) * half((1.0 - lift * 0.50) * bgAdaptive);
+  float darkCrystalTint = 1.0 - smoothstep(0.38, 0.65, fgLumaF);
+  // In light theme let bright backdrop colors breathe; in dark theme keep full clarity with a gentle
+  // contrast veil only if very bright pixels pass behind white header labels.
+  float lightBgAdaptive = mix(1.0, 0.72, smoothstep(0.18, 0.70, bgLumaF) * (1.0 - darkCrystalTint));
+  half4 fgTint = half4(foreground_color_premultiplied) * half((1.0 - lift * 0.38) * lightBgAdaptive);
   half4 surface = srcOver(fgTint, backdrop);
-
-  // Subtle dimensional crystal dome sheen so resting bubbles feel palpably curved.
-  float domeSheen = smoothstep(0.74, -0.85, relCenter.y * 0.74 + relCenter.x * 0.28)
-      * (1.0 - bevel * 0.45) * (0.055 - 0.020 * lift);
-  surface.rgb = min(half3(1.0), surface.rgb + half3(0.84, 0.93, 1.0) * half(domeSheen * float(surface.a)));
+  if (glass_adaptive > 0.5) {
+    float contrastVeil = smoothstep(0.56, 0.96, bgLumaF) * darkCrystalTint * 0.16 * (1.0 - lift * 0.35);
+    surface.rgb *= half(1.0 - contrastVeil);
+  }
 
   // Soft TIR meniscus depth gradient inside the bevel (adaptive in light themes, zero hard outline).
-  float lightWallBoost = mix(1.0, 1.75, smoothstep(0.55, 0.92, bgLumaF));
-  float outerWall = gaussian((dDp - 2.25) / 1.35);
-  float meniscus = gaussian((dDp - 3.95) / 1.80);
-  surface.rgb *= half(1.0 - lightWallBoost * ((0.032 + 0.030 * lift) * outerWall + (0.016 + 0.018 * lift) * meniscus));
+  float lightWallBoost = mix(1.0, 1.85, smoothstep(0.55, 0.92, bgLumaF));
+  float outerWall = gaussian((dDp - 2.10) / 1.25);
+  float meniscus = gaussian((dDp - 3.85) / 1.75);
+  surface.rgb *= half(1.0 - lightWallBoost * ((0.036 + 0.028 * lift) * outerWall + (0.018 + 0.018 * lift) * meniscus));
 
   // Diagonal top-left -> bottom-right Fresnel catchlights + crisp rim gleam.
   float angle = -2.356 + move * 0.42 + (glass_light_angle - 5.4978);
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot, 0.0), 2.8) * 0.86;
-  float catchArc = pow(max(-rawDot, 0.0), 2.6) * 0.80;
-  float capBoost = pow(abs(edgeDir.x), 2.5) * (0.16 + 0.16 * lift);
-  float rimCore = gaussian((dDp - 1.25) / 1.15);
-  float innerRidge = gaussian((dDp - 3.05) / 2.00);
+  float keyArc = pow(max(rawDot, 0.0), 3.2) * 1.02;
+  float catchArc = pow(max(-rawDot, 0.0), 3.0) * 0.88;
+  float capBoost = pow(abs(edgeDir.x), 2.5) * (0.20 + 0.18 * lift);
+  float rimCore = gaussian((dDp - 1.05) / 0.88);
+  float innerRidge = gaussian((dDp - 2.65) / 1.65);
   float rimSpec = (keyArc + catchArc + capBoost)
-      * (rimCore * 0.72 + innerRidge * 0.28) * (0.30 + 0.30 * lift);
+      * (rimCore * 0.76 + innerRidge * 0.24) * (0.38 + 0.36 * lift);
 
   float highlightStrength = clamp(glass_highlight, 0.65, 1.0);
   if (glass_adaptive > 0.5) {
-    highlightStrength *= clamp(1.16 - bgLumaF * 0.24, 0.82, 1.16);
+    highlightStrength *= clamp(1.18 - bgLumaF * 0.26, 0.82, 1.18);
   }
 
   float totalGlint = highlightStrength * rimSpec;
