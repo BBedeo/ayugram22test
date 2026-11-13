@@ -84,7 +84,7 @@ half4 main(in float2 fragCoord) {
   float2 uvMax = center + size - 0.5;
   uv = clamp(uv, uvMin, uvMax);
 
-  // Optical prism RGB separation on both opposite curved ends.
+  // Optical prism RGB separation on both opposite curved ends + inset opposite-side reflection.
   float2 disp = ray.xy * uDp * (1.20 + lift * 2.30) * bevel;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
@@ -92,6 +92,12 @@ half4 main(in float2 fragCoord) {
   float dispMix = clamp((0.38 + 0.48 * lift) * bevel, 0.0, 0.88);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
+
+  float reflectInsetBand = smoothstep(1.6, 3.5, dDp) * smoothstep(10.5, 4.8, dDp) * pow(abs(edgeDir.x), 1.35);
+  float2 mirrorUV = clamp(center + float2(-p.x * 0.76, p.y * 0.90)
+      - edgeDir * bevel * uDp * (1.10 + lift * 2.10), uvMin, uvMax);
+  half4 mirrorBackdrop = img.eval(mirrorUV);
+  backdrop.rgb = mix(backdrop.rgb, mirrorBackdrop.rgb, half(reflectInsetBand * (0.28 + 0.34 * lift)));
 
   // Crisp optical color vibrancy without adding milky grey plastic wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
@@ -107,9 +113,9 @@ half4 main(in float2 fragCoord) {
       * (1.0 - bevel * 0.45) * (0.065 - 0.035 * lift);
   surface.rgb = min(half3(1.0), surface.rgb + half3(0.82, 0.92, 1.0) * half(domeSheen * float(surface.a)));
 
-  // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline).
-  float outerWall = gaussian((dDp - 2.30) / 1.40);
-  float meniscus = gaussian((dDp - 4.00) / 1.85);
+  // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline), shifted inset from edge.
+  float outerWall = gaussian((dDp - 2.60) / 1.40);
+  float meniscus = gaussian((dDp - 4.30) / 1.85);
   surface.rgb *= half(1.0 - (0.04 + 0.05 * lift) * outerWall - (0.02 + 0.03 * lift) * meniscus);
 
   // Unified top-left -> bottom-right axis + dedicated right-side liquid tide ("прилив справа").
@@ -123,9 +129,9 @@ half4 main(in float2 fragCoord) {
   float capBoost = rightFlowArc * (0.42 + 0.38 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.22 * lift);
   float fresnelSide = 0.0;
 
-  float rimCore = gaussian((dDp - 1.35) / 1.25);
-  float innerRidge = gaussian((dDp - 3.20) / 2.15);
-  float rightTideBand = gaussian((dDp - (2.40 + 1.10 * lift)) / (1.85 + 0.65 * lift));
+  float rimCore = gaussian((dDp - 1.85) / 1.25);
+  float innerRidge = gaussian((dDp - 3.50) / 2.15);
+  float rightTideBand = gaussian((dDp - (2.60 + 1.10 * lift)) / (1.85 + 0.65 * lift));
   float rimSpec = (keyArc + catchArc + capBoost + fresnelSide)
           * (rimCore * 0.72 + innerRidge * 0.28) * (0.28 + 0.38 * lift)
       + rightFlowArc * rightTideBand * (0.16 + 0.28 * lift);

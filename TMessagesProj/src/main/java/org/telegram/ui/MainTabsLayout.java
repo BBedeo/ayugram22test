@@ -573,32 +573,22 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
         float minTabCenterX = Float.MAX_VALUE;
         float maxTabCenterX = -Float.MAX_VALUE;
-        float leftNeighborX = -Float.MAX_VALUE;
-        float rightNeighborX = Float.MAX_VALUE;
         for (int i = 0, n = getChildCount(); i < n; i++) {
             final View child = getChildAt(i);
             if (child != null && child.getVisibility() == View.VISIBLE) {
                 final float cx = getCenterX(child);
                 if (cx < minTabCenterX) minTabCenterX = cx;
                 if (cx > maxTabCenterX) maxTabCenterX = cx;
-                if (cx <= centerX && cx > leftNeighborX) leftNeighborX = cx;
-                if (cx >= centerX && cx < rightNeighborX) rightNeighborX = cx;
             }
-        }
-        float interTabArch = 0f;
-        if (leftNeighborX > -Float.MAX_VALUE && rightNeighborX < Float.MAX_VALUE
-                && rightNeighborX - leftNeighborX > dp(8)) {
-            final float frac = (centerX - leftNeighborX) / (rightNeighborX - leftNeighborX);
-            interTabArch = (float) Math.sin(Math.PI * Math.max(0f, Math.min(1f, frac)));
         }
 
         final float extension = elasticDragging ? 0f : Math.min(dp(16), travelled * .17f);
-        final float bridgeStretch = elasticDragging ? interTabArch * dp(11.5f) : 0f;
+        final float absDelta = Math.max(0f, Math.abs(elasticSmoothedDelta) - dp(0.35f));
         final float velocityStretch = elasticDragging
-                ? Math.min(dp(16), Math.abs(elasticSmoothedDelta) * 1.45f)
-                : Math.min(dp(6.5f), Math.abs(elasticSmoothedDelta) * .42f);
-        final float targetStretch = Math.min(dp(22), extension + bridgeStretch + velocityStretch);
-        elasticSmoothedStretch += (targetStretch - elasticSmoothedStretch) * (elasticDragging ? .32f : .26f);
+                ? Math.min(dp(14), absDelta * 1.15f)
+                : Math.min(dp(6.5f), absDelta * .42f);
+        final float targetStretch = Math.min(dp(18), extension + velocityStretch);
+        elasticSmoothedStretch += (targetStretch - elasticSmoothedStretch) * (elasticDragging ? .24f : .26f);
         if (Math.abs(elasticSmoothedStretch) < .02f && targetStretch == 0f) {
             elasticSmoothedStretch = 0f;
         }
@@ -608,9 +598,15 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float edgeOverscroll = leftOverscroll + rightOverscroll;
 
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
-        final float pullY = elasticDragging ? elasticPullY : 0f;
-        final float verticalPullSquish = Math.min(dp(5.0f), Math.abs(pullY) * .16f);
-        final float pullShiftY = dp(2.8f) * (float) Math.tanh(pullY / dp(22f));
+        final float rawPullY = elasticDragging ? elasticPullY : 0f;
+        final float deadzonedPullY = Math.signum(rawPullY) * Math.max(0f, Math.abs(rawPullY) - dp(2.5f));
+        elasticSmoothedPullY += (deadzonedPullY - elasticSmoothedPullY) * (elasticDragging ? .22f : .28f);
+        if (Math.abs(elasticSmoothedPullY) < .02f && deadzonedPullY == 0f) {
+            elasticSmoothedPullY = 0f;
+        }
+        final float pullY = elasticSmoothedPullY;
+        final float verticalPullSquish = Math.min(dp(4.2f), Math.abs(pullY) * .14f);
+        final float pullShiftY = dp(2.2f) * (float) Math.tanh(pullY / dp(24f));
         final float glideLift = Math.min(1f, totalStretch / dp(7.0f));
         final float pressSwell = elasticPressValue * dp(7.5f) + glideLift * dp(2.4f);
         final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell + verticalPullSquish * .85f;
@@ -625,17 +621,18 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float cy = getPaddingTop() + availableHeight * .5f + pullShiftY;
 
         final float direction = elasticDragging
-                ? (Math.abs(elasticSmoothedDelta) > .20f ? Math.signum(elasticSmoothedDelta) : 0f)
+                ? Math.max(-1f, Math.min(1f, elasticSmoothedDelta / dp(4.5f)))
                 : (Math.abs(elasticSmoothedDelta) > .25f
                         ? Math.signum(elasticSmoothedDelta)
                         : Math.signum(selectedTabDestinationX - centerX));
-        final float trailingStretch = direction == 0f ? totalStretch * .5f : totalStretch * .82f;
+        final float trailingStretch = direction == 0f ? totalStretch * .5f : totalStretch * .72f;
         final float leadingStretch = totalStretch - trailingStretch;
-        final float leadingPullSquish = elasticDragging && direction != 0f
-                ? (1f - interTabArch * .55f) * Math.min(dp(6.5f), dp(2.2f) + Math.abs(elasticSmoothedDelta) * .55f)
-                : 0f;
-        final float leftStretch = direction < 0f ? (leadingStretch - leadingPullSquish) : trailingStretch;
-        final float rightStretch = direction > 0f ? (leadingStretch - leadingPullSquish) : trailingStretch;
+        final float leftStretch = elasticDragging
+                ? totalStretch * (.5f + .22f * direction)
+                : (direction < 0f ? leadingStretch : trailingStretch);
+        final float rightStretch = elasticDragging
+                ? totalStretch * (.5f - .22f * direction)
+                : (direction > 0f ? leadingStretch : trailingStretch);
 
         // Softly absorb outer edge approach and compress horizontally when pushed against the left/right edges.
         final float edge = dp(0.8f);
@@ -643,8 +640,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float rawRight = centerX + baseWidth * .5f;
         final float leftHeadroom = Math.max(0f, rawLeft - edge);
         final float rightHeadroom = Math.max(0f, (getWidth() - edge) - rawRight);
-        final float dampedLeftStretch = leftStretch >= 0f ? Math.min(leftStretch, leftHeadroom) : leftStretch;
-        final float dampedRightStretch = rightStretch >= 0f ? Math.min(rightStretch, rightHeadroom) : rightStretch;
+        final float dampedLeftStretch = Math.min(leftStretch, leftHeadroom);
+        final float dampedRightStretch = Math.min(rightStretch, rightHeadroom);
         final float leftSquish = leftOverscroll * 1.25f;
         final float rightSquish = rightOverscroll * 1.25f;
         final float clampedLeft = rawLeft < edge
@@ -926,6 +923,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private float elasticJellyValue;
     private float elasticPressValue;
     private float elasticPullY;
+    private float elasticSmoothedPullY;
 
     final SpringAnimation elasticJellyBounce = new SpringAnimation(this, new FloatPropertyCompat<MainTabsLayout>("elasticJellyBounce") {
         @Override
@@ -1247,6 +1245,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticDownX = ev.getX();
             elasticDownY = ev.getY();
             elasticPullY = 0f;
+            elasticSmoothedPullY = 0f;
             elasticDragging = false;
             elasticMenuShownDuringTouch = false;
             elasticReleaseVelocityX = 0f;
@@ -1372,6 +1371,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final boolean wasOnPill = elasticTouchStartedOnPill;
         elasticDragging = false;
         elasticPullY = 0f;
+        elasticSmoothedPullY = 0f;
         elasticTouchStartedOnPill = false;
         elasticMenuShownDuringTouch = false;
         elasticPressScale.animateToFinalPosition(0f);
