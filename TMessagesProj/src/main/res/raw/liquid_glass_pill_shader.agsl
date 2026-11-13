@@ -53,11 +53,12 @@ half4 main(in float2 fragCoord) {
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Symmetric iOS 26 toric meniscus across both ends of the capsule; zero continuous outline.
+  // Symmetric iOS 26 toric meniscus across both ends of the capsule, inset ~1.45dp from outer edge.
   float lensH = clamp((7.0 + 3.0 * lift) * uDp, 5.5, minHalf * 0.62);
-  float rimT = clamp(1.0 + sd / lensH, 0.0, 1.0);
+  float rimT = clamp(1.0 + (sd + 1.45 * uDp) / lensH, 0.0, 1.0);
   float slope = circleMap(rimT);
-  float bevel = mix(slope, rimT * rimT, 0.35);
+  float insetFade = smoothstep(0.25, 1.75, dDp);
+  float bevel = mix(slope, rimT * rimT, 0.35) * (0.45 + 0.55 * insetFade);
   float domeT = clamp(-sd / minHalf, 0.0, 1.0);
 
   float nCos = bevel * (0.48 + 0.38 * lift);
@@ -72,12 +73,12 @@ half4 main(in float2 fragCoord) {
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
   float2 isoRel = clamp(p / minHalf, float2(-2.2), float2(2.2));
 
-  // Symmetric dual-side Snell refraction with right-side meniscus reflow ("прилив справа").
+  // Symmetric dual-side Snell refraction with subtle right-side meniscus reflow ("прилив справа").
   float rightSide = smoothstep(-0.05, 0.90, relCenter.x);
-  float rightWave = sin(relCenter.y * 2.6 - move * 2.2) * rightSide * bevel * uDp * (0.55 + 1.35 * lift);
+  float rightWave = sin(relCenter.y * 2.6 - move * 2.2) * rightSide * bevel * uDp * (0.35 + 0.85 * lift);
   float2 uv = fragCoord + ray.xy * (0.52 * rayDepth * refract_intensity)
       * (0.36 + lift * 0.56);
-  uv += float2(-rightWave, rightWave * 0.35)
+  uv += float2(0.0, rightWave * 0.28)
       - isoRel * (0.022 + lift * 0.065) * t * (0.35 + 0.65 * domeT);
 
   float2 uvMin = center - size + 0.5;
@@ -85,21 +86,22 @@ half4 main(in float2 fragCoord) {
   uv = clamp(uv, uvMin, uvMax);
 
   // Optical prism RGB separation on both opposite curved ends + inset opposite-side reflection.
-  float2 disp = ray.xy * uDp * (1.20 + lift * 2.30) * bevel;
+  float2 disp = ray.xy * uDp * (1.25 + lift * 2.40) * bevel * insetFade;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  float dispMix = clamp((0.38 + 0.48 * lift) * bevel, 0.0, 0.88);
+  float dispMix = clamp((0.40 + 0.50 * lift) * bevel * insetFade, 0.0, 0.88);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
-  float reflectInsetBand = gaussian((dDp - 2.85) / 0.95)
-      * pow(abs(edgeDir.x), 1.65)
-      * smoothstep(0.68, 0.92, abs(relCenter.x));
-  float oppDepthPx = (1.4 + clamp(dDp - 1.8, 0.0, 3.2) * 2.8) * uDp;
+  float reflectInsetBand = gaussian((dDp - 2.65) / 0.88)
+      * pow(abs(edgeDir.x), 1.75)
+      * smoothstep(0.70, 0.92, abs(relCenter.x))
+      * insetFade;
+  float oppDepthPx = (1.6 + clamp(dDp - 1.6, 0.0, 3.2) * 2.6) * uDp;
   float2 mirrorUV = clamp(center + float2(-sign(p.x) * max(0.0, size.x - oppDepthPx), p.y * 0.78), uvMin, uvMax);
   half4 mirrorBackdrop = img.eval(mirrorUV);
-  backdrop.rgb = mix(backdrop.rgb, mirrorBackdrop.rgb, half(reflectInsetBand * (0.14 + 0.16 * lift)));
+  backdrop.rgb = mix(backdrop.rgb, mirrorBackdrop.rgb, half(reflectInsetBand * (0.11 + 0.13 * lift)));
 
   // Crisp optical color vibrancy without adding milky grey plastic wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
