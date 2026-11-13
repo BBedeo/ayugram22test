@@ -126,6 +126,7 @@ public class CommunityCreateActivity extends BaseFragment implements Notificatio
         BlurredBackgroundDrawableViewFactory factory = new BlurredBackgroundDrawableViewFactory(sourceColor);
         actionBar.setBackground(null);
         actionBar.setupGlass(factory, BlurredBackgroundProviderImpl.topPanelChatActivity(resourceProvider));
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
         actionBar.setGlassOnlyBack();
 
         containerView = new FrameLayout(context);

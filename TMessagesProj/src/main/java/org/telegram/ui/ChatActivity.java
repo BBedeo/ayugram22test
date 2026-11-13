@@ -5247,6 +5247,7 @@ public class ChatActivity extends BaseFragment implements
             glassBackgroundDrawableFactory,
             BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
             ChatObject.isForum(currentChat));
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
         app.exteraless.appearance.ChatHeaderUiHelper.applyChatHeaderGlassStyle(actionBar);
         //actionBar.setChatAvatarContainer(avatarContainer);
         //avatarContainer.setActionBar(actionBar);

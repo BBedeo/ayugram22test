@@ -4253,6 +4253,8 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
             .build();
 
         actionBar.setupGlass(iBlur3FactoryLiquidGlass, colorProvider);
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
+        actionBar.setCompactGlassTitlePill(app.exteraless.appearance.LiquidGlassTuning.isActive());
         animatorCurrentVisibleLayout.replace((long) LAYOUT_TYPE_PHOTO, false);
 
         glassEngine.setRoot(containerView);

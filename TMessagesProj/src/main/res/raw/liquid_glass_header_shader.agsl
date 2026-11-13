@@ -54,14 +54,14 @@ half4 main(in float2 fragCoord) {
   float lift = clamp(max(press, abs(move) * 0.72), 0.0, 1.0);
 
   // Single-sign inset iOS 26 toric meniscus (~1.45dp inset, zero edge fold).
-  float lensH = clamp((6.8 + 2.4 * lift) * uDp, 5.0, minHalf * 0.62);
+  float lensH = clamp((7.8 + 2.6 * lift) * uDp, 5.5, minHalf * 0.66);
   float rimT = clamp(1.0 + (sd + 1.45 * uDp) / lensH, 0.0, 1.0);
   float slope = circleMap(rimT);
   float insetFade = smoothstep(0.22, 1.65, dDp);
-  float bevel = mix(slope, rimT * rimT, 0.35) * (0.48 + 0.52 * insetFade);
+  float bevel = mix(slope, rimT * rimT, 0.35) * (0.50 + 0.50 * insetFade);
   float domeT = clamp(-sd / minHalf, 0.0, 1.0);
 
-  float nCos = bevel * (0.48 + 0.30 * lift);
+  float nCos = bevel * (0.56 + 0.30 * lift);
   float nSin = sqrt(max(0.05, 1.0 - nCos * nCos));
   float3 normal = normalize(float3(edgeDir * nCos, nSin));
   float3 ray = refract(float3(0.0, 0.0, -1.0), normal, 1.0 / max(refract_index, 1.05));
@@ -73,21 +73,21 @@ half4 main(in float2 fragCoord) {
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
   float2 isoRel = clamp(p / minHalf, float2(-2.2), float2(2.2));
 
-  // Crisp readable core with vivid perimeter Snell lens refraction.
-  float2 uv = fragCoord + ray.xy * (0.52 * rayDepth * refract_intensity)
-      * (0.72 + lift * 0.34);
-  uv -= isoRel * (0.018 + lift * 0.034) * t * (0.26 + 0.74 * domeT) * (1.0 - 0.35 * bevel);
+  // Crisp readable core with vivid passive & pressed perimeter Snell lens refraction.
+  float2 uv = fragCoord + ray.xy * (0.64 * rayDepth * refract_intensity)
+      * (0.86 + lift * 0.34);
+  uv -= isoRel * (0.028 + lift * 0.042) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.32 * bevel);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
   uv = clamp(uv, uvMin, uvMax);
 
   // Symmetric RGB chromatic dispersion across curved edges + inset opposite-side reflection.
-  float2 disp = ray.xy * uDp * (1.85 + lift * 2.15) * bevel * insetFade;
+  float2 disp = ray.xy * uDp * (2.35 + lift * 2.25) * bevel * insetFade;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  float dispMix = clamp((0.50 + 0.40 * lift) * bevel * insetFade, 0.0, 0.88);
+  float dispMix = clamp((0.62 + 0.34 * lift) * bevel * insetFade, 0.0, 0.92);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
@@ -100,7 +100,7 @@ half4 main(in float2 fragCoord) {
       center + float2(-sign(p.x) * max(0.0, size.x - oppDepthPx), p.y * 0.78),
       uvMin, uvMax);
   half4 sideMirror = img.eval(mirrorSideUV);
-  backdrop.rgb = mix(backdrop.rgb, sideMirror.rgb, half(hReflWeight * (0.16 + 0.14 * lift)));
+  backdrop.rgb = mix(backdrop.rgb, sideMirror.rgb, half(hReflWeight * (0.21 + 0.16 * lift)));
 
   float vReflWeight = gaussian((dDp - 2.35) / 0.95)
       * pow(abs(edgeDir.y), 1.70)
@@ -110,11 +110,11 @@ half4 main(in float2 fragCoord) {
       center + float2(p.x * 0.94, -sign(p.y) * max(0.0, size.y - oppDepthPx)),
       uvMin, uvMax);
   half4 vertMirror = img.eval(mirrorVertUV);
-  backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.14 + 0.12 * lift)));
+  backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.18 + 0.14 * lift)));
 
   // Vibrant optical saturation without muddy matte wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
-  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.24 + 0.16 * lift)), half3(0.0), half3(1.0));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.28 + 0.16 * lift)), half3(0.0), half3(1.0));
 
   float bgLumaF = float(luma);
   float fgAlpha = clamp(float(foreground_color_premultiplied.a), 0.001, 1.0);
@@ -146,20 +146,20 @@ half4 main(in float2 fragCoord) {
   // Keep diagonal corner glints balanced between circular buttons and wide pills without lighting
   // horizontal straight edges or wrapping dark surfaces in an artificial 360deg white wireframe.
   float pillWeight = smoothstep(0.18, 0.95, max(0.0, (size.x - size.y) / max(size.y, 1.0)));
-  float keyPow = mix(3.4, 3.0, pillWeight);
-  float catchPow = mix(3.4, 3.0, pillWeight);
-  float keyArc = pow(max(rawDot, 0.0), keyPow) * 0.72;
-  float catchArc = pow(max(-rawDot, 0.0), catchPow) * 0.56;
-  float offDiagTopRight = pow(max(perpDot, 0.0), 4.6) * (0.28 * pillWeight);
-  float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.6) * (0.20 * pillWeight);
-  float capBoost = pow(abs(edgeDir.x), 3.6) * (0.08 + 0.14 * lift) * (1.0 - 0.35 * pillWeight);
-  float rimCore = gaussian((dDp - 1.55) / 1.45);
-  float innerRidge = gaussian((dDp - 3.35) / 2.25);
-  float darkGlintScale = mix(0.85, 0.58, darkCrystalTint);
+  float keyPow = mix(3.2, 2.9, pillWeight);
+  float catchPow = mix(3.2, 2.9, pillWeight);
+  float keyArc = pow(max(rawDot, 0.0), keyPow) * 0.82;
+  float catchArc = pow(max(-rawDot, 0.0), catchPow) * 0.64;
+  float offDiagTopRight = pow(max(perpDot, 0.0), 4.4) * (0.34 * pillWeight);
+  float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.4) * (0.24 * pillWeight);
+  float capBoost = pow(abs(edgeDir.x), 3.4) * (0.12 + 0.16 * lift) * (1.0 - 0.35 * pillWeight);
+  float rimCore = gaussian((dDp - 1.50) / 1.40);
+  float innerRidge = gaussian((dDp - 3.35) / 2.20);
+  float darkGlintScale = mix(0.92, 0.74, darkCrystalTint);
   float rimSpec = (keyArc + catchArc + offDiagTopRight + offDiagBotLeft + capBoost)
-      * (rimCore * 0.68 + innerRidge * 0.32) * (0.16 + 0.28 * lift) * darkGlintScale;
+      * (rimCore * 0.70 + innerRidge * 0.30) * (0.34 + 0.32 * lift) * darkGlintScale;
 
-  float highlightStrength = clamp(glass_highlight, 0.25, 1.0);
+  float highlightStrength = clamp(glass_highlight, 0.06, 1.35);
   if (glass_adaptive > 0.5) {
     highlightStrength *= clamp(1.18 - bgLumaF * 0.26, 0.82, 1.18);
   }

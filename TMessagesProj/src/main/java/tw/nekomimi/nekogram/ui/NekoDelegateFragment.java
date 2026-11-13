@@ -165,7 +165,8 @@ public abstract class NekoDelegateFragment extends BaseFragment implements Notif
         wallpaperDrawableFactory.setSourceRootView(viewPositionWatcher, container);
         BlurredBackgroundDrawableViewFactory actionBarDrawableFactory = wallpaperDrawableFactory;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SharedConfig.chatBlurEnabled()) {
-            boolean liquidGlassEnabled = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS);
+            boolean liquidGlassEnabled = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS)
+                    || app.exteraless.appearance.LiquidGlassTuning.isActive();
             GlassSourceRenderNode contentGlassSource = new GlassSourceRenderNode(source);
             DownscaleScrollableNoiseSuppressor contentGlassNoiseSuppressor = new DownscaleScrollableNoiseSuppressor();
             contentGlassSource.setUnderSource(source);
@@ -179,6 +180,7 @@ public abstract class NekoDelegateFragment extends BaseFragment implements Notif
         actionBar.setCastShadows(false);
         actionBar.setOccupyStatusBar(!AndroidUtilities.isTablet());
         actionBar.setupGlass(actionBarDrawableFactory, BlurredBackgroundProviderImpl.topPanelChatActivity(getResourceProvider()));
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
         AndroidUtilities.removeFromParent(actionBar);
         ChatActivityFadeView fadeView = new ChatActivityFadeView(container.getContext());
         fadeView.setup(wallpaperDrawableFactory);

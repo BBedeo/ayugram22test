@@ -97,6 +97,7 @@ public class AppIconsActivity extends BaseFragment {
         glassSource.setColor(topColor());
         actionBar.setupGlass(new BlurredBackgroundDrawableViewFactory(glassSource),
                 BlurredBackgroundProviderImpl.topPanelChatActivity(getResourceProvider()));
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
         actionBar.setGlassOnlyBack();
 
         heroView = new AppIconHeroView(context, getResourceProvider());

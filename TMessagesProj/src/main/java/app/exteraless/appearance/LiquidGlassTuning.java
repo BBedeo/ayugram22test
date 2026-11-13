@@ -41,9 +41,38 @@ public final class LiquidGlassTuning {
         return Math.max(3, Math.min(24, AppearanceConfig.liquidGlassThickness.Int()));
     }
 
+    /** Floating header pills need deeper bevel profiles than flat list chrome. */
+    public static int thicknessDp(boolean headerLens) {
+        final int base = thicknessDp();
+        if (!headerLens) {
+            return base;
+        }
+        final int bonus;
+        switch (AppearanceConfig.liquidGlassMaterial()) {
+            case 0: bonus = 2; break;
+            case 2: bonus = 6; break;
+            default: bonus = 4; break;
+        }
+        return Math.min(24, base + bonus);
+    }
+
     public static float shine() {
         if (!isActive()) return 0f;
         return clamp(AppearanceConfig.liquidGlassHighlight.Int() / 100f, 0f, 1f);
+    }
+
+    /** Stronger passive rim specular for floating header pills, scaling with material and Highlight. */
+    public static float headerShine() {
+        if (!isActive()) return 0.72f;
+        final float h = shine();
+        if (h <= 0.001f) return 0f;
+        final float presetBias;
+        switch (AppearanceConfig.liquidGlassMaterial()) {
+            case 0: presetBias = 0.08f; break;
+            case 2: presetBias = 0.28f; break;
+            default: presetBias = 0.18f; break;
+        }
+        return clamp(h * (0.95f + presetBias) + presetBias * 0.65f, 0f, 1.25f);
     }
 
     public static float lightAngleRadians() {
@@ -126,6 +155,18 @@ public final class LiquidGlassTuning {
         return tuneTransparency(base, dark ? .24f : .20f);
     }
 
+    /** Crystal-clear floating header pill tint scaled by material and Transparency slider. */
+    public static float tintAlphaHeader(boolean dark, float original) {
+        if (!isActive()) return original;
+        final float base;
+        switch (AppearanceConfig.liquidGlassMaterial()) {
+            case 0: base = dark ? .09f : .18f; break;
+            case 2: base = dark ? .20f : .34f; break;
+            default: base = dark ? .14f : .26f; break;
+        }
+        return tuneTransparency(base, dark ? .06f : .14f);
+    }
+
     /** Text-heavy floating surfaces need more opacity than navigation chrome. */
     public static float tintAlphaMenu(boolean dark, float original) {
         if (!isActive()) return original;
@@ -154,5 +195,19 @@ public final class LiquidGlassTuning {
             default: preset = 1f; break;
         }
         return clamp(preset * AppearanceConfig.liquidGlassStrength.Int() / 75f, 0f, 2.2f);
+    }
+
+    /** Boosted Snell lens multiplier for compact floating header pills so settings are distinct. */
+    public static float headerRefractionScale() {
+        if (!isActive()) return 1.0f;
+        final float preset;
+        switch (AppearanceConfig.liquidGlassMaterial()) {
+            case 0: preset = 1.25f; break;
+            case 2: preset = 2.25f; break;
+            default: preset = 1.72f; break;
+        }
+        final float s = AppearanceConfig.liquidGlassStrength.Int() / 75f;
+        final float curved = s <= 1f ? s : (1f + (s - 1f) * 1.45f);
+        return clamp(preset * curved, 0f, 3.6f);
     }
 }

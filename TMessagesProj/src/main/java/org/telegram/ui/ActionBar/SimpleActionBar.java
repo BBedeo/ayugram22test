@@ -59,6 +59,10 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     private static final int ANIMATOR_SEARCH = 0;
     private static final int ANIMATOR_ACTION_MODE = 1;
     private static final int ANIMATOR_SEARCH_CLEAR = 2;
+    private static final int ANIMATOR_BACK_PRESSED = 3;
+    private static final int ANIMATOR_MENU_PRESSED = 4;
+    private static final int ANIMATOR_DONE_PRESSED = 5;
+    private static final int ANIMATOR_TITLE_PRESSED = 6;
 
     final Theme.ResourcesProvider resourcesProvider;
 
@@ -84,7 +88,16 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     private BlurredBackgroundDrawable glassBack;
     private BlurredBackgroundDrawable glassMenu;
     private BlurredBackgroundDrawable glassDone;
+    private BlurredBackgroundDrawable glassTitle;
+    private boolean drawGlassTitle = true;
     private float glassMenuRadius = -1;
+    private final RectF titlePillRect = new RectF();
+    private final RectF glassBackRect = new RectF();
+    private final RectF glassDoneRect = new RectF();
+    private boolean backPressActive;
+    private boolean menuPressActive;
+    private boolean donePressActive;
+    private boolean titlePressActive;
     private BlurredBackgroundDrawableViewFactory glassFactory;
     private BlurredBackgroundColorProvider glassColorProvider;
     /** The glass of the buttons over a colored header (a profile); the menus stay on {@link #glassColorProvider}. */
@@ -101,6 +114,10 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     private final BoolAnimator searchAnimator = new BoolAnimator(ANIMATOR_SEARCH, this, CubicBezierInterpolator.EASE_OUT_QUINT, DURATION);
     private final BoolAnimator actionModeAnimator = new BoolAnimator(ANIMATOR_ACTION_MODE, this, CubicBezierInterpolator.EASE_OUT_QUINT, DURATION);
     private final BoolAnimator searchClearAnimator = new BoolAnimator(ANIMATOR_SEARCH_CLEAR, this, CubicBezierInterpolator.EASE_OUT_QUINT, 250);
+    private final BoolAnimator backPressAnimator = new BoolAnimator(ANIMATOR_BACK_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
+    private final BoolAnimator menuPressAnimator = new BoolAnimator(ANIMATOR_MENU_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
+    private final BoolAnimator donePressAnimator = new BoolAnimator(ANIMATOR_DONE_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
+    private final BoolAnimator titlePressAnimator = new BoolAnimator(ANIMATOR_TITLE_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
 
     private ActionBar.ActionBarMenuOnItemClick actionBarMenuOnItemClick;
 
@@ -152,8 +169,16 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         glassBack = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
         glassMenu = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
         glassDone = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
+        glassTitle = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
         glassMenuRadius = dp(23);
         invalidate();
+    }
+
+    public void setDrawGlassTitle(boolean draw) {
+        if (drawGlassTitle != draw) {
+            drawGlassTitle = draw;
+            invalidate();
+        }
     }
 
     /**
@@ -178,6 +203,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             glassBack.setColorProvider(colors);
             glassMenu.setColorProvider(colors);
             glassDone.setColorProvider(colors);
+            if (glassTitle != null) {
+                glassTitle.setColorProvider(colors);
+            }
         }
         invalidate();
     }
@@ -187,6 +215,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             glassBack.updateColors();
             glassMenu.updateColors();
             glassDone.updateColors();
+            if (glassTitle != null) {
+                glassTitle.updateColors();
+            }
         }
         invalidate();
         if (openMenuOverlay != null) {
@@ -330,26 +361,75 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         return false;
     }
 
+    private static boolean containsExpanded(RectF rect, float x, float y, float slop) {
+        return !rect.isEmpty()
+                && x >= rect.left - slop && x <= rect.right + slop
+                && y >= rect.top - slop && y <= rect.bottom + slop;
+    }
+
+    private void clearGlassPress() {
+        backPressActive = false;
+        menuPressActive = false;
+        donePressActive = false;
+        titlePressActive = false;
+        backPressAnimator.setValue(false, true);
+        menuPressAnimator.setValue(false, true);
+        donePressAnimator.setValue(false, true);
+        titlePressAnimator.setValue(false, true);
+    }
+
     @Override
     protected void dispatchDraw(@NonNull Canvas canvas) {
         animationsAllowed = attached;
 
         final int p = dp(6);
+        final boolean motionEnabled = app.exteraless.appearance.LiquidGlassTuning.motionEnabled();
 
         if (glassBack != null && backButton.getVisibility() == VISIBLE && backButton.getAlpha() > 0) {
             final float cx = backButton.getX() + backButton.getWidth() / 2f, cy = backButton.getY() + backButton.getHeight() / 2f;
             final float hw = backButton.getWidth() / 2f * backButton.getScaleX(), hh = backButton.getHeight() / 2f * backButton.getScaleY();
-            glassBack.setBounds((int) (cx - hw) - p, (int) (cy - hh) - p, (int) (cx + hw) + p, (int) (cy + hh) + p);
+            glassBackRect.set(cx - hw, cy - hh, cx + hw, cy + hh);
+            final float press = motionEnabled ? backPressAnimator.getFloatValue() : 0f;
+            final float swell = dp(2.4f) * press;
+            glassBack.setBounds((int) (glassBackRect.left - swell) - p, (int) (glassBackRect.top - swell) - p,
+                    (int) (glassBackRect.right + swell) + p, (int) (glassBackRect.bottom + swell) + p);
+            glassBack.setElasticPressProgress(press * 0.88f);
             glassBack.setAlpha((int) (255 * backButton.getAlpha()));
             glassBack.draw(canvas);
+        } else {
+            glassBackRect.setEmpty();
         }
 
         if (glassDone != null && doneButton != null && doneButton.drawsGlass() && doneButton.getVisibility() == VISIBLE && doneButton.getAlpha() > 0) {
             final float cx = doneButton.getX() + doneButton.getWidth() / 2f, cy = doneButton.getY() + doneButton.getHeight() / 2f;
             final float hw = doneButton.getWidth() / 2f * doneButton.getScaleX(), hh = doneButton.getHeight() / 2f * doneButton.getScaleY();
-            glassDone.setBounds((int) (cx - hw) - p, (int) (cy - hh) - p, (int) (cx + hw) + p, (int) (cy + hh) + p);
+            glassDoneRect.set(cx - hw, cy - hh, cx + hw, cy + hh);
+            final float press = motionEnabled ? donePressAnimator.getFloatValue() : 0f;
+            final float swell = dp(2.4f) * press;
+            glassDone.setBounds((int) (glassDoneRect.left - swell) - p, (int) (glassDoneRect.top - swell) - p,
+                    (int) (glassDoneRect.right + swell) + p, (int) (glassDoneRect.bottom + swell) + p);
+            glassDone.setElasticPressProgress(press * 0.88f);
             glassDone.setAlpha((int) (255 * doneButton.getAlpha()));
             glassDone.draw(canvas);
+        } else {
+            glassDoneRect.setEmpty();
+        }
+
+        if (glassTitle != null) {
+            final float titleAlpha = computeTitlePill(titlePillRect);
+            if (titleAlpha > 0 && !titlePillRect.isEmpty()) {
+                final float radius = Math.min(dp(23), titlePillRect.height() / 2f);
+                glassTitle.setRadius(radius);
+                final float press = motionEnabled ? titlePressAnimator.getFloatValue() : 0f;
+                final float swell = dp(2.2f) * press;
+                glassTitle.setBounds((int) (titlePillRect.left - swell) - p, (int) (titlePillRect.top - swell) - p,
+                        (int) (titlePillRect.right + swell) + p, (int) (titlePillRect.bottom + swell) + p);
+                glassTitle.setElasticPressProgress(press * 0.85f);
+                glassTitle.setAlpha((int) (255 * titleAlpha));
+                glassTitle.draw(canvas);
+            }
+        } else {
+            titlePillRect.setEmpty();
         }
 
         if (glassMenu != null) {
@@ -362,13 +442,117 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
                     glassMenuRadius = radius;
                     glassMenu.setRadius(radius);
                 }
-                glassMenu.setBounds((int) menuPillRect.left - p, (int) menuPillRect.top - p, (int) menuPillRect.right + p, (int) menuPillRect.bottom + p);
+                final float press = motionEnabled ? menuPressAnimator.getFloatValue() : 0f;
+                final float swell = dp(2.4f) * press;
+                glassMenu.setBounds((int) (menuPillRect.left - swell) - p, (int) (menuPillRect.top - swell) - p,
+                        (int) (menuPillRect.right + swell) + p, (int) (menuPillRect.bottom + swell) + p);
+                glassMenu.setElasticPressProgress(press * 0.88f);
                 glassMenu.setAlpha((int) (255 * alpha));
                 glassMenu.draw(canvas);
             }
         }
 
         super.dispatchDraw(canvas);
+    }
+
+    private float computeTitlePill(RectF rect) {
+        if (!drawGlassTitle) {
+            rect.setEmpty();
+            return 0f;
+        }
+        final float s = getSearchFactor();
+        final float a = getActionModeFactor();
+        final float baseAlpha = (1f - s) * (1f - a) * titlesAlpha;
+        if (baseAlpha <= 0.01f || titleLayout.getVisibility() != VISIBLE || titleLayout.getAlpha() <= 0.01f) {
+            rect.setEmpty();
+            return 0f;
+        }
+
+        final SimpleTextView tv0 = titleLayout.titleViews[0];
+        final SimpleTextView tv1 = titleLayout.titleViews[1];
+        final float a0 = (tv0 != null && tv0.getVisibility() == VISIBLE && !TextUtils.isEmpty(tv0.getText())) ? tv0.getAlpha() : 0f;
+        final float a1 = (tv1 != null && tv1.getVisibility() == VISIBLE && !TextUtils.isEmpty(tv1.getText())) ? tv1.getAlpha() : 0f;
+        final float titleAlphaSum = a0 + a1;
+        if (titleAlphaSum <= 0.01f) {
+            rect.setEmpty();
+            return 0f;
+        }
+
+        final SimpleTextView primaryTv = (a0 >= a1 && tv0 != null && a0 > 0f) ? tv0 : tv1;
+        final float w0 = a0 > 0f ? Math.max(tv0.getTextWidth(), tv0.getFullContentWidth()) : 0f;
+        final float w1 = a1 > 0f ? Math.max(tv1.getTextWidth(), tv1.getFullContentWidth()) : 0f;
+        float contentWidth = (w0 * a0 + w1 * a1) / Math.max(titleAlphaSum, 0.01f);
+
+        final SimpleTextView sub = titleLayout.subtitleView;
+        if (sub != null && sub.getVisibility() == VISIBLE && sub.getAlpha() > 0.05f && !TextUtils.isEmpty(sub.getText())) {
+            contentWidth = Math.max(contentWidth, Math.max(sub.getTextWidth(), sub.getFullContentWidth()));
+        }
+        final SimpleTextView subOut = titleLayout.subtitleOutView;
+        if (subOut != null && subOut.getVisibility() == VISIBLE && subOut.getAlpha() > 0.05f && !TextUtils.isEmpty(subOut.getText())) {
+            contentWidth = Math.max(contentWidth, Math.max(subOut.getTextWidth(), subOut.getFullContentWidth()));
+        }
+        if (contentWidth <= 0f) {
+            rect.setEmpty();
+            return 0f;
+        }
+
+        final int width = getWidth();
+        if (width <= 0) {
+            rect.setEmpty();
+            return 0f;
+        }
+        final float gap = dp(6);
+        float safeLeft = gap;
+        if (backButton.getVisibility() == VISIBLE && backButton.getAlpha() > 0.05f) {
+            safeLeft = Math.max(safeLeft, backButton.getX() + backButton.getWidth() * backButton.getScaleX() + gap);
+        }
+        float safeRight = width - gap;
+        if (doneButton != null && doneButton.getVisibility() == VISIBLE && doneButton.getAlpha() > 0.05f) {
+            safeRight = Math.min(safeRight, doneButton.getX() - gap);
+        }
+        if (glassMenu != null && computeMenuPill(menuPillRect) > 0.05f && menuPillRect.width() > 0f) {
+            safeRight = Math.min(safeRight, menuPillRect.left - gap);
+        }
+        for (int i = 0, N = getChildCount(); i < N; i++) {
+            final View child = getChildAt(i);
+            if (!isOwnChild(child) && child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f) {
+                final float cLeft = child.getX();
+                final float cRight = cLeft + child.getWidth() * child.getScaleX();
+                if (cLeft + child.getWidth() * 0.5f > width * 0.5f) {
+                    safeRight = Math.min(safeRight, cLeft - gap);
+                } else {
+                    safeLeft = Math.max(safeLeft, cRight + gap);
+                }
+            }
+        }
+        if (safeRight <= safeLeft + dp(24)) {
+            rect.setEmpty();
+            return 0f;
+        }
+
+        final float minPillWidth = dp(46);
+        final float hPad = dp(18);
+        final float maxAllowed = Math.max(minPillWidth, safeRight - safeLeft);
+        final float pillWidth = Math.min(maxAllowed, Math.max(minPillWidth, contentWidth + hPad * 2f));
+        final float centerX = titleLayout.getLeft() + titleLayout.getTranslationX()
+                + primaryTv.getLeft() + primaryTv.getWidth() * 0.5f + primaryTv.getTranslationX();
+        float pillLeft = Math.round(centerX - pillWidth * 0.5f);
+        if (pillLeft + pillWidth > safeRight) {
+            pillLeft = safeRight - pillWidth;
+        }
+        if (pillLeft < safeLeft) {
+            pillLeft = safeLeft;
+        }
+        final float pillRight = Math.min(safeRight, pillLeft + pillWidth);
+
+        final float cy = getRowTop() + ActionBar.getCurrentActionBarHeight() * 0.5f;
+        final float half = dp(23);
+        final float scale = Math.max(0.5f, titleLayout.getScaleX());
+        final float cx = (pillLeft + pillRight) * 0.5f;
+        final float hw = (pillRight - pillLeft) * 0.5f * scale;
+        final float hh = half * scale;
+        rect.set(cx - hw, cy - hh, cx + hw, cy + hh);
+        return Math.min(1f, baseAlpha * Math.min(1f, titleAlphaSum));
     }
 
     private final RectF menuPillRect = new RectF();
@@ -433,10 +617,51 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         if (child == menu && isMenuPillInOverlay()) {
             return false; // the overlay draws the buttons inside the menu growing out of their pill
         }
+        float pressScale = 1f;
+        float pivotX = 0f;
+        float pivotY = 0f;
+        if (app.exteraless.appearance.LiquidGlassTuning.motionEnabled()) {
+            if (child == backButton) {
+                final float f = backPressAnimator.getFloatValue();
+                if (f > 0.001f) {
+                    pressScale = 1f + 0.045f * f;
+                    pivotX = child.getX() + child.getWidth() * 0.5f;
+                    pivotY = child.getY() + child.getHeight() * 0.5f;
+                }
+            } else if (child == doneButton) {
+                final float f = donePressAnimator.getFloatValue();
+                if (f > 0.001f) {
+                    pressScale = 1f + 0.045f * f;
+                    pivotX = child.getX() + child.getWidth() * 0.5f;
+                    pivotY = child.getY() + child.getHeight() * 0.5f;
+                }
+            } else if (child == menu && !menuPillRect.isEmpty()) {
+                final float f = menuPressAnimator.getFloatValue();
+                if (f > 0.001f) {
+                    pressScale = 1f + 0.032f * f;
+                    pivotX = menuPillRect.centerX();
+                    pivotY = menuPillRect.centerY();
+                }
+            } else if (child == titleLayout && !titlePillRect.isEmpty()) {
+                final float f = titlePressAnimator.getFloatValue();
+                if (f > 0.001f) {
+                    pressScale = 1f + 0.028f * f;
+                    pivotX = titlePillRect.centerX();
+                    pivotY = titlePillRect.centerY();
+                }
+            }
+        }
         if (child == searchLayout && getSearchFactor() < 1f) {
             computeMenuPill(menuPillRect);
             canvas.save();
             canvas.clipRect(menuPillRect);
+            final boolean result = super.drawChild(canvas, child, drawingTime);
+            canvas.restore();
+            return result;
+        }
+        if (pressScale > 1.0005f) {
+            canvas.save();
+            canvas.scale(pressScale, pressScale, pivotX, pivotY);
             final boolean result = super.drawChild(canvas, child, drawingTime);
             canvas.restore();
             return result;
@@ -580,6 +805,65 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         forceSkipTouches = value;
     }
 
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        final boolean motion = app.exteraless.appearance.LiquidGlassTuning.motionEnabled();
+        final int action = ev.getActionMasked();
+        if (!motion) {
+            if (backPressActive || menuPressActive || donePressActive || titlePressActive) {
+                clearGlassPress();
+            }
+        } else if (action == MotionEvent.ACTION_DOWN) {
+            final float x = ev.getX();
+            final float y = ev.getY();
+            final float touchPad = dp(4);
+            if (glassBackRect.isEmpty() && backButton.getVisibility() == VISIBLE && backButton.getWidth() > 0) {
+                glassBackRect.set(backButton.getX(), backButton.getY(),
+                        backButton.getX() + backButton.getWidth(), backButton.getY() + backButton.getHeight());
+            }
+            if (glassTitle != null && titlePillRect.isEmpty()) {
+                computeTitlePill(titlePillRect);
+            }
+            backPressActive = glassBack != null && backButton.getVisibility() == VISIBLE && backButton.getAlpha() > 0.05f
+                    && containsExpanded(glassBackRect, x, y, touchPad);
+            menuPressActive = glassMenu != null && !isMenuPillInOverlay() && !menuPillRect.isEmpty()
+                    && containsExpanded(menuPillRect, x, y, touchPad);
+            donePressActive = glassDone != null && doneButton != null && doneButton.drawsGlass()
+                    && doneButton.getVisibility() == VISIBLE && doneButton.getAlpha() > 0.05f
+                    && containsExpanded(glassDoneRect, x, y, touchPad);
+            titlePressActive = !backPressActive && !menuPressActive && !donePressActive
+                    && glassTitle != null && !titlePillRect.isEmpty()
+                    && containsExpanded(titlePillRect, x, y, touchPad);
+            backPressAnimator.setValue(backPressActive, true);
+            menuPressAnimator.setValue(menuPressActive, true);
+            donePressAnimator.setValue(donePressActive, true);
+            titlePressAnimator.setValue(titlePressActive, true);
+        } else if (action == MotionEvent.ACTION_MOVE) {
+            final float x = ev.getX();
+            final float y = ev.getY();
+            final float moveSlop = dp(10);
+            if (backPressActive && !containsExpanded(glassBackRect, x, y, moveSlop)) {
+                backPressActive = false;
+                backPressAnimator.setValue(false, true);
+            }
+            if (menuPressActive && (isMenuPillInOverlay() || !containsExpanded(menuPillRect, x, y, moveSlop))) {
+                menuPressActive = false;
+                menuPressAnimator.setValue(false, true);
+            }
+            if (donePressActive && !containsExpanded(glassDoneRect, x, y, moveSlop)) {
+                donePressActive = false;
+                donePressAnimator.setValue(false, true);
+            }
+            if (titlePressActive && !containsExpanded(titlePillRect, x, y, moveSlop)) {
+                titlePressActive = false;
+                titlePressAnimator.setValue(false, true);
+            }
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            clearGlassPress();
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -630,6 +914,12 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         }
         if (glassMenu != null) {
             glassMenu.updateColors();
+        }
+        if (glassDone != null) {
+            glassDone.updateColors();
+        }
+        if (glassTitle != null) {
+            glassTitle.updateColors();
         }
         invalidate();
     }
@@ -1279,6 +1569,10 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
                 searchClearButton.setScaleY(0.5f + 0.5f * factor);
                 searchClearButton.setVisibility(factor > 0 ? VISIBLE : INVISIBLE);
             }
+            return;
+        }
+        if (id == ANIMATOR_BACK_PRESSED || id == ANIMATOR_MENU_PRESSED || id == ANIMATOR_DONE_PRESSED || id == ANIMATOR_TITLE_PRESSED) {
+            invalidate();
             return;
         }
         applyFactors();

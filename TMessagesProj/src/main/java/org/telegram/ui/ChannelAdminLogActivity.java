@@ -1154,6 +1154,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         contentView.setOccupyStatusBar(!AndroidUtilities.isTablet());
         contentView.setBackgroundImage(Theme.getCachedWallpaper(), Theme.isWallpaperMotion());
         actionBar.setupGlass(glassBackgroundDrawableFactory, BlurredBackgroundProviderImpl.topPanelChatActivity(resourceProvider));
+        actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
         app.exteraless.appearance.ChatHeaderUiHelper.applyChatHeaderGlassStyle(actionBar);
         emptyViewContainer = new FrameLayout(context);
         emptyViewContainer.setVisibility(View.INVISIBLE);

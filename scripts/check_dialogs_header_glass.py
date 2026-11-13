@@ -66,11 +66,13 @@ def balanced_delimiters(source: str) -> bool:
     return not stack and not in_string and not in_char and not in_block_comment
 
 
+tuning = read(JAVA / "app/exteraless/appearance/LiquidGlassTuning.java")
 header_shader = read(RAW / "liquid_glass_header_shader.agsl")
 effect = read(JAVA / "org/telegram/ui/Components/blur3/LiquidGlassEffect.java")
 drawable = read(JAVA / "org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java")
 provider = read(JAVA / "org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java")
 action_bar = read(JAVA / "org/telegram/ui/ActionBar/ActionBar.java")
+simple_action_bar = read(JAVA / "org/telegram/ui/ActionBar/SimpleActionBar.java")
 simple_text = read(JAVA / "org/telegram/ui/ActionBar/SimpleTextView.java")
 menu_overlay = read(JAVA / "org/telegram/ui/ActionBar/SimpleActionBarMenuOverlay.java")
 item_options = read(JAVA / "org/telegram/ui/Components/ItemOptions.java")
@@ -94,9 +96,9 @@ REQUIRED_UNIFORMS = [
 ]
 
 checks = {
-    "Balanced braces, parens, and quotes across all 10 touched files": all(
+    "Balanced braces, parens, and quotes across all 12 touched files": all(
         balanced_delimiters(src)
-        for src in (header_shader, effect, drawable, provider, action_bar, simple_text, menu_overlay, item_options, search_field, dialogs)
+        for src in (tuning, header_shader, effect, drawable, provider, action_bar, simple_action_bar, simple_text, menu_overlay, item_options, search_field, dialogs)
     ),
     "Header Liquid Glass AGSL shader declares all runtime uniforms and crystal refraction with wide-pill glint compensation and no milky dome wash": (
         all(u in header_shader for u in REQUIRED_UNIFORMS)
@@ -118,17 +120,27 @@ checks = {
         and "R.raw.liquid_glass_pill_shader" in effect
         and "R.raw.liquid_glass_shader" in effect
     ),
-    "BlurredBackgroundDrawable wires headerGlassLens with fallback rim protection": (
+    "BlurredBackgroundDrawable wires headerGlassLens with setting-driven optics and fallback rim protection": (
         "public BlurredBackgroundDrawable setHeaderGlassLens(boolean enabled)" in drawable
         and "new LiquidGlassEffect(renderNodeFill, false, true)" in drawable
         and "if (!(elasticPillLens || headerGlassLens) || !isLiquidGlassEffectEnabled())" in drawable
         and "headerGlassLens ? 0.40f : 0.20f" in drawable
+        and "LiquidGlassTuning.thicknessDp(headerGlassLens)" in drawable
+        and "LiquidGlassTuning.headerRefractionScale()" in drawable
+        and "LiquidGlassTuning.headerShine()" in drawable
         and "LiquidGlassTuning.sanitizeRimStroke" in drawable
+    ),
+    "LiquidGlassTuning exposes setting-scaled crystal header optics (tintAlphaHeader, thicknessDp, headerShine, headerRefractionScale)": (
+        "public static float tintAlphaHeader(boolean dark, float original)" in tuning
+        and "public static int thicknessDp(boolean headerLens)" in tuning
+        and "public static float headerShine()" in tuning
+        and "public static float headerRefractionScale()" in tuning
     ),
     "BlurredBackgroundProviderImpl uses clear crystal dialogsHeaderGlass (no matte solveSrcColor milk) and outline-free dark dialogsMenuGlass": (
         "public static BlurredBackgroundProvider dialogsHeaderGlass(Theme.ResourcesProvider resourcesProvider)" in provider
         and "public static BlurredBackgroundProvider dialogsMenuGlass(Theme.ResourcesProvider resourcesProvider)" in provider
         and "if (!checkBlurEnabled(r))" in provider
+        and "LiquidGlassTuning.tintAlphaHeader(" in provider
         and "ColorUtils.setAlphaComponent(crystalTarget, a)" in provider
         and "liftedTarget" not in provider
         and "0x18FFFFFF" not in provider
@@ -140,18 +152,22 @@ checks = {
         and "leftDrawable.getIntrinsicWidth()" in simple_text
         and "rightDrawable.getIntrinsicWidth()" in simple_text
     ),
-    "FragmentSearchField preserves blurred background visibility and animates optical press feedback": (
+    "FragmentSearchField preserves blurred background visibility, enables active header lens, and animates tactile press swell": (
         "private float blurredBackgroundVisibility;" in search_field
         and "applyBlurredBackgroundVisibility();" in search_field
+        and "drawable.setHeaderGlassLens(true);" in search_field
         and "ANIMATOR_ID_GLASS_PRESSED" in search_field
         and "blurredBackgroundDrawable.setElasticPressProgress" in search_field
     ),
-    "ActionBar supports compact title pill, menu glass color provider crossfade, and tactile press optics": (
+    "ActionBar supports compact title pill, menu glass color provider crossfade, and tactile press optics across back, title, and menu pills": (
         "public void setHeaderGlassLens(boolean enabled)" in action_bar
         and "public void setCompactGlassTitlePill(boolean enabled)" in action_bar
         and "public void setMenuGlassColorProvider(" in action_bar
         and "animatorBackGlassPressed" in action_bar
         and "animatorMenuGlassPressed" in action_bar
+        and "animatorTitleGlassPressed" in action_bar
+        and "glassTitleRestRect" in action_bar
+        and "canvas.scale(pressScale, pressScale" in action_bar
         and "private void drawCompactTitleGlassPill(" in action_bar
         and "backButtonImageView.setTranslationX(dp(2));" in action_bar
         and "(chatAvatarContainer != null || compactGlassTitlePill) && !actionModeVisible && !isSearchFieldVisible" in action_bar
