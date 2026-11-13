@@ -37,34 +37,32 @@ half4 main(in float2 fragCoord) {
   float minHalf = max(min(size.x, size.y), 4.0);
   float uDp = max(minHalf / 24.0, 1.0);
   float dDp = -sd / uDp;
-  float t = clamp(thickness, 4.0, minHalf * 0.90);
   float press = clamp(glass_press, 0.0, 1.0);
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // DP-normalized WWDC25 magnifying loupe + wide circular meniscus shoulder across icons & words.
-  float lensH = clamp(max(t, minHalf * 0.90), 6.0, minHalf * 0.96);
+  // Confine meniscus bevel strictly to the outer capsule rim; dampen vertical edge displacement
+  // so top/bottom walls never smear tab icons or text vertically into stripes.
+  float lensH = clamp((5.8 + 2.4 * lift) * uDp, 5.0, minHalf * 0.48);
   float lensDepth = clamp(-sd / minHalf, 0.0, 1.0);
   float rimT = clamp(1.0 + sd / lensH, 0.0, 1.0);
   float slope = circleMap(rimT);
-  float bevel = mix(pow(max(rimT, 0.0001), 1.32), slope, 0.52);
+  float bevel = mix(slope, rimT * rimT, 0.32);
 
-  float magFactor = (0.055 + lift * 0.225) * (0.35 + 0.65 * lensDepth);
-  float2 capCompress = float2(-p.x * (0.06 + 0.16 * lift), p.y * (0.04 + 0.12 * lift))
-      * abs(edgeDir.x) * bevel;
+  float2 anisoEdge = float2(edgeDir.x, edgeDir.y * 0.22);
+  float magFactor = (0.010 + lift * 0.078) * (0.40 + 0.60 * lensDepth);
   float2 refractOffset = -p * magFactor
-      - edgeDir * bevel * minHalf * (0.24 + lift * 0.60)
-      + capCompress
-      + float2(move * minHalf * 0.28, 0.0) * bevel;
+      - anisoEdge * bevel * uDp * (1.10 + lift * 3.40)
+      + float2(move * uDp * 1.60, 0.0) * bevel;
 
   float2 uv = fragCoord + refractOffset;
-  float2 disp = (-edgeDir * (1.35 + lift * 3.85) * uDp + float2(move * 1.65 * uDp, 0.0)) * bevel;
+  float2 disp = (-anisoEdge * (0.35 + lift * 1.25) * uDp + float2(move * 0.65 * uDp, 0.0)) * slope;
 
   half4 gC = img.eval(uv);
   half4 rC = img.eval(uv + disp);
   half4 bC = img.eval(uv - disp);
 
-  float fringe = clamp((0.52 + 0.48 * lift) * bevel, 0.0, 1.0);
+  float fringe = clamp((0.20 + 0.45 * lift) * slope, 0.0, 0.78);
   half r = mix(gC.r, rC.r, half(fringe));
   half b = mix(gC.b, bC.b, half(fringe));
   half rA = mix(gC.a, rC.a, half(fringe));
@@ -72,44 +70,34 @@ half4 main(in float2 fragCoord) {
   half contentA = max(gC.a, max(rA, bA));
   half4 refracted = half4(min(half3(contentA), half3(r, gC.g, b)), contentA) * half(pillAA);
 
-  // DP-scaled 3-band WWDC optical meniscus wall (outer Fresnel crest -> dark TIR trough -> inner caustic ridge)
-  // keeping the center (dDp > 10.5) crystal-clear with zero milky plastic wash.
+  // Delicate outer rim catchlight + gentle bevel shadow (no double white tube or opaque ring).
   float2 invSize = 1.0 / max(size, float2(1.0));
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
-  float angle = -2.356 + move * 0.44;
+  float angle = -2.356 + move * 0.40;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.6);
-  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 4.0) * 0.68;
-  float capMask = pow(max(abs(edgeDir.x) * 0.80 + 0.20, 0.0001), 1.65) * (0.52 + 0.24 * lift);
+  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.8);
+  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 4.2) * 0.56;
+  float capMask = pow(max(abs(edgeDir.x) * 0.75 + 0.25, 0.0001), 1.8) * (0.20 + 0.16 * lift);
 
-  float edgeGlow = gaussian((dDp - 1.15) / 1.05);
-  float darkRim = gaussian((dDp - 3.35) / 1.80) * (0.32 + 0.14 * lift);
-  float innerMeniscus = gaussian((dDp - 6.40) / 2.45) * (0.26 + 0.22 * lift);
-  float lowerCaustic = smoothstep(0.18, 0.95, relCenter.y) * innerMeniscus * (0.55 + 0.45 * lift);
+  float edgeGlow = gaussian((dDp - 0.85) / 0.65);
+  float darkRim = gaussian((dDp - 2.00) / 1.10) * (0.08 + 0.06 * lift);
+  float innerMeniscus = gaussian((dDp - 1.95) / 1.05) * (0.06 + 0.08 * lift);
 
-  float rimGlint = (keyArc * 0.72 + catchArc * 0.48 + capMask + (0.06 + 0.10 * lift))
-          * edgeGlow * (0.78 + 0.36 * lift)
-      + (keyArc * 0.42 + catchArc * 0.55 + capMask * 0.75 + 0.12) * innerMeniscus
-      + lowerCaustic;
+  float rimGlint = (keyArc * 0.32 + catchArc * 0.22 + capMask + (0.02 + 0.05 * lift))
+          * edgeGlow * (0.55 + 0.35 * lift)
+      + (keyArc * 0.22 + catchArc * 0.26 + 0.06) * innerMeniscus;
 
   float sweepCoord = relCenter.x * 0.78 + relCenter.y * 0.45 - move * 0.38;
   float sweep = gaussian(sweepCoord / 0.18)
-      * (0.26 * abs(move) + 0.10 * press) * (0.20 + 0.80 * bevel);
+      * (0.14 * abs(move) + 0.05 * press) * (0.20 + 0.80 * bevel);
 
-  float specAlpha = clamp(rimGlint + sweep, 0.0, 0.88) * pillAA;
-  half3 baseSpec = mix(half3(0.76, 0.92, 1.0), half3(1.0, 0.98, 0.92),
-      half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
-  half3 prismShift = half3(0.14 * float(clamp(rawDot, -1.0, 1.0)), 0.0,
-      -0.16 * float(clamp(rawDot, -1.0, 1.0))) * half(clamp(innerMeniscus * 2.2, 0.0, 1.0));
-  half3 specRGB = clamp(baseSpec + prismShift, half3(0.0), half3(1.0)) * half(specAlpha);
+  float specAlpha = clamp(rimGlint + sweep, 0.0, 0.38) * pillAA;
+  half3 specRGB = mix(half3(0.84, 0.94, 1.0), half3(1.0, 0.99, 0.96),
+      half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0))) * half(specAlpha);
 
-  float tirAlpha = darkRim * 0.42 * pillAA;
   half3 shadowed = refracted.rgb * half(1.0 - darkRim * float(refracted.a));
-  float combinedDarkA = tirAlpha + float(refracted.a) * (1.0 - tirAlpha);
-  half3 darkBaseRGB = shadowed * half(1.0 - tirAlpha);
-
-  half3 outRGB = specRGB + darkBaseRGB * half(1.0 - specAlpha);
-  float outAlpha = specAlpha + combinedDarkA * (1.0 - specAlpha);
+  half3 outRGB = specRGB + shadowed * half(1.0 - specAlpha);
+  float outAlpha = specAlpha + float(refracted.a) * (1.0 - specAlpha);
   return half4(min(outRGB, half3(outAlpha)), half(outAlpha));
 }

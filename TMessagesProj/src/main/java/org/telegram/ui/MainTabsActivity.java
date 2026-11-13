@@ -292,9 +292,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     }
 
     /**
-     * Crisp 1x bottom-strip capture of active tab fragments for the elastic
-     * Liquid Glass lens (with micro 0.85dp softening instead of heavy bar blur),
-     * while the surrounding tab bar keeps its frosted iBlur3SourceTabGlass.
+     * Softened 1x bottom-strip capture of active tab fragments for the elastic
+     * Liquid Glass lens (7.5dp blur prevents sharp list text from colliding with
+     * tab labels while preserving live color/light refraction inside the lens).
      */
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private GlassSourceRenderNode createTabLensSource() {
@@ -373,7 +373,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 }
             }
         });
-        source.setBlur(AndroidUtilities.dpf2(0.85f));
+        source.setBlur(AndroidUtilities.dpf2(7.5f));
         return source;
     }
 

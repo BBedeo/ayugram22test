@@ -381,19 +381,14 @@ public class LiteMode {
         lastSystemSaverChecked = now;
         boolean saver = false;
         Context context = ApplicationLoader.applicationContext;
-        try {
-            android.os.PowerManager powerManager = (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
-            saver = powerManager != null && powerManager.isPowerSaveMode();
-        } catch (Throwable ignore) {
-        }
-        if (!saver) {
+        if (context != null) {
             try {
-                android.content.ContentResolver resolver = context.getContentResolver();
-                int smartMode = android.provider.Settings.System.getInt(resolver, "SmartModeStatus", 0);
-                saver = android.provider.Settings.System.getInt(resolver, "POWER_SAVE_MODE_OPEN", 0) == 1
-                        || smartMode == 1 || smartMode == 4
-                        || "1".equals(android.provider.Settings.System.getString(resolver, "psm_switch"))
-                        || android.provider.Settings.Global.getInt(resolver, "low_power", 0) == 1;
+                android.os.PowerManager powerManager = (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                if (powerManager != null) {
+                    saver = powerManager.isPowerSaveMode();
+                } else {
+                    saver = android.provider.Settings.Global.getInt(context.getContentResolver(), "low_power", 0) == 1;
+                }
             } catch (Throwable ignore) {
             }
         }
@@ -459,6 +454,7 @@ public class LiteMode {
         } else {
             onFlagsUpdate(PRESET_POWER_SAVER, getValue(true));
         }
+        GlassEngine.getCurrentGlassSettings();
         if (onPowerSaverAppliedListeners != null) {
             AndroidUtilities.runOnUIThread(() -> {
                 Iterator<Utilities.Callback<Boolean>> i = onPowerSaverAppliedListeners.iterator();
