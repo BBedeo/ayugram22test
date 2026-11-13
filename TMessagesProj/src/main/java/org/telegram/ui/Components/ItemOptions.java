@@ -2097,8 +2097,39 @@ public class ItemOptions {
         hoverReleaseListener = null;
     }
 
+    private void setDragHoverTarget(@Nullable View target) {
+        if (layout instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout) {
+            ((ActionBarPopupWindow.ActionBarPopupWindowLayout) layout).setDragHoverView(target);
+            return;
+        }
+        if (layout != null) {
+            for (int i = 0, count = layout.getChildCount(); i < count; i++) {
+                final View child = layout.getChildAt(i);
+                if (child instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout) {
+                    final ActionBarPopupWindow.ActionBarPopupWindowLayout card = (ActionBarPopupWindow.ActionBarPopupWindowLayout) child;
+                    card.setDragHoverView(target != null && isDescendant(target, card) ? target : null);
+                }
+            }
+        } else if (lastLayout != null) {
+            lastLayout.setDragHoverView(target);
+        }
+    }
+
+    private static boolean isDescendant(@Nullable View view, @NonNull ViewGroup parent) {
+        View cur = view;
+        while (cur != null) {
+            if (cur == parent) {
+                return true;
+            }
+            cur = cur.getParent() instanceof View ? (View) cur.getParent() : null;
+        }
+        return false;
+    }
+
     private void updateHover(int rawX, int rawY) {
-        final View pageRoot = layout != null ? layout.getVisiblePageRoot() : layout;
+        final View pageRoot = layout instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout
+                ? ((ActionBarPopupWindow.ActionBarPopupWindowLayout) layout).getVisiblePageRoot()
+                : layout;
         View hit = findItemAt(pageRoot, rawX, rawY);
         if (hit != hoveredItem) {
             if (hoveredItem != null) {
@@ -2110,9 +2141,7 @@ public class ItemOptions {
                 hoveredItem.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
             }
         }
-        if (layout != null) {
-            layout.setDragHoverView(hoveredItem);
-        }
+        setDragHoverTarget(hoveredItem);
         if (hoveredItem != null) {
             hoveredItem.getLocationOnScreen(hoverLoc);
             hoveredItem.drawableHotspotChanged(rawX - hoverLoc[0], rawY - hoverLoc[1]);
@@ -2121,9 +2150,7 @@ public class ItemOptions {
 
     private void releaseHover(int rawX, int rawY) {
         updateHover(rawX, rawY);
-        if (layout != null) {
-            layout.setDragHoverView(null);
-        }
+        setDragHoverTarget(null);
         if (hoveredItem != null) {
             View target = hoveredItem;
             hoveredItem = null;
@@ -2133,9 +2160,7 @@ public class ItemOptions {
     }
 
     private void cancelHover() {
-        if (layout != null) {
-            layout.setDragHoverView(null);
-        }
+        setDragHoverTarget(null);
         if (hoveredItem != null) {
             hoveredItem.setPressed(false);
             hoveredItem = null;
@@ -2149,6 +2174,9 @@ public class ItemOptions {
         int l = loc[0], t = loc[1];
         int r = l + root.getWidth(), b = t + root.getHeight();
         if (rawX < l || rawX >= r || rawY < t || rawY >= b) return null;
+        if (root instanceof PopupSwipeBackLayout) {
+            return findItemAt(((PopupSwipeBackLayout) root).getVisiblePageView(), rawX, rawY);
+        }
         if (root instanceof ViewGroup) {
             ViewGroup vg = (ViewGroup) root;
             for (int i = vg.getChildCount() - 1; i >= 0; i--) {
