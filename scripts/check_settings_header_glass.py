@@ -20,6 +20,7 @@ MODIFIED_FILES = [
     "org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java",
     "org/telegram/ui/ActionBar/SimpleActionBar.java",
     "org/telegram/ui/ActionBar/ActionBar.java",
+    "org/telegram/ui/ActionBar/ActionBarLayout.java",
     "org/telegram/ui/ActionBar/ActionBarMenuItem.java",
     "org/telegram/ui/ActionBar/BaseFragment.java",
     "org/telegram/utils/glass/BaseFragmentSimpleGlass.java",
@@ -279,18 +280,39 @@ def main() -> None:
     )
 
     ab_src = read("org/telegram/ui/ActionBar/ActionBar.java")
+    ab_layout_method = method_body(ab_src, r"protected void onLayout\(boolean changed")
     check(
-        "ActionBar exposes menu overlay provider, fallback toggle, and compact title pill layout",
+        "ActionBar exposes menu overlay provider, fallback toggle, isGlassMode, and compact title pill layout",
         all(
             token in ab_src
             for token in (
                 "import org.telegram.messenger.Utilities;",
+                "public boolean isGlassMode()",
                 "public void setMenuOverlayProvider(",
                 "public void setAllowMenuOverlayFallback(",
                 "boolean isMenuOverlayFallbackAllowed(",
                 "SimpleActionBarMenuOverlay getMenuOverlay(",
                 "compactGlassTitlePill",
-                "compactCenterX",
+                "getCompactSafeLeft(",
+                "getCompactSafeRightForMenuWidth(",
+            )
+        )
+        and "tv0.getFullContentWidth()" in ab_layout_method
+        and "tv0.getMeasuredWidth()" not in ab_layout_method
+        and "subtitleTextView.getFullContentWidth()" in ab_layout_method,
+    )
+
+    layout_src = read("org/telegram/ui/ActionBar/ActionBarLayout.java")
+    crossfade_method = method_body(layout_src, r"public boolean isActionBarInCrossfade\(")
+    check(
+        "ActionBarLayout skips legacy crossfade when either ActionBar is glass or embedded in fragmentView",
+        all(
+            token in crossfade_method
+            for token in (
+                "fgActionBar.shouldAddToContainer()",
+                "!fgActionBar.isGlassMode()",
+                "bgActionBar.shouldAddToContainer()",
+                "!bgActionBar.isGlassMode()",
             )
         ),
     )
@@ -303,8 +325,9 @@ def main() -> None:
     )
 
     base_frag_src = read("org/telegram/ui/ActionBar/BaseFragment.java")
+    base_crossfade = method_body(base_frag_src, r"public boolean isActionBarCrossfadeEnabled\(")
     check(
-        "BaseFragment wires ActionBar overlay provider, padding hooks, and light status bar for listViewForSimpleGlass",
+        "BaseFragment wires ActionBar overlay provider, padding hooks, light status bar, and skips crossfade for glass headers",
         all(
             token in base_frag_src
             for token in (
@@ -313,7 +336,9 @@ def main() -> None:
                 "protected int getListViewForSimpleGlassBottomPadding()",
                 "listViewForSimpleGlass != null",
             )
-        ),
+        )
+        and "!actionBar.shouldAddToContainer()" in base_crossfade
+        and "actionBar.isGlassMode()" in base_crossfade,
     )
 
     simple_glass_src = read("org/telegram/utils/glass/BaseFragmentSimpleGlass.java")

@@ -378,13 +378,16 @@ public abstract class BaseFragment {
     }
 
     public boolean isActionBarCrossfadeEnabled() {
+        if (actionBar == null || !actionBar.shouldAddToContainer() || actionBar.isGlassMode()) {
+            return false;
+        }
         if (NaConfig.INSTANCE.getBackAnimationStyle().Int() == ActionBarLayout.BACK_ANIMATION_SPRING) {
             if (getLastStoryViewer() != null && getLastStoryViewer().attachedToParent()) {
                 return false;
             }
-            return actionBar != null && !actionBar.isActionModeShowed();
+            return !actionBar.isActionModeShowed();
         }
-        return actionBar != null;
+        return true;
     }
 
     public INavigationLayout.BackButtonState getBackButtonState() {

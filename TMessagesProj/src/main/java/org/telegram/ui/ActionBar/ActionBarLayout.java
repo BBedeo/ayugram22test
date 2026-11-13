@@ -4292,9 +4292,15 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         boolean crossfadeNoFragments = SharedConfig.animationsEnabled() && !isInPreviewMode() && (isSwipeInProgress() || isTransitionAnimationInProgress()) && currentAnimation == null;
         BaseFragment foregroundFragment = getLastFragment();
         BaseFragment backgroundFragment = getBackgroundFragment();
-        return crossfadeNoFragments &&
-                foregroundFragment != null && foregroundFragment.isActionBarCrossfadeEnabled() &&
-                backgroundFragment != null && backgroundFragment.isActionBarCrossfadeEnabled();
+        if (!crossfadeNoFragments ||
+                foregroundFragment == null || !foregroundFragment.isActionBarCrossfadeEnabled() ||
+                backgroundFragment == null || !backgroundFragment.isActionBarCrossfadeEnabled()) {
+            return false;
+        }
+        final ActionBar fgActionBar = foregroundFragment.getActionBar();
+        final ActionBar bgActionBar = backgroundFragment.getActionBar();
+        return fgActionBar != null && fgActionBar.shouldAddToContainer() && !fgActionBar.isGlassMode() &&
+                bgActionBar != null && bgActionBar.shouldAddToContainer() && !bgActionBar.isGlassMode();
     }
 
     @Override

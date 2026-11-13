@@ -228,6 +228,10 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         glassOnlyBack = true;
     }
 
+    public boolean isGlassMode() {
+        return glassMode;
+    }
+
     public void setChatAvatarContainer(ChatAvatarContainer chatAvatarContainer) {
         this.chatAvatarContainer = chatAvatarContainer;
     }
@@ -348,10 +352,14 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     }
 
     public void setCompactGlassTitlePill(boolean enabled) {
+        if (compactGlassTitlePill == enabled) {
+            return;
+        }
         compactGlassTitlePill = enabled;
         if (enabled && glassDrawable != null && chatAvatarContainer == null) {
             glassDrawable.setRadius(dp(23));
         }
+        requestLayout();
         invalidate();
     }
 
@@ -725,7 +733,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             return;
         }
         subtitleTextView = new SimpleTextView(getContext());
-        subtitleTextView.setGravity(isCentered() ? Gravity.CENTER : Gravity.LEFT);
+        subtitleTextView.setGravity((isCentered() || centerTitleAndGlass) ? Gravity.CENTER : Gravity.LEFT);
         subtitleTextView.setVisibility(GONE);
         ThemeBind.textColor(subtitleTextView, Theme.key_actionBarDefaultSubtitle, resourcesProvider);
         addView(subtitleTextView, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP));
@@ -1761,9 +1769,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         int textLeft;
         if (backButtonImageView != null && backButtonImageView.getVisibility() != GONE) {
             backButtonImageView.measure(MeasureSpec.makeMeasureSpec(dp(54), MeasureSpec.EXACTLY), actionBarHeightSpec);
-            textLeft = dp(AndroidUtilities.isTablet() ? 80 : 72);
+            textLeft = glassMode ? dp(76) : dp(AndroidUtilities.isTablet() ? 80 : 72);
         } else {
-            textLeft = dp(AndroidUtilities.isTablet() ? 26 : 18);
+            textLeft = glassMode ? dp(24) : dp(AndroidUtilities.isTablet() ? 26 : 18);
         }
         // textLeft += additionalTextLeft;
 
@@ -1795,11 +1803,15 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
         for (int i = 0; i < 2; i++) {
             if (titleTextView[0] != null && titleTextView[0].getVisibility() != GONE || subtitleTextView != null && subtitleTextView.getVisibility() != GONE) {
-                int menuWidth = menu != null ? menu.getMeasuredWidth() : 0;
+                int menuWidth = menu != null && menu.getVisibility() != GONE && !menu.searchFieldVisible() ? menu.getMeasuredWidth() : 0;
                 int availableWidth;
                 if (centerTitleAndGlass) {
                     if (compactGlassTitlePill) {
-                        availableWidth = width - textLeft - menuWidth - dp(24) - titleRightMargin;
+                        final int safeLeft = getCompactSafeLeft(false);
+                        final int menuReserve = menuWidth > 0 ? Math.max(dp(46), menuWidth + dp(10)) : 0;
+                        final int safeRight = getCompactSafeRightForMenuWidth(width, menuReserve, titleRightMargin);
+                        availableWidth = Math.min(width - textLeft - menuWidth - dp(24) - titleRightMargin,
+                                safeRight - safeLeft - dp(12) - dp(36));
                     } else {
                         int sideInset = Math.max(textLeft, menuWidth + dp(16) + titleRightMargin);
                         availableWidth = width - sideInset * 2;
@@ -1909,13 +1921,31 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (centerTitleAndGlass && compactGlassTitlePill) {
             final SimpleTextView tv0 = titleTextView[0] != null && titleTextView[0].getVisibility() != GONE ? titleTextView[0]
                     : (titleTextView[1] != null && titleTextView[1].getVisibility() != GONE ? titleTextView[1] : null);
-            int maxW = tv0 != null ? tv0.getMeasuredWidth() : 0;
+            int contentWidth = tv0 != null ? tv0.getFullContentWidth() : 0;
             if (subtitleTextView != null && subtitleTextView.getVisibility() != GONE) {
-                maxW = Math.max(maxW, subtitleTextView.getMeasuredWidth());
+                contentWidth = Math.max(contentWidth, subtitleTextView.getFullContentWidth());
             }
-            final int minCenter = textLeft + maxW / 2;
-            final int maxCenter = Math.max(minCenter, getMeasuredWidth() - menuW - dp(16) - titleRightMargin - maxW / 2);
-            compactCenterX = Math.max(minCenter, Math.min(maxCenter, getMeasuredWidth() / 2));
+            final int safeLeft = getCompactSafeLeft(false);
+            int menuPillW = 0;
+            if (menuW > 0) {
+                final int rawMenuW = Math.max(0, menu.getItemsWidth() - dp(2));
+                menuPillW = rawMenuW > 0 ? rawMenuW : (menuW + dp(10));
+                if (hasForcedMenuWidth) {
+                    menuPillW = forcedMenuWidth;
+                } else if (hasForcedMenuMinWidth) {
+                    menuPillW = Math.max(forcedMenuMinWidth, menuPillW);
+                }
+            }
+            final int safeRight = getCompactSafeRightForMenuWidth(getMeasuredWidth(), menuPillW, titleRightMargin);
+            final int minPillWidth = dp(46) + dp(12);
+            final int maxAllowedWidth = Math.max(minPillWidth, safeRight - safeLeft);
+            final int pillWidth = Math.min(maxAllowedWidth, Math.max(minPillWidth, contentWidth + dp(12) + dp(36)));
+            final int halfPill = pillWidth / 2;
+            final int minCenter = safeLeft + halfPill;
+            final int maxCenter = safeRight - (pillWidth - halfPill);
+            compactCenterX = minCenter > maxCenter
+                    ? (safeLeft + safeRight) / 2
+                    : Math.max(minCenter, Math.min(maxCenter, getMeasuredWidth() / 2));
         } else {
             compactCenterX = getMeasuredWidth() / 2;
         }
@@ -1936,7 +1966,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 if (isCentered() && !centerTitleAndGlass) {
                     titleTextView[i].layout(titleCenterX - titleTextView[i].getMeasuredWidth() / 2, additionalTop + textTop - titleTextView[i].getPaddingTop(), titleCenterX + titleTextView[i].getMeasuredWidth() / 2, additionalTop + textTop + titleTextView[i].getTextHeight() - titleTextView[i].getPaddingTop() + titleTextView[i].getPaddingBottom());
                 } else {
-                    int titleLeft = centerTitleAndGlass ? (compactCenterX - titleTextView[i].getMeasuredWidth() / 2) : textLeft;
+                    final int rightExtra = centerTitleAndGlass ? Math.round(Math.max(0, titleTextView[i].getFullContentWidth() - titleTextView[i].getTextWidth()) * 0.5f) : 0;
+                    int titleLeft = centerTitleAndGlass ? (compactCenterX - titleTextView[i].getMeasuredWidth() / 2 - rightExtra) : textLeft;
                     titleTextView[i].layout(titleLeft, additionalTop + textTop - titleTextView[i].getPaddingTop(), titleLeft + titleTextView[i].getMeasuredWidth(), additionalTop + textTop + titleTextView[i].getTextHeight() - titleTextView[i].getPaddingTop() + titleTextView[i].getPaddingBottom());
                 }
 
@@ -1956,7 +1987,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             if (isCentered() && !centerTitleAndGlass) {
                 subtitleTextView.layout(titleCenterX - subtitleTextView.getMeasuredWidth() / 2, additionalTop + textTop, titleCenterX + subtitleTextView.getMeasuredWidth() / 2, additionalTop + textTop + subtitleTextView.getTextHeight());
             } else {
-                int titleLeft = centerTitleAndGlass ? (compactCenterX - subtitleTextView.getMeasuredWidth() / 2) : textLeft;
+                final int rightExtra = centerTitleAndGlass ? Math.round(Math.max(0, subtitleTextView.getFullContentWidth() - subtitleTextView.getTextWidth()) * 0.5f) : 0;
+                int titleLeft = centerTitleAndGlass ? (compactCenterX - subtitleTextView.getMeasuredWidth() / 2 - rightExtra) : textLeft;
                 subtitleTextView.layout(titleLeft, additionalTop + textTop, titleLeft + subtitleTextView.getMeasuredWidth(), additionalTop + textTop + subtitleTextView.getTextHeight());
             }
 
@@ -2675,6 +2707,23 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         invalidate();
     }
 
+    private int getCompactSafeLeft(boolean requireVisibleAlpha) {
+        final int p = dp(6);
+        final int s = dp(46);
+        final boolean hasBack = backButtonImageView != null && backButtonImageView.getVisibility() == View.VISIBLE
+                && (!requireVisibleAlpha || backButtonImageView.getAlpha() > 0.05f);
+        return hasBack ? (s + p * 2 - dp(6)) : p;
+    }
+
+    private int getCompactSafeRightForMenuWidth(int totalWidth, int menuPillWidth, int rightMargin) {
+        final int p = dp(6);
+        final int s = dp(46);
+        if (menuPillWidth > 0) {
+            return totalWidth - Math.max(s, menuPillWidth) - p;
+        }
+        return totalWidth - p - rightMargin;
+    }
+
     private void drawCompactTitleGlassPill(Canvas canvas, int t, int b, int p, int s,
                                            boolean hasBackButton, float backAlphaFactor,
                                            boolean hasMenuPill, int menuLeft) {
@@ -2701,8 +2750,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             contentWidth = Math.max(contentWidth, subtitleTextView.getFullContentWidth());
         }
 
-        final int safeLeft = (hasBackButton && backAlphaFactor > 0.05f) ? (s + p * 2 - dp(6)) : p;
-        int safeRight = hasMenuPill ? (menuLeft + dp(6)) : (getWidth() - p);
+        final int safeLeft = getCompactSafeLeft(true);
+        int safeRight = hasMenuPill ? (menuLeft + dp(6)) : (getWidth() - p - titleRightMargin);
         for (int i = 0, n = getChildCount(); i < n; i++) {
             final View child = getChildAt(i);
             if (child != null && child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f
@@ -3351,7 +3400,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (titleTextView != null) {
             for (int a = 0; a < titleTextView.length; a++) {
                 if (titleTextView[a] != null) {
-                    titleTextView[a].setGravity(isCentered()
+                    titleTextView[a].setGravity((isCentered() || centerTitleAndGlass)
                             ? Gravity.CENTER : Gravity.LEFT | Gravity.CENTER_VERTICAL);
                 }
             }
