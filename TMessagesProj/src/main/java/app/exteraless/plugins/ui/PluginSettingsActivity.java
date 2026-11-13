@@ -171,7 +171,6 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
         layoutManager = (LinearLayoutManager) listView.getLayoutManager();
         contentView.addView(listView,
                 LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        actionBar.setAdaptiveBackground(listView);
 
         // Кнопка сброса — как у exteraGram: только на корневом экране плагина и
         // только когда есть что сбрасывать.

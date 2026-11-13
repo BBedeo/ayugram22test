@@ -22,6 +22,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SlideChooseView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
@@ -217,10 +218,19 @@ public class PluginPermissionsActivity extends BaseFragment {
         listView.adapter.setApplyBackground(false);
         contentView.addView(listView,
                 LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        actionBar.setAdaptiveBackground(listView);
 
         fragmentView = contentView;
         return fragmentView;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
     }
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {

@@ -117,21 +117,26 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
 
     @Override
     public View createView(Context context) {
-        fragmentView = new BlurContentView(context);
+        final boolean simpleHeaderGlass = useSimpleHeaderGlass();
+        fragmentView = simpleHeaderGlass ? new SizeNotifierFrameLayout(context) : new BlurContentView(context);
         fragmentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         SizeNotifierFrameLayout frameLayout = (SizeNotifierFrameLayout) fragmentView;
 
-        if (needActionBarBlur()) {
+        if (!simpleHeaderGlass && needActionBarBlur()) {
             actionBar.setDrawBlurBackground(frameLayout);
         }
 
         listView = new app.exteraless.appearance.SectionCardRecyclerView(context);
-        listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                frameLayout.invalidateBlur();
-            }
-        });
+        if (simpleHeaderGlass) {
+            listView.setSimpleGlassMode(true);
+        } else {
+            listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                    frameLayout.invalidateBlur();
+                }
+            });
+        }
         listView.additionalClipBottom = dp(200);
         listView.setLayoutManager(layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setVerticalScrollBarEnabled(false);
@@ -166,7 +171,9 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         // Тень-elevation форсируется в SectionCardRecyclerView.drawBackgroundRect.
         // При sectionRadius == 0 — стоковый плоский вид (карточки визуально отсутствуют).
         listView.setSections(dp(12), dp(app.exteraless.appearance.AppearanceConfig.sectionRadius()), true);
-        setupAdaptiveBackground();
+        if (!simpleHeaderGlass) {
+            setupAdaptiveBackground();
+        }
         return fragmentView;
     }
 
@@ -214,6 +221,15 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
      * (корневой экран exteraless) её отключают: подложка закрывает контент под шапкой.
      * Снять её после вызова нельзя — {@code setDrawBlurBackground(null)} падает.
      */
+    protected boolean useSimpleHeaderGlass() {
+        return true;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return useSimpleHeaderGlass() ? listView : null;
+    }
+
     protected boolean needActionBarBlur() {
         return true;
     }
@@ -264,7 +280,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
 
     @Override
     public boolean isLightStatusBar() {
-        if (!hasWhiteActionBar()) return super.isLightStatusBar();
+        if (!hasWhiteActionBar() && !useSimpleHeaderGlass()) return super.isLightStatusBar();
         int color = getThemedColor(Theme.key_windowBackgroundWhite);
         return ColorUtils.calculateLuminance(color) > 0.7f;
     }
@@ -389,8 +405,10 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
 
     @Override
     public void onInsets(int left, int top, int right, int bottom) {
-        listView.setPadding(0, 0, 0, bottom);
-        listView.setClipToPadding(false);
+        if (!useSimpleHeaderGlass()) {
+            listView.setPadding(0, 0, 0, bottom);
+            listView.setClipToPadding(false);
+        }
     }
 
     private class BlurContentView extends SizeNotifierFrameLayout {

@@ -317,7 +317,7 @@ public abstract class BaseFragment {
             if (useFadeDrawableForActionBar() && header != null) {
                 header.setBackground(simpleGlass.createActionBarFadeDrawable(header));
             }
-            BaseFragmentSimpleGlass.setListViewParams(listViewForSimpleGlass, mSystemInsets.top, mSystemInsets.bottom, ActionBar.getCurrentActionBarHeight(), 0);
+            BaseFragmentSimpleGlass.setListViewParams(listViewForSimpleGlass, mSystemInsets.top, mSystemInsets.bottom, getListViewForSimpleGlassTopPadding(), getListViewForSimpleGlassBottomPadding());
 
             if (drawEdgeNavigationBar()) {
                 navigationBarFadeView = new View(context);
@@ -506,6 +506,7 @@ public abstract class BaseFragment {
                 actionBar = createActionBar(parentLayout.getView().getContext());
                 if (actionBar != null) {
                     actionBar.parentFragment = this;
+                    actionBar.setMenuOverlayProvider(this::getSimpleMenuOverlay);
                 }
             }
         }
@@ -1384,7 +1385,7 @@ public abstract class BaseFragment {
         int key = Theme.key_actionBarDefault;
         if (actionBar != null && actionBar.isActionModeShowed()) {
             key = Theme.key_actionBarActionModeDefault;
-        } else if (simpleActionBar != null) {
+        } else if (simpleActionBar != null || listViewForSimpleGlass != null) {
             key = Theme.key_windowBackgroundGray;
         }
         if (resourcesProvider != null) {
@@ -1559,6 +1560,14 @@ public abstract class BaseFragment {
         return null;
     }
 
+    protected int getListViewForSimpleGlassTopPadding() {
+        return ActionBar.getCurrentActionBarHeight();
+    }
+
+    protected int getListViewForSimpleGlassBottomPadding() {
+        return 0;
+    }
+
     @Nullable
     protected SectionsScrollView getScrollViewForSimpleGlass() {
         return null;
@@ -1687,7 +1696,7 @@ public abstract class BaseFragment {
         final Insets insets = AndroidUtilities.getDefaultWindowInsets(windowInsets, false);
         mSystemInsets = insets;
         if (listViewForSimpleGlass != null) {
-            BaseFragmentSimpleGlass.setListViewParams(listViewForSimpleGlass, mSystemInsets.top, mSystemInsets.bottom, ActionBar.getCurrentActionBarHeight(), 0);
+            BaseFragmentSimpleGlass.setListViewParams(listViewForSimpleGlass, mSystemInsets.top, mSystemInsets.bottom, getListViewForSimpleGlassTopPadding(), getListViewForSimpleGlassBottomPadding());
         }
         if (navigationBarFadeView != null) {
             final int visibility = mSystemInsets.bottom >= dp(40) ? View.VISIBLE : View.GONE;

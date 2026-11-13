@@ -1,18 +1,22 @@
 package app.exteraless.settings;
 
+import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 
-
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.RecyclerListView;
 
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
@@ -52,6 +56,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int designStudioRow;
     private int designDividerRow;
 
+    private boolean headerTitleVisible;
+    private ValueAnimator headerTitleAnimator;
+
     @Override
     protected void updateRows() {
         super.updateRows();
@@ -85,27 +92,17 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
      */
     @Override
     public View createView(Context context) {
+        headerTitleVisible = false;
         View view = super.createView(context);
         // Test accounts are offline: opening mod settings must not initiate
         // Telegram server calls just to fetch unrelated content settings.
         if (!app.exteraless.demo.DemoBackend.isTestAccount(currentAccount)) {
             getMessagesController().getContentSettings(null);
         }
-        if (actionBar != null && fragmentView instanceof android.widget.FrameLayout) {
-            // 1:1 с MainPreferencesActivity.createView из 12.9.0.
-            actionBar.setBackground(null);
-            actionBar.setCastShadows(false);
-            actionBar.setAddToContainer(false);
+        if (actionBar != null) {
             if (actionBar.getTitleTextView() != null) {
                 actionBar.getTitleTextView().setAlpha(0f);
             }
-            ((android.widget.FrameLayout) fragmentView).addView(actionBar,
-                    org.telegram.ui.Components.LayoutHelper.createFrame(
-                            org.telegram.ui.Components.LayoutHelper.MATCH_PARENT,
-                            org.telegram.ui.Components.LayoutHelper.WRAP_CONTENT,
-                            android.view.Gravity.TOP));
-        }
-        if (actionBar != null) {
             final org.telegram.ui.ActionBar.ActionBarMenu menu = actionBar.createMenu();
             menu.addItem(MENU_SEARCH, R.drawable.outline_header_search, getResourceProvider());
             menu.addItem(MENU_CLOUD, R.drawable.cloud_sync, getResourceProvider());
@@ -132,37 +129,75 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 }
             });
         }
+        if (listView != null) {
+            listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                    updateHeaderTitleVisibility(true);
+                }
+            });
+            listView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
+                    updateHeaderTitleVisibility(false));
+        }
         return view;
     }
 
-    /**
-     * Базовый класс в onInsets обнуляет верхний отступ списка. Нам он нужен: actionBar
-     * прозрачный и не занимает места, поэтому без отступа контент уезжает под строку
-     * состояния и логотип срезает.
-     */
-    /**
-     * У экстеры на корневом экране адаптивный фон НЕ включается вовсе:
-     * {@code BasePreferencesActivity.createView} вызывает {@code setAdaptiveBackground}
-     * только при {@code !hasHeaderCell()}, а у {@code MainPreferencesActivity}
-     * {@code hasHeaderCell()} возвращает true. Шапка остаётся прозрачной всегда,
-     * заголовок не проявляется даже при прокрутке.
-     */
     @Override
-    protected void setupAdaptiveBackground() {
+    protected int getListViewForSimpleGlassTopPadding() {
+        return 0;
     }
 
-    /** Блюр-подложка NagramX закрывает верх логотипа; у экстеры её нет. */
-    @Override
-    protected boolean needActionBarBlur() {
-        return false;
-    }
-
-    @Override
-    public void onInsets(int left, int top, int right, int bottom) {
-        if (listView != null) {
-            listView.setPadding(0, top, 0, bottom);
-            listView.setClipToPadding(false);
+    private void updateHeaderTitleVisibility(boolean animated) {
+        if (listView == null || actionBar == null) {
+            return;
         }
+        final View titleView = actionBar.getTitleTextView();
+        if (titleView == null) {
+            return;
+        }
+        boolean shouldShow = false;
+        final RecyclerView.ViewHolder firstHolder = listView.findViewHolderForAdapterPosition(0);
+        if (firstHolder == null) {
+            shouldShow = listView.getChildCount() > 0 && layoutManager != null && layoutManager.findFirstVisibleItemPosition() > 0;
+        } else {
+            final int threshold = mSystemInsets.top + ActionBar.getCurrentActionBarHeight() + dp(10);
+            shouldShow = firstHolder.itemView.getBottom() <= threshold;
+        }
+        if (shouldShow == headerTitleVisible && (animated || headerTitleAnimator == null)) {
+            if (!animated) {
+                titleView.setAlpha(shouldShow ? 1f : 0f);
+                actionBar.invalidate();
+            }
+            return;
+        }
+        headerTitleVisible = shouldShow;
+        final float targetAlpha = shouldShow ? 1f : 0f;
+        if (headerTitleAnimator != null) {
+            headerTitleAnimator.cancel();
+            headerTitleAnimator = null;
+        }
+        if (!animated) {
+            titleView.setAlpha(targetAlpha);
+            actionBar.invalidate();
+            return;
+        }
+        headerTitleAnimator = ValueAnimator.ofFloat(titleView.getAlpha(), targetAlpha);
+        headerTitleAnimator.setDuration(180);
+        headerTitleAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+        headerTitleAnimator.addUpdateListener(anim -> {
+            titleView.setAlpha((float) anim.getAnimatedValue());
+            actionBar.invalidate();
+        });
+        headerTitleAnimator.start();
+    }
+
+    @Override
+    public void onFragmentDestroy() {
+        if (headerTitleAnimator != null) {
+            headerTitleAnimator.cancel();
+            headerTitleAnimator = null;
+        }
+        super.onFragmentDestroy();
     }
 
     @Override

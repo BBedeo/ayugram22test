@@ -18,6 +18,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -128,10 +129,19 @@ public class PluginActivityLogActivity extends BaseFragment {
         listView.adapter.setApplyBackground(false);
         contentView.addView(listView,
                 LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        actionBar.setAdaptiveBackground(listView);
 
         fragmentView = contentView;
         return fragmentView;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
     }
 
     private void update() {

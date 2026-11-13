@@ -36,11 +36,30 @@ public class BlurredRecyclerView extends RecyclerListView {
         updateTopPadding();
     }
 
+    private boolean simpleGlassMode;
+
+    public void setSimpleGlassMode(boolean simpleGlassMode) {
+        if (this.simpleGlassMode == simpleGlassMode) {
+            return;
+        }
+        this.simpleGlassMode = simpleGlassMode;
+        if (simpleGlassMode) {
+            blurTopPadding = 0;
+            if (getLayoutParams() instanceof MarginLayoutParams) {
+                ((MarginLayoutParams) getLayoutParams()).topMargin = 0;
+            }
+            super.setPadding(getPaddingLeft(), topPadding, getPaddingRight(), bottomPadding);
+            invalidate();
+        } else {
+            updateTopPadding();
+        }
+    }
+
     private void updateTopPadding() {
         if (getLayoutParams() == null) {
             return;
         }
-        if (SharedConfig.chatBlurEnabled()) {
+        if (!simpleGlassMode && SharedConfig.chatBlurEnabled()) {
             blurTopPadding = measureBlurTopPadding();
             ((MarginLayoutParams) getLayoutParams()).topMargin = -blurTopPadding;
         } else {

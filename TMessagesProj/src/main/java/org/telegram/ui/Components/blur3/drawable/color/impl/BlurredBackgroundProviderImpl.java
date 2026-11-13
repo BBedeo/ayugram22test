@@ -314,16 +314,43 @@ public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider simpleActionBar(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
-                final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.80f);
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundGray, r);
                 final int colorTarget = Theme.getColor(Theme.key_windowBackgroundWhite, r);
-                return solveSrcColor(colorBg, colorTarget, alpha);
+                if (!checkBlurEnabled(r)) {
+                    final float fallbackAlpha = LiquidGlassTuning.tintAlpha(isDark, 0.85f);
+                    return solveSrcColor(colorBg, colorTarget, fallbackAlpha);
+                }
+                if (isHeaderLiquidShaderActive(r)) {
+                    final float baseAlpha = isDark ? 0.24f : 0.30f;
+                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, baseAlpha);
+                    final int crystalTarget = isDark
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFDCE8F6, 0.24f)
+                        : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 16 : 24, isDark ? 105 : 138);
+                    return ColorUtils.setAlphaComponent(crystalTarget, a);
+                }
+                final float frostedAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);
+                final int frostedTarget = isDark ? colorTarget : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
+                return ColorUtils.setAlphaComponent(frostedTarget,
+                    MathUtils.clamp(Math.round(255f * frostedAlpha), isDark ? 64 : 90, 220));
             })
-            .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
-            .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
-            .setShadowColor(0x16333333, 0)
-            .setShadowLayer(dpf2(24 / 3f), 0, dpf2(7f / 3f))
-            .setStrokeWidth(dpf2(0.55f), dpf2(0.55f))
+            .setStrokeColorTop((r, isDark) -> {
+                if (isHeaderLiquidShaderActive(r)) {
+                    return isDark ? 0 : 0x0D000000;
+                }
+                return isDark ? 0x20FFFFFF : 0xFFFFFFFF;
+            })
+            .setStrokeColorBottom((r, isDark) -> {
+                if (isHeaderLiquidShaderActive(r)) {
+                    return isDark ? 0 : 0x16000000;
+                }
+                return isDark ? 0x14FFFFFF : 0xFFFFFFFF;
+            })
+            .setShadowColor((r, isDark) -> isHeaderLiquidShaderActive(r)
+                ? (isDark ? 0x26000000 : 0x20000000)
+                : (isDark ? 0 : 0x16333333))
+            .setShadowLayer(dpf2(4.0f), 0, dpf2(1.1f))
+            .setStrokeWidth(dpf2(0.45f), dpf2(0.45f))
             .build();
     }
 

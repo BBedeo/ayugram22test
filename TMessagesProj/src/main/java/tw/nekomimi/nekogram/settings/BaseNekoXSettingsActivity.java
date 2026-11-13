@@ -106,6 +106,7 @@ public class BaseNekoXSettingsActivity extends BaseFragment {
         FrameLayout frameLayout = (FrameLayout) fragmentView;
 
         listView = createListView(context);
+        listView.setSimpleGlassMode(true);
         listView.setVerticalScrollBarEnabled(false);
         listView.setLayoutManager(layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
 
@@ -122,8 +123,12 @@ public class BaseNekoXSettingsActivity extends BaseFragment {
         frameLayout.addView(tooltip, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.LEFT, 8, 0, 8, 8));
 
         listView.setSections(true);
-        actionBar.setAdaptiveBackground(listView);
         return fragmentView;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
     }
 
     protected void onActionBarItemClick(int id) {
@@ -145,8 +150,6 @@ public class BaseNekoXSettingsActivity extends BaseFragment {
 
     @Override
     public void onInsets(int left, int top, int right, int bottom) {
-        listView.setPadding(0, 0, 0, bottom);
-        listView.setClipToPadding(false);
         FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) tooltip.getLayoutParams();
         layoutParams.setMargins(dp(8), 0, dp(8), dp(8) + bottom);
         tooltip.setLayoutParams(layoutParams);

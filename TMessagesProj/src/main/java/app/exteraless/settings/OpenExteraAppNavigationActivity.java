@@ -111,7 +111,6 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         listView.listenReorder(this::onReordered);
         listView.setReorderClampToSection(true);
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        actionBar.setAdaptiveBackground(listView);
 
         // Кнопка сброса раскладки меню: появляется, только когда раскладка отличается
         // от дефолтной, и гаснет обратно после сброса.

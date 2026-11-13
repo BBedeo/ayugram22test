@@ -81,4 +81,11 @@ public class SectionCardRecyclerView extends BlurredRecyclerView {
             canvas.drawPath(path, fillPaint);
         }
     }
+
+    @Override
+    public void setLegacySections(boolean legacySections) {
+        // SectionCardRecyclerView relies on top/bottom radii to render rounded card shadows;
+        // BitmapSectionsItemDecoration passes 0 radii when drawBackground is false, so keep ListSectionsDecoration.
+        super.setLegacySections(true);
+    }
 }

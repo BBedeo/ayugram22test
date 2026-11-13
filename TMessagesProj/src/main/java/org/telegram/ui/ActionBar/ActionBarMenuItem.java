@@ -963,12 +963,33 @@ public class ActionBarMenuItem extends FrameLayout {
 
     @Nullable
     SimpleActionBarMenuOverlay getSubMenuOverlay() {
-        return subMenuOverlayProvider != null ? subMenuOverlayProvider.run() : null;
+        if (subMenuOverlayProvider != null) {
+            return subMenuOverlayProvider.run();
+        }
+        if (parentMenu != null && parentMenu.parentActionBar != null && parentMenu.parentActionBar.isMenuOverlayFallbackAllowed()) {
+            return parentMenu.parentActionBar.getMenuOverlay();
+        }
+        return null;
     }
 
     @Nullable
     MenuOverlayHost getSubMenuOverlayHost() {
-        return subMenuOverlayProvider != null && parentMenu != null ? parentMenu.parentActionBar : null;
+        if (parentMenu != null && parentMenu.parentActionBar != null
+                && (subMenuOverlayProvider != null || parentMenu.parentActionBar.isMenuOverlayFallbackAllowed())) {
+            return parentMenu.parentActionBar;
+        }
+        return null;
+    }
+
+    public void setSearchFieldColors(int textColor, int hintColor) {
+        if (searchField != null) {
+            searchField.setTextColor(textColor);
+            searchField.setCursorColor(textColor);
+            searchField.setHintTextColor(hintColor);
+        }
+        if (searchFieldCaption != null) {
+            searchFieldCaption.setTextColor(textColor);
+        }
     }
 
     boolean canOpenSubMenuOverlay() {

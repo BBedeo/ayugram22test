@@ -18,6 +18,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.CheckBoxCell;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -142,11 +143,15 @@ public class FeedChannelsActivity extends BaseFragment implements NotificationCe
         });
         contentView.addView(listView,
                 LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        actionBar.setAdaptiveBackground(listView);
 
         fragmentView = contentView;
         reloadChannels();
         return fragmentView;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
     }
 
     @Override
@@ -156,9 +161,6 @@ public class FeedChannelsActivity extends BaseFragment implements NotificationCe
 
     @Override
     public void onInsets(int left, int top, int right, int bottom) {
-        if (listView != null) {
-            listView.setPadding(0, 0, 0, bottom);
-        }
     }
 
     public String getTitle() {

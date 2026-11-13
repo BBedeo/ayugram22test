@@ -36,6 +36,7 @@ import org.telegram.ui.Cells.EditTextCell;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
@@ -180,9 +181,7 @@ public class FeedCategoryEditActivity extends BaseFragment {
         listView.setSections();
         listView.adapter.setApplyBackground(false);
         listView.setClipToPadding(false);
-        listView.setPadding(0, 0, 0, AndroidUtilities.dp(72));
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        actionBar.setAdaptiveBackground(listView);
 
         ButtonWithCounterView button = new ButtonWithCounterView(context, true, getResourceProvider());
         button.setRound();
@@ -200,6 +199,16 @@ public class FeedCategoryEditActivity extends BaseFragment {
     }
 
     @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
+    protected int getListViewForSimpleGlassBottomPadding() {
+        return AndroidUtilities.dp(72);
+    }
+
+    @Override
     public boolean isSupportEdgeToEdge() {
         return true;
     }
@@ -208,9 +217,6 @@ public class FeedCategoryEditActivity extends BaseFragment {
     public void onInsets(int left, int top, int right, int bottom) {
         if (buttonContainer != null) {
             buttonContainer.setPadding(0, 0, 0, bottom);
-        }
-        if (listView != null) {
-            listView.setPadding(0, 0, 0, bottom + AndroidUtilities.dp(72));
         }
     }
 

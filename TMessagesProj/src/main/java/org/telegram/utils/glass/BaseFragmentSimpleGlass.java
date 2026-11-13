@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.SimpleActionBar;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
@@ -270,8 +271,41 @@ public class BaseFragmentSimpleGlass {
             actionBar.setAddToContainer(false);
             actionBar.setCenterTitleAndGlass(true);
             actionBar.setExtraHeight(dp(6));
-            actionBar.doNotDrawCenterGlass = true;
+            actionBar.doNotDrawCenterGlass = false;
+            actionBar.setHeaderGlassLens(true);
+            actionBar.setCompactGlassTitlePill(true);
+            actionBar.setAllowMenuOverlayFallback(true);
+            actionBar.setMenuGlass(menuFactory, menuGlassSource);
+            actionBar.setMenuGlassColorProvider(BlurredBackgroundProviderImpl.dialogsMenuGlass(resourceProvider));
+            actionBar.setMenuRise(dp(1.5f));
+            applyAdaptiveHeaderColors(actionBar, resourceProvider);
             actionBar.setupGlass(factory, BlurredBackgroundProviderImpl.simpleActionBar(resourceProvider));
+        }
+    }
+
+    /** Applies card-surface foreground colors so dark/light glass header icons and titles stay readable. */
+    public static void applyAdaptiveHeaderColors(@Nullable ActionBar actionBar, @Nullable Theme.ResourcesProvider resourcesProvider) {
+        if (actionBar == null) {
+            return;
+        }
+        final int fg = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider);
+        final int sub = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider);
+        final int hint = Theme.getColor(Theme.key_windowBackgroundWhiteHintText, resourcesProvider);
+        final int selector = Theme.getColor(Theme.key_listSelector, resourcesProvider);
+        actionBar.setTitleColor(fg);
+        actionBar.setSubtitleColor(sub);
+        actionBar.setItemsColor(fg, false);
+        actionBar.setItemsColor(fg, true);
+        actionBar.setItemsBackgroundColor(selector, false);
+        actionBar.setItemsBackgroundColor(selector, true);
+        actionBar.setCastShadows(false);
+        if (actionBar.menu != null) {
+            for (int i = 0, n = actionBar.menu.getChildCount(); i < n; i++) {
+                final View child = actionBar.menu.getChildAt(i);
+                if (child instanceof ActionBarMenuItem && ((ActionBarMenuItem) child).isSearchField()) {
+                    ((ActionBarMenuItem) child).setSearchFieldColors(fg, hint);
+                }
+            }
         }
     }
 
