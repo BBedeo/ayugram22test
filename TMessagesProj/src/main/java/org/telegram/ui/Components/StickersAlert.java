@@ -1129,6 +1129,7 @@ public class StickersAlert extends BottomSheet implements NotificationCenter.Not
 
         optionsButton = new ActionBarMenuItem(context, null, 0, getThemedColor(Theme.key_sheet_other), resourcesProvider);
         optionsButton.setLongClickEnabled(false);
+        optionsButton.setDragOpenMenu(true);
         optionsButton.setSubMenuOpenSide(2);
         optionsButton.setIcon(R.drawable.ic_ab_other);
         ThemeBind.selectorBackground(optionsButton, Theme.createSelectorDrawable(getThemedColor(Theme.key_player_actionBarSelector), 1), null, ThemeBind.of(Theme.key_player_actionBarSelector), resourcesProvider);

@@ -4528,6 +4528,7 @@ public class AlertsCreator {
 
                 optionsButton = new ActionBarMenuItem(context, null, 0, datePickerColors.textColor, false, resourcesProvider);
                 optionsButton.setLongClickEnabled(false);
+                optionsButton.setDragOpenMenu(true);
                 optionsButton.setSubMenuOpenSide(2);
                 optionsButton.setIcon(R.drawable.ic_ab_other);
                 optionsButton.setBackground(Theme.createSelectorDrawable(datePickerColors.iconSelectorColor, 1));

@@ -4704,6 +4704,7 @@ public class GroupCallActivity extends BottomSheet implements NotificationCenter
 
         otherItem = new ActionBarMenuItem(context, null, 0, Theme.getColor(Theme.key_voipgroup_actionBarItems));
         otherItem.setLongClickEnabled(false);
+        otherItem.setDragOpenMenu(true);
         otherItem.setIcon(R.drawable.ic_ab_other);
         otherItem.setContentDescription(getString(R.string.AccDescrMoreOptions));
         otherItem.setSubMenuOpenSide(2);

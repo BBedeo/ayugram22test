@@ -2277,6 +2277,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
 
         selectedMenuItem = new ActionBarMenuItem(context, null, 0, getThemedColor(Theme.key_dialogTextBlack), false, resourcesProvider);
         selectedMenuItem.setLongClickEnabled(false);
+        selectedMenuItem.setDragOpenMenu(true);
         selectedMenuItem.setIcon(R.drawable.ic_ab_other);
         selectedMenuItem.setContentDescription(getString(R.string.AccDescrMoreOptions));
         selectedMenuItem.setVisibility(View.INVISIBLE);
@@ -2420,6 +2421,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
 
         optionsItem = new ActionBarMenuItem(context, null, 0, getThemedColor(Theme.key_dialogTextBlack), false, resourcesProvider);
         optionsItem.setLongClickEnabled(false);
+        optionsItem.setDragOpenMenu(true);
         optionsItem.setIcon(R.drawable.ic_ab_other);
         optionsItem.setContentDescription(getString(R.string.AccDescrMoreOptions));
         optionsItem.setVisibility(View.GONE);
