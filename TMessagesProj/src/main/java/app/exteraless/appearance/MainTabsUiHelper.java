@@ -124,7 +124,7 @@ public final class MainTabsUiHelper {
         }
     }
 
-    /** В M3 обводки у панели нет; значения не-M3 ветки — те же, что в mainTabs. */
+    /** В M3 и тёмной теме у внешней панели нет белой обводки; оптику даёт стекло и тень. */
     public static BlurredBackgroundProviderBuilder applyBackgroundStroke(BlurredBackgroundProviderBuilder builder) {
         if (isMaterial3NavigationBar()) {
             return builder
@@ -133,8 +133,8 @@ public final class MainTabsUiHelper {
                     .setStrokeWidth(0, 0);
         }
         return builder
-                .setStrokeColorTop(0x11000000, 0x06FFFFFF)
-                .setStrokeColorBottom(0x20000000, 0x11FFFFFF)
+                .setStrokeColorTop(0x11000000, 0)
+                .setStrokeColorBottom(0x20000000, 0)
                 .setStrokeWidth(AndroidUtilities.dpf2(0.4f), AndroidUtilities.dpf2(0.4f));
     }
 

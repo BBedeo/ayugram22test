@@ -109,6 +109,7 @@ checks = {
         and "pillWeight" in header_shader
         and "offDiagTopRight" in header_shader
         and "offDiagBotLeft" in header_shader
+        and "darkGlintScale" in header_shader
         and "domeSheen" not in header_shader
     ),
     "LiquidGlassEffect selects liquid_glass_header_shader only for headerGlassLens": (
@@ -122,13 +123,16 @@ checks = {
         and "new LiquidGlassEffect(renderNodeFill, false, true)" in drawable
         and "if (!(elasticPillLens || headerGlassLens) || !isLiquidGlassEffectEnabled())" in drawable
         and "headerGlassLens ? 0.40f : 0.20f" in drawable
+        and "LiquidGlassTuning.sanitizeRimStroke" in drawable
     ),
-    "BlurredBackgroundProviderImpl uses clear crystal dialogsHeaderGlass (no matte solveSrcColor milk) and dialogsMenuGlass": (
+    "BlurredBackgroundProviderImpl uses clear crystal dialogsHeaderGlass (no matte solveSrcColor milk) and outline-free dark dialogsMenuGlass": (
         "public static BlurredBackgroundProvider dialogsHeaderGlass(Theme.ResourcesProvider resourcesProvider)" in provider
         and "public static BlurredBackgroundProvider dialogsMenuGlass(Theme.ResourcesProvider resourcesProvider)" in provider
         and "if (!checkBlurEnabled(r))" in provider
         and "ColorUtils.setAlphaComponent(crystalTarget, a)" in provider
         and "liftedTarget" not in provider
+        and "0x18FFFFFF" not in provider
+        and "0x10FFFFFF" not in provider
     ),
     "SimpleTextView exposes full content width including drawables and gravity": (
         "public int getFullContentWidth()" in simple_text

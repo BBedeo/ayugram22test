@@ -221,7 +221,6 @@ public class FragmentFloatingButton extends FrameLayout implements FactorAnimato
                 final GradientDrawable lens = new GradientDrawable(
                         GradientDrawable.Orientation.TL_BR, new int[]{top, bottom});
                 lens.setCornerRadius(dp(app.exteraless.appearance.AppearanceConfig.squareFab() ? 14 : 24));
-                lens.setStroke(dp(1), LiquidGlassTuning.adaptHighlight(dark ? 0x7DFFFFFF : 0xB0FFFFFF));
                 final int rippleColor = Theme.multAlpha(pressedColor, .33f);
                 setBackground(themedBackground = new RippleDrawable(
                         ColorStateList.valueOf(rippleColor), lens, null));

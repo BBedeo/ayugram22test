@@ -1473,13 +1473,11 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     blurredNativeBackground = true;
                     window.setBackgroundBlurRadius(50);
                     if (LiquidGlassTuning.isActive()) {
-                        // Edge highlight and a translucent native window backdrop
-                        // instead of the old opaque popup rectangle.
+                        // Translucent native blurred window backdrop instead of an opaque rectangle.
                         GradientDrawable glass = new GradientDrawable();
                         glass.setColor(ColorUtils.setAlphaComponent(backgroundColor,
                                 Math.round(blurAlpha * 255)));
                         glass.setCornerRadius(dp(16));
-                        glass.setStroke(dp(1), 0x52FFFFFF);
                         window.setBackgroundDrawable(glass);
                     } else {
                         float rad = dp(12);

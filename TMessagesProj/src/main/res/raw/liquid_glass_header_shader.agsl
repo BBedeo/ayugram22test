@@ -136,29 +136,30 @@ half4 main(in float2 fragCoord) {
   float meniscus = gaussian((dDp - 3.85) / 1.75);
   surface.rgb *= half(1.0 - lightWallBoost * ((0.036 + 0.028 * lift) * outerWall + (0.018 + 0.018 * lift) * meniscus));
 
-  // Diagonal top-left -> bottom-right Fresnel catchlights + crisp rim gleam.
+  // Diagonal top-left -> bottom-right Fresnel catchlights + delicate corner sheen (no full perimeter white ring).
   float angle = -2.356 + move * 0.42 + (glass_light_angle - 5.4978);
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
   float2 perpDir = float2(-lightDir.y, lightDir.x);
   float perpDot = dot(edgeDir, perpDir);
 
-  // Equalize wide right/title pills with standalone circular buttons: wide horizontal runs sit
-  // at 45deg to the key axis and top-right/bottom-left shoulders would otherwise drop near zero.
+  // Keep diagonal corner glints balanced between circular buttons and wide pills without lighting
+  // horizontal straight edges or wrapping dark surfaces in an artificial 360deg white wireframe.
   float pillWeight = smoothstep(0.18, 0.95, max(0.0, (size.x - size.y) / max(size.y, 1.0)));
-  float keyPow = mix(3.2, 2.05, pillWeight);
-  float catchPow = mix(3.0, 2.05, pillWeight);
-  float keyArc = pow(max(rawDot, 0.0), keyPow) * (1.02 + 0.04 * pillWeight);
-  float catchArc = pow(max(-rawDot, 0.0), catchPow) * (0.88 + 0.04 * pillWeight);
-  float offDiagTopRight = pow(max(perpDot, 0.0), 2.55) * (0.64 * pillWeight);
-  float offDiagBotLeft = pow(max(-perpDot, 0.0), 2.65) * (0.50 * pillWeight);
-  float capBoost = pow(abs(edgeDir.x), 2.5) * (0.20 + 0.18 * lift) * (1.0 - 0.30 * pillWeight);
-  float rimCore = gaussian((dDp - 1.05) / 0.88);
-  float innerRidge = gaussian((dDp - 2.65) / 1.65);
+  float keyPow = mix(3.4, 3.0, pillWeight);
+  float catchPow = mix(3.4, 3.0, pillWeight);
+  float keyArc = pow(max(rawDot, 0.0), keyPow) * 0.72;
+  float catchArc = pow(max(-rawDot, 0.0), catchPow) * 0.56;
+  float offDiagTopRight = pow(max(perpDot, 0.0), 4.6) * (0.28 * pillWeight);
+  float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.6) * (0.20 * pillWeight);
+  float capBoost = pow(abs(edgeDir.x), 3.6) * (0.08 + 0.14 * lift) * (1.0 - 0.35 * pillWeight);
+  float rimCore = gaussian((dDp - 1.55) / 1.45);
+  float innerRidge = gaussian((dDp - 3.35) / 2.25);
+  float darkGlintScale = mix(0.85, 0.58, darkCrystalTint);
   float rimSpec = (keyArc + catchArc + offDiagTopRight + offDiagBotLeft + capBoost)
-      * (rimCore * 0.76 + innerRidge * 0.24) * (0.38 + 0.36 * lift);
+      * (rimCore * 0.68 + innerRidge * 0.32) * (0.16 + 0.28 * lift) * darkGlintScale;
 
-  float highlightStrength = clamp(glass_highlight, 0.65, 1.0);
+  float highlightStrength = clamp(glass_highlight, 0.25, 1.0);
   if (glass_adaptive > 0.5) {
     highlightStrength *= clamp(1.18 - bgLumaF * 0.26, 0.82, 1.18);
   }

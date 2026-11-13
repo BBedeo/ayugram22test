@@ -152,13 +152,8 @@ public class ActionBarPopupWindow extends PopupWindow {
         private final RectF dragHoverTargetRect = new RectF();
         private final RectF dragHoverDrawRect = new RectF();
         private final Paint dragHoverFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint dragHoverRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF dragHoverClipRect = new RectF();
         private final Path dragHoverClipPath = new Path();
-
-        {
-            dragHoverRimPaint.setStyle(Paint.Style.STROKE);
-        }
 
         public Rect getPadding() {
             return bgPaddings;
@@ -746,10 +741,6 @@ public class ActionBarPopupWindow extends PopupWindow {
             dragHoverFillPaint.setColor(ColorUtils.setAlphaComponent(
                     isDark ? 0xFFFFFFFF : 0xFF000000,
                     Math.round((isDark ? 0x1A : 0x0D) * dragHoverAlpha)));
-            dragHoverRimPaint.setStrokeWidth(AndroidUtilities.dpf2(0.65f));
-            dragHoverRimPaint.setColor(ColorUtils.setAlphaComponent(
-                    0xFFFFFFFF,
-                    Math.round((isDark ? 0x26 : 0x4D) * dragHoverAlpha)));
 
             final int save = canvas.save();
             final float clipLeft = backgroundDrawable != null ? getPaddingLeft() : 0f;
@@ -761,7 +752,6 @@ public class ActionBarPopupWindow extends PopupWindow {
             dragHoverClipPath.addRoundRect(dragHoverClipRect, dp(12), dp(12), Path.Direction.CW);
             canvas.clipPath(dragHoverClipPath);
             canvas.drawRoundRect(dragHoverDrawRect, radius, radius, dragHoverFillPaint);
-            canvas.drawRoundRect(dragHoverDrawRect, radius, radius, dragHoverRimPaint);
             canvas.restoreToCount(save);
 
             if (needMore) {
