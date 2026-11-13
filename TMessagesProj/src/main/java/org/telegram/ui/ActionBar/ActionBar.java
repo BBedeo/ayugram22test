@@ -1123,6 +1123,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         actionMode.setClickable(true);
         if (!glassMode) {
             ThemeBind.backgroundColor(actionMode, Theme.key_actionBarActionModeDefault, resourcesProvider);
+        } else {
+            int actionModeBg = Theme.getColor(Theme.key_actionBarActionModeDefault, resourcesProvider);
+            actionMode.setBackgroundColor(androidx.core.graphics.ColorUtils.setAlphaComponent(actionModeBg, (int) (0.95f * 255)));
         }
         addView(actionMode, indexOfChild(backButtonImageView));
         actionMode.setPadding(0, occupyStatusBar ? AndroidUtilities.statusBarHeight : 0, 0, 0);
@@ -3071,7 +3074,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
         final boolean motionEnabled = LiquidGlassTuning.motionEnabled();
         glassTitleRestRect.setEmpty();
-        if (glassDrawable != null && drawGlassMiddlePill && !glassOnlyBack && drawGlassTitle) {
+        if (glassDrawable != null && drawGlassMiddlePill && !glassOnlyBack && drawGlassTitle && !actionModeVisible) {
             if (compactGlassTitlePill) {
                 drawCompactTitleGlassPill(canvas, t, b, p, s, hasBackButton, backAlphaFactor, hasMenuPill && menuAlphaInt > 12, menuLeft);
             } else if (centerTitleAndGlass && titleTextView[0] != null && titleTextView[0].getVisibility() == View.VISIBLE) {
@@ -3135,7 +3138,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
         glassBackRestRect.setEmpty();
-        if (glassDrawableBack != null && hasBackButton) {
+        if (glassDrawableBack != null && hasBackButton && !actionModeVisible) {
             final int backAlphaInt = compactGlassTitlePill ? Math.round(255 * backAlphaFactor) : 255;
             if (backAlphaInt > 0) {
                 glassBackRestRect.set(0, t, s + p * 2, b);
@@ -3150,7 +3153,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
         glassMenuRestRect.setEmpty();
-        if (hasMenuPill && menuAlphaInt > 0) {
+        if (hasMenuPill && menuAlphaInt > 0 && !actionModeVisible) {
             glassMenuRestRect.set(menuLeft, menuTop, menuRight, menuBottom);
             final float menuPress = (headerGlassLens && motionEnabled) ? animatorMenuGlassPressed.getFloatValue() : 0f;
             final int swell = Math.round(dp(2.4f) * menuPress);
