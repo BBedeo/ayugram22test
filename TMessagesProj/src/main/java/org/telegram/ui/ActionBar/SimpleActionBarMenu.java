@@ -80,6 +80,7 @@ public class SimpleActionBarMenu extends LinearLayout {
                 item.iconView.setImageDrawable(drawable);
             } else if (icon != 0) {
                 item.iconView.setImageResource(icon);
+                item.setDefaultDragOpenForMoreIcon(icon == R.drawable.ic_ab_other);
             }
             lp = new LinearLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT);
             lp.leftMargin = lp.rightMargin = -dp(5);

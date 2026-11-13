@@ -1702,6 +1702,10 @@ public class ItemOptions {
             layout.setBackground(bg);
         }
 
+        if (lastLayout != null && longPressSelectionEnabled) {
+            lastLayout.setDragSelectEnabled(true);
+        }
+
         if (scrimView instanceof ActionBarMenuItem) {
             ((ActionBarMenuItem) scrimView).setExternalPopupMenu(lastLayout, actionBarPopupWindow);
         }

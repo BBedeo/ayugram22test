@@ -23,7 +23,12 @@ MODIFIED_FILES = [
     "org/telegram/ui/ActionBar/SimpleActionBar.java",
     "org/telegram/ui/ActionBar/ActionBar.java",
     "org/telegram/ui/ActionBar/ActionBarLayout.java",
+    "org/telegram/ui/ActionBar/ActionBarMenu.java",
     "org/telegram/ui/ActionBar/ActionBarMenuItem.java",
+    "org/telegram/ui/ActionBar/ActionBarPopupWindow.java",
+    "org/telegram/ui/ActionBar/SimpleActionBarMenu.java",
+    "org/telegram/ui/ActionBar/SimpleActionBarMenuOverlay.java",
+    "org/telegram/ui/Components/ItemOptions.java",
     "org/telegram/ui/ActionBar/BaseFragment.java",
     "org/telegram/utils/glass/BaseFragmentSimpleGlass.java",
     "org/telegram/ui/Components/BlurredRecyclerView.java",
@@ -354,15 +359,27 @@ def main() -> None:
     )
 
     item_src = read("org/telegram/ui/ActionBar/ActionBarMenuItem.java")
+    ab_menu_src = read("org/telegram/ui/ActionBar/ActionBarMenu.java")
+    simple_menu_src = read("org/telegram/ui/ActionBar/SimpleActionBarMenu.java")
+    popup_win_src = read("org/telegram/ui/ActionBar/ActionBarPopupWindow.java")
     check(
-        "ActionBarMenuItem supports adaptive search field colors, overlay fallback, and hold/drag submenu selection",
+        "ActionBarMenuItem supports adaptive search field colors, overlay fallback, universal 3-dots drag-open, and slide-hover selection",
         "public void setSearchFieldColors(" in item_src
         and item_src.count("isMenuOverlayFallbackAllowed()") >= 2
+        and "private final int[] location = new int[2];" in item_src
         and "setDragOpenMenu(" in item_src
+        and "setDefaultDragOpenForMoreIcon(" in item_src
+        and "dragOpenMenuExplicitlySet" in item_src
         and "setExternalPopupMenu(" in item_src
         and "setDragHoverView(" in item_src
         and "findHoveredMenuChild(" in item_src
-        and "CLOCK_TICK" in item_src,
+        and "applyHoverSelection(" in item_src
+        and "event.getRawX()" in item_src
+        and "CLOCK_TICK" in item_src
+        and "setDefaultDragOpenForMoreIcon(icon == R.drawable.ic_ab_other);" in ab_menu_src
+        and "setDefaultDragOpenForMoreIcon(icon == R.drawable.ic_ab_other);" in simple_menu_src
+        and "setDragSelectEnabled(boolean enabled)" in popup_win_src
+        and "updateIntraDragHover(" in popup_win_src,
     )
 
     base_frag_src = read("org/telegram/ui/ActionBar/BaseFragment.java")
