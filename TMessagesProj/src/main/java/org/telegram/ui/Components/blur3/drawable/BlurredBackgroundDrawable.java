@@ -975,7 +975,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
             impl = directImpl(drawn);
         }
         impl.draw(canvas, drawn);
-        drawRim(canvas, getAlpha() / 255f);
+        if (!elasticPillLens || !isLiquidGlassEffectEnabled()) {
+            drawRim(canvas, getAlpha() / 255f);
+        }
     }
 
     private static GlassSource softwareSource(GlassSource source) {

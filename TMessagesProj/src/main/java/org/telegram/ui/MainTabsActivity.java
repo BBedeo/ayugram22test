@@ -619,9 +619,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                                 final int lifted = ColorUtils.blendARGB(target, 0xFFFFFFFF, 0.84f);
                                 return Theme.multAlpha(lifted, canRefract ? .34f : .48f);
                             })
-                            // Razor-clean optical hairline catching light only on curved bevels.
-                            .setStrokeColorTop(0x52FFFFFF, 0x1EFFFFFF)
-                            .setStrokeColorBottom(0x28FFFFFF, 0x10FFFFFF)
+                            // Zero static vector border on the elastic capsule; Apple-style light
+                            // enters purely via dual opposite-side shader caustics.
+                            .setStrokeColorTop(0x00000000, 0x00000000)
+                            .setStrokeColorBottom(0x00000000, 0x00000000)
                             .setStrokeColorFull(0x00000000, 0x00000000)
                             .setShadowColor(0x16000000, 0x2E000000)
                             .setShadowLayer(AndroidUtilities.dpf2(4.8f), 0, AndroidUtilities.dpf2(1.5f))

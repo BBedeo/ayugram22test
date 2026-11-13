@@ -53,14 +53,14 @@ half4 main(in float2 fragCoord) {
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Clean iOS 26 toric meniscus confined to the outer capsule rim; calm interior dome.
-  float lensH = clamp((6.0 + 2.5 * lift) * uDp, 5.0, minHalf * 0.52);
+  // Symmetric iOS 26 toric meniscus across both ends of the capsule; zero continuous outline.
+  float lensH = clamp((7.0 + 3.0 * lift) * uDp, 5.5, minHalf * 0.62);
   float rimT = clamp(1.0 + sd / lensH, 0.0, 1.0);
   float slope = circleMap(rimT);
-  float bevel = mix(slope, rimT * rimT, 0.30);
+  float bevel = mix(slope, rimT * rimT, 0.35);
   float domeT = clamp(-sd / minHalf, 0.0, 1.0);
 
-  float nCos = bevel * (0.42 + 0.34 * lift);
+  float nCos = bevel * (0.48 + 0.38 * lift);
   float nSin = sqrt(max(0.05, 1.0 - nCos * nCos));
   float3 normal = normalize(float3(edgeDir * nCos, nSin));
   float3 ray = refract(float3(0.0, 0.0, -1.0), normal, 1.0 / max(refract_index, 1.05));
@@ -72,28 +72,27 @@ half4 main(in float2 fragCoord) {
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
   float2 isoRel = clamp(p / minHalf, float2(-2.2), float2(2.2));
 
-  // Controlled Snell UV refraction: subtle rest lens, responsive optical bend on drag/press.
-  float2 uv = fragCoord + ray.xy * (0.38 * rayDepth * refract_intensity)
-      * (0.24 + lift * 0.46);
-  uv += float2(move * 2.2 * uDp, 0.0) * bevel
-      - isoRel * (0.014 + lift * 0.052) * t * (0.35 + 0.65 * domeT);
+  // Symmetric dual-side Snell refraction across both ends of the capsule.
+  float2 uv = fragCoord + ray.xy * (0.48 * rayDepth * refract_intensity)
+      * (0.28 + lift * 0.56);
+  uv += -isoRel * (0.018 + lift * 0.065) * t * (0.35 + 0.65 * domeT);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
   uv = clamp(uv, uvMin, uvMax);
 
-  // Subtle chromatic dispersion along the outer meniscus edge.
-  float2 disp = ray.xy * uDp * (0.85 + lift * 1.65) * slope;
+  // Optical prism RGB separation on both opposite curved ends.
+  float2 disp = ray.xy * uDp * (1.10 + lift * 2.20) * bevel;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  float dispMix = clamp((0.28 + 0.38 * lift) * slope, 0.0, 0.75);
+  float dispMix = clamp((0.34 + 0.46 * lift) * bevel, 0.0, 0.85);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
   // Crisp optical color vibrancy without adding milky grey plastic wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
-  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.16 + 0.14 * lift)), half3(0.0), half3(1.0));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.18 + 0.16 * lift)), half3(0.0), half3(1.0));
 
   // Clear crystal lens on press/drag; subtle dark-crystal tint at rest.
   float bgLumaF = float(luma);
@@ -101,28 +100,33 @@ half4 main(in float2 fragCoord) {
   half4 fgTint = half4(foreground_color_premultiplied) * half((1.0 - lift * 0.85) * darkAdaptive);
   half4 surface = srcOver(fgTint, backdrop);
 
-  // Subtle TIR depth shadow just inside the Fresnel rim.
-  float outerWall = gaussian((dDp - 2.00) / 1.15);
-  float meniscus = gaussian((dDp - 3.60) / 1.55);
-  surface.rgb *= half(1.0 - (0.06 + 0.06 * lift) * outerWall - (0.03 + 0.03 * lift) * meniscus);
+  // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline).
+  float outerWall = gaussian((dDp - 2.30) / 1.40);
+  float meniscus = gaussian((dDp - 4.00) / 1.85);
+  surface.rgb *= half(1.0 - (0.04 + 0.05 * lift) * outerWall - (0.02 + 0.03 * lift) * meniscus);
 
-  // Fine ~1dp directional Fresnel rim + gentle inner ridge + soft end-cap catchlights.
-  float angle = glass_light_angle + move * 0.40;
+  // Twin opposite-side Apple light refraction lobes (zero outline where rawDot is neutral).
+  float angle = glass_light_angle + move * 0.58;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot * 0.65 + 0.35, 0.0001), 3.8) * 0.78;
-  float catchArc = pow(max(-rawDot * 0.65 + 0.35, 0.0001), 4.2) * 0.48;
-  float capBoost = pow(max(abs(edgeDir.x) * 0.75 + 0.25, 0.0001), 1.8) * (0.18 + 0.16 * lift);
-  float fresnelSide = 0.03 + 0.05 * lift;
+  float keyArc = pow(max(rawDot, 0.0), 3.0) * 0.85;
+  float catchArc = pow(max(-rawDot, 0.0), 3.0) * 0.80;
+  float capBoost = pow(abs(edgeDir.x), 2.8) * (0.24 * lift);
+  float fresnelSide = 0.0;
 
-  float rimCore = gaussian((dDp - 0.85) / 0.68);
-  float innerRidge = gaussian((dDp - 2.10) / 1.15);
+  float rimCore = gaussian((dDp - 1.45) / 1.35);
+  float innerRidge = gaussian((dDp - 3.40) / 2.10);
   float rimSpec = (keyArc + catchArc + capBoost + fresnelSide)
-      * (rimCore * 0.84 + innerRidge * 0.16) * (0.42 + 0.38 * lift);
+      * (rimCore * 0.68 + innerRidge * 0.32) * (0.05 + 0.36 * lift);
 
-  float lowerCaustic = smoothstep(0.25, 0.95, relCenter.y) * slope * (0.03 + 0.07 * lift);
-  float sweepCoord = relCenter.x * 0.78 + relCenter.y * 0.45 - move * 0.38;
-  float sweep = gaussian(sweepCoord / 0.18) * (0.14 * abs(move) + 0.05 * press) * (0.20 + 0.80 * slope);
+  // Dual opposite-side moving light caustics inside the lens.
+  float lowerCaustic = (smoothstep(0.30, 0.96, relCenter.y) + smoothstep(0.30, 0.96, -relCenter.y) * 0.82)
+      * bevel * (0.05 * lift);
+  float sweepCoord = relCenter.x * 0.80 + relCenter.y * 0.42 - move * 0.42;
+  float oppSweepCoord = -relCenter.x * 0.80 - relCenter.y * 0.42 - move * 0.34;
+  float sweep = gaussian(sweepCoord / 0.22) * (0.12 * abs(move) + 0.06 * press) * (0.25 + 0.75 * bevel)
+      + (gaussian((sweepCoord - 0.54) / 0.24) + gaussian((oppSweepCoord - 0.54) / 0.24) * 0.88)
+          * (0.14 * abs(move) + 0.08 * press) * bevel;
 
   float highlightStrength = clamp(glass_highlight, 0.65, 1.0);
   if (glass_adaptive > 0.5) {
@@ -130,7 +134,7 @@ half4 main(in float2 fragCoord) {
   }
 
   float totalGlint = highlightStrength * (rimSpec + lowerCaustic + sweep);
-  half3 specTint = mix(half3(0.84, 0.94, 1.0), half3(1.0, 0.99, 0.96), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
+  half3 specTint = mix(half3(0.72, 0.90, 1.0), half3(1.0, 0.96, 0.88), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
   surface.rgb = min(half3(1.0), surface.rgb + specTint * half(totalGlint * float(surface.a)));
 
   return surface;

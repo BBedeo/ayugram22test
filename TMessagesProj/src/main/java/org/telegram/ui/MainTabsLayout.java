@@ -581,11 +581,25 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticSmoothedStretch = 0f;
         }
         final float totalStretch = elasticSmoothedStretch;
+        float minTabCenterX = Float.MAX_VALUE;
+        float maxTabCenterX = -Float.MAX_VALUE;
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            final View child = getChildAt(i);
+            if (child != null && child.getVisibility() == View.VISIBLE) {
+                final float cx = getCenterX(child);
+                if (cx < minTabCenterX) minTabCenterX = cx;
+                if (cx > maxTabCenterX) maxTabCenterX = cx;
+            }
+        }
+        final float leftOverscroll = minTabCenterX < Float.MAX_VALUE ? Math.max(0f, minTabCenterX - centerX) : 0f;
+        final float rightOverscroll = maxTabCenterX > -Float.MAX_VALUE ? Math.max(0f, centerX - maxTabCenterX) : 0f;
+        final float edgeOverscroll = leftOverscroll + rightOverscroll;
+
         final float availableHeight = Math.max(1f, getHeight() - getPaddingTop() - getPaddingBottom());
         final float glideLift = Math.min(1f, totalStretch / dp(7.0f));
         final float pressSwell = elasticPressValue * dp(8.0f) + glideLift * dp(2.8f);
         final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell;
-        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .94f;
+        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .94f + Math.min(dp(2.4f), edgeOverscroll * .16f);
         final float verticalCompression = Math.min(dp(1.8f), totalStretch * .10f);
         final float height = Math.max(1f, availableHeight - verticalCompression + jellyY);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
@@ -602,30 +616,40 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float leftStretch = direction < 0f ? leadingStretch : trailingStretch;
         final float rightStretch = direction > 0f ? leadingStretch : trailingStretch;
 
-        // Softly absorb outer edge approach instead of rigidly brick-walling
-        // and offsetting the opposite side across the active tab.
-        final float edge = dp(1.0f);
+        // Softly absorb outer edge approach and compress horizontally when pushed against the left/right edges.
+        final float edge = dp(0.8f);
         final float rawLeft = centerX - baseWidth * .5f;
         final float rawRight = centerX + baseWidth * .5f;
         final float leftHeadroom = Math.max(0f, rawLeft - edge);
         final float rightHeadroom = Math.max(0f, (getWidth() - edge) - rawRight);
         final float dampedLeftStretch = Math.min(leftStretch, leftHeadroom);
         final float dampedRightStretch = Math.min(rightStretch, rightHeadroom);
-        final float finalLeft = rawLeft < edge
-                ? edge - (edge - rawLeft) * dp(1.0f) / ((edge - rawLeft) + dp(2.0f))
+        final float leftSquish = leftOverscroll * 1.25f;
+        final float rightSquish = rightOverscroll * 1.25f;
+        final float clampedLeft = rawLeft < edge
+                ? edge - (edge - rawLeft) * dp(2.2f) / ((edge - rawLeft) + dp(2.8f))
                 : rawLeft - dampedLeftStretch;
-        final float finalRight = rawRight > getWidth() - edge
-                ? (getWidth() - edge) + (rawRight - (getWidth() - edge)) * dp(1.0f)
-                        / ((rawRight - (getWidth() - edge)) + dp(2.0f))
+        final float clampedRight = rawRight > getWidth() - edge
+                ? (getWidth() - edge) + (rawRight - (getWidth() - edge)) * dp(2.2f)
+                        / ((rawRight - (getWidth() - edge)) + dp(2.8f))
                 : rawRight + dampedRightStretch;
+        final float minPillWidth = Math.min(baseWidth, dp(48));
+        final float finalLeft = rightSquish > 0f
+                ? Math.min(clampedRight - minPillWidth, clampedLeft + rightSquish)
+                : clampedLeft;
+        final float finalRight = leftSquish > 0f
+                ? Math.max(clampedLeft + minPillWidth, clampedRight - leftSquish)
+                : clampedRight;
 
         selectorRect.set(
                 finalLeft,
                 cy - height * .5f,
                 finalRight,
                 cy + height * .5f);
+        final float motionDir = leftOverscroll > .1f ? -1f : (rightOverscroll > .1f ? 1f : direction);
+        final float motionMag = Math.min(1f, Math.max(totalStretch / dp(16), edgeOverscroll / dp(11)));
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
-                Theme.isCurrentThemeDark(), direction * Math.min(1f, totalStretch / dp(16)),
+                Theme.isCurrentThemeDark(), motionDir * motionMag,
                 (elasticTouchStartedOnPill && !elasticMenuShownDuringTouch)
                         || ((elasticDragging || elasticPressValue > 0.05f) && !elasticMenuShownDuringTouch));
         updateElasticTabLensScale(centerX, widthAtX, totalStretch);
@@ -1425,8 +1449,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
         if (ElasticPillGesture.enabled()) {
             // Soft iOS-like edge rubber-banding when pulling slightly past first/last tab.
-            final float over = dp(6);
-            final float soft = dp(24);
+            final float over = dp(14);
+            final float soft = dp(32);
             if (x < min) return min - over * (float) Math.tanh((min - x) / soft);
             if (x > max) return max + over * (float) Math.tanh((x - max) / soft);
             return x;
