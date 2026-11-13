@@ -125,3 +125,40 @@ standard for ordinary tasks that have no visual acceptance reference.
   Use its Reference vs Implementation comparison and checklist as the review
   structure. The user's supplied visual remains authoritative; external UI kits
   are only supporting references.
+
+
+## Approved Liquid Glass engineering standards (first-try fidelity)
+
+When implementing, extending, or fixing Liquid Glass surfaces (floating
+headers, morphing menus, bottom navigation pills, buttons, dialogs), **read and
+follow `.agents/skills/exfullgram-liquid-glass/SKILL.md`** before making code
+changes so accepted visuals match on the first attempt:
+
+- **Implicit acceptance tracking:** Verified golden commits in this repository
+  (`57f7111be` bottom nav pill, `ce4ac23ed` main screen header & morphing
+  menu, plus `4560e46bd` / `6edb52231` settings header glass) define the
+  expected look. Whenever the user skips commenting on a delivered screen and
+  immediately sends screenshots of another screen to style, lock that delivered
+  screen's parameters and architecture in as the standard for subsequent work.
+- **Crystal clarity first:** Never ship opaque white or milky matte fills on
+  crystal headers (`dialogsHeaderGlass`, `simpleActionBar`); use
+  `liquid_glass_header_shader.agsl` via `setHeaderGlassLens(true)` with
+  transparent crystal tint (`0.24f` dark / `0.30f` light) and suppress dark-mode
+  static vector strokes so Fresnel catchlights draw the rim cleanly.
+- **Single-sign AGSL refraction:** Keep `circleMap` UV displacement monotonic
+  across the boundary (`~1.45dp–1.65dp` inset) so edge characters/icons never
+  pinch or fold.
+- **Morphing menus & tactile bounce:** Use `SimpleActionBarMenuOverlay` /
+  `ItemOptions.openInOverlay(...)` with `dialogsMenuGlass` instead of static
+  popup windows, plus tactile press bounce (`setElasticPressProgress`) gated on
+  `LiquidGlassTuning.motionEnabled()`.
+- **Centering & transition invariants:** Measure compact glass title pills via
+  `SimpleTextView.getFullContentWidth()` (never `getMeasuredWidth()`), keep
+  `BaseFragment.isActionBarCrossfadeEnabled()` and
+  `ActionBarLayout.isActionBarInCrossfade()` returning `false` when
+  `actionBar.isGlassMode()` or `!shouldAddToContainer()`, and enable
+  `BlurredRecyclerView.setSimpleGlassMode(true)` under edge-to-edge glass
+  headers.
+- **Regression suite:** After editing Liquid Glass or header/navigation code,
+  run all static checks in `scripts/check_*.py` (all must exit `0`).
+
