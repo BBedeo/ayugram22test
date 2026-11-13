@@ -233,6 +233,7 @@ public class ActionBarMenuItem extends FrameLayout {
     private float lastDragRawX;
     private float lastDragRawY;
     private boolean draggedPastButton;
+    private boolean dragHoverEnteredMenu;
     private boolean pendingInitialHoverSync;
     @Nullable
     private ActionBarPopupWindow.ActionBarPopupWindowLayout externalPopupLayout;
@@ -396,6 +397,7 @@ public class ActionBarMenuItem extends FrameLayout {
             lastDragRawX = event.getRawX();
             lastDragRawY = event.getRawY();
             draggedPastButton = false;
+            dragHoverEnteredMenu = false;
             subMenuOpenedByGesture = false;
             pendingInitialHoverSync = false;
             if (canOpenByGesture) {
@@ -492,7 +494,13 @@ public class ActionBarMenuItem extends FrameLayout {
                         popupWindow.dismiss(allowCloseAnimation);
                     }
                 }
-            } else if (showSubmenuByMove && !overlayShown && draggedPastButton
+            } else if (app.exteraless.chats.ChatsConfig.dismissMenuOnDragOut()
+                    && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())
+                    && (dragHoverEnteredMenu || draggedPastButton)
+                    && !isPointInsideActiveMenu(lastDragRawX, lastDragRawY, overlay, overlayShown)) {
+                dismissSubMenuOnClick();
+            } else if (!app.exteraless.chats.ChatsConfig.dismissMenuOnDragOut()
+                    && showSubmenuByMove && !overlayShown && draggedPastButton
                     && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
                 if (externalPopupWindow != null) {
                     externalPopupWindow.dismiss();
@@ -656,16 +664,26 @@ public class ActionBarMenuItem extends FrameLayout {
             clearHoverSelection(oldSelected);
         }
         if (newSelected != null) {
-            newSelected.setPressed(true);
             newSelected.setSelected(true);
-            if (Build.VERSION.SDK_INT == 21 && newSelected.getBackground() != null) {
-                newSelected.getBackground().setVisible(true, false);
-            }
-            newSelected.getLocationOnScreen(location);
-            newSelected.drawableHotspotChanged(screenX - location[0], screenY - location[1]);
             return newSelected != oldSelected;
         }
         return false;
+    }
+
+    private boolean isPointInsideActiveMenu(
+            float screenX,
+            float screenY,
+            @Nullable SimpleActionBarMenuOverlay overlay,
+            boolean overlayShown) {
+        final ActionBarPopupWindow.ActionBarPopupWindowLayout activeLayout = getActivePopupLayout(overlay, overlayShown);
+        if (activeLayout == null || !activeLayout.isShown()) {
+            return false;
+        }
+        final View pageRoot = activeLayout.getVisiblePageRoot();
+        final View boundsView = pageRoot != null && pageRoot.isShown() ? pageRoot : activeLayout;
+        boundsView.getLocationOnScreen(location);
+        return screenX >= location[0] && screenX < location[0] + boundsView.getWidth()
+                && screenY >= location[1] && screenY < location[1] + boundsView.getHeight();
     }
 
     /** Presses and animates the item of the open sub menu under the finger of a gesture on this button. */
@@ -691,6 +709,9 @@ public class ActionBarMenuItem extends FrameLayout {
         final View oldSelected = selectedMenuView;
         final View pageRoot = activeLayout.getVisiblePageRoot();
         final View hit = findHoveredMenuChild(pageRoot, pageRoot, screenX, screenY, location);
+        if (hit != null) {
+            dragHoverEnteredMenu = true;
+        }
         selectedMenuView = hit;
         if (applyHoverSelection(oldSelected, hit, screenX, screenY, location)) {
             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);

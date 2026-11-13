@@ -156,4 +156,6 @@
     <string name="OEChatsVoiceHeader">语音消息</string>
     <string name="OEDoubleTapSaveToDevice">保存到设备</string>
     <string name="OESendAfterSlowMode">慢速模式结束后发送</string>
+    <string name="OEChatsDismissMenuOnDragOut">在菜单外松手时关闭</string>
+    <string name="OEChatsDismissMenuOnDragOutInfo">长按打开菜单后，若滑出菜单并在未选中任何选项时松开手指，则关闭菜单。</string>
 </resources>

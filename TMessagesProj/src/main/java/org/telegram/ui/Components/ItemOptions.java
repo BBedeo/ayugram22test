@@ -2060,10 +2060,18 @@ public class ItemOptions {
 
     private View.OnTouchListener hoverReleaseListener;
     private View hoveredItem;
+    private boolean hoverEnteredMenu;
+    private boolean hoverDraggedOutside;
+    private float hoverDownRawX = Float.NaN;
+    private float hoverDownRawY = Float.NaN;
     private final int[] hoverLoc = new int[2];
 
     private void installHoverReleaseListener() {
         if (scrimView == null) return;
+        hoverEnteredMenu = false;
+        hoverDraggedOutside = false;
+        hoverDownRawX = Float.NaN;
+        hoverDownRawY = Float.NaN;
         if (scrimView.getParent() != null) {
             scrimView.getParent().requestDisallowInterceptTouchEvent(true);
         }
@@ -2078,6 +2086,10 @@ public class ItemOptions {
                 v.getParent().requestDisallowInterceptTouchEvent(true);
             }
             final int action = event.getActionMasked();
+            if (Float.isNaN(self.hoverDownRawX)) {
+                self.hoverDownRawX = event.getRawX();
+                self.hoverDownRawY = event.getRawY();
+            }
             if (action == MotionEvent.ACTION_MOVE) {
                 self.updateHover((int) event.getRawX(), (int) event.getRawY());
             } else if (action == MotionEvent.ACTION_UP) {
@@ -2135,21 +2147,43 @@ public class ItemOptions {
                 ? ((ActionBarPopupWindow.ActionBarPopupWindowLayout) layout).getVisiblePageRoot()
                 : layout;
         View hit = findItemAt(pageRoot, rawX, rawY);
+        if (hit != null) {
+            hoverEnteredMenu = true;
+        }
+        if (scrimView != null && !Float.isNaN(hoverDownRawX)) {
+            final float slop = android.view.ViewConfiguration.get(scrimView.getContext()).getScaledTouchSlop();
+            final float movedDist = (float) Math.hypot(rawX - hoverDownRawX, rawY - hoverDownRawY);
+            if (movedDist > slop * 1.5f) {
+                scrimView.getLocationOnScreen(hoverLoc);
+                final boolean insideScrim = rawX >= hoverLoc[0] - slop && rawX < hoverLoc[0] + scrimView.getWidth() + slop
+                        && rawY >= hoverLoc[1] - slop && rawY < hoverLoc[1] + scrimView.getHeight() + slop;
+                if (!insideScrim) {
+                    hoverDraggedOutside = true;
+                }
+            }
+        }
         if (hit != hoveredItem) {
             if (hoveredItem != null) {
-                hoveredItem.setPressed(false);
+                hoveredItem.setSelected(false);
             }
             hoveredItem = hit;
             if (hoveredItem != null) {
-                hoveredItem.setPressed(true);
+                hoveredItem.setSelected(true);
                 hoveredItem.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
             }
         }
         setDragHoverTarget(hoveredItem);
-        if (hoveredItem != null) {
-            hoveredItem.getLocationOnScreen(hoverLoc);
-            hoveredItem.drawableHotspotChanged(rawX - hoverLoc[0], rawY - hoverLoc[1]);
+    }
+
+    private boolean isPointInsidePopupBounds(int rawX, int rawY) {
+        if (lastLayout == null || !lastLayout.isShown()) {
+            return false;
         }
+        final View pageRoot = lastLayout.getVisiblePageRoot();
+        final View boundsView = pageRoot != null && pageRoot.isShown() ? pageRoot : lastLayout;
+        boundsView.getLocationOnScreen(hoverLoc);
+        return rawX >= hoverLoc[0] && rawX < hoverLoc[0] + boundsView.getWidth()
+                && rawY >= hoverLoc[1] && rawY < hoverLoc[1] + boundsView.getHeight();
     }
 
     private void releaseHover(int rawX, int rawY) {
@@ -2158,17 +2192,29 @@ public class ItemOptions {
         if (hoveredItem != null) {
             View target = hoveredItem;
             hoveredItem = null;
-            target.setPressed(false);
+            target.setSelected(false);
             target.performClick();
+        } else if (app.exteraless.chats.ChatsConfig.dismissMenuOnDragOut()
+                && (hoverEnteredMenu || hoverDraggedOutside)
+                && !isPointInsidePopupBounds(rawX, rawY)) {
+            dismiss();
         }
+        hoverEnteredMenu = false;
+        hoverDraggedOutside = false;
+        hoverDownRawX = Float.NaN;
+        hoverDownRawY = Float.NaN;
     }
 
     private void cancelHover() {
         setDragHoverTarget(null);
         if (hoveredItem != null) {
-            hoveredItem.setPressed(false);
+            hoveredItem.setSelected(false);
             hoveredItem = null;
         }
+        hoverEnteredMenu = false;
+        hoverDraggedOutside = false;
+        hoverDownRawX = Float.NaN;
+        hoverDownRawY = Float.NaN;
     }
 
     private static View findItemAt(View root, int rawX, int rawY) {

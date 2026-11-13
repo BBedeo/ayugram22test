@@ -19,6 +19,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -27,6 +28,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -161,6 +163,10 @@ public class ActionBarPopupWindow extends PopupWindow {
         private final RectF dragHoverDrawRect = new RectF();
         private final Paint dragHoverFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint dragHoverStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int[] dragHoverFillColors = new int[3];
+        private final float[] dragHoverFillPos = new float[]{0f, 0.45f, 1f};
+        private final int[] dragHoverStrokeColors = new int[4];
+        private final float[] dragHoverStrokePos = new float[]{0f, 0.36f, 0.72f, 1f};
         private final RectF dragHoverClipRect = new RectF();
         private final Path dragHoverClipPath = new Path();
         private boolean dragSelectEnabled;
@@ -311,6 +317,9 @@ public class ActionBarPopupWindow extends PopupWindow {
 
         public int addViewToSwipeBack(View v) {
             swipeBackLayout.addView(v, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, shownFromBottom ? Gravity.BOTTOM : Gravity.TOP));
+            if (dragSelectEnabled) {
+                applyCustomGlassHoverToTree(v, true);
+            }
             return swipeBackLayout.getChildCount() - 1;
         }
 
@@ -451,10 +460,16 @@ public class ActionBarPopupWindow extends PopupWindow {
         @Override
         public void addView(View child) {
             linearLayout.addView(child);
+            if (dragSelectEnabled) {
+                applyCustomGlassHoverToTree(child, true);
+            }
         }
 
         public void addView(View child, LinearLayout.LayoutParams layoutParams) {
             linearLayout.addView(child, layoutParams);
+            if (dragSelectEnabled) {
+                applyCustomGlassHoverToTree(child, true);
+            }
         }
 
         public int getViewsCount() {
@@ -645,6 +660,20 @@ public class ActionBarPopupWindow extends PopupWindow {
         /** Enables sliding finger across open menu items to glide the hover pill and select on release. */
         public void setDragSelectEnabled(boolean enabled) {
             dragSelectEnabled = enabled;
+            applyCustomGlassHoverToTree(this, enabled);
+        }
+
+        private static void applyCustomGlassHoverToTree(@Nullable View root, boolean enabled) {
+            if (root instanceof ActionBarMenuSubItem) {
+                ((ActionBarMenuSubItem) root).setUseCustomGlassHover(enabled);
+                return;
+            }
+            if (root instanceof ViewGroup) {
+                final ViewGroup vg = (ViewGroup) root;
+                for (int i = 0, count = vg.getChildCount(); i < count; i++) {
+                    applyCustomGlassHoverToTree(vg.getChildAt(i), enabled);
+                }
+            }
         }
 
         /** Clears any active drag-hover highlight immediately without fading out. */
@@ -675,7 +704,7 @@ public class ActionBarPopupWindow extends PopupWindow {
                 final View pageRoot = getVisiblePageRoot();
                 intraDownView = ActionBarMenuItem.findHoveredMenuChild(pageRoot, pageRoot, intraDownRawX, intraDownRawY, intraLocation);
                 intraLastHapticView = intraDownView;
-                if (!canActivePageScrollVertically() && intraDownView != null) {
+                if (intraDownView != null) {
                     setDragHoverView(intraDownView);
                 }
                 final boolean handled = super.dispatchTouchEvent(ev);
@@ -754,6 +783,9 @@ public class ActionBarPopupWindow extends PopupWindow {
                         if (selected.getTag() instanceof ActionRow.ActionItem) {
                             dismissOwnerMenu();
                         }
+                    } else if (app.exteraless.chats.ChatsConfig.dismissMenuOnDragOut()
+                            && !isPointInsideVisiblePage(rawX, rawY)) {
+                        dismissOwnerMenu();
                     }
                     return true;
                 }
@@ -809,6 +841,16 @@ public class ActionBarPopupWindow extends PopupWindow {
             } else if (window != null) {
                 window.dismiss(true);
             }
+        }
+
+        private boolean isPointInsideVisiblePage(float screenX, float screenY) {
+            final View pageRoot = getVisiblePageRoot();
+            if (pageRoot == null || !pageRoot.isShown()) {
+                return false;
+            }
+            pageRoot.getLocationOnScreen(intraLocation);
+            return screenX >= intraLocation[0] && screenX < intraLocation[0] + pageRoot.getWidth()
+                    && screenY >= intraLocation[1] && screenY < intraLocation[1] + pageRoot.getHeight();
         }
 
         private boolean canActivePageScrollVertically() {
@@ -964,31 +1006,55 @@ public class ActionBarPopupWindow extends PopupWindow {
 
             final boolean compact = dragHoverCurrentRect.width() < getWidth() * 0.55f;
             final float hInset = compact ? -dp(3) : dp(6);
-            final float vInset = compact ? -dp(2) : dp(2);
+            final float vInset = compact ? -dp(2) : dp(1.5f);
             dragHoverDrawRect.set(
                     dragHoverCurrentRect.left + hInset,
                     dragHoverCurrentRect.top + vInset,
                     dragHoverCurrentRect.right - hInset,
                     dragHoverCurrentRect.bottom - vInset
             );
-            final float scale = 0.96f + 0.04f * dragHoverAlpha;
+            final float glideDeltaY = dragHoverView != null
+                    ? Math.abs(dragHoverTargetRect.centerY() - dragHoverCurrentRect.centerY()) : 0f;
+            final float stretch = Math.min(0.14f, glideDeltaY / Math.max(dp(110), 1f));
+            final float scale = 0.94f + 0.06f * dragHoverAlpha;
             final float cx = dragHoverDrawRect.centerX();
             final float cy = dragHoverDrawRect.centerY();
-            final float hw = dragHoverDrawRect.width() * 0.5f * scale;
-            final float hh = dragHoverDrawRect.height() * 0.5f * scale;
+            final float hw = dragHoverDrawRect.width() * 0.5f * scale * (1f - stretch * 0.14f);
+            final float hh = dragHoverDrawRect.height() * 0.5f * scale * (1f + stretch * 0.46f);
             dragHoverDrawRect.set(cx - hw, cy - hh, cx + hw, cy + hh);
             final float radius = compact
                     ? Math.min(dragHoverDrawRect.width(), dragHoverDrawRect.height()) * 0.5f
-                    : Math.min(backgroundDrawable == null ? dp(16) : dp(13), dragHoverDrawRect.height() * 0.5f);
+                    : Math.min(backgroundDrawable == null ? dp(17) : dp(14), dragHoverDrawRect.height() * 0.5f);
 
             final int textColor = Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider);
             final boolean isDark = ColorUtils.calculateLuminance(textColor) > 0.45;
-            dragHoverFillPaint.setColor(ColorUtils.setAlphaComponent(
-                    isDark ? 0xFFFFFFFF : 0xFF000000,
-                    Math.round((isDark ? 0x22 : 0x11) * dragHoverAlpha)));
-            dragHoverStrokePaint.setColor(ColorUtils.setAlphaComponent(
-                    isDark ? 0xFFFFFFFF : 0xFF000000,
-                    Math.round((isDark ? 0x1C : 0x0C) * dragHoverAlpha)));
+            if (isDark) {
+                dragHoverFillColors[0] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x2E * dragHoverAlpha));
+                dragHoverFillColors[1] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x1B * dragHoverAlpha));
+                dragHoverFillColors[2] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x10 * dragHoverAlpha));
+                dragHoverStrokeColors[0] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x4A * dragHoverAlpha));
+                dragHoverStrokeColors[1] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x16 * dragHoverAlpha));
+                dragHoverStrokeColors[2] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x06 * dragHoverAlpha));
+                dragHoverStrokeColors[3] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x22 * dragHoverAlpha));
+            } else {
+                dragHoverFillColors[0] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x40 * dragHoverAlpha));
+                dragHoverFillColors[1] = ColorUtils.setAlphaComponent(0xFF000000, Math.round(0x0D * dragHoverAlpha));
+                dragHoverFillColors[2] = ColorUtils.setAlphaComponent(0xFF000000, Math.round(0x13 * dragHoverAlpha));
+                dragHoverStrokeColors[0] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x88 * dragHoverAlpha));
+                dragHoverStrokeColors[1] = ColorUtils.setAlphaComponent(0xFF000000, Math.round(0x12 * dragHoverAlpha));
+                dragHoverStrokeColors[2] = ColorUtils.setAlphaComponent(0xFF000000, Math.round(0x07 * dragHoverAlpha));
+                dragHoverStrokeColors[3] = ColorUtils.setAlphaComponent(0xFFFFFFFF, Math.round(0x38 * dragHoverAlpha));
+            }
+            dragHoverFillPaint.setColor(0xFFFFFFFF);
+            dragHoverFillPaint.setShader(new LinearGradient(
+                    dragHoverDrawRect.left, dragHoverDrawRect.top,
+                    dragHoverDrawRect.right, dragHoverDrawRect.bottom,
+                    dragHoverFillColors, dragHoverFillPos, Shader.TileMode.CLAMP));
+            dragHoverStrokePaint.setColor(0xFFFFFFFF);
+            dragHoverStrokePaint.setShader(new LinearGradient(
+                    dragHoverDrawRect.left, dragHoverDrawRect.top,
+                    dragHoverDrawRect.right, dragHoverDrawRect.bottom,
+                    dragHoverStrokeColors, dragHoverStrokePos, Shader.TileMode.CLAMP));
 
             final int save = canvas.save();
             final float clipLeft = backgroundDrawable != null ? getPaddingLeft() : 0f;

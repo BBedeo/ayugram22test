@@ -156,4 +156,6 @@
     <string name="OEChatsVoiceHeader">Mensajes de voz</string>
     <string name="OEDoubleTapSaveToDevice">Guardar en el dispositivo</string>
     <string name="OESendAfterSlowMode">Enviar al terminar el modo lento</string>
+    <string name="OEChatsDismissMenuOnDragOut">Cerrar menú al soltar fuera</string>
+    <string name="OEChatsDismissMenuOnDragOutInfo">Cierra los menús abiertos al mantener pulsado si deslizas y sueltas fuera de cualquier opción.</string>
 </resources>

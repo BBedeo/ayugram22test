@@ -46,7 +46,7 @@ half4 main(in float2 fragCoord) {
   float2 edgeDir = gradLen > 0.001 ? gradRaw / gradLen : float2(0.0, -1.0);
 
   float minHalf = max(min(size.x, size.y), 4.0);
-  float uDp = max(minHalf / 23.0, 1.0);
+  float uDp = clamp(minHalf / 23.0, 1.0, 3.6);
   float dDp = -sd / uDp;
   float t = clamp(thickness, 2.0, minHalf * 0.92);
   float press = clamp(glass_press, 0.0, 1.0);
@@ -83,11 +83,13 @@ half4 main(in float2 fragCoord) {
   uv = clamp(uv, uvMin, uvMax);
 
   // Symmetric RGB chromatic dispersion across curved edges + inset opposite-side reflection.
-  float2 disp = ray.xy * uDp * (2.35 + lift * 2.25) * bevel * insetFade;
+  float2 disp = ray.xy * uDp * (0.85 + lift * 1.15) * bevel * insetFade;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  float dispMix = clamp((0.62 + 0.34 * lift) * bevel * insetFade, 0.0, 0.92);
+  half lumaPre = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
+  float dispGuard = mix(0.20, 1.0, smoothstep(0.16, 0.42, float(lumaPre)));
+  float dispMix = clamp((0.36 + 0.24 * lift) * bevel * insetFade * dispGuard, 0.0, 0.65);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
@@ -112,14 +114,15 @@ half4 main(in float2 fragCoord) {
   half4 vertMirror = img.eval(mirrorVertUV);
   backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.18 + 0.14 * lift)));
 
-  // Vibrant optical saturation without muddy matte wash.
+  // Source backdrop carries pre-applied 3x saturation; restore natural chromatic balance on dark slate cards
+  // so Dark Blue surfaces stay slate rather than glowing cobalt, while bright colored content remains crisp.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
-  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.28 + 0.16 * lift)), half3(0.0), half3(1.0));
-
   float bgLumaF = float(luma);
   float fgAlpha = clamp(float(foreground_color_premultiplied.a), 0.001, 1.0);
   float fgLumaF = float(dot(foreground_color_premultiplied.rgb / half(fgAlpha), half3(0.2126, 0.7152, 0.0722)));
   float darkCrystalTint = 1.0 - smoothstep(0.38, 0.65, fgLumaF);
+  float deSatScale = mix(0.50, mix(0.35, 0.54, smoothstep(0.22, 0.48, bgLumaF)), darkCrystalTint);
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(deSatScale)), half3(0.0), half3(1.0));
   // In light theme let bright backdrop colors breathe; in dark theme keep full clarity with a gentle
   // contrast veil only if very bright pixels pass behind white header labels.
   float lightBgAdaptive = mix(1.0, 0.72, smoothstep(0.18, 0.70, bgLumaF) * (1.0 - darkCrystalTint));
@@ -165,7 +168,7 @@ half4 main(in float2 fragCoord) {
   }
 
   float totalGlint = highlightStrength * rimSpec;
-  half3 specTint = mix(half3(0.74, 0.91, 1.0), half3(1.0, 0.97, 0.90), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
+  half3 specTint = mix(half3(0.92, 0.96, 1.0), half3(1.0, 0.99, 0.97), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
   surface.rgb = min(half3(1.0), surface.rgb + specTint * half(totalGlint * float(surface.a)));
 
   return surface;

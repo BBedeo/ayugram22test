@@ -54,6 +54,7 @@ public class ActionBarMenuSubItem extends FrameLayout implements Theme.Colorable
     private boolean iconColorSet; // imageView filter mode is SRC_IN until setIconColor applies one
     private android.graphics.ColorFilter appliedIconFilter;
     private Drawable appliedSelectorBackground;
+    private boolean useCustomGlassHover;
 
     int selectorRad = 12;
     boolean top;
@@ -466,7 +467,20 @@ public class ActionBarMenuSubItem extends FrameLayout implements Theme.Colorable
         updateBackground();
     }
 
+    public void setUseCustomGlassHover(boolean enabled) {
+        if (this.useCustomGlassHover != enabled) {
+            this.useCustomGlassHover = enabled;
+            updateBackground();
+        }
+    }
+
     public void updateBackground() {
+        if (useCustomGlassHover) {
+            appliedSelectorBackground = null;
+            setBackground(null);
+            setStateListAnimator(null);
+            return;
+        }
         setBackground(appliedSelectorBackground = Theme.createRadSelectorDrawable(selectorColor, top ? selectorRad : 0, bottom ? selectorRad : 0));
         // exteraGram: «вдавливание» пункта меню при нажатии (exteraGram — UIUtil.applyScaleStateListAnimator(this, ..., 0.04f, 1.5f))
         app.exteraless.utils.UIUtil.applyScaleStateListAnimator(this, 0.04f, 1.5f);
