@@ -59,6 +59,8 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEAyu:ayuDisableAll", "OEGeneralAyuMomentsDisableAll");
         SEARCH_TITLE_ALIASES.put("OEAyu:ayuClearDatabase", "ClearMessageDatabase");
         SEARCH_TITLE_ALIASES.put("OEAppearance:appNavigation", "OEAppearanceNavigation");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:designPreset", "OEAppearancePreset");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:maxIosGlassPreset", "OEAppearancePresetMaxIosGlass");
         SEARCH_TITLE_ALIASES.put("OEChats:hideStories", "OEAppearanceStories");
         SEARCH_TITLE_ALIASES.put("OEChats:hideActionBarStatus", "OEAppearanceHideActionBarStatus");
         SEARCH_TITLE_ALIASES.put("OEChats:hideFloatingButton", "OEAppearanceHideFloatingButton");

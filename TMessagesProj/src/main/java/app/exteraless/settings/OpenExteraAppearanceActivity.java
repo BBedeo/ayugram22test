@@ -12,6 +12,7 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,6 +24,7 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.LiteMode;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.RadioColorCell;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextDetailSettingsCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
@@ -36,6 +38,7 @@ import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.MainTabsLayout;
 
 import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.appearance.AppearancePresets;
 import app.exteraless.appearance.AvatarCornersPreviewCell;
 import app.exteraless.appearance.AvatarCornersSeekBar;
 import app.exteraless.appearance.ChatListPreviewCell;
@@ -81,6 +84,13 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private static final int TYPE_FAB_SHAPE = 106;
     private static final int TYPE_GLASS_SLIDER_BASE = 107;
     private static final int GLASS_SLIDER_COUNT = 6;
+
+    // Design presets
+    private int presetsHeaderRow;
+    private int designPresetRow;
+    private int maxIosGlassPresetRow;
+    private int presetsDividerRow;
+    private boolean applyingPreset;
 
     // Appearance
     private int appearanceHeaderRow;
@@ -197,6 +207,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     @Override
     protected void updateRows() {
         super.updateRows();
+
+        presetsHeaderRow = addRow("presetsHeader");
+        designPresetRow = addRow("designPreset");
+        maxIosGlassPresetRow = addRow("maxIosGlassPreset");
+        presetsDividerRow = addRow();
 
         avatarCornersPreviewRow = addRow("avatarCorners");
         singleCornerRadiusRow = addRow("singleCornerRadius");
@@ -337,6 +352,118 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private void rebuildAll() {
         if (parentLayout != null) {
             parentLayout.rebuildAllFragmentViews(false, false);
+        }
+        notifyPresetRows();
+    }
+
+    private void notifyPresetRows() {
+        if (applyingPreset || listView == null || listView.isComputingLayout()) {
+            return;
+        }
+        notifyRow(designPresetRow);
+        notifyRow(maxIosGlassPresetRow);
+    }
+
+    private CharSequence presetTitle(int presetId) {
+        switch (presetId) {
+            case AppearancePresets.PRESET_MAX_IOS_GLASS:
+                return getString(R.string.OEAppearancePresetMaxIosGlass);
+            case AppearancePresets.PRESET_BALANCED_IOS_GLASS:
+                return getString(R.string.OEAppearancePresetBalancedIosGlass);
+            case AppearancePresets.PRESET_MATERIAL3:
+                return getString(R.string.OEAppearancePresetMaterial3);
+            case AppearancePresets.PRESET_CLASSIC:
+                return getString(R.string.OEAppearancePresetClassic);
+            default:
+                return getString(R.string.OEAppearancePresetCustom);
+        }
+    }
+
+    private void showDesignPresetDialog() {
+        Activity activity = getParentActivity();
+        if (activity == null) {
+            return;
+        }
+        final int[] ids = {
+                AppearancePresets.PRESET_MAX_IOS_GLASS,
+                AppearancePresets.PRESET_BALANCED_IOS_GLASS,
+                AppearancePresets.PRESET_MATERIAL3,
+                AppearancePresets.PRESET_CLASSIC
+        };
+        final CharSequence[] titles = {
+                getString(R.string.OEAppearancePresetMaxIosGlass),
+                getString(R.string.OEAppearancePresetBalancedIosGlass),
+                getString(R.string.OEAppearancePresetMaterial3),
+                getString(R.string.OEAppearancePresetClassic)
+        };
+        final CharSequence[] infos = {
+                getString(R.string.OEAppearancePresetMaxIosGlassInfo),
+                getString(R.string.OEAppearancePresetBalancedIosGlassInfo),
+                getString(R.string.OEAppearancePresetMaterial3Info),
+                getString(R.string.OEAppearancePresetClassicInfo)
+        };
+        final int current = AppearancePresets.currentPreset();
+        LinearLayout container = new LinearLayout(activity);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(0, AndroidUtilities.dp(4), 0, AndroidUtilities.dp(4));
+        AlertDialog[] holder = new AlertDialog[1];
+        for (int i = 0; i < ids.length; i++) {
+            final int presetId = ids[i];
+            RadioColorCell cell = new RadioColorCell(activity, resourcesProvider);
+            cell.setTextAndText2AndValue(titles[i], infos[i], presetId == current);
+            cell.setOnClickListener(v -> {
+                if (holder[0] != null) {
+                    holder[0].dismiss();
+                }
+                applyDesignPreset(presetId);
+            });
+            container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+        ScrollView scrollView = new ScrollView(activity);
+        scrollView.addView(container, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity, resourcesProvider);
+        builder.setTitle(getString(R.string.OEAppearancePreset));
+        builder.setView(scrollView);
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        holder[0] = builder.create();
+        showDialog(holder[0]);
+    }
+
+    private void applyDesignPreset(int presetId) {
+        if (!AppearancePresets.applyPreset(presetId, getParentActivity())) {
+            return;
+        }
+        applyingPreset = true;
+        try {
+            if (listView != null) {
+                listView.setSections(
+                        AndroidUtilities.dp(12),
+                        AndroidUtilities.dp(AppearanceConfig.sectionRadius()),
+                        true);
+                listView.invalidate();
+                listView.invalidateItemDecorations();
+            }
+            if (fabShapeCell != null) {
+                fabShapeCell.updateSelection(true);
+            }
+            if (chatListPreviewCell != null) {
+                chatListPreviewCell.updateCentered(true);
+            }
+            invalidatePreviews();
+            getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
+            rebuildRowsAndNotify();
+            rebuildAll();
+        } finally {
+            applyingPreset = false;
+        }
+        if (getParentActivity() != null) {
+            BulletinFactory.of(this)
+                    .createSimpleBulletin(R.raw.info,
+                            formatString(R.string.OEAppearancePresetApplied, presetTitle(presetId)))
+                    .show();
+        }
+        if (AppearanceConfig.universalLiquidGlass()) {
+            showPowerSaverNotice();
         }
     }
 
@@ -645,7 +772,16 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
-        if (position == iconPacksRow) {
+        if (position == designPresetRow) {
+            showDesignPresetDialog();
+            return;
+        } else if (position == maxIosGlassPresetRow) {
+            final int target = AppearancePresets.isMaxIosGlassActive()
+                    ? AppearancePresets.PRESET_CLASSIC
+                    : AppearancePresets.PRESET_MAX_IOS_GLASS;
+            applyDesignPreset(target);
+            return;
+        } else if (position == iconPacksRow) {
             presentFragment(new IconPacksActivity());
             return;
         } else if (position == pillStackRow) {
@@ -757,10 +893,18 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         } else if (position == glassMotionRow) {
             AppearanceConfig.liquidGlassMotion.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(AppearanceConfig.liquidGlassMotion.Bool());
+            }
+            notifyPresetRows();
             glassPrecisionRebuild.run();
             return;
         } else if (position == glassAdaptiveRow) {
             AppearanceConfig.liquidGlassAdaptive.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(AppearanceConfig.liquidGlassAdaptive.Bool());
+            }
+            notifyPresetRows();
             glassPrecisionRebuild.run();
             return;
         } else if (position == liquidGlassMaterialRow) {
@@ -778,7 +922,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     getString(R.string.OEAppearanceGlassOutlineGlare),
                     getString(R.string.OEAppearanceGlassOutlineSolid),
                     getString(R.string.OEAppearanceGlassOutlineHidden)
-            }, AppearanceConfig.glassOutlineStyle, null);
+            }, AppearanceConfig.glassOutlineStyle, this::notifyPresetRows);
             return;
         } else if (position == startupFolderRow) {
             showStartupFolderDialog(position);
@@ -892,6 +1036,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             } else if (enabled) {
                 showPowerSaverNotice();
             }
+            notifyPresetRows();
             return;
         } else if (position == separateHeadersRow
                 && AppearanceConfig.sectionsSeparatedHeadersForced()) {
@@ -942,6 +1087,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
         if (rebuild) {
             rebuildAll();
+        } else {
+            notifyPresetRows();
         }
         if (restart) {
             showRestartHint();
@@ -1077,7 +1224,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
-                    if (position == appearanceHeaderRow) {
+                    if (position == presetsHeaderRow) {
+                        cell.setText(getString(R.string.OEAppearancePresets));
+                    } else if (position == appearanceHeaderRow) {
                         cell.setText(getString(R.string.OEAppearanceGeneral));
                     } else if (position == sectionsHeaderRow) {
                         cell.setText(getString(R.string.OEAppearanceSections));
@@ -1100,7 +1249,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     // иначе строка, побывавшая заблокированной, останется полупрозрачной.
                     cell.setEnabled(position != separateHeadersRow
                             || !AppearanceConfig.sectionsSeparatedHeadersForced(), null);
-                    if (position == centerTitleRow) {
+                    if (position == maxIosGlassPresetRow) {
+                        cell.setTextAndValueAndCheck(
+                                getString(R.string.OEAppearancePresetMaxIosGlass),
+                                getString(R.string.OEAppearancePresetMaxIosGlassInfo),
+                                AppearancePresets.isMaxIosGlassActive(), true, false);
+                    } else if (position == centerTitleRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCenterTitle),
                                 AppearanceConfig.INSTANCE.centerTitle(), true);
                     } else if (position == useSystemFontsRow) {
@@ -1209,7 +1363,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_SETTINGS: {
                     TextSettingsCell cell = (TextSettingsCell) holder.itemView;
-                    if (position == dividerStyleRow) {
+                    if (position == designPresetRow) {
+                        cell.setTextAndValue(
+                                getString(R.string.OEAppearancePreset),
+                                presetTitle(AppearancePresets.currentPreset()),
+                                true);
+                    } else if (position == dividerStyleRow) {
                         String[] v = {getString(R.string.OEAppearanceDividerHidden), getString(R.string.OEAppearanceDividerLine), getString(R.string.OEAppearanceDividerSegments)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceDividerStyle), v[clamp(AppearanceConfig.dividerStyle.Int(), v.length)], false);
                     } else if (position == liquidGlassMaterialRow) {
@@ -1266,6 +1425,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 case TYPE_GLASS_SLIDER_BASE + 5: {
                     int which = holder.getItemViewType() - TYPE_GLASS_SLIDER_BASE;
                     ((AvatarCornersSeekBar) holder.itemView).setValue(glassSliderConfig(which).Int());
+                    break;
+                }
+                case TYPE_SECTION_SLIDER: {
+                    ((AvatarCornersSeekBar) holder.itemView).setValue(AppearanceConfig.sectionRadius.Int());
                     break;
                 }
                 case TYPE_INFO_PRIVACY: {
@@ -1329,11 +1492,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     return TYPE_GLASS_SLIDER_BASE + i;
                 }
             }
-            if (position == appearanceHeaderRow || position == sectionsHeaderRow
+            if (position == presetsHeaderRow || position == appearanceHeaderRow || position == sectionsHeaderRow
                     || position == blurHeaderRow || position == callsHeaderRow || position == chatListHeaderRow
                     || position == foldersHeaderRow || position == linksHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == appearanceDividerRow || position == sectionsDividerRow
+            } else if (position == presetsDividerRow || position == appearanceDividerRow || position == sectionsDividerRow
                     || position == blurDividerRow || position == callsDividerRow || position == avatarsDividerRow
                     || position == chatListDividerRow || position == foldersDividerRow
                     || position == linksDividerRow) {
@@ -1351,7 +1514,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     || position == md3PlayerRow || position == md3MiniPlayerRow
                     || position == iosNavBarRow || position == iosChatHeaderRow) {
                 return TYPE_ROUND_CHECK;
-            } else if (position == dividerStyleRow || position == glassOutlineRow
+            } else if (position == designPresetRow || position == dividerStyleRow || position == glassOutlineRow
                     || position == liquidGlassMaterialRow || position == tabTitleStyleRow
                     || position == startupFolderRow
                     || position == tabCounterRow || position == titleTextRow) {
@@ -1473,6 +1636,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (listAdapter != null && emojiSetsRow >= 0) {
             listAdapter.notifyItemChanged(emojiSetsRow);
         }
+        notifyPresetRows();
     }
 
     @Override

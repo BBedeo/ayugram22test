@@ -249,6 +249,7 @@ public final class AccountSettingsProfiles {
         NaConfig.INSTANCE.loadConfig(true);
         OpenExteraConfig.INSTANCE.loadConfig(true);
         AppearanceConfig.INSTANCE.loadConfig(true);
+        org.telegram.ui.MainTabsLayout.reloadBottomNavigationMode();
         // The newly active Test/live identity may use a different glass style.
         org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings();
         ChatsConfig.INSTANCE.loadConfig(true);
