@@ -39,11 +39,15 @@ Verified in `4560e46bd`:
   - `actionBar.setupGlass(factory, BlurredBackgroundProviderImpl.simpleActionBar(resourceProvider));`
 - Tactile press on `ActionBar` glass pills (`ActionBar.java`):
   - `animatorBackGlassPressed` / `animatorMenuGlassPressed` (`BoolAnimator`, `EASE_OUT_QUINT`, `220ms`) drive `setElasticPressProgress(val * 0.85f)` when `headerGlassLens && LiquidGlassTuning.motionEnabled()`.
-- Morphing menu spring physics (`SimpleActionBarMenuOverlay.java`):
+- Morphing menu spring physics (`SimpleActionBarMenuOverlay.java`) & hold/pull-down drag selection:
   - Open width spring: `springStep(t, 0.78, 0.30)` (~2% overshoot); height spring: `springStep(t - 0.02, 0.80, 0.34)` (~1.5% overshoot).
   - Close pours smoothly back into button (`0.17s` / `0.20s`) followed by button squash wobble (`~0.35s` settle).
+  - Holding (`200ms`) or pulling downward on any `ActionBarMenuItem` with submenus (`addSubItem`/`lazilyAddSubItem` or `setDragOpenMenu(true)` such as `DialogsActivity.optionsItem` and `SharedMediaLayout.simpleOptionsItem`) opens the morphing overlay or popup immediately and tracks the pointer across items (`ActionBarPopupWindowLayout.setDragHoverView`, `PopupSwipeBackLayout.getVisiblePageView`, `ItemOptions` hover sync) with an animated gliding Liquid-Glass hover pill and `HapticFeedbackConstants.CLOCK_TICK` haptics; releasing activates the hovered item.
+- Wide-pill & Profile header glints (`liquid_glass_header_shader.agsl`, `SimpleActionBar.java`):
+  - `liquid_glass_header_shader.agsl` computes `pillWeight` from `(size.x - size.y) / size.y`, softening horizontal falloff and adding off-diagonal `perpDir` specular catchlights (`offDiagTopRight` / `offDiagBotLeft`) on wide right-side capsules (`[🔍 ☁️ 🔄]`, `[🔍 ⋮]`) without altering standalone circular buttons (`pillWeight == 0`).
+  - `SimpleActionBar.createButtonsGlass()` and `createMenuGlass()` always pass `.setHeaderGlassLens(true)` even when a custom `buttonsGlassFactory` (e.g. `ProfileButtonsGlass`) is attached.
 - `BaseFragment`:
-  - Exposes `getListViewForSimpleGlassTopPadding()` / `getListViewForSimpleGlassBottomPadding()` (e.g., `FeedCategoryEditActivity` keeps `dp(72)` bottom clearance for floating button; `OpenExteraSettingsActivity` returns `0` top padding and fades title pill opacity in on scroll once first logo row passes below `mSystemInsets.top + ActionBar.getCurrentActionBarHeight() + dp(10)`).
+  - Exposes `getListViewForSimpleGlassTopPadding()` / `getListViewForSimpleGlassBottomPadding()` (e.g., `FeedCategoryEditActivity` keeps `dp(72)` bottom clearance for floating button; `OpenExteraSettingsActivity` returns `0` top padding and suppresses the floating title pill via `actionBar.setTitle(null)` + `actionBar.setDrawGlassTitle(false)`).
   - `BaseNekoSettingsActivity` (`useSimpleHeaderGlass()`): creates `SizeNotifierFrameLayout` instead of `BlurContentView`, skips `actionBar.setDrawBlurBackground`, skips `setupAdaptiveBackground()`, calls `listView.setSimpleGlassMode(true)`, and computes `isLightStatusBar()` from `key_windowBackgroundWhite`.
   - Any converted activity using `listViewForSimpleGlass` must remove legacy `actionBar.setAdaptiveBackground(...)`, override `getListViewForSimpleGlass()`, enable `isSupportEdgeToEdge() -> true` if needed, and keep `BlurredRecyclerView.setSimpleGlassMode(true)` so `-blurTopPadding` negative margin does not apply.
 

@@ -35,6 +35,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
+import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -44,6 +45,7 @@ import android.widget.ScrollView;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.AnimationNotificationsLocker;
@@ -140,6 +142,23 @@ public class ActionBarPopupWindow extends PopupWindow {
 
         public int subtractBackgroundHeight;
         Rect rect;
+
+        @Nullable
+        private View dragHoverView;
+        private float dragHoverAlpha;
+        private boolean dragHoverHasRect;
+        private long dragHoverLastTime;
+        private final RectF dragHoverCurrentRect = new RectF();
+        private final RectF dragHoverTargetRect = new RectF();
+        private final RectF dragHoverDrawRect = new RectF();
+        private final Paint dragHoverFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint dragHoverRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF dragHoverClipRect = new RectF();
+        private final Path dragHoverClipPath = new Path();
+
+        {
+            dragHoverRimPaint.setStyle(Paint.Style.STROKE);
+        }
 
         public Rect getPadding() {
             return bgPaddings;
@@ -578,10 +597,175 @@ public class ActionBarPopupWindow extends PopupWindow {
                 canvas.saveLayerAlpha((float) AndroidUtilities.rectTmp2.left, (float) AndroidUtilities.rectTmp2.top, AndroidUtilities.rectTmp2.right, AndroidUtilities.rectTmp2.bottom, (int) (255 * reactionsEnterProgress), Canvas.ALL_SAVE_FLAG);
                 float scale = 0.5f + reactionsEnterProgress * 0.5f;
                 canvas.scale(scale, scale, AndroidUtilities.rectTmp2.right, AndroidUtilities.rectTmp2.top);
+                drawDragHoverHighlight(canvas);
                 super.dispatchDraw(canvas);
                 canvas.restore();
             } else {
+                drawDragHoverHighlight(canvas);
                 super.dispatchDraw(canvas);
+            }
+        }
+
+        /**
+         * Sets the currently dragged-over menu item view so an animated glass pill glides to it.
+         */
+        public void setDragHoverView(@Nullable View target) {
+            if (dragHoverView == target) {
+                return;
+            }
+            dragHoverView = target;
+            if (target != null && computeDescendantRect(target, dragHoverTargetRect) && !dragHoverHasRect) {
+                dragHoverCurrentRect.set(dragHoverTargetRect);
+                dragHoverHasRect = true;
+            }
+            dragHoverLastTime = 0;
+            invalidateDragHover();
+        }
+
+        /** Clears any active drag-hover highlight immediately without fading out. */
+        public void resetDragHover() {
+            dragHoverView = null;
+            dragHoverAlpha = 0f;
+            dragHoverHasRect = false;
+            dragHoverLastTime = 0;
+            invalidateDragHover();
+        }
+
+        /**
+         * Returns the active root page view inside this popup (foreground swipe-back page if open).
+         */
+        public View getVisiblePageRoot() {
+            if (swipeBackLayout != null) {
+                return swipeBackLayout.getVisiblePageView();
+            }
+            return this;
+        }
+
+        private void invalidateDragHover() {
+            invalidate();
+            if (getParent() instanceof View) {
+                ((View) getParent()).invalidate();
+            }
+        }
+
+        private boolean computeDescendantRect(@Nullable View child, @NonNull RectF out) {
+            if (child == null || child.getWidth() <= 0 || child.getHeight() <= 0 || !child.isShown()) {
+                return false;
+            }
+            float x = 0f;
+            float y = 0f;
+            View cur = child;
+            while (cur != null && cur != this) {
+                x += cur.getX();
+                y += cur.getY();
+                if (cur.getParent() instanceof View) {
+                    final View p = (View) cur.getParent();
+                    x -= p.getScrollX();
+                    y -= p.getScrollY();
+                    cur = p;
+                } else {
+                    return false;
+                }
+            }
+            if (cur != this) {
+                return false;
+            }
+            out.set(x, y, x + child.getWidth(), y + child.getHeight());
+            return true;
+        }
+
+        private void drawDragHoverHighlight(@NonNull Canvas canvas) {
+            final boolean hasTarget = dragHoverView != null && computeDescendantRect(dragHoverView, dragHoverTargetRect);
+            final float targetAlpha = hasTarget ? 1f : 0f;
+            final long now = AnimationUtils.currentAnimationTimeMillis();
+            final float dt = dragHoverLastTime == 0 ? 0.016f : Math.min(0.05f, Math.max(0.001f, (now - dragHoverLastTime) / 1000f));
+            dragHoverLastTime = now;
+
+            boolean needMore = false;
+            if (Math.abs(targetAlpha - dragHoverAlpha) > 0.004f) {
+                final float kAlpha = Math.min(1f, dt * 20f);
+                dragHoverAlpha += (targetAlpha - dragHoverAlpha) * kAlpha;
+                needMore = true;
+            } else {
+                dragHoverAlpha = targetAlpha;
+            }
+
+            if (hasTarget) {
+                if (!dragHoverHasRect) {
+                    dragHoverCurrentRect.set(dragHoverTargetRect);
+                    dragHoverHasRect = true;
+                } else {
+                    final float kPos = Math.min(1f, dt * 24f);
+                    final boolean settled = Math.abs(dragHoverTargetRect.left - dragHoverCurrentRect.left) < 0.5f
+                            && Math.abs(dragHoverTargetRect.top - dragHoverCurrentRect.top) < 0.5f
+                            && Math.abs(dragHoverTargetRect.right - dragHoverCurrentRect.right) < 0.5f
+                            && Math.abs(dragHoverTargetRect.bottom - dragHoverCurrentRect.bottom) < 0.5f;
+                    if (settled) {
+                        dragHoverCurrentRect.set(dragHoverTargetRect);
+                    } else {
+                        dragHoverCurrentRect.left += (dragHoverTargetRect.left - dragHoverCurrentRect.left) * kPos;
+                        dragHoverCurrentRect.top += (dragHoverTargetRect.top - dragHoverCurrentRect.top) * kPos;
+                        dragHoverCurrentRect.right += (dragHoverTargetRect.right - dragHoverCurrentRect.right) * kPos;
+                        dragHoverCurrentRect.bottom += (dragHoverTargetRect.bottom - dragHoverCurrentRect.bottom) * kPos;
+                        needMore = true;
+                    }
+                }
+            }
+
+            if (dragHoverAlpha <= 0.004f || !dragHoverHasRect) {
+                if (dragHoverAlpha <= 0.004f && !hasTarget) {
+                    dragHoverHasRect = false;
+                }
+                if (needMore) {
+                    invalidateDragHover();
+                }
+                return;
+            }
+
+            final boolean compact = dragHoverCurrentRect.width() < getWidth() * 0.55f;
+            final float hInset = compact ? -dp(3) : dp(6);
+            final float vInset = compact ? -dp(2) : dp(2);
+            dragHoverDrawRect.set(
+                    dragHoverCurrentRect.left + hInset,
+                    dragHoverCurrentRect.top + vInset,
+                    dragHoverCurrentRect.right - hInset,
+                    dragHoverCurrentRect.bottom - vInset
+            );
+            final float scale = 0.96f + 0.04f * dragHoverAlpha;
+            final float cx = dragHoverDrawRect.centerX();
+            final float cy = dragHoverDrawRect.centerY();
+            final float hw = dragHoverDrawRect.width() * 0.5f * scale;
+            final float hh = dragHoverDrawRect.height() * 0.5f * scale;
+            dragHoverDrawRect.set(cx - hw, cy - hh, cx + hw, cy + hh);
+            final float radius = compact
+                    ? Math.min(dragHoverDrawRect.width(), dragHoverDrawRect.height()) * 0.5f
+                    : Math.min(dp(13), dragHoverDrawRect.height() * 0.5f);
+
+            final int textColor = Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider);
+            final boolean isDark = ColorUtils.calculateLuminance(textColor) > 0.45;
+            dragHoverFillPaint.setColor(ColorUtils.setAlphaComponent(
+                    isDark ? 0xFFFFFFFF : 0xFF000000,
+                    Math.round((isDark ? 0x1A : 0x0D) * dragHoverAlpha)));
+            dragHoverRimPaint.setStrokeWidth(AndroidUtilities.dpf2(0.65f));
+            dragHoverRimPaint.setColor(ColorUtils.setAlphaComponent(
+                    0xFFFFFFFF,
+                    Math.round((isDark ? 0x26 : 0x4D) * dragHoverAlpha)));
+
+            final int save = canvas.save();
+            final float clipLeft = backgroundDrawable != null ? getPaddingLeft() : 0f;
+            final float clipTop = backgroundDrawable != null ? getPaddingTop() : 0f;
+            final float clipRight = getWidth() * backScaleX - (backgroundDrawable != null ? getPaddingRight() : 0f);
+            final float clipBottom = getHeight() * backScaleY - (backgroundDrawable != null ? getPaddingBottom() : 0f);
+            dragHoverClipRect.set(clipLeft, clipTop, Math.max(clipLeft, clipRight), Math.max(clipTop, clipBottom));
+            dragHoverClipPath.rewind();
+            dragHoverClipPath.addRoundRect(dragHoverClipRect, dp(12), dp(12), Path.Direction.CW);
+            canvas.clipPath(dragHoverClipPath);
+            canvas.drawRoundRect(dragHoverDrawRect, radius, radius, dragHoverFillPaint);
+            canvas.drawRoundRect(dragHoverDrawRect, radius, radius, dragHoverRimPaint);
+            canvas.restoreToCount(save);
+
+            if (needMore) {
+                invalidateDragHover();
             }
         }
 
@@ -679,6 +863,12 @@ public class ActionBarPopupWindow extends PopupWindow {
         public void setReactionsTransitionProgress(float transitionEnterProgress) {
             this.reactionsEnterProgress = transitionEnterProgress;
             invalidate();
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            resetDragHover();
+            super.onDetachedFromWindow();
         }
     }
 

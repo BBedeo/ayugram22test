@@ -149,10 +149,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             return;
         }
         final BlurredBackgroundColorProvider buttonsColors = buttonsGlassColorProvider != null ? buttonsGlassColorProvider : glassColorProvider;
-        final boolean lens = buttonsGlassFactory == null;
-        glassBack = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(lens);
-        glassMenu = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(lens);
-        glassDone = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(lens);
+        glassBack = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
+        glassMenu = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
+        glassDone = factory.create(this).setColorProvider(buttonsColors).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
         glassMenuRadius = dp(23);
         invalidate();
     }
@@ -256,7 +255,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         if (factory == null) {
             return null;
         }
-        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(buttonsGlassFactory == null);
+        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
     }
 
     /* Menu overlay */

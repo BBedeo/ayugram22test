@@ -3,7 +3,6 @@ package app.exteraless.settings;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,11 +11,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.R;
-import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
-import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.RecyclerListView;
 
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
@@ -56,9 +53,6 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int designStudioRow;
     private int designDividerRow;
 
-    private boolean headerTitleVisible;
-    private ValueAnimator headerTitleAnimator;
-
     @Override
     protected void updateRows() {
         super.updateRows();
@@ -86,13 +80,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * У экстеры корневой экран устроен так: actionBar не занимает места и прозрачен,
-     * пока список не прокручен, поэтому логотип стоит выше (в 12.9.0 верх логотипа
-     * y=242 при низе actionBar 283). Заголовок проявляется вместе с фоном шапки.
+     * Главный экран настроек ExFullGram: плавающий кристальный заголовок не рисуем,
+     * так как логотип AboutHeaderCell однозначно идентифицирует раздел.
      */
     @Override
     public View createView(Context context) {
-        headerTitleVisible = false;
         View view = super.createView(context);
         // Test accounts are offline: opening mod settings must not initiate
         // Telegram server calls just to fetch unrelated content settings.
@@ -100,8 +92,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             getMessagesController().getContentSettings(null);
         }
         if (actionBar != null) {
+            actionBar.setTitle(null);
+            actionBar.setDrawGlassTitle(false);
             if (actionBar.getTitleTextView() != null) {
                 actionBar.getTitleTextView().setAlpha(0f);
+                actionBar.getTitleTextView().setVisibility(View.GONE);
             }
             final org.telegram.ui.ActionBar.ActionBarMenu menu = actionBar.createMenu();
             menu.addItem(MENU_SEARCH, R.drawable.outline_header_search, getResourceProvider());
@@ -129,75 +124,12 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 }
             });
         }
-        if (listView != null) {
-            listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-                @Override
-                public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                    updateHeaderTitleVisibility(true);
-                }
-            });
-            listView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                    updateHeaderTitleVisibility(false));
-        }
         return view;
     }
 
     @Override
     protected int getListViewForSimpleGlassTopPadding() {
         return 0;
-    }
-
-    private void updateHeaderTitleVisibility(boolean animated) {
-        if (listView == null || actionBar == null) {
-            return;
-        }
-        final View titleView = actionBar.getTitleTextView();
-        if (titleView == null) {
-            return;
-        }
-        boolean shouldShow = false;
-        final RecyclerView.ViewHolder firstHolder = listView.findViewHolderForAdapterPosition(0);
-        if (firstHolder == null) {
-            shouldShow = listView.getChildCount() > 0 && layoutManager != null && layoutManager.findFirstVisibleItemPosition() > 0;
-        } else {
-            final int threshold = mSystemInsets.top + ActionBar.getCurrentActionBarHeight() + dp(10);
-            shouldShow = firstHolder.itemView.getBottom() <= threshold;
-        }
-        if (shouldShow == headerTitleVisible && (animated || headerTitleAnimator == null)) {
-            if (!animated) {
-                titleView.setAlpha(shouldShow ? 1f : 0f);
-                actionBar.invalidate();
-            }
-            return;
-        }
-        headerTitleVisible = shouldShow;
-        final float targetAlpha = shouldShow ? 1f : 0f;
-        if (headerTitleAnimator != null) {
-            headerTitleAnimator.cancel();
-            headerTitleAnimator = null;
-        }
-        if (!animated) {
-            titleView.setAlpha(targetAlpha);
-            actionBar.invalidate();
-            return;
-        }
-        headerTitleAnimator = ValueAnimator.ofFloat(titleView.getAlpha(), targetAlpha);
-        headerTitleAnimator.setDuration(180);
-        headerTitleAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
-        headerTitleAnimator.addUpdateListener(anim -> {
-            titleView.setAlpha((float) anim.getAnimatedValue());
-            actionBar.invalidate();
-        });
-        headerTitleAnimator.start();
-    }
-
-    @Override
-    public void onFragmentDestroy() {
-        if (headerTitleAnimator != null) {
-            headerTitleAnimator.cancel();
-            headerTitleAnimator = null;
-        }
-        super.onFragmentDestroy();
     }
 
     @Override
