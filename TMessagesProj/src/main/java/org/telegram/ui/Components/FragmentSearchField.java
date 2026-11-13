@@ -222,14 +222,22 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
         canvas.restore();
     }
 
+    private float blurredBackgroundVisibility;
+
     public void setupBlurredBackground(BlurredBackgroundDrawable drawable) {
         drawable.setRadius(dp(20));
         drawable.setPadding(dp(4));
         blurredBackgroundDrawable = drawable;
+        applyBlurredBackgroundVisibility();
     }
 
     public void setBlurredBackgroundVisibility(float visibility) {
-        final int alpha = (int) (255 * visibility);
+        blurredBackgroundVisibility = Math.max(0f, Math.min(1f, visibility));
+        applyBlurredBackgroundVisibility();
+    }
+
+    private void applyBlurredBackgroundVisibility() {
+        final int alpha = (int) (255 * blurredBackgroundVisibility);
         boolean changed = false;
         if (blurredBackgroundDrawable != null) {
             if (blurredBackgroundDrawable.getAlpha() != alpha) {
@@ -318,6 +326,7 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
             }
         }
 
+        applyBlurredBackgroundVisibility();
         invalidate();
     }
     @Override

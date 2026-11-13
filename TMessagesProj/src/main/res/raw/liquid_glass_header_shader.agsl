@@ -1,0 +1,160 @@
+uniform shader img;
+
+uniform float2 center;
+uniform float2 size;
+uniform float4 radius;
+uniform float thickness;
+uniform float refract_index;
+uniform float refract_intensity;
+uniform float glass_press;
+uniform float glass_highlight;
+uniform float glass_light_angle;
+uniform float glass_motion;
+uniform float glass_adaptive;
+uniform float4 foreground_color_premultiplied;
+
+half sdfRect(half2 p, half4 r) {
+  r.xy = (p.x > 0.0) ? r.xy : r.zw;
+  r.x  = (p.y > 0.0) ? r.x  : r.y;
+  half2 q = abs(p) - size + r.x;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r.x;
+}
+
+half4 srcOver(half4 src, half4 dst) {
+  half3 outRGB = src.rgb + dst.rgb * (1.0 - src.a);
+  float outA = src.a + (1.0 - src.a) * dst.a;
+  return half4(outRGB, outA);
+}
+
+float gaussian(float x) {
+  return exp(-x * x);
+}
+
+float circleMap(float x) {
+  return 1.0 - sqrt(max(0.0, 1.0 - x * x));
+}
+
+half4 main(in float2 fragCoord) {
+  float2 p = fragCoord - center;
+  float sdRaw = float(sdfRect(half2(p), half4(radius)));
+  float sd = min(sdRaw, 0.0);
+
+  float2 gradRaw = float2(
+      float(sdfRect(half2(p + float2(1.0, 0.0)), half4(radius))) - sdRaw,
+      float(sdfRect(half2(p + float2(0.0, 1.0)), half4(radius))) - sdRaw);
+  float gradLen = length(gradRaw);
+  float2 edgeDir = gradLen > 0.001 ? gradRaw / gradLen : float2(0.0, -1.0);
+
+  float minHalf = max(min(size.x, size.y), 4.0);
+  float uDp = max(minHalf / 23.0, 1.0);
+  float dDp = -sd / uDp;
+  float t = clamp(thickness, 2.0, minHalf * 0.92);
+  float press = clamp(glass_press, 0.0, 1.0);
+  float move = clamp(glass_motion, -1.0, 1.0);
+  float lift = clamp(max(press, abs(move) * 0.72), 0.0, 1.0);
+
+  // Single-sign inset iOS 26 toric meniscus (~1.45dp inset, zero edge fold).
+  float lensH = clamp((6.8 + 2.4 * lift) * uDp, 5.0, minHalf * 0.62);
+  float rimT = clamp(1.0 + (sd + 1.45 * uDp) / lensH, 0.0, 1.0);
+  float slope = circleMap(rimT);
+  float insetFade = smoothstep(0.22, 1.65, dDp);
+  float bevel = mix(slope, rimT * rimT, 0.35) * (0.48 + 0.52 * insetFade);
+  float domeT = clamp(-sd / minHalf, 0.0, 1.0);
+
+  float nCos = bevel * (0.48 + 0.30 * lift);
+  float nSin = sqrt(max(0.05, 1.0 - nCos * nCos));
+  float3 normal = normalize(float3(edgeDir * nCos, nSin));
+  float3 ray = refract(float3(0.0, 0.0, -1.0), normal, 1.0 / max(refract_index, 1.05));
+
+  float h = sd < -lensH ? lensH : sqrt(max(0.0, -sd * (2.0 * lensH + sd)));
+  float rayDepth = (h + 8.5 * lensH) / max(-ray.z, 0.25);
+
+  float2 invSize = 1.0 / max(size, float2(1.0));
+  float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
+  float2 isoRel = clamp(p / minHalf, float2(-2.2), float2(2.2));
+
+  // Crisp readable core with vivid perimeter Snell lens refraction.
+  float2 uv = fragCoord + ray.xy * (0.50 * rayDepth * refract_intensity)
+      * (0.58 + lift * 0.42);
+  uv -= isoRel * (0.015 + lift * 0.032) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.35 * bevel);
+
+  float2 uvMin = center - size + 0.5;
+  float2 uvMax = center + size - 0.5;
+  uv = clamp(uv, uvMin, uvMax);
+
+  // Symmetric RGB chromatic dispersion across curved edges + inset opposite-side reflection.
+  float2 disp = ray.xy * uDp * (1.30 + lift * 1.90) * bevel * insetFade;
+  half4 backdrop = img.eval(uv);
+  half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
+  half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
+  float dispMix = clamp((0.36 + 0.44 * lift) * bevel * insetFade, 0.0, 0.86);
+  backdrop.r = mix(backdrop.r, rChan, half(dispMix));
+  backdrop.b = mix(backdrop.b, bChan, half(dispMix));
+
+  float oppDepthPx = (1.6 + clamp(dDp - 1.6, 0.0, 3.0) * 2.4) * uDp;
+  float hReflWeight = gaussian((dDp - 2.60) / 0.88)
+      * pow(abs(edgeDir.x), 1.65)
+      * smoothstep(0.65, 0.92, abs(relCenter.x))
+      * insetFade;
+  float2 mirrorSideUV = clamp(
+      center + float2(-sign(p.x) * max(0.0, size.x - oppDepthPx), p.y * 0.78),
+      uvMin, uvMax);
+  half4 sideMirror = img.eval(mirrorSideUV);
+  backdrop.rgb = mix(backdrop.rgb, sideMirror.rgb, half(hReflWeight * (0.10 + 0.10 * lift)));
+
+  float vReflWeight = gaussian((dDp - 2.45) / 0.88)
+      * pow(abs(edgeDir.y), 1.80)
+      * (1.0 - abs(relCenter.x) * 0.25)
+      * insetFade;
+  float2 mirrorVertUV = clamp(
+      center + float2(p.x * 0.94, -sign(p.y) * max(0.0, size.y - oppDepthPx)),
+      uvMin, uvMax);
+  half4 vertMirror = img.eval(mirrorVertUV);
+  backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.07 + 0.07 * lift)));
+
+  // Vibrant optical saturation without muddy plastic wash.
+  half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.18 + 0.14 * lift)), half3(0.0), half3(1.0));
+
+  float bgLumaF = float(luma);
+  float fgAlpha = clamp(float(foreground_color_premultiplied.a), 0.001, 1.0);
+  float fgLumaF = float(dot(foreground_color_premultiplied.rgb / half(fgAlpha), half3(0.2126, 0.7152, 0.0722)));
+  float darkTint = 1.0 - smoothstep(0.35, 0.65, fgLumaF);
+  float bgAdaptive = mix(1.0, mix(0.68, 0.48, darkTint), smoothstep(0.12, 0.65, bgLumaF));
+  half4 fgTint = half4(foreground_color_premultiplied) * half((1.0 - lift * 0.50) * bgAdaptive);
+  half4 surface = srcOver(fgTint, backdrop);
+
+  // Subtle dimensional crystal dome sheen so resting bubbles feel palpably curved.
+  float domeSheen = smoothstep(0.74, -0.85, relCenter.y * 0.74 + relCenter.x * 0.28)
+      * (1.0 - bevel * 0.45) * (0.055 - 0.020 * lift);
+  surface.rgb = min(half3(1.0), surface.rgb + half3(0.84, 0.93, 1.0) * half(domeSheen * float(surface.a)));
+
+  // Soft TIR meniscus depth gradient inside the bevel (adaptive in light themes, zero hard outline).
+  float lightWallBoost = mix(1.0, 1.75, smoothstep(0.55, 0.92, bgLumaF));
+  float outerWall = gaussian((dDp - 2.25) / 1.35);
+  float meniscus = gaussian((dDp - 3.95) / 1.80);
+  surface.rgb *= half(1.0 - lightWallBoost * ((0.032 + 0.030 * lift) * outerWall + (0.016 + 0.018 * lift) * meniscus));
+
+  // Diagonal top-left -> bottom-right Fresnel catchlights + crisp rim gleam.
+  float angle = -2.356 + move * 0.42 + (glass_light_angle - 5.4978);
+  float2 lightDir = float2(cos(angle), sin(angle));
+  float rawDot = dot(edgeDir, lightDir);
+  float keyArc = pow(max(rawDot, 0.0), 2.8) * 0.86;
+  float catchArc = pow(max(-rawDot, 0.0), 2.6) * 0.80;
+  float capBoost = pow(abs(edgeDir.x), 2.5) * (0.16 + 0.16 * lift);
+  float rimCore = gaussian((dDp - 1.25) / 1.15);
+  float innerRidge = gaussian((dDp - 3.05) / 2.00);
+  float rimSpec = (keyArc + catchArc + capBoost)
+      * (rimCore * 0.72 + innerRidge * 0.28) * (0.30 + 0.30 * lift);
+
+  float highlightStrength = clamp(glass_highlight, 0.65, 1.0);
+  if (glass_adaptive > 0.5) {
+    highlightStrength *= clamp(1.16 - bgLumaF * 0.24, 0.82, 1.16);
+  }
+
+  float totalGlint = highlightStrength * rimSpec;
+  half3 specTint = mix(half3(0.74, 0.91, 1.0), half3(1.0, 0.97, 0.90), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
+  surface.rgb = min(half3(1.0), surface.rgb + specTint * half(totalGlint * float(surface.a)));
+
+  return surface;
+}

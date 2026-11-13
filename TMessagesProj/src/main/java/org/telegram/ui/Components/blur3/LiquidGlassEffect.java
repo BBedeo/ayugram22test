@@ -37,9 +37,15 @@ public class LiquidGlassEffect {
      * other Telegram surface, including menus and chat controls.
      */
     public LiquidGlassEffect(RenderNode node, boolean elasticPillLens) {
+        this(node, elasticPillLens, false);
+    }
+
+    public LiquidGlassEffect(RenderNode node, boolean elasticPillLens, boolean headerGlassLens) {
         this.node = node;
-        final String code = AndroidUtilities.readRes(
-                elasticPillLens ? R.raw.liquid_glass_pill_shader : R.raw.liquid_glass_shader);
+        final int shaderRes = elasticPillLens
+                ? R.raw.liquid_glass_pill_shader
+                : (headerGlassLens ? R.raw.liquid_glass_header_shader : R.raw.liquid_glass_shader);
+        final String code = AndroidUtilities.readRes(shaderRes);
         shader = plainShader = new RuntimeShader(code);
         node.setRenderEffect(effect = RenderEffect.createRuntimeShaderEffect(shader, "img"));
     }

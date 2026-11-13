@@ -254,18 +254,21 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarRadius(glassAvatarSizeDp, isForum, false) + glassAvatarGap);
         glassAvatarRadius = glassDrawableLeftRadius;
         glassMenuAppliedOuterRadius = glassMenuAppliedInnerRadius = -1;
-        glassDrawable.setRadius(glassDrawableLeftRadius, dp(23), dp(23), glassDrawableLeftRadius);
+        glassDrawable.setRadius(chatAvatarContainer == null ? dp(23) : glassDrawableLeftRadius, dp(23), dp(23), chatAvatarContainer == null ? dp(23) : glassDrawableLeftRadius);
+        glassDrawable.setHeaderGlassLens(headerGlassLens);
 
 
         glassDrawableBack = factory.create(this)
                 .setColorProvider(colorProvider)
                 .setRadius(dp(23))
                 .setPadding(dp(6));
+        glassDrawableBack.setHeaderGlassLens(headerGlassLens);
 
         glassDrawableMenu = factory.create(this)
                 .setColorProvider(colorProvider)
                 .setRadius(dp(23))
                 .setPadding(dp(6));
+        glassDrawableMenu.setHeaderGlassLens(headerGlassLens);
 
         if (menu != null) {
             menu.setTranslationX(-dp(10));
@@ -323,6 +326,29 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private SimpleActionBarMenuOverlay openMenuOverlay;
     private ActionBarMenuItem openMenuItem;
     private final RectF menuItemRect = new RectF();
+    private boolean headerGlassLens;
+    private boolean compactGlassTitlePill;
+
+    public void setHeaderGlassLens(boolean enabled) {
+        headerGlassLens = enabled;
+        if (glassDrawable != null) {
+            glassDrawable.setHeaderGlassLens(enabled);
+        }
+        if (glassDrawableBack != null) {
+            glassDrawableBack.setHeaderGlassLens(enabled);
+        }
+        if (glassDrawableMenu != null) {
+            glassDrawableMenu.setHeaderGlassLens(enabled);
+        }
+    }
+
+    public void setCompactGlassTitlePill(boolean enabled) {
+        compactGlassTitlePill = enabled;
+        if (enabled && glassDrawable != null && chatAvatarContainer == null) {
+            glassDrawable.setRadius(dp(23));
+        }
+        invalidate();
+    }
 
     /**
      * The glass of the menus in the overlay: the glass of the buttons going over to frosted glass by {@code source}'s
@@ -348,7 +374,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (factory == null) {
             return null;
         }
-        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6));
+        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(headerGlassLens);
     }
 
     @Override
@@ -448,6 +474,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         backButtonImageView.setScaleType(ImageView.ScaleType.CENTER);
         backButtonImageView.setBackgroundDrawable(Theme.createSelectorDrawable(itemsBackgroundColor));
         backButtonImageView.setPadding(dp(1), 0, 0, 0);
+        if (glassMode) {
+            backButtonImageView.setTranslationX(dp(2));
+        }
         addView(backButtonImageView, LayoutHelper.createFrame(54, 54, Gravity.LEFT | Gravity.TOP));
 
         backButtonImageView.setOnClickListener(v -> {
@@ -2211,20 +2240,25 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (chatAvatarContainer != null && glassMode) {
+        if (glassMode && (chatAvatarContainer != null || compactGlassTitlePill) && !actionModeVisible && !isSearchFieldVisible) {
             if (ev.getAction() == MotionEvent.ACTION_DOWN) {
                 final int x = (int) ev.getX();
                 final int y = (int) ev.getY();
-                View child = findChildUnder(this, x, y, chatAvatarContainer);
+                View child = chatAvatarContainer != null ? findChildUnder(this, x, y, chatAvatarContainer) : null;
                 if (child == null) {
                     child = findChildUnder(this, x, y, null);
                 }
 
                 boolean contains = false;
-                contains |= glassDrawable != null && glassDrawable.getBounds().contains(x, y);
+                contains |= glassDrawable != null && glassDrawable.getAlpha() > 12 && glassDrawable.getBounds().contains(x, y);
                 if (child != null && child != chatAvatarContainer) {
-                    contains |= glassDrawableBack != null && glassDrawableBack.getBounds().contains(x, y);
-                    contains |= glassDrawableMenu != null && glassDrawableMenu.getBounds().contains(x, y);
+                    contains |= glassDrawableBack != null && glassDrawableBack.getAlpha() > 12 && glassDrawableBack.getBounds().contains(x, y);
+                    contains |= glassDrawableMenu != null && glassDrawableMenu.getAlpha() > 12 && glassDrawableMenu.getBounds().contains(x, y);
+                    if (!contains && compactGlassTitlePill && child.isClickable()
+                            && child != titlesContainer && child != titleTextView[0] && child != titleTextView[1]
+                            && child != subtitleTextView && child != additionalSubtitleTextView) {
+                        contains = true;
+                    }
                 }
 
                 if (!contains) {
@@ -2568,6 +2602,107 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         invalidate();
     }
 
+    private void drawCompactTitleGlassPill(Canvas canvas, int t, int b, int p, int s,
+                                           boolean hasBackButton, float backAlphaFactor,
+                                           boolean hasMenuPill, int menuLeft) {
+        final SimpleTextView tv = (titleTextView[0] != null && titleTextView[0].getVisibility() == View.VISIBLE)
+                ? titleTextView[0]
+                : (titleTextView[1] != null && titleTextView[1].getVisibility() == View.VISIBLE ? titleTextView[1] : null);
+        if (tv == null) {
+            return;
+        }
+        final View container = (useContainerForTitles && titlesContainer != null && tv.getParent() == titlesContainer)
+                ? titlesContainer
+                : null;
+        if (container != null && container.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        final float titleAlpha = tv.getAlpha() * (container != null ? container.getAlpha() : 1f);
+        final int alphaInt = Math.round(255 * Math.max(0f, Math.min(1f, titleAlpha)));
+        if (alphaInt <= 0) {
+            return;
+        }
+
+        int contentWidth = tv.getFullContentWidth();
+        if (subtitleTextView != null && subtitleTextView.getVisibility() == View.VISIBLE && subtitleTextView.getAlpha() > 0.05f) {
+            contentWidth = Math.max(contentWidth, subtitleTextView.getFullContentWidth());
+        }
+
+        final int safeLeft = (hasBackButton && backAlphaFactor > 0.05f) ? (s + p * 2 - dp(6)) : p;
+        int safeRight = hasMenuPill ? (menuLeft + dp(6)) : (getWidth() - p);
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            final View child = getChildAt(i);
+            if (child != null && child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f
+                    && child.isClickable()
+                    && child != backButtonImageView && child != menu && child != actionMode
+                    && child != avatarSearchImageView && child != titlesContainer
+                    && child != titleTextView[0] && child != titleTextView[1]
+                    && child != subtitleTextView && child != additionalSubtitleTextView
+                    && child.getLeft() > getWidth() / 2) {
+                safeRight = Math.min(safeRight, Math.round(child.getLeft() + child.getTranslationX()) - dp(4));
+            }
+        }
+        if (safeRight <= safeLeft + p * 2) {
+            return;
+        }
+
+        final int minPillWidth = s + p * 2;
+        final int maxAllowedWidth = Math.max(minPillWidth, safeRight - safeLeft);
+        final boolean centered = isCentered()
+                || centerTitleAndGlass
+                || (tv.getGravity() & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL;
+        final float hostOffsetX = container != null ? (container.getLeft() + container.getTranslationX()) : 0f;
+        final float tx = hostOffsetX + tv.getLeft() + tv.getTranslationX();
+        final int hPad = dp(18);
+
+        int pillLeft;
+        int pillRight;
+        if (centered) {
+            final int pillWidth = Math.min(maxAllowedWidth, Math.max(minPillWidth, contentWidth + p * 2 + hPad * 2));
+            final float rightExtraShift = Math.max(0, contentWidth - tv.getTextWidth()) * 0.5f;
+            final float textCenterX = tx + tv.getWidth() / 2f + rightExtraShift;
+            pillLeft = Math.round(textCenterX - pillWidth / 2f);
+            if (pillLeft + pillWidth > safeRight) {
+                pillLeft = safeRight - pillWidth;
+            }
+            if (pillLeft < safeLeft) {
+                pillLeft = safeLeft;
+            }
+            pillRight = Math.min(safeRight, pillLeft + pillWidth);
+        } else if (LocaleController.isRTL) {
+            final int textRightX = Math.round(hostOffsetX + tv.getRight() + tv.getTranslationX());
+            final int desiredWidth = Math.max(minPillWidth, contentWidth + p * 2 + hPad * 2);
+            pillRight = Math.min(safeRight, textRightX + p + hPad);
+            pillLeft = Math.max(safeLeft, pillRight - Math.min(maxAllowedWidth, desiredWidth));
+        } else {
+            int textLeftX = Math.round(tx);
+            for (int i = 0, n = getChildCount(); i < n; i++) {
+                final View child = getChildAt(i);
+                if (child != null && child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f
+                        && child != backButtonImageView && child != menu && child != actionMode
+                        && child != avatarSearchImageView && child != titlesContainer
+                        && child != titleTextView[0] && child != titleTextView[1]
+                        && child != subtitleTextView && child != additionalSubtitleTextView
+                        && child.getLeft() >= safeLeft && child.getLeft() < textLeftX) {
+                    textLeftX = Math.min(textLeftX, Math.round(child.getLeft() + child.getTranslationX()) - dp(2));
+                }
+            }
+            final int desiredLeft = textLeftX - p - hPad;
+            final int desiredRight = Math.round(tx) + contentWidth + p + hPad;
+            pillLeft = Math.max(safeLeft, desiredLeft);
+            pillRight = Math.min(safeRight, Math.max(pillLeft + minPillWidth, desiredRight));
+            if (pillRight - pillLeft > maxAllowedWidth) {
+                pillRight = Math.min(safeRight, pillLeft + maxAllowedWidth);
+            }
+        }
+
+        glassDrawable.setAlpha(alphaInt);
+        glassDrawable.setBounds(pillLeft, t, pillRight, b);
+        if (!doNotDrawCenterGlass) {
+            glassDrawable.draw(canvas);
+        }
+    }
+
     private int forcedMenuWidth;
     private int forcedMenuMinWidth;
     private boolean hasForcedMenuWidth;
@@ -2670,12 +2805,78 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int menuWidth = hasForcedMenuMinWidth ? Math.max((int) (forcedMenuMinWidth * (1f - searchFactor)), menuWidthA) : menuWidthA;
 
         final boolean hasBackButton = backButtonImageView != null && backButtonImageView.getVisibility() == View.VISIBLE;
+        final float backAlphaFactor = hasBackButton
+                ? (compactGlassTitlePill ? Math.max(0f, Math.min(1f, backButtonImageView.getAlpha())) : 1f)
+                : 0f;
 
         final int t = getHeight() - extraHeight - (getCurrentActionBarHeight() + s) / 2 - p;
         final int b = t + s + p * 2;
 
+        final boolean hasMenuPill = glassDrawableMenu != null && menuWidth > 0 && !glassOnlyBack && !doNotDrawGlassMenu && !isMenuPillInOverlay();
+        int menuLeft = 0;
+        int menuTop = t;
+        int menuRight = getWidth();
+        int menuBottom = b;
+        int menuAlphaInt = 0;
+        if (hasMenuPill) {
+            menuLeft = getWidth() - Math.max(s, menuWidth) - p * 2;
+            final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
+            final View avatarView = avatarContainer != null
+                    && avatarContainer.getVisibility() == VISIBLE
+                    && avatarContainer.isAvatarCentered()
+                    ? avatarContainer.getAvatarImageView() : null;
+            if (avatarView != null && avatarView.getVisibility() == VISIBLE && avatarView.getWidth() > 0) {
+                final float cx = avatarContainer.getLeft() + avatarContainer.getTranslationX()
+                        + avatarView.getLeft() + avatarView.getWidth() / 2f;
+                final float cy = avatarContainer.getTop() + avatarContainer.getTranslationY()
+                        + avatarView.getTop() + avatarView.getHeight() / 2f;
+                final int half = (s + p * 2) / 2;
+                if (menu == null || menu.getVisibility() != VISIBLE || menu.getItemsWidth() <= 0) {
+                    menuLeft = Math.round(cx) - half;
+                    menuRight = Math.round(cx) + half;
+                    menuTop = Math.round(cy) - half;
+                    menuBottom = Math.round(cy) + half;
+                } else {
+                    menuLeft = Math.min(menuLeft, Math.round(cx) - half);
+                }
+            }
+            if (avatarContainer != null && avatarContainer.isAvatarCentered()) {
+                final float outer = glassAvatarRadius;
+                final float inner = menuRight - menuLeft <= menuBottom - menuTop ? glassAvatarRadius : dp(23);
+                if (outer != glassMenuAppliedOuterRadius || inner != glassMenuAppliedInnerRadius) {
+                    glassMenuAppliedOuterRadius = outer;
+                    glassMenuAppliedInnerRadius = inner;
+                    glassDrawableMenu.setRadius(inner, outer, outer, inner);
+                }
+            }
+            if (hasForcedMenuWidth) {
+                menuAlphaInt = 255;
+            } else {
+                float menuItemFade = 1f;
+                if (compactGlassTitlePill && menu != null && menu.getVisibility() == VISIBLE) {
+                    float maxChildAlpha = 0f;
+                    boolean hasVisibleChild = false;
+                    for (int i = 0, n = menu.getChildCount(); i < n; i++) {
+                        final View child = menu.getChildAt(i);
+                        if (child != null && child.getVisibility() == VISIBLE) {
+                            hasVisibleChild = true;
+                            if (child.getAlpha() > maxChildAlpha) {
+                                maxChildAlpha = child.getAlpha();
+                            }
+                        }
+                    }
+                    if (hasVisibleChild) {
+                        menuItemFade = maxChildAlpha;
+                    }
+                }
+                menuAlphaInt = Math.round(255 * animatorHasMenuItems.getFloatValue() * menuItemFade);
+            }
+        }
+
         if (glassDrawable != null && drawGlassMiddlePill && !glassOnlyBack && drawGlassTitle) {
-            if (centerTitleAndGlass && titleTextView[0] != null && titleTextView[0].getVisibility() == View.VISIBLE) {
+            if (compactGlassTitlePill) {
+                drawCompactTitleGlassPill(canvas, t, b, p, s, hasBackButton, backAlphaFactor, hasMenuPill && menuAlphaInt > 12, menuLeft);
+            } else if (centerTitleAndGlass && titleTextView[0] != null && titleTextView[0].getVisibility() == View.VISIBLE) {
                 int titleWidth = (int) Math.ceil(titleTextView[0].getTextWidth()) + p * 2 + dp(48);
                 int titleLeft = (getWidth() - titleWidth) / 2 + Math.round(titleTextView[0].getTranslationX());
                 glassDrawable.setBounds(titleLeft, t, titleLeft + titleWidth, b);
@@ -2720,45 +2921,16 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
         if (glassDrawableBack != null && hasBackButton) {
-            glassDrawableBack.setBounds(0, t, s + p * 2, b);
-            glassDrawableBack.draw(canvas);
+            final int backAlphaInt = compactGlassTitlePill ? Math.round(255 * backAlphaFactor) : 255;
+            if (backAlphaInt > 0) {
+                glassDrawableBack.setBounds(0, t, s + p * 2, b);
+                glassDrawableBack.setAlpha(backAlphaInt);
+                glassDrawableBack.draw(canvas);
+            }
         }
-        if (glassDrawableMenu != null && menuWidth > 0 && !glassOnlyBack && !doNotDrawGlassMenu && !isMenuPillInOverlay()) {
-            int menuLeft = getWidth() - Math.max(s, menuWidth) - p * 2;
-            int menuTop = t;
-            int menuRight = getWidth();
-            int menuBottom = b;
-            final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
-            final View avatarView = avatarContainer != null
-                    && avatarContainer.getVisibility() == VISIBLE
-                    && avatarContainer.isAvatarCentered()
-                    ? avatarContainer.getAvatarImageView() : null;
-            if (avatarView != null && avatarView.getVisibility() == VISIBLE && avatarView.getWidth() > 0) {
-                final float cx = avatarContainer.getLeft() + avatarContainer.getTranslationX()
-                        + avatarView.getLeft() + avatarView.getWidth() / 2f;
-                final float cy = avatarContainer.getTop() + avatarContainer.getTranslationY()
-                        + avatarView.getTop() + avatarView.getHeight() / 2f;
-                final int half = (s + p * 2) / 2;
-                if (menu == null || menu.getVisibility() != VISIBLE || menu.getItemsWidth() <= 0) {
-                    menuLeft = Math.round(cx) - half;
-                    menuRight = Math.round(cx) + half;
-                    menuTop = Math.round(cy) - half;
-                    menuBottom = Math.round(cy) + half;
-                } else {
-                    menuLeft = Math.min(menuLeft, Math.round(cx) - half);
-                }
-            }
-            if (avatarContainer != null && avatarContainer.isAvatarCentered()) {
-                final float outer = glassAvatarRadius;
-                final float inner = menuRight - menuLeft <= menuBottom - menuTop ? glassAvatarRadius : dp(23);
-                if (outer != glassMenuAppliedOuterRadius || inner != glassMenuAppliedInnerRadius) {
-                    glassMenuAppliedOuterRadius = outer;
-                    glassMenuAppliedInnerRadius = inner;
-                    glassDrawableMenu.setRadius(inner, outer, outer, inner);
-                }
-            }
+        if (hasMenuPill && menuAlphaInt > 0) {
             glassDrawableMenu.setBounds(menuLeft, menuTop, menuRight, menuBottom);
-            glassDrawableMenu.setAlpha(hasForcedMenuWidth ? 255 : (int) (255 * animatorHasMenuItems.getFloatValue()));
+            glassDrawableMenu.setAlpha(menuAlphaInt);
             glassDrawableMenu.draw(canvas);
         }
 

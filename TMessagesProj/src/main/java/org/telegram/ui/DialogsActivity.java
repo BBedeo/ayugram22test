@@ -678,6 +678,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private long searchDialogId;
     private TLObject searchObject;
 
+    private View dialogsTopFadeView;
+
+    private boolean shouldUseDialogsHeaderGlass() {
+        return !onlySelect && !inPreviewMode;
+    }
+
+    private void updateDialogsTopFadeColor() {
+        if (dialogsTopFadeView != null && dialogsTopFadeView.getBackground() instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) dialogsTopFadeView.getBackground())
+                .setOverrideFadeColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            dialogsTopFadeView.invalidate();
+        }
+    }
+
     private int prevPosition;
     private int prevTop;
     private boolean scrollUpdated;
@@ -948,7 +962,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (child == viewPages[0] || (viewPages.length > 1 && child == viewPages[1]) || child == topPanelLayout || child == filterTabsView) {
                 canvas.save();
 
-                final boolean doNotClip = child == topPanelLayout || child == filterTabsView;
+                final boolean headerGlass = shouldUseDialogsHeaderGlass();
+                final boolean doNotClip = child == topPanelLayout || child == filterTabsView || child == dialogsTopFadeView
+                        || (headerGlass && (child instanceof ViewPage || child == searchViewPager));
                 if (!doNotClip) {
                     canvas.clipRect(0, -getY() + getActionBarTop() + getActionBarFullHeight(), getMeasuredWidth(), getMeasuredHeight());
                 }
@@ -1058,6 +1074,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             rightSlidingDialogContainer.setCurrentTop(top + actionBarHeight);
             float storiesAlpha = 1f;
+            final boolean headerGlass = shouldUseDialogsHeaderGlass();
             if (whiteActionBar) {
                 if (searchAnimationProgress == 1f) {
                     actionBarSearchPaint.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
@@ -1067,12 +1084,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     }
                 }
                 blurBounds.set(0, top, getMeasuredWidth(), top + actionBarHeight - dp(2 * searchAnimationProgress));
-                if (searchAnimationProgress < 0) {
+                if (searchAnimationProgress < 0 && !headerGlass) {
                     drawBlurRect(canvas, 0, blurBounds, searchAnimationProgress == 1f ? actionBarSearchPaint : actionBarDefaultPaint, true);
                 }
                 if (searchAnimationProgress > 0 && searchAnimationProgress < 1f) {
                     actionBarSearchPaint.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                    if (searchIsShowed || !searchWasFullyShowed) {
+                    if (searchIsShowed || !searchWasFullyShowed || headerGlass) {
                     } else {
                         blurBounds.set(0, top, getMeasuredWidth(), top + actionBarHeight - dp(2 * searchAnimationProgress));
                         drawBlurRect(canvas, 0, blurBounds, actionBarSearchPaint, true);
@@ -1084,9 +1101,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else if (!inPreviewMode) {
                 if (progressToActionMode > 0) {
                     actionBarSearchPaint.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    if (headerGlass) {
+                        actionBarSearchPaint.setAlpha((int) (255 * Math.min(1f, progressToActionMode)));
+                    }
                     blurBounds.set(0, Math.max(0, top), getMeasuredWidth(), top + actionBarHeight - dp(2 * searchAnimationProgress));
                     drawBlurRect(canvas, 0, blurBounds, actionBarSearchPaint, true);
-                } else {
+                } else if (!headerGlass) {
                     blurBounds.set(0, Math.max(0, top), getMeasuredWidth(), top + actionBarHeight - dp(2 * searchAnimationProgress));
                     drawBlurRect(canvas, 0, blurBounds, actionBarDefaultPaint, true);
                 }
@@ -1136,8 +1156,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             updateContextViewPosition();
             updateStoriesViewAlpha(storiesAlpha);
+            if (dialogsTopFadeView != null) {
+                final float topFadeAlpha = shouldUseDialogsHeaderGlass()
+                        ? (1f - Math.min(1f, progressToActionMode)) * (1f - Math.min(1f, rightSlidingProgress))
+                        : 0f;
+                dialogsTopFadeView.setAlpha(topFadeAlpha);
+                dialogsTopFadeView.setVisibility(topFadeAlpha > 0.01f ? View.VISIBLE : View.GONE);
+            }
             super.dispatchDraw(canvas);
-            drawHeaderShadow(canvas, top + actionBarHeight);
+            if (!shouldUseDialogsHeaderGlass() || progressToActionMode > 0f) {
+                drawHeaderShadow(canvas, top + actionBarHeight);
+            }
 
             /*if (fragmentContextView != null && fragmentContextView.isCallStyle()) {
                 canvas.save();
@@ -2789,9 +2818,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             iBlur3SourceGlassFrosted.setUnderSource(iBlur3SourceColor);
             iBlur3SourceGlassFrosted.setScrollableNoiseSuppressor(scrollableViewNoiseSuppressor, DownscaleScrollableNoiseSuppressor.DRAW_FROSTED_GLASS);
 
-            iBlur3FactoryLiquidGlass = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlass);
+            iBlur3FactoryLiquidGlass = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlass, iBlur3SourceGlassFrosted, iBlur3SourceColor);
             iBlur3FactoryLiquidGlass.setLiquidGlassEffectAllowed(true);
-            iBlur3FactoryLiquidGlass.setOutset(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? dp(8) : dp(48));
+            iBlur3FactoryLiquidGlass.setOutset((LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || app.exteraless.appearance.LiquidGlassTuning.isActive()) ? dp(8) : dp(48));
 
             iBlur3FactoryFrostedLiquidGlass = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlassFrosted);
             iBlur3FactoryFrostedLiquidGlass.setLiquidGlassEffectAllowed(true);
@@ -3626,12 +3655,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 actionBar.setTitle(actionBarTitleNax = getString(R.string.ArchivedChats));
             } else if (communityId != 0) {
                 actionBar.setTitle(DialogObject.getName(community));
-                actionBar.setAdditionalTextLeft(dp(28));
+                actionBar.setAdditionalTextLeft(shouldUseDialogsHeaderGlass() ? dp(34) : dp(28));
                 communityAvatarDrawable = new AvatarDrawable(community);
                 communityAvatarImage = new BackupImageView(getContext());
                 communityAvatarImage.setRoundRadius(dp(11));
                 communityAvatarImage.setForUserOrChat(community, communityAvatarDrawable);
-                actionBar.addView(communityAvatarImage, LayoutHelper.createFrame(32, 32, Gravity.BOTTOM | Gravity.LEFT, 58, 0, 0, 12f));
+                actionBar.addView(communityAvatarImage, LayoutHelper.createFrame(32, 32, Gravity.BOTTOM | Gravity.LEFT, shouldUseDialogsHeaderGlass() ? 64 : 58, 0, 0, 12f));
             } else {
                 if (AppearanceConfig.titleTextScrolls() && actionBar != null) {
                     actionBar.setTitleScrollNonFitText(true);
@@ -3656,6 +3685,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             actionBar.setAddToContainer(false);
             actionBar.setCastShadows(false);
             actionBar.setClipContent(true);
+            if (shouldUseDialogsHeaderGlass()) {
+                actionBar.setupGlass(iBlur3FactoryLiquidGlass, BlurredBackgroundProviderImpl.dialogsHeaderGlass(resourceProvider), false);
+                actionBar.setHeaderGlassLens(true);
+                actionBar.setCompactGlassTitlePill(true);
+                actionBar.setClipContent(false);
+                actionBar.setClipToPadding(false);
+            }
         //}
         actionBar.setTitleActionRunnable(() -> {
             if (initialDialogsType != DIALOGS_TYPE_WIDGET) {
@@ -4907,10 +4943,34 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         searchViewPagerIndex = contentView.getChildCount();
 
+        dialogsTopFadeView = new View(context) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(12), MeasureSpec.EXACTLY));
+            }
+        };
+        BlurredBackgroundWithFadeDrawable topFadeDrawable = new BlurredBackgroundWithFadeDrawable(
+            iBlur3FactoryFade.create(dialogsTopFadeView, null));
+        topFadeDrawable.setFadeHeight(-dp(54), true);
+        topFadeDrawable.setOverrideFadeColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        topFadeDrawable.setAlpha(225);
+        dialogsTopFadeView.setBackground(topFadeDrawable);
+        dialogsTopFadeView.setClickable(false);
+        dialogsTopFadeView.setFocusable(false);
+        if (!shouldUseDialogsHeaderGlass()) {
+            dialogsTopFadeView.setVisibility(View.GONE);
+        }
+        contentView.addView(dialogsTopFadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP));
+
         searchTabsAndFiltersLayout = new SearchTabsAndFiltersLayout(getContext());
         contentView.addView(searchTabsAndFiltersLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, SEARCH_TABS_HEIGHT, Gravity.TOP, 4, 0, 4, 0));
 
-        BlurredBackgroundDrawable searchTabsViewBackground = iBlur3FactoryLiquidGlass.create(searchTabsAndFiltersLayout, BlurredBackgroundProviderImpl.topPanel(resourceProvider));
+        BlurredBackgroundDrawable searchTabsViewBackground = iBlur3FactoryLiquidGlass.create(
+            searchTabsAndFiltersLayout,
+            shouldUseDialogsHeaderGlass()
+                ? BlurredBackgroundProviderImpl.dialogsHeaderGlass(resourceProvider)
+                : BlurredBackgroundProviderImpl.topPanel(resourceProvider))
+            .setHeaderGlassLens(shouldUseDialogsHeaderGlass());
         searchTabsViewBackground.setRadius(dp(18));
         searchTabsViewBackground.setPadding(dp(6.666f));
         searchTabsAndFiltersLayout.setPadding(0, dp(7), 0, dp(7));
@@ -4996,8 +5056,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             });
 
             BlurredBackgroundDrawable topPanelLayoutBackground = iBlur3FactoryLiquidGlass.create(topPanelLayout)
-                .setColorProvider(BlurredBackgroundProviderImpl.topPanel(resourceProvider))
-                .setPadding(dp(7));
+                .setColorProvider(shouldUseDialogsHeaderGlass()
+                    ? BlurredBackgroundProviderImpl.dialogsHeaderGlass(resourceProvider)
+                    : BlurredBackgroundProviderImpl.topPanel(resourceProvider))
+                .setPadding(dp(7))
+                .setHeaderGlassLens(shouldUseDialogsHeaderGlass());
 
             topPanelLayout.setPadding(dp(11), dp(21), dp(11), dp(21));
             topPanelLayout.setBlurredBackground(topPanelLayoutBackground);
@@ -5342,7 +5405,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         if (filterTabsView != null) {
-            BlurredBackgroundDrawable filterTabsViewBackground = iBlur3FactoryLiquidGlass.create(filterTabsView, BlurredBackgroundProviderImpl.topPanel(resourceProvider));
+            BlurredBackgroundDrawable filterTabsViewBackground = iBlur3FactoryLiquidGlass.create(
+                filterTabsView,
+                shouldUseDialogsHeaderGlass()
+                    ? BlurredBackgroundProviderImpl.dialogsHeaderGlass(resourceProvider)
+                    : BlurredBackgroundProviderImpl.topPanel(resourceProvider))
+                .setHeaderGlassLens(shouldUseDialogsHeaderGlass());
             filterTabsViewBackground.setRadius(dp(18));
             filterTabsViewBackground.setPadding(dp(6.666f));
             filterTabsView.setPadding(0, dp(7), 0, dp(7));
@@ -5351,7 +5419,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         if (fragmentSearchField != null) {
-            fragmentSearchField.setupBlurredBackground(iBlur3FactoryLiquidGlass.create(fragmentSearchField, BlurredBackgroundProviderImpl.topPanel(resourceProvider)));
+            fragmentSearchField.setupBlurredBackground(
+                iBlur3FactoryLiquidGlass.create(
+                    fragmentSearchField,
+                    shouldUseDialogsHeaderGlass()
+                        ? BlurredBackgroundProviderImpl.dialogsHeaderGlass(resourceProvider)
+                        : BlurredBackgroundProviderImpl.topPanel(resourceProvider))
+                    .setHeaderGlassLens(shouldUseDialogsHeaderGlass()));
         }
 
         dialogStoriesCell = new DialogStoriesCell(context, this, currentAccount, isArchive() ? DialogStoriesCell.TYPE_ARCHIVE : DialogStoriesCell.TYPE_DIALOGS) {
@@ -7289,6 +7363,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onResume() {
         super.onResume();
+        checkUi_searchFieldStyle();
+        updateDialogsTopFadeColor();
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -14379,7 +14455,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void checkUi_searchFieldStyle() {
-        fragmentSearchField.setBlurredBackgroundVisibility(animatorSearchVisible.getFloatValue());
+        if (fragmentSearchField == null) {
+            return;
+        }
+        final boolean alwaysGlass = shouldUseDialogsHeaderGlass()
+                && BlurredBackgroundProviderImpl.checkBlurEnabled(currentAccount, resourceProvider);
+        fragmentSearchField.setBlurredBackgroundVisibility(alwaysGlass ? 1f : animatorSearchVisible.getFloatValue());
     }
 
     private void checkUi_searchFieldHint() {
@@ -15072,6 +15153,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     }
 
                     iBlur3SourceColor.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    updateDialogsTopFadeColor();
+                    checkUi_searchFieldStyle();
+                    if (actionBar != null && shouldUseDialogsHeaderGlass()) {
+                        actionBar.invalidate();
+                    }
                     if (topPanelLayout != null) {
                         topPanelLayout.updateColors();
                     }

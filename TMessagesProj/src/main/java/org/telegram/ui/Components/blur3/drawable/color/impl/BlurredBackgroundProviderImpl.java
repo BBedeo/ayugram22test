@@ -49,6 +49,27 @@ public class BlurredBackgroundProviderImpl {
             .build();
     }
 
+    public static BlurredBackgroundProvider dialogsHeaderGlass(Theme.ResourcesProvider resourcesProvider) {
+        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+            .setBackgroundColor((r, isDark) -> {
+                final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
+                final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
+                if (!checkBlurEnabled(r)) {
+                    return isDark ? Theme.blendOver(colorBg, 0x18FFFFFF) : Theme.blendOver(colorBg, 0x09000000);
+                }
+                final float baseAlpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.68f : 0.78f;
+                final float alpha = LiquidGlassTuning.tintAlpha(isDark, baseAlpha);
+                final int liftedTarget = Theme.blendOver(colorTarget, isDark ? 0x12FFFFFF : 0x52FFFFFF);
+                return solveSrcColor(colorBg, liftedTarget, alpha);
+            })
+            .setStrokeColorTop(0x16000000, 0x14FFFFFF)
+            .setStrokeColorBottom(0x24000000, 0x1EFFFFFF)
+            .setShadowColor(0x26000000, 0x26000000)
+            .setShadowLayer(dpf2(3.2f), 0, dpf2(0.95f))
+            .setStrokeWidth(dpf2(0.45f), dpf2(0.45f))
+            .build();
+    }
+
     public static BlurredBackgroundProvider tabsPanelNoShadow(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) ->

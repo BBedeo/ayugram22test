@@ -231,6 +231,7 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
     private float liquidMotionPhaseOverride = Float.NaN;
     private float elasticPressOverride = Float.NaN;
     private boolean elasticPillLens;
+    private boolean headerGlassLens;
 
     /** Animated optical pressure for the manually drawn selected pill. */
     public void setElasticPressProgress(float amount) {
@@ -242,6 +243,15 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
         }
     }
 
+    private void resetLiquidLensShader() {
+        if (renderNodeImpl != null) {
+            renderNodeImpl.setLiquidGlassEnabled(false);
+            renderNodeImpl.invalidate();
+        }
+        implInvalidated = true;
+        invalidateSelf();
+    }
+
     /**
      * Select a distinct AGSL material for the travelling navbar pill only.
      * Leave the shared Telegram renderer and every other glass untouched.
@@ -249,12 +259,19 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
     public BlurredBackgroundDrawable setElasticPillLens(boolean enabled) {
         if (elasticPillLens != enabled) {
             elasticPillLens = enabled;
-            if (renderNodeImpl != null) {
-                renderNodeImpl.setLiquidGlassEnabled(false);
-                renderNodeImpl.invalidate();
-            }
-            implInvalidated = true;
-            invalidateSelf();
+            resetLiquidLensShader();
+        }
+        return this;
+    }
+
+    /**
+     * Select the iOS 26 header glass AGSL profile for floating top bubbles
+     * without disturbing the shared default shader or elastic pill lens.
+     */
+    public BlurredBackgroundDrawable setHeaderGlassLens(boolean enabled) {
+        if (headerGlassLens != enabled) {
+            headerGlassLens = enabled;
+            resetLiquidLensShader();
         }
         return this;
     }
@@ -975,7 +992,7 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
             impl = directImpl(drawn);
         }
         impl.draw(canvas, drawn);
-        if (!elasticPillLens || !isLiquidGlassEffectEnabled()) {
+        if (!(elasticPillLens || headerGlassLens) || !isLiquidGlassEffectEnabled()) {
             drawRim(canvas, getAlpha() / 255f);
         }
     }
@@ -1351,7 +1368,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 return;
             }
             if (enabled) {
-                liquidGlassEffect = new LiquidGlassEffect(renderNodeFill, elasticPillLens);
+                liquidGlassEffect = headerGlassLens && !elasticPillLens
+                        ? new LiquidGlassEffect(renderNodeFill, false, true)
+                        : new LiquidGlassEffect(renderNodeFill, elasticPillLens);
             } else {
                 liquidGlassEffect = null;
                 renderNodeFill.setRenderEffect(null);
@@ -1413,10 +1432,13 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
 
             if (liquidGlassEffect != null && Build.VERSION.SDK_INT >= 33) {
                 final RectF body = boundProps.body;
-                final float thicknessFactor = elasticPillLens ? 0.44f : 0.20f;
+                final float thicknessFactor = elasticPillLens ? 0.44f : (headerGlassLens ? 0.40f : 0.20f);
+                final int defaultThicknessDp = LiquidGlassTuning.isActive()
+                        ? LiquidGlassTuning.thicknessDp()
+                        : (headerGlassLens ? 15 : 11);
                 final int thickness = Math.max(Math.min(
                     boundProps.liquidThickness <= 0
-                            ? dp(LiquidGlassTuning.isActive() ? LiquidGlassTuning.thicknessDp() : 11)
+                            ? dp(defaultThicknessDp)
                             : boundProps.liquidThickness,
                     (int) (Math.min(body.width(), body.height()) * thicknessFactor)), 1);
 
