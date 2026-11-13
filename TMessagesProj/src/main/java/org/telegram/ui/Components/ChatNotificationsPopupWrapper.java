@@ -135,7 +135,7 @@ public class ChatNotificationsPopupWrapper {
             });
         });
 
-        gap = new FrameLayout(context);
+        gap = new ActionBarPopupWindow.GapView(context, resourcesProvider);
         ThemeBind.backgroundColor(gap, Theme.key_actionBarDefaultSubmenuSeparator, resourcesProvider);
         windowLayout.addView(gap, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
 

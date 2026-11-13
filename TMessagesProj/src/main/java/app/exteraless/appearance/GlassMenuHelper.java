@@ -123,6 +123,7 @@ public abstract class GlassMenuHelper {
             final ActionBarPopupWindow.GapView gapView = (ActionBarPopupWindow.GapView) view;
             gapView.setColor(color);
             gapView.setDividerVisible(dividerVisible);
+            gapView.setCollapsedForGlass(!dividerVisible && android.graphics.Color.alpha(color) == 0);
         } else if (view instanceof ViewGroup) {
             final ViewGroup viewGroup = (ViewGroup) view;
             for (int i = 0; i < viewGroup.getChildCount(); i++) {
@@ -192,8 +193,6 @@ public abstract class GlassMenuHelper {
         if (!glass) {
             return Theme.getColor(Theme.key_actionBarDefaultSubmenuSeparator, resourcesProvider);
         }
-        final boolean isDark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
-        return Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider),
-            isDark ? 0.03f : 0.06f);
+        return android.graphics.Color.TRANSPARENT;
     }
 }

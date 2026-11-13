@@ -220,6 +220,50 @@ checks = {
         and "val dismissMenuOnDragOut" in chats_config
         and "OEChatsDismissMenuOnDragOut" in oe_chats
     ),
+    "Glass menus collapse GapView items cleanly across popups and rounded settings cards drop legacy greydivider bars": (
+        lambda repo: (
+            (lambda glass_menu, menu_inj, back_menu, chat_notif, dialogs, chat, base_neko, dc, passcode, notice: (
+                "setCollapsedForGlass" in popup_window
+                and "isCollapsedForGlass" in popup_window
+                and "setMeasuredDimension(0, 0)" in popup_window
+                and "((GapView) child).isCollapsedForGlass()" in popup_window
+                and "ItemOptions.setGapCollapsedForGlass(" in menu_overlay
+                and "ItemOptions.setGapBackgroundColor(" not in menu_overlay
+                and "collapseGapsForGlass" in item_options
+                and "setGapCollapsedForGlass(" in item_options
+                and "LiquidGlassTuning.isActive()" in item_options
+                and "ItemOptions.setGapCollapsedForGlass(popupLayout, true)" in menu_item
+                and "new ActionBarPopupWindow.GapView(" in menu_item
+                and "Color.TRANSPARENT" in glass_menu
+                and "setCollapsedForGlass(" in glass_menu
+                and "ItemOptions.setGapCollapsedForGlass(wrapper.getSwipeBack(), true)" in menu_inj
+                and "new ActionBarPopupWindow.GapView(" in back_menu
+                and "setCollapsedForGlass(true)" in back_menu
+                and "new ActionBarPopupWindow.GapView(" in chat_notif
+                and "setCollapsedForGlass(true)" in dialogs
+                and "setCollapsedForGlass(true)" in chat
+                and "ShadowSectionCell" in base_neko
+                and "TextInfoPrivacyCell" in base_neko
+                and "AppearanceConfig.sectionRadius() > 0" in dc
+                and "holder.itemView.setBackground(null)" in dc
+                and "AppearanceConfig.sectionRadius() > 0" in passcode
+                and "cell.setBackground(null)" in passcode
+                and "AppearanceConfig.sectionRadius() > 0" in notice
+                and "cell.setBackground(null)" in notice
+            ))(
+                (repo / "TMessagesProj/src/main/java/app/exteraless/appearance/GlassMenuHelper.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/app/exteraless/plugins/menus/MenuInjector.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/org/telegram/ui/Components/BackButtonMenu.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/org/telegram/ui/Components/ChatNotificationsPopupWrapper.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/tw/nekomimi/nekogram/settings/BaseNekoSettingsActivity.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/tw/nekomimi/nekogram/DatacenterActivity.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/tw/nekomimi/nekogram/settings/NekoPasscodeSettingsActivity.java").read_text(encoding="utf-8"),
+                (repo / "TMessagesProj/src/main/java/tw/nekomimi/nekogram/config/cell/ConfigCellNotice.java").read_text(encoding="utf-8"),
+            )
+        )
+    )(__import__("pathlib").Path(__file__).resolve().parents[1]),
 }
 
 for title, ok in checks.items():

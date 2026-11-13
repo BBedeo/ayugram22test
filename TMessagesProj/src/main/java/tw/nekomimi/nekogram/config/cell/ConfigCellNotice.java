@@ -27,7 +27,11 @@ public class ConfigCellNotice extends AbstractConfigCell {
     public void onBindViewHolder(RecyclerView.ViewHolder holder) {
         TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
         cell.setText(text);
-        cell.setBackground(Theme.getThemedDrawable(cell.getContext(), R.drawable.greydivider,
-                Theme.key_windowBackgroundGrayShadow));
+        if (app.exteraless.appearance.AppearanceConfig.sectionRadius() > 0) {
+            cell.setBackground(null);
+        } else {
+            cell.setBackground(Theme.getThemedDrawable(cell.getContext(), R.drawable.greydivider,
+                    Theme.key_windowBackgroundGrayShadow));
+        }
     }
 }

@@ -11,7 +11,7 @@ java = root / "TMessagesProj/src/main/java"
 def read(rel):
     return (java / rel).read_text(encoding="utf-8")
 
-config = (root / "TMessagesProj/src/main/kotlin/app/exteraless/appearance/AppearanceConfig.kt").read_text()
+config = (root / "TMessagesProj/src/main/kotlin/app/exteraless/appearance/AppearanceConfig.kt").read_text(encoding="utf-8")
 appearance = read("app/exteraless/settings/OpenExteraAppearanceActivity.java")
 nav = read("org/telegram/ui/MainTabsLayout.java")
 main = read("org/telegram/ui/MainTabsActivity.java")

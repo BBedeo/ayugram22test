@@ -9021,6 +9021,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else {
                 ActionBarPopupWindow.GapView gap = new ActionBarPopupWindow.GapView(getParentActivity(), getResourceProvider(), Theme.key_actionBarDefaultSubmenuSeparator);
                 gap.setTag(R.id.fit_width_tag, 1);
+                if (app.exteraless.appearance.LiquidGlassTuning.isActive()) {
+                    gap.setColor(Color.TRANSPARENT);
+                    gap.setDividerVisible(false);
+                    gap.setCollapsedForGlass(true);
+                }
                 ActionBarMenuSubItem backItem = new ActionBarMenuSubItem(getParentActivity(), backButtonAtTop, !backButtonAtTop);
                 backItem.setTextAndIcon(LocaleController.getString(R.string.Back), R.drawable.ic_ab_back);
                 backItem.setMinimumWidth(160);

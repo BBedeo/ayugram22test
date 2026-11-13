@@ -953,10 +953,16 @@ public class ItemOptions {
         return addGap();
     }
 
+    private boolean collapseGapsForGlass;
+
     public ItemOptions addGap() {
         ActionBarPopupWindow.GapView gap = new ActionBarPopupWindow.GapView(context, resourcesProvider);
         gap.setTag(R.id.fit_width_tag, 1);
-        if (gapBackgroundColor != null) {
+        if (collapseGapsForGlass || (gapBackgroundColor != null && Color.alpha(gapBackgroundColor) == 0)) {
+            gap.setColor(Color.TRANSPARENT);
+            gap.setDividerVisible(false);
+            gap.setCollapsedForGlass(true);
+        } else if (gapBackgroundColor != null) {
             gap.setColor(gapBackgroundColor);
         }
         addView(gap, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
@@ -1276,6 +1282,7 @@ public class ItemOptions {
             linearLayout.setBackground(factory.create(linearLayout, multiwindow)
                 .setColorProvider(colorProvider));
         }
+        setGapCollapsedForGlass(true);
         return this;
     }
 
@@ -1287,6 +1294,7 @@ public class ItemOptions {
                 .setHasPadding(true)
                 .setRadius(dp(12)));
         }
+        setGapCollapsedForGlass(true);
         return this;
     }
 
@@ -1308,6 +1316,7 @@ public class ItemOptions {
                 }
             }
         }
+        setGapCollapsedForGlass(true);
         return this;
     }
 
@@ -1457,6 +1466,9 @@ public class ItemOptions {
 
         if ((blur || blurForMenu) && scrimBlur3SourceBitmap == null) {
             scrimBlur3SourceBitmap = new GlassSourceBitmap();
+        }
+        if (collapseGapsForGlass || blur || blurForMenu || LiquidGlassTuning.isActive()) {
+            setGapCollapsedForGlass(true);
         }
 
         ViewGroup container = pointContainer = this.container == null ? fragment.getParentLayout().getOverlayContainerView() : this.container;
@@ -1685,8 +1697,8 @@ public class ItemOptions {
         }
 
         if (blurForMenu && scrimBlur3SourceBitmap != null) {
-            setGapBackgroundColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), 0.06f));
-            bindGapBackgroundColor(ThemeBind.multAlpha(Theme.key_actionBarDefaultSubmenuItem, 0.06f));
+            setGapBackgroundColor(Color.TRANSPARENT);
+            setGapCollapsedForGlass(true);
             BlurredBackgroundDrawable bg = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap)
                 .create(layout, true)
                 // Use the real captured backdrop and glass material when the
@@ -1878,6 +1890,30 @@ public class ItemOptions {
             if (child instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout) {
                 child.setBackgroundColor(color);
             }
+        }
+        return this;
+    }
+
+    public static void setGapCollapsedForGlass(View view, boolean collapsed) {
+        if (view instanceof ActionBarPopupWindow.GapView) {
+            final ActionBarPopupWindow.GapView gap = (ActionBarPopupWindow.GapView) view;
+            gap.setCollapsedForGlass(collapsed);
+            if (collapsed) {
+                gap.setColor(Color.TRANSPARENT);
+                gap.setDividerVisible(false);
+            }
+        } else if (view instanceof ViewGroup) {
+            final ViewGroup viewGroup = (ViewGroup) view;
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                setGapCollapsedForGlass(viewGroup.getChildAt(i), collapsed);
+            }
+        }
+    }
+
+    public ItemOptions setGapCollapsedForGlass(boolean collapsed) {
+        collapseGapsForGlass = collapsed;
+        if (layout != null) {
+            setGapCollapsedForGlass(layout, collapsed);
         }
         return this;
     }

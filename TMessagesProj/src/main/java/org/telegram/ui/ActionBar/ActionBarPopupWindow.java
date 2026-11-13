@@ -393,7 +393,7 @@ public class ActionBarPopupWindow extends PopupWindow {
                         int h = 0;
                         for (int a = 0; a < count; a++) {
                             View child = getItemAt(a);
-                            if (child.getVisibility() != VISIBLE) {
+                            if (child.getVisibility() != VISIBLE || (child instanceof GapView && ((GapView) child).isCollapsedForGlass())) {
                                 continue;
                             }
                             h += child.getMeasuredHeight();
@@ -1107,7 +1107,7 @@ public class ActionBarPopupWindow extends PopupWindow {
             View lastVisible = null;
             for (int a = 0; a < count; a++) {
                 View child = linearLayout.getChildAt(a);
-                if (child.getVisibility() != View.VISIBLE) {
+                if (child.getVisibility() != View.VISIBLE || (child instanceof GapView && ((GapView) child).isCollapsedForGlass())) {
                     continue;
                 }
                 if (firstVisible == null) {
@@ -1119,7 +1119,7 @@ public class ActionBarPopupWindow extends PopupWindow {
             boolean prevGap = false;
             for (int a = 0; a < count; a++) {
                 View child = linearLayout.getChildAt(a);
-                if (child.getVisibility() != View.VISIBLE) {
+                if (child.getVisibility() != View.VISIBLE || (child instanceof GapView && ((GapView) child).isCollapsedForGlass())) {
                     continue;
                 }
                 Object tag = child.getTag(R.id.object_tag);
@@ -1626,6 +1626,7 @@ public class ActionBarPopupWindow extends PopupWindow {
         Drawable shadowDrawable;
         // По умолчанию true, т.е. как было
         boolean dividerVisible = true;
+        boolean collapsedForGlass;
 
         public GapView(Context context, Theme.ResourcesProvider resourcesProvider) {
             this(context, resourcesProvider, Theme.key_actionBarDefaultSubmenuSeparator);
@@ -1649,6 +1650,37 @@ public class ActionBarPopupWindow extends PopupWindow {
         public void setDividerVisible(boolean dividerVisible) {
             this.dividerVisible = dividerVisible;
             invalidate();
+        }
+
+        /** На стеклянных и оверлейных меню разделитель полностью скрывается и схлопывается по высоте. */
+        public void setCollapsedForGlass(boolean collapsed) {
+            if (this.collapsedForGlass == collapsed) {
+                return;
+            }
+            this.collapsedForGlass = collapsed;
+            requestLayout();
+            invalidate();
+        }
+
+        public boolean isCollapsedForGlass() {
+            return collapsedForGlass;
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            if (collapsedForGlass) {
+                setMeasuredDimension(0, 0);
+                return;
+            }
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            if (collapsedForGlass) {
+                return;
+            }
+            super.draw(canvas);
         }
 
         @Override

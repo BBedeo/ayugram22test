@@ -50235,9 +50235,10 @@ public class ChatActivity extends BaseFragment implements
                     }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
                 if (canDeleteReactions) {
-                    final int bgColor = Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, themeDelegate), 0.06f);
                     final ActionBarPopupWindow.GapView gapView = new ActionBarPopupWindow.GapView(contentView.getContext(), themeDelegate);
-                    gapView.setColor(bgColor);
+                    gapView.setColor(Color.TRANSPARENT);
+                    gapView.setDividerVisible(false);
+                    gapView.setCollapsedForGlass(true);
 
                     linearLayout.addView(gapView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
                     View tapAndHoldView = createMenuTextOption(getContext(), themeDelegate, getString(R.string.TapAndHoldToDeleteReaction));
