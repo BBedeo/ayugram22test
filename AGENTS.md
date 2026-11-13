@@ -1,5 +1,13 @@
 # ExFullGram development rules
 
+## Delivery: commit and push every change
+
+GitHub is the delivery channel: the owner pulls this repository from GitHub into Android Studio.
+
+- After finishing a change, run the `scripts/check_*.py` guards, commit to `main` and push to `origin` in the same turn.
+- Do not leave finished work uncommitted or unpushed; the owner will not see it.
+- Do not claim a change is delivered until `git push` has succeeded.
+
 ## Test Mode parity is a release requirement
 
 Test Mode is a **local transport and storage backend**, not a separate simplified
