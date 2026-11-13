@@ -962,13 +962,6 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         selectedTabPositionX.setSpring(new SpringForce(1f)
             .setStiffness(SpringForce.STIFFNESS_MEDIUM)
             .setDampingRatio(SpringForce.DAMPING_RATIO_LOW_BOUNCY));
-        selectedTabPositionX.addEndListener((animation, canceled, value, velocity) -> {
-            if (!canceled && elasticGlideAnimating) {
-                elasticGlideAnimating = false;
-                elasticPressScale.animateToFinalPosition(0f);
-                invalidate();
-            }
-        });
     }
 
     private float animatedLongSelectedViewCenterX;
@@ -1017,6 +1010,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         elasticPressScale.setSpring(new SpringForce(0f)
                 .setStiffness(360f)
                 .setDampingRatio(0.65f));
+        selectedTabPositionX.addEndListener((animation, canceled, value, velocity) -> {
+            if (!canceled && elasticGlideAnimating) {
+                elasticGlideAnimating = false;
+                elasticPressScale.animateToFinalPosition(0f);
+                invalidate();
+            }
+        });
     }
 
     private boolean isInLongPress;
