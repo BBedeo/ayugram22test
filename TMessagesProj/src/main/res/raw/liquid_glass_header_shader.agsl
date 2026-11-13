@@ -140,12 +140,22 @@ half4 main(in float2 fragCoord) {
   float angle = -2.356 + move * 0.42 + (glass_light_angle - 5.4978);
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot, 0.0), 3.2) * 1.02;
-  float catchArc = pow(max(-rawDot, 0.0), 3.0) * 0.88;
-  float capBoost = pow(abs(edgeDir.x), 2.5) * (0.20 + 0.18 * lift);
+  float2 perpDir = float2(-lightDir.y, lightDir.x);
+  float perpDot = dot(edgeDir, perpDir);
+
+  // Equalize wide right/title pills with standalone circular buttons: wide horizontal runs sit
+  // at 45deg to the key axis and top-right/bottom-left shoulders would otherwise drop near zero.
+  float pillWeight = smoothstep(0.18, 0.95, max(0.0, (size.x - size.y) / max(size.y, 1.0)));
+  float keyPow = mix(3.2, 2.05, pillWeight);
+  float catchPow = mix(3.0, 2.05, pillWeight);
+  float keyArc = pow(max(rawDot, 0.0), keyPow) * (1.02 + 0.04 * pillWeight);
+  float catchArc = pow(max(-rawDot, 0.0), catchPow) * (0.88 + 0.04 * pillWeight);
+  float offDiagTopRight = pow(max(perpDot, 0.0), 2.55) * (0.64 * pillWeight);
+  float offDiagBotLeft = pow(max(-perpDot, 0.0), 2.65) * (0.50 * pillWeight);
+  float capBoost = pow(abs(edgeDir.x), 2.5) * (0.20 + 0.18 * lift) * (1.0 - 0.30 * pillWeight);
   float rimCore = gaussian((dDp - 1.05) / 0.88);
   float innerRidge = gaussian((dDp - 2.65) / 1.65);
-  float rimSpec = (keyArc + catchArc + capBoost)
+  float rimSpec = (keyArc + catchArc + offDiagTopRight + offDiagBotLeft + capBoost)
       * (rimCore * 0.76 + innerRidge * 0.24) * (0.38 + 0.36 * lift);
 
   float highlightStrength = clamp(glass_highlight, 0.65, 1.0);

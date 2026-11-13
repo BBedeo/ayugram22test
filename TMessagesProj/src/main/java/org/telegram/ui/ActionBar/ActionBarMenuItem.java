@@ -221,11 +221,21 @@ public class ActionBarMenuItem extends FrameLayout {
     private CloseProgressDrawable2 progressDrawable;
     private int additionalYOffset;
     private int additionalXOffset;
-    private boolean longClickEnabled;
+    private boolean longClickEnabled = true;
     private boolean animateClear = true;
     private boolean measurePopup = true;
     private boolean forceSmoothKeyboard;
     private boolean showSubmenuByMove = true;
+    private boolean dragOpenMenu;
+    private float touchDownX;
+    private float touchDownY;
+    private boolean draggedPastButton;
+    @Nullable
+    private ActionBarPopupWindow.ActionBarPopupWindowLayout externalPopupLayout;
+    @Nullable
+    private ActionBarPopupWindow externalPopupWindow;
+    @Nullable
+    private ActionBarPopupWindow.ActionBarPopupWindowLayout lastDragLayout;
     private ArrayList<FiltersView.MediaFilterData> currentSearchFilters = new ArrayList<>();
     private int selectedFilterIndex = -1;
     private final AnimationNotificationsLocker notificationsLocker = new AnimationNotificationsLocker();
@@ -297,6 +307,27 @@ public class ActionBarMenuItem extends FrameLayout {
         longClickEnabled = value;
     }
 
+    /**
+     * Enables hold-and-pull-down gesture opening even when the menu is populated dynamically on click
+     * (for example via {@link ItemOptions#openInOverlay}).
+     */
+    public ActionBarMenuItem setDragOpenMenu(boolean value) {
+        dragOpenMenu = value;
+        return this;
+    }
+
+    public boolean isDragOpenMenuEnabled() {
+        return dragOpenMenu;
+    }
+
+    public void setExternalPopupMenu(@Nullable ActionBarPopupWindow.ActionBarPopupWindowLayout layout, @Nullable ActionBarPopupWindow window) {
+        if (layout == null) {
+            clearLastDragHighlight();
+        }
+        externalPopupLayout = layout;
+        externalPopupWindow = window;
+    }
+
     public void setFixBackground(boolean fixBackground) {
         this.fixBackground = fixBackground;
         invalidate();
@@ -335,51 +366,78 @@ public class ActionBarMenuItem extends FrameLayout {
             setPressed(false);
             return true;
         }
-        // a sub menu in the overlay of the screen opens on a long press and takes the rest of that gesture:
-        // the item under the finger is chosen on release
+        // Any submenu or drag-enabled menu item opens on short hold (200ms) or downward pull
+        // and continuously tracks the hovered row with an animated pill until finger release.
         final SimpleActionBarMenuOverlay overlay = getShownSubMenuOverlay();
         final boolean overlayShown = overlay != null && overlay.isOpened();
         final boolean overlayMenu = getSubMenuOverlayHost() != null;
-        final boolean popupShown = popupWindow != null && popupWindow.isShowing();
-        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+        final boolean ownPopupShown = popupWindow != null && popupWindow.isShowing();
+        final boolean extPopupShown = externalPopupWindow != null && externalPopupWindow.isShowing();
+        final boolean popupShown = ownPopupShown || extPopupShown;
+        final boolean canOpenByGesture = !popupShown && !overlayShown && (dragOpenMenu || ((longClickEnabled || overlayMenu) && hasSubMenu()));
+        final int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            touchDownX = event.getX();
+            touchDownY = event.getY();
+            draggedPastButton = false;
             subMenuOpenedByGesture = false;
-            if ((longClickEnabled || overlayMenu) && hasSubMenu() && !popupShown && !overlayShown) {
+            if (canOpenByGesture) {
+                if (getParent() != null) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
                 cancelShowMenuByLongPress();
                 showMenuRunnable = () -> {
                     showMenuRunnable = null;
                     if (getParent() != null) {
                         getParent().requestDisallowInterceptTouchEvent(true);
                     }
-                    if (overlayMenu) {
+                    cancelLongPress();
+                    if (openSubMenuForDragGesture()) {
                         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        subMenuOpenedByGesture = true;
                     }
-                    toggleSubMenu();
-                    subMenuOpenedByGesture = true;
                 };
-                AndroidUtilities.runOnUIThread(showMenuRunnable, overlayMenu ? ViewConfiguration.getLongPressTimeout() : 200);
+                AndroidUtilities.runOnUIThread(showMenuRunnable, 200);
             }
-        } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
-            if (showMenuRunnable != null && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
+        } else if (action == MotionEvent.ACTION_MOVE) {
+            final float slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+            final float dx = event.getX() - touchDownX;
+            final float dy = event.getY() - touchDownY;
+            if (!isInside(event, slop)) {
+                draggedPastButton = true;
+            }
+            if (showMenuRunnable != null) {
+                final boolean pulledAway = Math.abs(dx) > slop * 1.35f || dy < -slop || !isInside(event, slop);
+                if (pulledAway && dy <= slop * 0.75f) {
+                    cancelShowMenuByLongPress();
+                }
+            }
+            final boolean pullDownIntent = dy > slop * 0.85f && Math.abs(dx) <= Math.max(dy * 1.4f, slop * 2f);
+            if ((showSubmenuByMove || dragOpenMenu) && canOpenByGesture && (event.getY() > getHeight() || pullDownIntent)) {
                 cancelShowMenuByLongPress();
-            }
-            if (showSubmenuByMove && !overlayMenu && hasSubMenu() && !popupShown) {
-                if (event.getY() > getHeight()) {
-                    if (getParent() != null) {
-                        getParent().requestDisallowInterceptTouchEvent(true);
-                    }
-                    toggleSubMenu();
+                cancelLongPress();
+                if (getParent() != null) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
+                if (openSubMenuForDragGesture()) {
+                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
                     subMenuOpenedByGesture = true;
+                    draggedPastButton = true;
+                    final SimpleActionBarMenuOverlay openedOverlay = getShownSubMenuOverlay();
+                    selectMenuViewUnder(event, openedOverlay, openedOverlay != null && openedOverlay.isOpened());
                     return true;
                 }
-            } else if ((showSubmenuByMove || subMenuOpenedByGesture) && (popupShown || overlayShown)) {
-                selectMenuViewUnder(event);
+            } else if ((showSubmenuByMove || dragOpenMenu || subMenuOpenedByGesture) && (popupShown || overlayShown)) {
+                selectMenuViewUnder(event, overlay, overlayShown);
             }
-        } else if (event.getActionMasked() == MotionEvent.ACTION_UP && (popupShown || overlayShown)) {
+        } else if (action == MotionEvent.ACTION_UP && (popupShown || overlayShown)) {
             cancelShowMenuByLongPress();
+            cancelLongPress();
+            selectMenuViewUnder(event, overlay, overlayShown);
+            clearLastDragHighlight();
             if (selectedMenuView != null) {
-                selectedMenuView.setSelected(false);
-                selectedMenuView.setPressed(false);
                 final View selected = selectedMenuView;
+                clearHoverSelection(selected);
                 final Object tag = selected.getTag();
                 selectedMenuView = null;
                 if (tag instanceof ActionRow.ActionItem) {
@@ -392,8 +450,8 @@ public class ActionBarMenuItem extends FrameLayout {
                         AndroidUtilities.runOnUIThread(() -> item.action.onClick(selected));
                     }
                     dismissSubMenuOnClick();
-                } else if (!(tag instanceof Integer)) {
-                    // a row with an action of its own, e.g. opening a nested page of the menu, which stays open
+                } else if (selected instanceof ActionBarMenuSubItem || !(tag instanceof Integer)) {
+                    // Handles ActionBarMenuSubItem (dismiss / custom click / swipeback), ItemOptions, and nested triggers uniformly.
                     selected.performClick();
                 } else {
                     if (parentMenu != null) {
@@ -407,10 +465,15 @@ public class ActionBarMenuItem extends FrameLayout {
                         popupWindow.dismiss(allowCloseAnimation);
                     }
                 }
-            } else if (showSubmenuByMove && !overlayShown) {
-                popupWindow.dismiss();
+            } else if (showSubmenuByMove && !overlayShown && draggedPastButton
+                    && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
+                if (externalPopupWindow != null) {
+                    externalPopupWindow.dismiss();
+                } else if (popupWindow != null) {
+                    popupWindow.dismiss();
+                }
             }
-            // released past the items, the menu in the overlay stays open
+            // released past the items on an overlay menu: keep the menu open for direct tapping
             if (subMenuOpenedByGesture) {
                 // the release of the gesture that opened the menu is not a click on the button, which would close it
                 subMenuOpenedByGesture = false;
@@ -421,39 +484,56 @@ public class ActionBarMenuItem extends FrameLayout {
                 return true;
             }
         } else {
-            if (event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                 cancelShowMenuByLongPress();
+                cancelLongPress();
+                clearLastDragHighlight();
             }
-            if (selectedMenuView != null) {
-                selectedMenuView.setSelected(false);
-                selectedMenuView.setPressed(false);
-                selectedMenuView = null;
-            }
+            clearHoverSelection(selectedMenuView);
+            selectedMenuView = null;
         }
         return super.onTouchEvent(event);
     }
 
-    private void updateActionRowSelection(ActionRow actionRow, float x, float y) {
-        ViewGroup buttons = actionRow.getChildCount() > 0 && actionRow.getChildAt(0) instanceof ViewGroup ? (ViewGroup) actionRow.getChildAt(0) : null;
-        if (buttons == null) {
+    private boolean openSubMenuForDragGesture() {
+        if (hasSubMenu()) {
+            toggleSubMenu();
+            return isSubMenuShowing();
+        }
+        if (dragOpenMenu && !isSubMenuShowing()) {
+            performClick();
+            return isSubMenuShowing();
+        }
+        return false;
+    }
+
+    @Nullable
+    private ActionBarPopupWindow.ActionBarPopupWindowLayout getActivePopupLayout(
+            @Nullable SimpleActionBarMenuOverlay overlay, boolean overlayShown) {
+        if (overlayShown && overlay != null && overlay.getContent() != null) {
+            return overlay.getContent();
+        }
+        if (externalPopupLayout != null && externalPopupWindow != null && externalPopupWindow.isShowing()) {
+            return externalPopupLayout;
+        }
+        return popupLayout;
+    }
+
+    private void clearLastDragHighlight() {
+        if (lastDragLayout != null) {
+            lastDragLayout.setDragHoverView(null);
+            lastDragLayout = null;
+        }
+    }
+
+    private void clearHoverSelection(@Nullable View view) {
+        if (view == null) {
             return;
         }
-        actionRow.getHitRect(rect);
-        boolean insideRow = rect.contains((int) x, (int) y);
-        float localX = x - actionRow.getLeft() - buttons.getLeft();
-        float localY = y - actionRow.getTop() - buttons.getTop();
-        for (int a = 0; a < buttons.getChildCount(); a++) {
-            View button = buttons.getChildAt(a);
-            button.getHitRect(rect);
-            if (insideRow && rect.contains((int) localX, (int) localY)) {
-                button.setPressed(true);
-                button.setSelected(true);
-                button.drawableHotspotChanged(localX, localY - button.getTop());
-                selectedMenuView = button;
-            } else {
-                button.setPressed(false);
-                button.setSelected(false);
-            }
+        view.setPressed(false);
+        view.setSelected(false);
+        if (Build.VERSION.SDK_INT == 21 && view.getBackground() != null) {
+            view.getBackground().setVisible(false, false);
         }
     }
 
@@ -471,45 +551,99 @@ public class ActionBarMenuItem extends FrameLayout {
     /** Was the open sub menu opened by the current gesture (a long press or a move down), its release chooses an item. */
     private boolean subMenuOpenedByGesture;
 
-    /** Presses the item of the open sub menu under the finger of a gesture on this button. */
-    private void selectMenuViewUnder(MotionEvent event) {
+    @Nullable
+    private View findHoveredMenuChild(View root, View pageRoot, float screenX, float screenY) {
+        if (root == null || root.getVisibility() != VISIBLE || root instanceof ActionBarPopupWindow.GapView) {
+            return null;
+        }
+        if (root instanceof ActionRow) {
+            final ActionRow actionRow = (ActionRow) root;
+            final ViewGroup buttons = actionRow.getChildCount() > 0 && actionRow.getChildAt(0) instanceof ViewGroup
+                    ? (ViewGroup) actionRow.getChildAt(0) : null;
+            if (buttons == null) {
+                return null;
+            }
+            actionRow.getLocationOnScreen(location);
+            if (screenX < location[0] || screenX >= location[0] + actionRow.getWidth()
+                    || screenY < location[1] || screenY >= location[1] + actionRow.getHeight()) {
+                return null;
+            }
+            for (int a = buttons.getChildCount() - 1; a >= 0; a--) {
+                final View button = buttons.getChildAt(a);
+                if (button.getVisibility() != VISIBLE || !button.isEnabled()) {
+                    continue;
+                }
+                button.getLocationOnScreen(location);
+                if (screenX >= location[0] && screenX < location[0] + button.getWidth()
+                        && screenY >= location[1] && screenY < location[1] + button.getHeight()) {
+                    return button;
+                }
+            }
+            return null;
+        }
+        final Object tag = root.getTag();
+        final boolean isContainer = root == pageRoot
+                || root instanceof android.widget.ScrollView
+                || root instanceof org.telegram.ui.Components.PopupSwipeBackLayout
+                || root instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout;
+        final boolean leafCandidate = !isContainer && (root instanceof ActionBarMenuSubItem
+                || (tag instanceof Integer ? (Integer) tag < 3000 : (root.hasOnClickListeners() || (root.isClickable() && !(root instanceof ViewGroup)))));
+        if (leafCandidate) {
+            if (!root.isEnabled() || (tag instanceof Integer && (Integer) tag >= 3000)) {
+                return null;
+            }
+            root.getLocationOnScreen(location);
+            if (screenX >= location[0] && screenX < location[0] + root.getWidth()
+                    && screenY >= location[1] && screenY < location[1] + root.getHeight()) {
+                return root;
+            }
+            return null;
+        }
+        if (root instanceof ViewGroup) {
+            final ViewGroup vg = (ViewGroup) root;
+            for (int i = vg.getChildCount() - 1; i >= 0; i--) {
+                final View hit = findHoveredMenuChild(vg.getChildAt(i), pageRoot, screenX, screenY);
+                if (hit != null) {
+                    return hit;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Presses and animates the item of the open sub menu under the finger of a gesture on this button. */
+    private void selectMenuViewUnder(MotionEvent event, @Nullable SimpleActionBarMenuOverlay overlay, boolean overlayShown) {
+        final ActionBarPopupWindow.ActionBarPopupWindowLayout activeLayout = getActivePopupLayout(overlay, overlayShown);
+        if (activeLayout == null) {
+            return;
+        }
         getLocationOnScreen(location);
         final float screenX = event.getX() + location[0];
         final float screenY = event.getY() + location[1];
-        selectedMenuView = null;
-        for (int a = 0; a < popupLayout.getItemsCount(); a++) {
-            View child = popupLayout.getItemAt(a);
-            Object tag = child.getTag();
-            // the items are in a scrolled list inside the popup: relative to their own parent
-            final View parent = (View) child.getParent();
-            parent.getLocationOnScreen(location);
-            final float x = screenX - location[0];
-            final float y = screenY - location[1];
-            if (child instanceof ActionRow) {
-                updateActionRowSelection((ActionRow) child, x, y);
-                continue;
+        final View oldSelected = selectedMenuView;
+        final View pageRoot = activeLayout.getVisiblePageRoot();
+        final View hit = findHoveredMenuChild(pageRoot, pageRoot, screenX, screenY);
+        if (oldSelected != null && oldSelected != hit) {
+            clearHoverSelection(oldSelected);
+        }
+        selectedMenuView = hit;
+        if (hit != null) {
+            hit.setPressed(true);
+            hit.setSelected(true);
+            if (Build.VERSION.SDK_INT == 21 && hit.getBackground() != null) {
+                hit.getBackground().setVisible(true, false);
             }
-            // the items of the menu, and rows with an action of their own (a nested page)
-            if (tag instanceof Integer ? (Integer) tag >= 3000 : !(child.hasOnClickListeners() || tag == null && child.isClickable())) {
-                continue;
-            }
-            child.getHitRect(rect);
-            if (child.getVisibility() != VISIBLE || !rect.contains((int) x, (int) y)) {
-                child.setPressed(false);
-                child.setSelected(false);
-                if (Build.VERSION.SDK_INT == 21 && child.getBackground() != null) {
-                    child.getBackground().setVisible(false, false);
-                }
-            } else {
-                child.setPressed(true);
-                child.setSelected(true);
-                if (Build.VERSION.SDK_INT == 21 && child.getBackground() != null) {
-                    child.getBackground().setVisible(true, false);
-                }
-                child.drawableHotspotChanged(x - child.getLeft(), y - child.getTop());
-                selectedMenuView = child;
+            hit.getLocationOnScreen(location);
+            hit.drawableHotspotChanged(screenX - location[0], screenY - location[1]);
+            if (hit != oldSelected) {
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
             }
         }
+        if (lastDragLayout != null && lastDragLayout != activeLayout) {
+            lastDragLayout.setDragHoverView(null);
+        }
+        activeLayout.setDragHoverView(hit);
+        lastDragLayout = activeLayout;
     }
 
     public void setDelegate(ActionBarMenuItemDelegate actionBarMenuItemDelegate) {
@@ -1022,11 +1156,17 @@ public class ActionBarMenuItem extends FrameLayout {
     @Nullable
     private SimpleActionBarMenuOverlay getShownSubMenuOverlay() {
         final MenuOverlayHost host = getSubMenuOverlayHost();
-        final SimpleActionBarMenuOverlay overlay = host != null ? host.getOpenMenuOverlay() : null;
+        SimpleActionBarMenuOverlay overlay = host != null ? host.getOpenMenuOverlay() : null;
+        if (overlay == null && parentMenu != null && parentMenu.parentActionBar != null) {
+            overlay = parentMenu.parentActionBar.getOpenMenuOverlay();
+        }
         return overlay != null && overlay.isShown(this) ? overlay : null;
     }
 
     void onOverlayMenuClosed() {
+        clearLastDragHighlight();
+        clearHoverSelection(selectedMenuView);
+        selectedMenuView = null;
         onDismiss();
         if (subMenuDelegate != null) {
             subMenuDelegate.onHideSubMenu();
@@ -1497,7 +1637,8 @@ public class ActionBarMenuItem extends FrameLayout {
         if (overlay != null) {
             return overlay.isOpened();
         }
-        return popupWindow != null && popupWindow.isShowing();
+        return (popupWindow != null && popupWindow.isShowing())
+                || (externalPopupWindow != null && externalPopupWindow.isShowing());
     }
 
     /**

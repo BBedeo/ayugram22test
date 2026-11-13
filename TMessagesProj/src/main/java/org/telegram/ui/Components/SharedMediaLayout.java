@@ -1995,6 +1995,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
         photoVideoOptionsItem.setOnClickListener(optionsClickListener);
         if (simpleOptionsItem != null) {
             // the bubble of the header's pill like the other simple screens
+            simpleOptionsItem.setDragOpenMenu(true);
             simpleOptionsItem.setOnClickListener(v -> {
                 simpleOptionsItem.removeAllSubItems();
                 if (fillOptions(getClosestTab(), bubbleOptions())) {

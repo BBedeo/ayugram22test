@@ -273,10 +273,9 @@ def main() -> None:
     create_btns = method_body(simple_src, r"private void createButtonsGlass\(")
     create_menu = method_body(simple_src, r"public BlurredBackgroundDrawable createMenuGlass\(View owner\)")
     check(
-        "SimpleActionBar enables header glass lens when no custom buttonsGlassFactory is set",
-        "final boolean lens = buttonsGlassFactory == null;" in create_btns
-        and create_btns.count(".setHeaderGlassLens(lens)") >= 3
-        and ".setHeaderGlassLens(buttonsGlassFactory == null)" in create_menu,
+        "SimpleActionBar always enables header glass lens for buttons and menus",
+        create_btns.count(".setHeaderGlassLens(true)") >= 3
+        and ".setHeaderGlassLens(true)" in create_menu,
     )
 
     ab_src = read("org/telegram/ui/ActionBar/ActionBar.java")
@@ -319,9 +318,14 @@ def main() -> None:
 
     item_src = read("org/telegram/ui/ActionBar/ActionBarMenuItem.java")
     check(
-        "ActionBarMenuItem supports adaptive search field colors and ActionBar overlay fallback",
+        "ActionBarMenuItem supports adaptive search field colors, overlay fallback, and hold/drag submenu selection",
         "public void setSearchFieldColors(" in item_src
-        and item_src.count("isMenuOverlayFallbackAllowed()") >= 2,
+        and item_src.count("isMenuOverlayFallbackAllowed()") >= 2
+        and "setDragOpenMenu(" in item_src
+        and "setExternalPopupMenu(" in item_src
+        and "setDragHoverView(" in item_src
+        and "findHoveredMenuChild(" in item_src
+        and "CLOCK_TICK" in item_src,
     )
 
     base_frag_src = read("org/telegram/ui/ActionBar/BaseFragment.java")
@@ -390,16 +394,17 @@ def main() -> None:
 
     open_extera_src = read("app/exteraless/settings/OpenExteraSettingsActivity.java")
     check(
-        "OpenExteraSettingsActivity sets zero top padding, fades title pill on scroll, and cleans up animator",
+        "OpenExteraSettingsActivity sets zero top padding, disables the floating header title pill, and removes legacy adaptive background",
         all(
             token in open_extera_src
             for token in (
                 "protected int getListViewForSimpleGlassTopPadding()",
                 "return 0;",
-                "headerTitleAnimator",
-                "onFragmentDestroy()",
+                "actionBar.setTitle(null);",
+                "actionBar.setDrawGlassTitle(false);",
             )
         )
+        and "headerTitleAnimator" not in open_extera_src
         and "actionBar.setAdaptiveBackground(" not in open_extera_src
         and "setupAdaptiveBackground" not in open_extera_src,
     )

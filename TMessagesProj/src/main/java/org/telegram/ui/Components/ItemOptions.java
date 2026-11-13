@@ -1562,6 +1562,9 @@ public class ItemOptions {
         actionBarPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
             @Override
             public void onDismiss() {
+                if (scrimView instanceof ActionBarMenuItem) {
+                    ((ActionBarMenuItem) scrimView).setExternalPopupMenu(null, null);
+                }
                 actionBarPopupWindow = null;
                 dismissDim(container);
                 clearHoverListener();
@@ -1699,6 +1702,10 @@ public class ItemOptions {
             layout.setBackground(bg);
         }
 
+        if (scrimView instanceof ActionBarMenuItem) {
+            ((ActionBarMenuItem) scrimView).setExternalPopupMenu(lastLayout, actionBarPopupWindow);
+        }
+
         actionBarPopupWindow.setScaleOut(scaleOut);
         actionBarPopupWindow.showAtLocation(
             container,
@@ -1707,7 +1714,9 @@ public class ItemOptions {
             (int) (offsetY = (Y + this.translateY))
         );
 
-        if (longPressSelectionEnabled) {
+        final boolean handledByMenuItem = scrimView instanceof ActionBarMenuItem
+                && ((ActionBarMenuItem) scrimView).isDragOpenMenuEnabled();
+        if (longPressSelectionEnabled && !handledByMenuItem) {
             installHoverReleaseListener();
         }
 
@@ -2089,7 +2098,8 @@ public class ItemOptions {
     }
 
     private void updateHover(int rawX, int rawY) {
-        View hit = findItemAt(layout, rawX, rawY);
+        final View pageRoot = layout != null ? layout.getVisiblePageRoot() : layout;
+        View hit = findItemAt(pageRoot, rawX, rawY);
         if (hit != hoveredItem) {
             if (hoveredItem != null) {
                 hoveredItem.setPressed(false);
@@ -2097,7 +2107,11 @@ public class ItemOptions {
             hoveredItem = hit;
             if (hoveredItem != null) {
                 hoveredItem.setPressed(true);
+                hoveredItem.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
             }
+        }
+        if (layout != null) {
+            layout.setDragHoverView(hoveredItem);
         }
         if (hoveredItem != null) {
             hoveredItem.getLocationOnScreen(hoverLoc);
@@ -2107,6 +2121,9 @@ public class ItemOptions {
 
     private void releaseHover(int rawX, int rawY) {
         updateHover(rawX, rawY);
+        if (layout != null) {
+            layout.setDragHoverView(null);
+        }
         if (hoveredItem != null) {
             View target = hoveredItem;
             hoveredItem = null;
@@ -2116,6 +2133,9 @@ public class ItemOptions {
     }
 
     private void cancelHover() {
+        if (layout != null) {
+            layout.setDragHoverView(null);
+        }
         if (hoveredItem != null) {
             hoveredItem.setPressed(false);
             hoveredItem = null;

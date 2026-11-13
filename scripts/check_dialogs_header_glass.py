@@ -98,7 +98,7 @@ checks = {
         balanced_delimiters(src)
         for src in (header_shader, effect, drawable, provider, action_bar, simple_text, menu_overlay, item_options, search_field, dialogs)
     ),
-    "Header Liquid Glass AGSL shader declares all runtime uniforms and crystal refraction without milky dome wash": (
+    "Header Liquid Glass AGSL shader declares all runtime uniforms and crystal refraction with wide-pill glint compensation and no milky dome wash": (
         all(u in header_shader for u in REQUIRED_UNIFORMS)
         and "half4 main(in float2 fragCoord)" in header_shader
         and "circleMap(" in header_shader
@@ -106,6 +106,9 @@ checks = {
         and "mirrorVertUV" in header_shader
         and "lightWallBoost" in header_shader
         and "contrastVeil" in header_shader
+        and "pillWeight" in header_shader
+        and "offDiagTopRight" in header_shader
+        and "offDiagBotLeft" in header_shader
         and "domeSheen" not in header_shader
     ),
     "LiquidGlassEffect selects liquid_glass_header_shader only for headerGlassLens": (
@@ -151,6 +154,7 @@ checks = {
     ),
     "SimpleActionBarMenuOverlay and ItemOptions expose public openInOverlay morphing": (
         "public void open(MenuOverlayHost bar, @Nullable ActionBarMenuItem item, ActionBarPopupWindow.ActionBarPopupWindowLayout content)" in menu_overlay
+        and "public ActionBarPopupWindow.ActionBarPopupWindowLayout getContent()" in menu_overlay
         and "public boolean openInOverlay(@Nullable MenuOverlayHost host, @Nullable ActionBarMenuItem item, @Nullable SimpleActionBarMenuOverlay overlay" in item_options
     ),
     "DialogsActivity wires morphing menu overlay, dynamic blur capture expansion, and synchronized EASE_OUT_QUINT search": (
@@ -160,6 +164,7 @@ checks = {
         and "actionBar.setMenuGlass(menuFactory, menuSource);" in dialogs
         and "BlurredBackgroundProviderImpl.dialogsMenuGlass(resourceProvider)" in dialogs
         and "showDialogsOptionsMenu(ItemOptions io)" in dialogs
+        and "optionsItem.setDragOpenMenu(true);" in dialogs
         and "actionBar.getOpenMenuOverlay() != null" in dialogs
         and "actionBar.isMenuOverlayOpened()" in dialogs
         and "shouldUseDialogsHeaderGlass() ? CubicBezierInterpolator.EASE_OUT_QUINT : CubicBezierInterpolator.EASE_OUT" in dialogs

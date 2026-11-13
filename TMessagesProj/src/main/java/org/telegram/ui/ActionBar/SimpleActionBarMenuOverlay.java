@@ -183,6 +183,11 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         return opened;
     }
 
+    @Nullable
+    public ActionBarPopupWindow.ActionBarPopupWindowLayout getContent() {
+        return content;
+    }
+
     /** Whether the menu is on screen, opening, open or closing. */
     public boolean isShown(ActionBarMenuItem item) {
         return this.item == item && (opened || animating);
@@ -264,6 +269,9 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         }
         if (opened) {
             opened = false;
+            if (content != null) {
+                content.setDragHoverView(null);
+            }
             if (animated && isAttachedToWindow() && isLaidOut()) {
                 startAnimation();
                 return;
@@ -287,6 +295,9 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         clearFocus();
         setVisibility(GONE);
         restorePopupLook();
+        if (content != null) {
+            content.resetDragHover();
+        }
         final ActionBarMenuItem wasItem = item;
         final MenuOverlayHost wasBar = bar;
         item = null;
@@ -364,6 +375,7 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
     }
 
     private void prepareContent(ActionBarPopupWindow.ActionBarPopupWindowLayout content) {
+        content.resetDragHover();
         // the glass is drawn by the overlay: no popup background, rows to the edges of the shape
         takeOffPopupLook(content, dp(5));
         content.setTranslationX(0);

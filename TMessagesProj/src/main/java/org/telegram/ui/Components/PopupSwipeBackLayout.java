@@ -246,6 +246,14 @@ public class PopupSwipeBackLayout extends FrameLayout {
         return transitionProgress > 0;
     }
 
+    /** Returns the currently visible page child (active foreground page if open, else root page). */
+    public View getVisiblePageView() {
+        if (isForegroundOpen() && currentForegroundIndex >= 0 && currentForegroundIndex < getChildCount()) {
+            return getChildAt(currentForegroundIndex);
+        }
+        return getChildCount() > 0 ? getChildAt(0) : this;
+    }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (processTouchEvent(ev)) {
