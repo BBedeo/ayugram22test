@@ -56,6 +56,20 @@
     <string name="OEAppearanceHideVoIPControlLabels">Hide call button captions</string>
     <string name="OEAppearanceHideVoIPControlLabelsInfo">Hide the four labels under the private call controls. Button names remain available to accessibility services. Takes effect when opening the call screen.</string>
 
+    <!-- Optional ExFullGram Presets -->
+    <string name="OEAppearancePresets">Design Presets</string>
+    <string name="OEAppearancePreset">Active Preset</string>
+    <string name="OEAppearancePresetCustom">Custom</string>
+    <string name="OEAppearancePresetMaxIosGlass">Max iOS · Liquid Glass</string>
+    <string name="OEAppearancePresetMaxIosGlassInfo">All Liquid Glass effects, floating iOS dock, elastic drag pills, hold-and-drag menu gestures, blur &amp; spring animations</string>
+    <string name="OEAppearancePresetBalancedIosGlass">iOS · Liquid Glass (Balanced)</string>
+    <string name="OEAppearancePresetBalancedIosGlassInfo">Softer everyday Liquid Glass lens with floating iOS navigation bar and elastic pills</string>
+    <string name="OEAppearancePresetMaterial3">Material Design 3</string>
+    <string name="OEAppearancePresetMaterial3Info">Tonal Material 3 navigation, switches, sliders, player, and segmented lists</string>
+    <string name="OEAppearancePresetClassic">Classic (Default)</string>
+    <string name="OEAppearancePresetClassicInfo">Standard appearance without universal Liquid Glass or elastic overrides</string>
+    <string name="OEAppearancePresetApplied">Preset applied: %1$s</string>
+
     <!-- Optional ExFullGram Liquid Glass -->
     <string name="OEAppearanceUniversalLiquidGlass">Liquid Glass everywhere</string>
     <string name="OEAppearanceUniversalLiquidGlassInfo">Native refractive glass for tabs, menus, controls and overlays. Android 13+ for full refraction; frosted fallback on older devices.</string>

@@ -22,4 +22,16 @@
     <string name="OEAppearanceHideVoIPControlLabelsInfo">Убирает четыре подписи под кнопками во время личного звонка. Названия доступны экранному диктору. Применяется при открытии экрана звонка.</string>
     <string name="OEAppearanceElasticDragPills">Упругие пилюли при перетаскивании</string>
     <string name="OEAppearanceElasticDragPillsInfo">Удерживайте и перемещайте пилюлю: она следует за пальцем и упруго возвращается. Вкладка меняется только после отпускания. Не зависит от жидкого стекла.</string>
+    <string name="OEAppearancePresets">Пресеты оформления</string>
+    <string name="OEAppearancePreset">Выбранный пресет</string>
+    <string name="OEAppearancePresetCustom">Пользовательский</string>
+    <string name="OEAppearancePresetMaxIosGlass">Максимальный iOS · Liquid Glass</string>
+    <string name="OEAppearancePresetMaxIosGlassInfo">Все эффекты Liquid Glass, плавающая панель iOS, упругие пилюли, жесты меню по удержанию, размытие и пружинная анимация</string>
+    <string name="OEAppearancePresetBalancedIosGlass">iOS · Liquid Glass (Сбалансированный)</string>
+    <string name="OEAppearancePresetBalancedIosGlassInfo">Более мягкое повседневное жидкое стекло, плавающая нижняя панель iOS и упругие пилюли</string>
+    <string name="OEAppearancePresetMaterial3">Material Design 3</string>
+    <string name="OEAppearancePresetMaterial3Info">Тональная панель Material 3, переключатели, слайдеры, плеер и сегментированные списки</string>
+    <string name="OEAppearancePresetClassic">Классический (По умолчанию)</string>
+    <string name="OEAppearancePresetClassicInfo">Стандартное оформление без всеобщего жидкого стекла и упругих жестов</string>
+    <string name="OEAppearancePresetApplied">Применён пресет: %1$s</string>
 </resources>

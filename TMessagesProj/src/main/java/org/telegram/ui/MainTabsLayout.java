@@ -111,6 +111,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         return ApplicationLoader.applicationContext == null ? null : NekoConfig.getPreferences();
     }
 
+    public static void reloadBottomNavigationMode() {
+        bottomNavigationFloating = null;
+    }
+
     private final Theme.ResourcesProvider resourcesProvider;
     private final ElasticGlassPillRenderer elasticGlassPill = new ElasticGlassPillRenderer();
     private BlurredBackgroundDrawable elasticPillGlass;

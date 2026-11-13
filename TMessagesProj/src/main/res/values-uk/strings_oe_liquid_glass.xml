@@ -22,4 +22,16 @@
     <string name="OEAppearanceHideVoIPControlLabelsInfo">Приховує чотири підписи під кнопками приватного виклику. Назви залишаються доступними екранному диктору. Діє після відкриття екрана виклику.</string>
     <string name="OEAppearanceElasticDragPills">Пружні пігулки під час перетягування</string>
     <string name="OEAppearanceElasticDragPillsInfo">Утримуйте та рухайте пігулку: вона слідує за пальцем і плавно повертається. Вкладка змінюється лише після відпускання. Не залежить від рідкого скла.</string>
+    <string name="OEAppearancePresets">Пресети оформлення</string>
+    <string name="OEAppearancePreset">Обраний пресет</string>
+    <string name="OEAppearancePresetCustom">Користувацький</string>
+    <string name="OEAppearancePresetMaxIosGlass">Максимальний iOS · Liquid Glass</string>
+    <string name="OEAppearancePresetMaxIosGlassInfo">Усі ефекти Liquid Glass, плаваюча панель iOS, пружні пігулки, жести меню при утриманні, розмиття та пружинна анімація</string>
+    <string name="OEAppearancePresetBalancedIosGlass">iOS · Liquid Glass (Збалансований)</string>
+    <string name="OEAppearancePresetBalancedIosGlassInfo">М’якше повсякденне рідке скло, плаваюча нижня панель iOS і пружні пігулки</string>
+    <string name="OEAppearancePresetMaterial3">Material Design 3</string>
+    <string name="OEAppearancePresetMaterial3Info">Тональна панель Material 3, перемикачі, повзунки, плеєр та сегментовані списки</string>
+    <string name="OEAppearancePresetClassic">Класичний (За замовчуванням)</string>
+    <string name="OEAppearancePresetClassicInfo">Стандартне оформлення без загального рідкого скла та пружних жестів</string>
+    <string name="OEAppearancePresetApplied">Застосовано пресет: %1$s</string>
 </resources>
