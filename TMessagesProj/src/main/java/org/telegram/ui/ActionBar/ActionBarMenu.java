@@ -159,7 +159,7 @@ public class ActionBarMenu extends LinearLayout {
             }
             addView(menuItem, index, new LinearLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT));
         }
-        menuItem.setOnClickListener(view -> {
+        menuItem.setDefaultMenuClickListener(view -> {
             ActionBarMenuItem item = (ActionBarMenuItem) view;
             if (!item.isSearchField() && searchFieldVisible()) {
                 return;

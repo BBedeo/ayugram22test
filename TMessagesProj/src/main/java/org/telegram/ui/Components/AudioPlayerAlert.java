@@ -1192,6 +1192,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
         buttons[6] = optionsButton = new ActionBarMenuItem(context, null, 0, iconColor, false, resourcesProvider);
         optionsButton.setIcon(optionsIcon = new ChooseQualityLayout.QualityIcon(context, R.drawable.ic_ab_other, resourcesProvider));
         optionsButton.setLongClickEnabled(false);
+        optionsButton.setDragOpenMenu(true);
         optionsButton.setAdditionalYOffset(-dp(157 + 40));
         ThemeBind.selectorBackground(optionsButton, Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1, dp(18)), null, ThemeBind.of(Theme.key_listSelector), resourcesProvider);
         optionsButton.setOnClickListener(this::showMenuOptions);

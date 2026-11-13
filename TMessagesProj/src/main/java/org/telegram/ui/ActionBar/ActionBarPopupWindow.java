@@ -293,6 +293,14 @@ public class ActionBarPopupWindow extends PopupWindow {
                 }
 
                 @Override
+                public void onViewAdded(View child) {
+                    super.onViewAdded(child);
+                    if (dragSelectEnabled) {
+                        applyCustomGlassHoverToTree(child, true);
+                    }
+                }
+
+                @Override
                 protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
                     if (child instanceof GapView && backgroundDrawable != null) {
                         return false;

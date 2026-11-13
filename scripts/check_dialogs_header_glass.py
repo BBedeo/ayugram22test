@@ -264,6 +264,38 @@ checks = {
             )
         )
     )(__import__("pathlib").Path(__file__).resolve().parents[1]),
+    "Overflow three-dot menus with custom click listeners or setLongClickEnabled(false) support drag-open and glass hover": (
+        lambda am, sam, ga, ac, ap, ca, cp, ep, sa: (
+            "customClickListener && !isSubMenuShowing()" in menu_item
+            and "void setDefaultMenuClickListener(" in menu_item
+            and "popupLayout.setDragSelectEnabled(true);" in menu_item
+            and "setDefaultMenuClickListener(" in am
+            and "setDefaultMenuClickListener(" in sam
+            and "public void onViewAdded(View child)" in popup_window
+            and "otherItem.setDragOpenMenu(true);" in ga
+            and "optionsButton.setDragOpenMenu(true);" in ac
+            and "optionsButton.setDragOpenMenu(true);" in ap
+            and "selectedMenuItem.setDragOpenMenu(true);" in ca
+            and "optionsItem.setDragOpenMenu(true);" in ca
+            and "menuItem.setDragOpenMenu(true);" in cp
+            and "optionsButton.setDragOpenMenu(true);" in ep
+            and "optionsButton.setDragOpenMenu(true);" in sa
+            and all(
+                balanced_delimiters(src)
+                for src in (am, sam, menu_item, ga, ac, ap, ca, cp, ep, sa)
+            )
+        )
+    )(
+        read(JAVA / "org/telegram/ui/ActionBar/ActionBarMenu.java"),
+        read(JAVA / "org/telegram/ui/ActionBar/SimpleActionBarMenu.java"),
+        read(JAVA / "org/telegram/ui/GroupCallActivity.java"),
+        read(JAVA / "org/telegram/ui/Components/AlertsCreator.java"),
+        read(JAVA / "org/telegram/ui/Components/AudioPlayerAlert.java"),
+        read(JAVA / "org/telegram/ui/Components/ChatAttachAlert.java"),
+        read(JAVA / "org/telegram/ui/Components/ColorPicker.java"),
+        read(JAVA / "org/telegram/ui/Components/EmojiPacksAlert.java"),
+        read(JAVA / "org/telegram/ui/Components/StickersAlert.java"),
+    ),
 }
 
 for title, ok in checks.items():

@@ -87,7 +87,7 @@ public class SimpleActionBarMenu extends LinearLayout {
             lp.leftMargin = lp.rightMargin = -dp(5);
         }
         addView(item, index, lp);
-        item.setOnClickListener(v -> {
+        item.setDefaultMenuClickListener(v -> {
             if (item.hasSubMenu()) {
                 if (parentBar.canOpenMenu()) {
                     item.toggleSubMenu();

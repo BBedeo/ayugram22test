@@ -589,6 +589,7 @@ public class ColorPicker extends FrameLayout implements Theme.Colorable {
         if (hasMenu) {
             menuItem = new ActionBarMenuItem(context, null, 0, getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
             menuItem.setLongClickEnabled(false);
+            menuItem.setDragOpenMenu(true);
             menuItem.setIcon(R.drawable.ic_ab_other);
             menuItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             menuItem.addSubItem(item_edit, R.drawable.msg_edit, LocaleController.getString(R.string.OpenInEditor));

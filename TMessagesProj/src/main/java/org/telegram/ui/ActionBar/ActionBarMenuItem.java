@@ -532,6 +532,11 @@ public class ActionBarMenuItem extends FrameLayout {
     }
 
     private boolean openSubMenuForDragGesture() {
+        // Custom click listeners (e.g. SharedMediaLayout tabs, StickersAlert, GroupCallActivity) rebuild or style items on open.
+        if (customClickListener && !isSubMenuShowing()) {
+            performClick();
+            return isSubMenuShowing();
+        }
         if (hasSubMenu()) {
             toggleSubMenu();
             return isSubMenuShowing();
@@ -1275,6 +1280,7 @@ public class ActionBarMenuItem extends FrameLayout {
         }
 
         showSubMenuFrom = fromView;
+        popupLayout.setDragSelectEnabled(true);
 
         if (subMenuDelegate != null) {
             subMenuDelegate.onShowSubMenu();
@@ -2268,6 +2274,13 @@ public class ActionBarMenuItem extends FrameLayout {
         }
     }
 
+    private boolean customClickListener;
+
+    void setDefaultMenuClickListener(@Nullable OnClickListener l) {
+        super.setOnClickListener(onClickListener = l);
+        customClickListener = false;
+    }
+
     public OnClickListener getOnClickListener() {
         return onClickListener;
     }
@@ -2275,6 +2288,7 @@ public class ActionBarMenuItem extends FrameLayout {
     @Override
     public void setOnClickListener(@Nullable OnClickListener l) {
         super.setOnClickListener(onClickListener = l);
+        customClickListener = l != null;
     }
 
     private void checkClearButton() {
