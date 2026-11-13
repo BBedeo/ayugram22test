@@ -415,6 +415,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     }
 
     private boolean elasticPillInitialized;
+    private boolean elasticGlideAnimating;
 
     private void updateElasticGeometry() {
         final View selected = findSelectedTab();
@@ -436,23 +437,32 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         if (!hadPosition || !animated) {
             selectedTabPositionX.cancel();
             selectedTabPositionOffsetX.cancel();
+            elasticPressScale.cancel();
+            elasticGlideAnimating = false;
+            elasticPressValue = 0f;
             animatedLongSelectedViewCenterX = cx;
             animatedLongSelectedViewOffsetX = 0f;
             elasticPillInitialized = true;
         } else if (Math.abs(animatedLongSelectedViewCenterX - cx) > .5f) {
             selectedTabPositionOffsetX.cancel();
             animatedLongSelectedViewOffsetX = 0f;
+            final float moveDistance = Math.abs(animatedLongSelectedViewCenterX - cx);
             // Preserve a little of the finger's release velocity, then let a
             // damped spring settle the lens into the destination slot. This
             // makes ACTION_UP visibly continuous instead of teleporting.
             selectedTabPositionX.setStartVelocity(elasticReleaseVelocityX);
             final float impulse = Math.max(1.4f, Math.min(4.2f,
                     Math.abs(elasticReleaseVelocityX) * .0035f
-                    + Math.abs(animatedLongSelectedViewCenterX - cx) * .016f));
+                    + moveDistance * .016f));
             elasticReleaseVelocityX = 0f;
             selectedTabPositionX.animateToFinalPosition(cx);
             elasticJellyBounce.setStartVelocity(impulse);
             elasticJellyBounce.animateToFinalPosition(0f);
+            if (!elasticTouchStartedOnPill && !elasticDragging && moveDistance > dp(4f)) {
+                elasticGlideAnimating = true;
+                elasticPressScale.setStartVelocity(4.2f);
+                elasticPressScale.animateToFinalPosition(1f);
+            }
         } else {
             if (elasticReleaseVelocityX != 0f) {
                 elasticJellyBounce.setStartVelocity(Math.max(1.4f, Math.min(3.0f,
@@ -571,6 +581,14 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         // stretch responds to smoothed velocity (not distance from the old tab,
         // which would freeze an asymmetric wing at destination and snap on release).
         final float travelled = Math.abs(centerX - selectedTabDestinationX);
+        if (elasticGlideAnimating) {
+            if (elasticDragging) {
+                elasticGlideAnimating = false;
+            } else if (!selectedTabPositionX.isRunning() || travelled <= dp(3.5f)) {
+                elasticGlideAnimating = false;
+                elasticPressScale.animateToFinalPosition(0f);
+            }
+        }
         float minTabCenterX = Float.MAX_VALUE;
         float maxTabCenterX = -Float.MAX_VALUE;
         float leftNeighborX = -Float.MAX_VALUE;
@@ -693,14 +711,21 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
                 Theme.isCurrentThemeDark(), motionDir * motionMag,
                 (elasticTouchStartedOnPill && !elasticMenuShownDuringTouch)
-                        || ((elasticDragging || elasticPressValue > 0.05f) && !elasticMenuShownDuringTouch));
+                        || ((elasticDragging || elasticGlideAnimating || elasticPressValue > 0.05f) && !elasticMenuShownDuringTouch));
         updateElasticTabLensScale(centerX, widthAtX, totalStretch);
+        if (!elasticDragging && !elasticTouchStartedOnPill && !elasticGlideAnimating
+                && !selectedTabPositionX.isRunning() && !elasticPressScale.isRunning()
+                && (elasticGlassPill.getOpticalPress() > 0.01f
+                        || Math.abs(elasticGlassPill.getLightPhase()) > 0.01f
+                        || elasticSmoothedStretch > 0.05f)) {
+            postInvalidateOnAnimation();
+        }
     }
 
     private void updateElasticTabLensScale(float lensCenterX, float lensWidth, float totalStretch) {
         // Never shrink non-selected or departing tabs downward (< 1f) — deactivation is
         // conveyed smoothly via outline crossfade/tint without twitching the dock on taps.
-        final boolean interactiveLens = elasticDragging || elasticPressValue > .02f;
+        final boolean interactiveLens = elasticDragging || elasticGlideAnimating || elasticPressValue > .02f;
         final float boost = interactiveLens
                 ? Math.max(0f, elasticPressValue * .042f + Math.min(.022f, totalStretch / Math.max(1f, dp(10)) * .022f))
                 : 0f;
@@ -937,6 +962,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         selectedTabPositionX.setSpring(new SpringForce(1f)
             .setStiffness(SpringForce.STIFFNESS_MEDIUM)
             .setDampingRatio(SpringForce.DAMPING_RATIO_LOW_BOUNCY));
+        selectedTabPositionX.addEndListener((animation, canceled, value, velocity) -> {
+            if (!canceled && elasticGlideAnimating) {
+                elasticGlideAnimating = false;
+                elasticPressScale.animateToFinalPosition(0f);
+                invalidate();
+            }
+        });
     }
 
     private float animatedLongSelectedViewCenterX;
@@ -1283,6 +1315,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     && findSelectedTab() != null
                     && selectorRect.contains(elasticDownX, elasticDownY);
             if (elasticTouchStartedOnPill) {
+                elasticGlideAnimating = false;
                 elasticPressScale.animateToFinalPosition(1f);
             }
             if (elasticTouchStartedOnPill) invalidate();
@@ -1400,6 +1433,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         elasticSmoothedPullY = 0f;
         elasticSmoothedDir = 0f;
         elasticTouchStartedOnPill = false;
+        elasticGlideAnimating = false;
         elasticMenuShownDuringTouch = false;
         elasticPressScale.animateToFinalPosition(0f);
         elasticTouchTab = null;

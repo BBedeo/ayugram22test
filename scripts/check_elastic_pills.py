@@ -64,7 +64,10 @@ checks = {
         "verticalCompression" in nav
         and "leadingStretch" in nav
         and "trailingStretch" in nav
-        and "direction = elasticDragging" in nav,
+        and "direction = elasticDragging" in nav
+        and "elasticGlideAnimating" in nav
+        and "elasticPressScale.setStartVelocity(4.2f)" in nav
+        and "travelled <= dp(3.5f)" in nav,
     "Native glass sampling and forced GPU refraction are preserved behind icons":
         "iBlur3FactoryGlass.create(tabsView," in main
         and "iBlur3FactoryTabLens.create(tabsView," in main

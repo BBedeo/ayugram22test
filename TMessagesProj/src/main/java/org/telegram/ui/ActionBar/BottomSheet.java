@@ -1548,7 +1548,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 rim.setColor(0x00000000);
                 final float radius = dp(18);
                 rim.setCornerRadii(new float[]{radius, radius, radius, radius, 0, 0, 0, 0});
-                rim.setStroke(dp(1), LiquidGlassTuning.adaptHighlight(dark ? 0x65FFFFFF : 0xA0FFFFFF));
+                rim.setStroke(dark ? 0 : 1, dark ? 0 : 0x10000000);
                 LayerDrawable material = new LayerDrawable(new Drawable[]{shadowDrawable, rim});
                 material.setLayerInset(1, backgroundPaddingLeft, backgroundPaddingTop,
                         backgroundPaddingLeft, 0);

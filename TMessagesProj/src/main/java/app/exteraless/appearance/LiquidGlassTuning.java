@@ -67,15 +67,32 @@ public final class LiquidGlassTuning {
     }
 
     public static int adaptHighlight(int color) {
-        if (!isActive()) return color;
-        float gain = .55f + shine() * .9f;
-        if (adaptiveLightEnabled()) {
-            float luma = (Color.red(color) * .2126f + Color.green(color) * .7152f
-                    + Color.blue(color) * .0722f) / 255f;
-            gain *= 1.08f - .22f * luma;
+        if (!isActive() || color == 0) return color;
+        final int r = Color.red(color);
+        final int g = Color.green(color);
+        final int b = Color.blue(color);
+        // Never boost bright white 2D stroke rims into chalky wireframe outlines.
+        if (r > 205 && g > 205 && b > 205) {
+            return 0;
         }
-        return Color.argb(Math.round(clamp(Color.alpha(color) * gain, 0, 255)),
-                Color.red(color), Color.green(color), Color.blue(color));
+        float gain = clamp(.72f + shine() * .28f, 0.5f, 1.0f);
+        return Color.argb(Math.round(clamp(Color.alpha(color) * gain, 0, 255)), r, g, b);
+    }
+
+    /**
+     * Sanitizes 2D rim stroke colors when GPU Liquid Glass shader is driving optical edge glint:
+     * preserves subtle dark shadow hairlines in light themes while eliminating white wireframe strokes.
+     */
+    public static int sanitizeRimStroke(int color, boolean hasGpuGlass, boolean isDark) {
+        if (color == 0) return 0;
+        final int r = Color.red(color);
+        final int g = Color.green(color);
+        final int b = Color.blue(color);
+        final boolean isWhiteStroke = r > 205 && g > 205 && b > 205;
+        if (isWhiteStroke && (isDark || hasGpuGlass)) {
+            return 0;
+        }
+        return isActive() ? adaptHighlight(color) : color;
     }
 
     private static float tuneTransparency(float base, float min) {

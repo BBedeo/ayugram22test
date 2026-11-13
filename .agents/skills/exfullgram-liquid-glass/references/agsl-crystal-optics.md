@@ -18,11 +18,11 @@ Verified in `ce4ac23ed` and `4560e46bd` (`TMessagesProj/src/main/java/org/telegr
   - Alpha clamped: `MathUtils.clamp(Math.round(255f * alpha), isDark ? 16 : 24, isDark ? 105 : 138)`
   - Strokes in dark crystal mode: `strokeColorTop = 0`, `strokeColorBottom = 0` (let AGSL Fresnel catchlights draw the rim; light mode uses `0x0D000000` top / `0x16000000` bottom)
   - Shadow: `0x20000000` (light) / `0x26000000` (dark), `dpf2(4.0f)` radius, `0, dpf2(1.1f)` offset, stroke width `dpf2(0.45f)`
-  - Fallback blur (without AGSL active): `frostedAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f)` clamped `[64/90 .. 220]`
+  - Fallback blur (without AGSL active): `frostedAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f)` clamped `[64/90 .. 220]`; zero white strokes in dark mode (`isDark ? 0 : ...`).
 - **Morphing menu crystal/frosted surface (`dialogsMenuGlass`):**
   - `baseAlpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.72f : 0.80f` (`LiquidGlassTuning.tintAlphaMenu`)
   - Target tint blends `key_actionBarDefaultSubmenuBackground` toward `0xFF1A232E` (`0.25f`, dark) or `0xFFFFFFFF` (`0.65f`, light), alpha clamped `[90..235]`
-  - Strokes: `0x16000000 / 0x18FFFFFF` top, `0x20000000 / 0x0EFFFFFF` bottom; shadow `0x2A000000 / 0x38000000`, `dpf2(9.0f)` radius, `dpf2(2.6f)` dy
+  - Strokes: `0x16000000 / 0` top, `0x20000000 / 0` bottom (zero chalky white border in dark mode; same for `GlassMenuHelper.scrimMenuGlass`, `AlertDialog`, `BottomSheet`, `FragmentFloatingButton`, and `LiquidGlassTuning.sanitizeRimStroke`); shadow `0x2A000000 / 0x38000000`, `dpf2(9.0f)` radius, `dpf2(2.6f)` dy
 
 ## 2. `LiquidGlassEffect` & `BlurredBackgroundDrawable` Wiring
 - `LiquidGlassEffect(RenderNode node, boolean elasticPillLens, boolean headerGlassLens)`:
@@ -44,7 +44,9 @@ Verified in `ce4ac23ed` and `4560e46bd` (`TMessagesProj/src/main/java/org/telegr
 - Chromatic RGB dispersion (`disp = ray.xy * uDp * (1.85 + lift * 2.15) * bevel * insetFade`, `dispMix <= 0.88`).
 - Subtle opposite-side/vertical internal reflections (`hReflWeight` ~`0.16 + 0.14 * lift`, `vReflWeight` ~`0.14 + 0.12 * lift`).
 - Saturation boost `mix(luma, backdrop.rgb, 1.24 + 0.16 * lift)` + adaptive readability veil (`contrastVeil = smoothstep(0.56, 0.96, bgLumaF) * darkCrystalTint * 0.16 * (1.0 - lift * 0.35)` when `glass_adaptive > 0.5`).
-- Diagonal catchlights (`angle = -2.356 + move * 0.42 + (glass_light_angle - 5.4978)`, `rimCore` at `dDp ≈ 1.05dp`).
+- Soft diagonal corner catchlights (no 360deg white wireframe outline): `angle = -2.356 + move * 0.42 + (glass_light_angle - 5.4978)`, wide `rimCore` (`(dDp - 1.55) / 1.45`) + `innerRidge` (`(dDp - 3.35) / 2.25`), sharp diagonal lobes (`pow >= 3.0..4.6`), `darkGlintScale = mix(0.85, 0.58, darkCrystalTint)`, `(0.16 + 0.28 * lift)`.
+- **Tap-glide swell in `MainTabsLayout.java`:**
+  - When `syncElasticPillToSelected(true)` starts a tab travel (`!elasticTouchStartedOnPill && !elasticDragging && moveDistance > dp(4f)`), trigger `elasticGlideAnimating = true` + `elasticPressScale.setStartVelocity(4.2f)` + `animateToFinalPosition(1f)` so tap-switched pills swell into the crystal lens during flight just like hold/drag, then release `elasticGlideAnimating = false` + `animateToFinalPosition(0f)` upon reaching `travelled <= dp(3.5f)` (and in `selectedTabPositionX` end listener).
 
 ## 4. Navigation Elastic Pill (`57f7111be`)
 ### AGSL (`liquid_glass_pill_shader.agsl` & `liquid_glass_pill_content_shader.agsl`)

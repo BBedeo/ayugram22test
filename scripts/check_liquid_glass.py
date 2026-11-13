@@ -49,9 +49,16 @@ checks = {
         'liquidControls == settings.liquidControls' in state
         and 'glassSettings.liquidControls != controls' in engine
         and 'LiquidGlassTuning.settingsSignature()' in engine,
-    "Additional bottom sheets get opt-in translucent theme material and a rim":
+    "Additional bottom sheets get opt-in translucent theme material without chalky white borders":
         'LiquidGlassTuning.isActive()' in read(JAVA / "org/telegram/ui/ActionBar/BottomSheet.java")
-        and 'LayerDrawable material' in read(JAVA / "org/telegram/ui/ActionBar/BottomSheet.java"),
+        and 'LayerDrawable material' in read(JAVA / "org/telegram/ui/ActionBar/BottomSheet.java")
+        and '0x65FFFFFF' not in read(JAVA / "org/telegram/ui/ActionBar/BottomSheet.java")
+        and '0x7DFFFFFF' not in read(JAVA / "org/telegram/ui/Components/FragmentFloatingButton.java")
+        and '0x52FFFFFF' not in dialog
+        and '0x8AFFFFFF' not in menu
+        and '0x5CFFFFFF' not in menu
+        and 'sanitizeRimStroke' in drawable
+        and 'sanitizeRimStroke' in tuning,
     "GPU refraction stays on Telegram native AGSL shader":
         'LiquidGlassEffect' in drawable
         and 'LiquidGlassTuning.refractionScale()' in drawable

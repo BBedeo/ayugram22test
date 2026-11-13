@@ -28,7 +28,7 @@ public class BlurredBackgroundProviderImpl {
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                 return solveSrcColor(colorBg, colorTarget, alpha);
             })
-            .setShadowColor(0x20000000, 0x04FFFFFF)
+            .setShadowColor(0x20000000, 0x24000000)
             .setShadowLayer(dpf2(2.667f), 0, dpf2(0.85f));
         return app.exteraless.appearance.MainTabsUiHelper.applyBackgroundStroke(builder)
             .build();
@@ -42,9 +42,9 @@ public class BlurredBackgroundProviderImpl {
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
                 return solveSrcColor(colorBg, colorTarget, alpha);
             })
-            .setStrokeColorTop(0x11000000, 0x06FFFFFF)
-            .setStrokeColorBottom(0x20000000, 0x11FFFFFF)
-            .setShadowColor(0x20000000, 0x04FFFFFF)
+            .setStrokeColorTop(0x11000000, 0)
+            .setStrokeColorBottom(0x20000000, 0)
+            .setShadowColor(0x20000000, 0x24000000)
             .setShadowLayer(dpf2(2.667f), 0, dpf2(0.85f))
             .setStrokeWidth(dpf2(0.4f), dpf2(0.4f))
             .build();
@@ -85,13 +85,13 @@ public class BlurredBackgroundProviderImpl {
                     // In dark liquid glass mode let the AGSL Fresnel catchlights handle the rim cleanly.
                     return isDark ? 0 : 0x0D000000;
                 }
-                return isDark ? 0x10FFFFFF : 0x14000000;
+                return isDark ? 0 : 0x14000000;
             })
             .setStrokeColorBottom((r, isDark) -> {
                 if (isHeaderLiquidShaderActive(r)) {
                     return isDark ? 0 : 0x16000000;
                 }
-                return isDark ? 0x16FFFFFF : 0x1E000000;
+                return isDark ? 0 : 0x1E000000;
             })
             .setShadowColor(0x20000000, 0x26000000)
             .setShadowLayer(dpf2(4.0f), 0, dpf2(1.1f))
@@ -113,8 +113,8 @@ public class BlurredBackgroundProviderImpl {
                     : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.65f);
                 return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), 90, 235));
             })
-            .setStrokeColorTop(0x16000000, 0x18FFFFFF)
-            .setStrokeColorBottom(0x20000000, 0x0EFFFFFF)
+            .setStrokeColorTop(0x16000000, 0)
+            .setStrokeColorBottom(0x20000000, 0)
             .setShadowColor(0x2A000000, 0x38000000)
             .setShadowLayer(dpf2(9.0f), 0, dpf2(2.6f))
             .setStrokeWidth(dpf2(0.55f), dpf2(0.45f))
@@ -143,8 +143,8 @@ public class BlurredBackgroundProviderImpl {
                     final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                     return Theme.multAlpha(colorBg, alpha);
                 })
-                .setStrokeColorTop(0xFFFFFFFF, 0x28FFFFFF)
-                .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
+                .setStrokeColorTop(0xFFFFFFFF, 0)
+                .setStrokeColorBottom(0xFFFFFFFF, 0)
                 .setShadowColor(0x40000000, 0)
                 .setShadowLayer(dpf2(11 / 3f), 0, dpf2(2 / 3f))
                 .setStrokeWidth(dpf2(0.5f), dpf2(0.5f))
@@ -158,7 +158,7 @@ public class BlurredBackgroundProviderImpl {
                     final int colorBg = Color.BLACK;
                     return Theme.multAlpha(colorBg, alpha);
                 })
-                .setStrokeColorTop(0x60FFFFFF, 0x50FFFFFF)
+                .setStrokeColorTop(0x60FFFFFF, 0)
                 .setStrokeColorBottom(0x24000000, 0x24000000)
                 .setShadowColor(0, 0)
                 .setShadowLayer(0, 0, 0)
@@ -206,9 +206,9 @@ public class BlurredBackgroundProviderImpl {
                     final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                     return Theme.multAlpha(colorBg, alpha);
                 })
-                .setStrokeColorTop(0x17000000, 0x17FFFFFF)
-                .setStrokeColorBottom(0x17000000, 0x17FFFFFF)
-                .setShadowColor(0x11000000, 0x04FFFFFF)
+                .setStrokeColorTop(0x17000000, 0)
+                .setStrokeColorBottom(0x17000000, 0)
+                .setShadowColor(0x11000000, 0x20000000)
                 .setShadowLayer(dpf2(2), 0, dpf2(1 / 3f))
                 .setStrokeWidth(dpf2(0.4f), dpf2(0.4f))
                 .build();
@@ -217,8 +217,8 @@ public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider searchFloatingDate(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
                 .setBackgroundColor((r, isDark) -> 0x33000000)
-                .setStrokeColorTop(0x17000000, 0x17FFFFFF)
-                .setStrokeColorBottom(0x17000000, 0x17FFFFFF)
+                .setStrokeColorTop(0x17000000, 0)
+                .setStrokeColorBottom(0x17000000, 0)
                 .setShadowColor(0, 0)
                 .setStrokeWidth(1, 1)
                 .build();
@@ -235,8 +235,8 @@ public class BlurredBackgroundProviderImpl {
                     final int colorBg = Theme.getColor(Theme.key_chat_messagePanelBackground, r);
                     return Theme.multAlpha(colorBg, alpha);
                 })
-                .setStrokeColorTop(0xFFFFFFFF, 0x28FFFFFF)
-                .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
+                .setStrokeColorTop(0xFFFFFFFF, 0)
+                .setStrokeColorBottom(0xFFFFFFFF, 0)
                 .setShadowColor(0x20000000, 0)
                 //.setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
                 .setStrokeWidth(dpf2(0.5f), dpf2(0.5f))
@@ -296,8 +296,8 @@ public class BlurredBackgroundProviderImpl {
                     final int colorBg = Theme.getColor(Theme.key_chat_topPanelBackground, r);
                     return Theme.multAlpha(colorBg, alpha);
                 })
-                .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
-                .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
+                .setStrokeColorTop(0xFFFFFFFF, 0)
+                .setStrokeColorBottom(0xFFFFFFFF, 0)
                 .setStrokeColorFull((r, isDark) -> Theme.getDividerColor(r))
                 .setShadowColor(0x20000000, 0)
                 //.setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
@@ -338,13 +338,13 @@ public class BlurredBackgroundProviderImpl {
                 if (isHeaderLiquidShaderActive(r)) {
                     return isDark ? 0 : 0x0D000000;
                 }
-                return isDark ? 0x20FFFFFF : 0xFFFFFFFF;
+                return isDark ? 0 : 0x14000000;
             })
             .setStrokeColorBottom((r, isDark) -> {
                 if (isHeaderLiquidShaderActive(r)) {
                     return isDark ? 0 : 0x16000000;
                 }
-                return isDark ? 0x14FFFFFF : 0xFFFFFFFF;
+                return isDark ? 0 : 0x1E000000;
             })
             .setShadowColor((r, isDark) -> isHeaderLiquidShaderActive(r)
                 ? (isDark ? 0x26000000 : 0x20000000)
@@ -451,8 +451,8 @@ public class BlurredBackgroundProviderImpl {
                     final int colorTarget = Theme.getColor(Theme.key_chat_messagePanelBackground, r);
                     return solveSrcColor(colorBg, colorTarget, alpha);
                 })
-                .setStrokeColorTop(0x28FFFFFF, 0x28FFFFFF)
-                .setStrokeColorBottom(0x14FFFFFF, 0x14FFFFFF)
+                .setStrokeColorTop(0x14000000, 0)
+                .setStrokeColorBottom(0x1C000000, 0)
                 .setShadowColor(0x20000000, 0)
                 .setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
                 .setStrokeWidth(dpf2(1), dpf2(2 / 3f))
@@ -498,9 +498,9 @@ public class BlurredBackgroundProviderImpl {
 
     public static BlurredBackgroundProvider shadow(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
-            .setStrokeColorTop(0, 0x28FFFFFF)
-            .setStrokeColorBottom(0, 0x14FFFFFF)
-            .setShadowColor(0x30000000, 0x04FFFFFF)
+            .setStrokeColorTop(0, 0)
+            .setStrokeColorBottom(0, 0)
+            .setShadowColor(0x30000000, 0x24000000)
             .setShadowLayer(dpf2(12 / 3f), 0, dpf2(1 / 3f))
             .setStrokeWidth(dpf2(0.4f), dpf2(0.4f))
             .build();
