@@ -78,6 +78,7 @@ menu_overlay = read(JAVA / "org/telegram/ui/ActionBar/SimpleActionBarMenuOverlay
 item_options = read(JAVA / "org/telegram/ui/Components/ItemOptions.java")
 search_field = read(JAVA / "org/telegram/ui/Components/FragmentSearchField.java")
 dialogs = read(JAVA / "org/telegram/ui/DialogsActivity.java")
+popup_window = read(JAVA / "org/telegram/ui/ActionBar/ActionBarPopupWindow.java")
 
 REQUIRED_UNIFORMS = [
     "uniform shader img;",
@@ -96,9 +97,9 @@ REQUIRED_UNIFORMS = [
 ]
 
 checks = {
-    "Balanced braces, parens, and quotes across all 12 touched files": all(
+    "Balanced braces, parens, and quotes across all 13 touched files": all(
         balanced_delimiters(src)
-        for src in (tuning, header_shader, effect, drawable, provider, action_bar, simple_action_bar, simple_text, menu_overlay, item_options, search_field, dialogs)
+        for src in (tuning, header_shader, effect, drawable, provider, action_bar, simple_action_bar, simple_text, menu_overlay, item_options, search_field, dialogs, popup_window)
     ),
     "Header Liquid Glass AGSL shader declares all runtime uniforms and crystal refraction with wide-pill glint compensation and no milky dome wash": (
         all(u in header_shader for u in REQUIRED_UNIFORMS)
@@ -172,10 +173,15 @@ checks = {
         and "backButtonImageView.setTranslationX(dp(2));" in action_bar
         and "(chatAvatarContainer != null || compactGlassTitlePill) && !actionModeVisible && !isSearchFieldVisible" in action_bar
     ),
-    "SimpleActionBarMenuOverlay and ItemOptions expose public openInOverlay morphing": (
+    "SimpleActionBarMenuOverlay and ItemOptions expose public openInOverlay morphing and intra-menu slide selection": (
         "public void open(MenuOverlayHost bar, @Nullable ActionBarMenuItem item, ActionBarPopupWindow.ActionBarPopupWindowLayout content)" in menu_overlay
         and "public ActionBarPopupWindow.ActionBarPopupWindowLayout getContent()" in menu_overlay
+        and "content.setDragSelectEnabled(true);" in menu_overlay
         and "public boolean openInOverlay(@Nullable MenuOverlayHost host, @Nullable ActionBarMenuItem item, @Nullable SimpleActionBarMenuOverlay overlay" in item_options
+        and "lastLayout.setDragSelectEnabled(true);" in item_options
+        and "public void setDragSelectEnabled(boolean enabled)" in popup_window
+        and "canActivePageScrollVertically()" in popup_window
+        and "dragHoverStrokePaint" in popup_window
     ),
     "DialogsActivity wires morphing menu overlay, dynamic blur capture expansion, and synchronized EASE_OUT_QUINT search": (
         "private boolean shouldUseDialogsHeaderGlass()" in dialogs

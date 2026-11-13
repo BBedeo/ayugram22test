@@ -154,6 +154,7 @@ public class ActionBarMenu extends LinearLayout {
                 }
             } else if (icon != 0) {
                 menuItem.iconView.setImageResource(icon);
+                menuItem.setDefaultDragOpenForMoreIcon(icon == R.drawable.ic_ab_other);
             }
             addView(menuItem, index, new LinearLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT));
         }

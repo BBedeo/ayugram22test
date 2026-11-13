@@ -29,15 +29,21 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.AbsSeekBar;
+import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
@@ -46,6 +52,8 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
+
+import app.exteraless.components.ActionRow;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.AnimationNotificationsLocker;
@@ -152,8 +160,23 @@ public class ActionBarPopupWindow extends PopupWindow {
         private final RectF dragHoverTargetRect = new RectF();
         private final RectF dragHoverDrawRect = new RectF();
         private final Paint dragHoverFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint dragHoverStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF dragHoverClipRect = new RectF();
         private final Path dragHoverClipPath = new Path();
+        private boolean dragSelectEnabled;
+        private boolean intraDragActive;
+        private boolean intraDragBlocked;
+        private boolean intraSwipeBackGesture;
+        private int intraDragPointerId = -1;
+        private float intraDownRawX;
+        private float intraDownRawY;
+        @Nullable
+        private View intraDownView;
+        @Nullable
+        private View intraHoveredView;
+        @Nullable
+        private View intraLastHapticView;
+        private final int[] intraLocation = new int[2];
 
         public Rect getPadding() {
             return bgPaddings;
@@ -174,6 +197,8 @@ public class ActionBarPopupWindow extends PopupWindow {
         public ActionBarPopupWindowLayout(Context context, int resId, Theme.ResourcesProvider resourcesProvider, int flags) {
             super(context);
             this.resourcesProvider = resourcesProvider;
+            dragHoverStrokePaint.setStyle(Paint.Style.STROKE);
+            dragHoverStrokePaint.setStrokeWidth(AndroidUtilities.dpf2(1f));
 
             if (resId != 0) {
                 backgroundDrawable = getResources().getDrawable(resId).mutate();
@@ -617,13 +642,233 @@ public class ActionBarPopupWindow extends PopupWindow {
             invalidateDragHover();
         }
 
+        /** Enables sliding finger across open menu items to glide the hover pill and select on release. */
+        public void setDragSelectEnabled(boolean enabled) {
+            dragSelectEnabled = enabled;
+        }
+
         /** Clears any active drag-hover highlight immediately without fading out. */
         public void resetDragHover() {
             dragHoverView = null;
             dragHoverAlpha = 0f;
             dragHoverHasRect = false;
             dragHoverLastTime = 0;
+            resetIntraDrag(false);
             invalidateDragHover();
+        }
+
+        @Override
+        public boolean dispatchTouchEvent(MotionEvent ev) {
+            if (!dragSelectEnabled || getParent() instanceof PopupSwipeBackLayout) {
+                return super.dispatchTouchEvent(ev);
+            }
+            final int action = ev.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                resetIntraDrag(false);
+                intraDragPointerId = ev.getPointerId(0);
+                intraDownRawX = ev.getRawX();
+                intraDownRawY = ev.getRawY();
+                if (hasInteractiveTouchTarget(getVisiblePageRoot(), intraDownRawX, intraDownRawY)) {
+                    intraDragBlocked = true;
+                    return super.dispatchTouchEvent(ev);
+                }
+                final View pageRoot = getVisiblePageRoot();
+                intraDownView = ActionBarMenuItem.findHoveredMenuChild(pageRoot, pageRoot, intraDownRawX, intraDownRawY, intraLocation);
+                intraLastHapticView = intraDownView;
+                if (!canActivePageScrollVertically() && intraDownView != null) {
+                    setDragHoverView(intraDownView);
+                }
+                final boolean handled = super.dispatchTouchEvent(ev);
+                return handled || isPointInsidePopupContent(ev.getX(), ev.getY());
+            }
+            if (intraDragBlocked) {
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    resetIntraDrag(false);
+                }
+                return super.dispatchTouchEvent(ev);
+            }
+            if (action == MotionEvent.ACTION_POINTER_UP && intraDragPointerId == ev.getPointerId(ev.getActionIndex())) {
+                if (intraDragActive) {
+                    resetIntraDrag(true);
+                    return true;
+                }
+                resetIntraDrag(true);
+                return super.dispatchTouchEvent(ev);
+            }
+            final int ptrIndex = intraDragPointerId != -1 ? ev.findPointerIndex(intraDragPointerId) : 0;
+            final int safeIdx = ptrIndex >= 0 ? ptrIndex : 0;
+            final float rawX = ev.getRawX() + (safeIdx > 0 ? ev.getX(safeIdx) - ev.getX(0) : 0f);
+            final float rawY = ev.getRawY() + (safeIdx > 0 ? ev.getY(safeIdx) - ev.getY(0) : 0f);
+            if (action == MotionEvent.ACTION_MOVE) {
+                if (intraSwipeBackGesture) {
+                    return super.dispatchTouchEvent(ev);
+                }
+                if (!intraDragActive) {
+                    final float dx = rawX - intraDownRawX;
+                    final float dy = rawY - intraDownRawY;
+                    final float slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+                    final boolean swipeBackForegroundOpen = swipeBackLayout != null && swipeBackLayout.isForegroundOpen();
+                    if (swipeBackForegroundOpen && Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy) * 1.25f) {
+                        intraSwipeBackGesture = true;
+                        setDragHoverView(null);
+                        return super.dispatchTouchEvent(ev);
+                    }
+                    if (canActivePageScrollVertically() && ev.getEventTime() - ev.getDownTime() < 220L) {
+                        if (Math.abs(dy) > slop) {
+                            intraDragBlocked = true;
+                            setDragHoverView(null);
+                        }
+                        return super.dispatchTouchEvent(ev);
+                    }
+                    final View pageRoot = getVisiblePageRoot();
+                    final View hit = ActionBarMenuItem.findHoveredMenuChild(pageRoot, pageRoot, rawX, rawY, intraLocation);
+                    final boolean movedToAnotherRow = hit != null && hit != intraDownView;
+                    final boolean movedPastSlop = Math.abs(dy) > slop * 0.6f
+                            || (!swipeBackForegroundOpen && (dx * dx + dy * dy) > (slop * 0.75f) * (slop * 0.75f));
+                    if (movedToAnotherRow || movedPastSlop) {
+                        intraDragActive = true;
+                        final ViewParent parent = getParent();
+                        if (parent != null) {
+                            parent.requestDisallowInterceptTouchEvent(true);
+                        }
+                        sendCancelToChildren(ev);
+                        updateIntraDragHover(rawX, rawY, true);
+                        return true;
+                    }
+                    return super.dispatchTouchEvent(ev);
+                }
+                updateIntraDragHover(rawX, rawY, true);
+                return true;
+            }
+            if (action == MotionEvent.ACTION_UP) {
+                if (intraSwipeBackGesture) {
+                    resetIntraDrag(false);
+                    return super.dispatchTouchEvent(ev);
+                }
+                if (intraDragActive) {
+                    updateIntraDragHover(rawX, rawY, false);
+                    final View selected = intraHoveredView;
+                    resetIntraDrag(true);
+                    if (selected != null) {
+                        selected.performClick();
+                        if (selected.getTag() instanceof ActionRow.ActionItem) {
+                            dismissOwnerMenu();
+                        }
+                    }
+                    return true;
+                }
+                setDragHoverView(null);
+                resetIntraDrag(false);
+                return super.dispatchTouchEvent(ev);
+            }
+            if (action == MotionEvent.ACTION_CANCEL) {
+                resetIntraDrag(true);
+            }
+            return super.dispatchTouchEvent(ev);
+        }
+
+        private void resetIntraDrag(boolean clearVisualHover) {
+            intraDragActive = false;
+            intraDragBlocked = false;
+            intraSwipeBackGesture = false;
+            intraDragPointerId = -1;
+            intraDownView = null;
+            intraLastHapticView = null;
+            ActionBarMenuItem.clearHoverSelection(intraHoveredView);
+            intraHoveredView = null;
+            if (clearVisualHover) {
+                setDragHoverView(null);
+            }
+        }
+
+        private void updateIntraDragHover(float screenX, float screenY, boolean allowHaptic) {
+            final View pageRoot = getVisiblePageRoot();
+            final View hit = ActionBarMenuItem.findHoveredMenuChild(pageRoot, pageRoot, screenX, screenY, intraLocation);
+            final View oldSelected = intraHoveredView;
+            intraHoveredView = hit;
+            ActionBarMenuItem.applyHoverSelection(oldSelected, hit, screenX, screenY, intraLocation);
+            if (allowHaptic && hit != null && hit != intraLastHapticView) {
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+            }
+            if (hit != null) {
+                intraLastHapticView = hit;
+            }
+            setDragHoverView(hit);
+        }
+
+        private void sendCancelToChildren(MotionEvent source) {
+            final MotionEvent cancel = MotionEvent.obtain(source);
+            cancel.setAction(MotionEvent.ACTION_CANCEL);
+            super.dispatchTouchEvent(cancel);
+            cancel.recycle();
+        }
+
+        private void dismissOwnerMenu() {
+            if (getParent() instanceof SimpleActionBarMenuOverlay) {
+                ((SimpleActionBarMenuOverlay) getParent()).close(true);
+            } else if (window != null) {
+                window.dismiss(true);
+            }
+        }
+
+        private boolean canActivePageScrollVertically() {
+            final ScrollView activeScroll = findFirstScrollView(getVisiblePageRoot());
+            if (activeScroll != null) {
+                return activeScroll.canScrollVertically(-1) || activeScroll.canScrollVertically(1);
+            }
+            return scrollView != null && (scrollView.canScrollVertically(-1) || scrollView.canScrollVertically(1));
+        }
+
+        @Nullable
+        private static ScrollView findFirstScrollView(@Nullable View root) {
+            if (root instanceof ScrollView) {
+                return (ScrollView) root;
+            }
+            if (root instanceof ViewGroup) {
+                final ViewGroup vg = (ViewGroup) root;
+                for (int i = 0, count = vg.getChildCount(); i < count; i++) {
+                    final ScrollView found = findFirstScrollView(vg.getChildAt(i));
+                    if (found != null) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private boolean hasInteractiveTouchTarget(@Nullable View root, float screenX, float screenY) {
+            if (root == null || root.getVisibility() != VISIBLE || !root.isShown()) {
+                return false;
+            }
+            root.getLocationOnScreen(intraLocation);
+            if (screenX < intraLocation[0] || screenX >= intraLocation[0] + root.getWidth()
+                    || screenY < intraLocation[1] || screenY >= intraLocation[1] + root.getHeight()) {
+                return false;
+            }
+            if (root instanceof PopupSwipeBackLayout) {
+                return hasInteractiveTouchTarget(((PopupSwipeBackLayout) root).getVisiblePageView(), screenX, screenY);
+            }
+            if (root instanceof AbsSeekBar || root instanceof EditText || root instanceof HorizontalScrollView
+                    || root.canScrollHorizontally(-1) || root.canScrollHorizontally(1)
+                    || root.getClass().getSimpleName().contains("SeekBar")) {
+                return true;
+            }
+            if (root instanceof ViewGroup) {
+                final ViewGroup vg = (ViewGroup) root;
+                for (int i = vg.getChildCount() - 1; i >= 0; i--) {
+                    if (hasInteractiveTouchTarget(vg.getChildAt(i), screenX, screenY)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private boolean isPointInsidePopupContent(float x, float y) {
+            if (backgroundDrawable != null && !backgroundDrawable.getBounds().isEmpty()) {
+                return backgroundDrawable.getBounds().contains((int) x, (int) y);
+            }
+            return x >= 0f && x < getWidth() * backScaleX && y >= 0f && y < getHeight() * backScaleY;
         }
 
         /**
@@ -734,13 +979,16 @@ public class ActionBarPopupWindow extends PopupWindow {
             dragHoverDrawRect.set(cx - hw, cy - hh, cx + hw, cy + hh);
             final float radius = compact
                     ? Math.min(dragHoverDrawRect.width(), dragHoverDrawRect.height()) * 0.5f
-                    : Math.min(dp(13), dragHoverDrawRect.height() * 0.5f);
+                    : Math.min(backgroundDrawable == null ? dp(16) : dp(13), dragHoverDrawRect.height() * 0.5f);
 
             final int textColor = Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider);
             final boolean isDark = ColorUtils.calculateLuminance(textColor) > 0.45;
             dragHoverFillPaint.setColor(ColorUtils.setAlphaComponent(
                     isDark ? 0xFFFFFFFF : 0xFF000000,
-                    Math.round((isDark ? 0x1A : 0x0D) * dragHoverAlpha)));
+                    Math.round((isDark ? 0x22 : 0x11) * dragHoverAlpha)));
+            dragHoverStrokePaint.setColor(ColorUtils.setAlphaComponent(
+                    isDark ? 0xFFFFFFFF : 0xFF000000,
+                    Math.round((isDark ? 0x1C : 0x0C) * dragHoverAlpha)));
 
             final int save = canvas.save();
             final float clipLeft = backgroundDrawable != null ? getPaddingLeft() : 0f;
@@ -749,9 +997,11 @@ public class ActionBarPopupWindow extends PopupWindow {
             final float clipBottom = getHeight() * backScaleY - (backgroundDrawable != null ? getPaddingBottom() : 0f);
             dragHoverClipRect.set(clipLeft, clipTop, Math.max(clipLeft, clipRight), Math.max(clipTop, clipBottom));
             dragHoverClipPath.rewind();
-            dragHoverClipPath.addRoundRect(dragHoverClipRect, dp(12), dp(12), Path.Direction.CW);
+            final float clipRadius = backgroundDrawable == null ? dp(22) : dp(12);
+            dragHoverClipPath.addRoundRect(dragHoverClipRect, clipRadius, clipRadius, Path.Direction.CW);
             canvas.clipPath(dragHoverClipPath);
             canvas.drawRoundRect(dragHoverDrawRect, radius, radius, dragHoverFillPaint);
+            canvas.drawRoundRect(dragHoverDrawRect, radius, radius, dragHoverStrokePaint);
             canvas.restoreToCount(save);
 
             if (needMore) {

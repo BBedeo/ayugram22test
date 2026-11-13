@@ -376,6 +376,7 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
 
     private void prepareContent(ActionBarPopupWindow.ActionBarPopupWindowLayout content) {
         content.resetDragHover();
+        content.setDragSelectEnabled(true);
         // the glass is drawn by the overlay: no popup background, rows to the edges of the shape
         takeOffPopupLook(content, dp(5));
         content.setTranslationX(0);
