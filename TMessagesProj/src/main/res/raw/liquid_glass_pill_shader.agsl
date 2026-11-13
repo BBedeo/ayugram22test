@@ -93,11 +93,13 @@ half4 main(in float2 fragCoord) {
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
-  float reflectInsetBand = smoothstep(1.6, 3.5, dDp) * smoothstep(10.5, 4.8, dDp) * pow(abs(edgeDir.x), 1.35);
-  float2 mirrorUV = clamp(center + float2(-p.x * 0.76, p.y * 0.90)
-      - edgeDir * bevel * uDp * (1.10 + lift * 2.10), uvMin, uvMax);
+  float reflectInsetBand = gaussian((dDp - 2.85) / 0.95)
+      * pow(abs(edgeDir.x), 1.65)
+      * smoothstep(0.68, 0.92, abs(relCenter.x));
+  float oppDepthPx = (1.4 + clamp(dDp - 1.8, 0.0, 3.2) * 2.8) * uDp;
+  float2 mirrorUV = clamp(center + float2(-sign(p.x) * max(0.0, size.x - oppDepthPx), p.y * 0.78), uvMin, uvMax);
   half4 mirrorBackdrop = img.eval(mirrorUV);
-  backdrop.rgb = mix(backdrop.rgb, mirrorBackdrop.rgb, half(reflectInsetBand * (0.28 + 0.34 * lift)));
+  backdrop.rgb = mix(backdrop.rgb, mirrorBackdrop.rgb, half(reflectInsetBand * (0.14 + 0.16 * lift)));
 
   // Crisp optical color vibrancy without adding milky grey plastic wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
@@ -113,10 +115,10 @@ half4 main(in float2 fragCoord) {
       * (1.0 - bevel * 0.45) * (0.065 - 0.035 * lift);
   surface.rgb = min(half3(1.0), surface.rgb + half3(0.82, 0.92, 1.0) * half(domeSheen * float(surface.a)));
 
-  // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline), shifted inset from edge.
-  float outerWall = gaussian((dDp - 2.60) / 1.40);
-  float meniscus = gaussian((dDp - 4.30) / 1.85);
-  surface.rgb *= half(1.0 - (0.04 + 0.05 * lift) * outerWall - (0.02 + 0.03 * lift) * meniscus);
+  // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline).
+  float outerWall = gaussian((dDp - 2.25) / 1.35);
+  float meniscus = gaussian((dDp - 3.95) / 1.80);
+  surface.rgb *= half(1.0 - (0.035 + 0.045 * lift) * outerWall - (0.018 + 0.025 * lift) * meniscus);
 
   // Unified top-left -> bottom-right axis + dedicated right-side liquid tide ("прилив справа").
   float angle = -2.356 + move * 0.58 + (glass_light_angle - 5.4978);
@@ -126,12 +128,12 @@ half4 main(in float2 fragCoord) {
   float catchArc = pow(max(-rawDot, 0.0), 2.6) * 0.86;
   float rightFlowArc = smoothstep(-0.05, 0.85, edgeDir.x)
       * smoothstep(-0.75, 0.92, edgeDir.y + move * 0.42);
-  float capBoost = rightFlowArc * (0.42 + 0.38 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.22 * lift);
+  float capBoost = rightFlowArc * (0.40 + 0.36 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.20 * lift);
   float fresnelSide = 0.0;
 
-  float rimCore = gaussian((dDp - 1.85) / 1.25);
-  float innerRidge = gaussian((dDp - 3.50) / 2.15);
-  float rightTideBand = gaussian((dDp - (2.60 + 1.10 * lift)) / (1.85 + 0.65 * lift));
+  float rimCore = gaussian((dDp - 1.30) / 1.18);
+  float innerRidge = gaussian((dDp - 3.10) / 2.05);
+  float rightTideBand = gaussian((dDp - (2.35 + 1.05 * lift)) / (1.80 + 0.60 * lift));
   float rimSpec = (keyArc + catchArc + capBoost + fresnelSide)
           * (rimCore * 0.72 + innerRidge * 0.28) * (0.28 + 0.38 * lift)
       + rightFlowArc * rightTideBand * (0.16 + 0.28 * lift);

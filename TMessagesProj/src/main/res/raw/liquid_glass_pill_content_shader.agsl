@@ -41,7 +41,9 @@ half4 main(in float2 fragCoord) {
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Symmetric dual-side Apple optical lens bevel with right-side liquid reflow and inset glass wall margin.
+  // Symmetric dual-side iOS 26 optical lens bevel with inset meniscus ring.
+  // Outer 0..2.2dp lip bends inward so objects do not sit flush on the 0px border;
+  // inset 2.2..6.5dp meniscus ring bends outward so objects refract symmetrically inside both ends.
   float lensH = clamp((7.2 + 2.8 * lift) * uDp, 5.5, minHalf * 0.62);
   float lensDepth = clamp(-sd / minHalf, 0.0, 1.0);
   float rimT = clamp(1.0 + sd / lensH, 0.0, 1.0);
@@ -51,25 +53,27 @@ half4 main(in float2 fragCoord) {
   float2 invSize = 1.0 / max(size, float2(1.0));
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
   float rightSide = smoothstep(-0.05, 0.90, relCenter.x);
-  float rightWave = sin(relCenter.y * 2.6 - move * 2.2) * rightSide * bevel * uDp * (0.45 + 1.15 * lift);
+  float rightWave = sin(relCenter.y * 2.6 - move * 2.2) * rightSide * bevel * uDp * (0.38 + 0.95 * lift);
 
-  float2 anisoEdge = float2(edgeDir.x, edgeDir.y * 0.20);
-  float latMask = pow(abs(edgeDir.x), 1.25);
-  float wallGap = clamp((3.2 - dDp) / 3.2, 0.0, 1.0);
-  float magFactor = (0.024 + lift * 0.105) * (0.35 + 0.65 * lensDepth);
+  float2 anisoEdge = float2(edgeDir.x, edgeDir.y * 0.18);
+  float latMask = pow(abs(edgeDir.x), 1.30);
+  float outerLip = gaussian(dDp / 1.45) * latMask;
+  float insetMeniscus = gaussian((dDp - 3.35) / 1.75) * (0.35 + 0.65 * latMask);
+  float magFactor = (0.022 + lift * 0.095) * (0.35 + 0.65 * lensDepth);
   float2 refractOffset = -p * magFactor
-      - anisoEdge * bevel * uDp * (1.65 + lift * 4.10)
-      + anisoEdge * wallGap * latMask * uDp * 2.15
-      + float2(-rightWave, rightWave * 0.35);
+      - anisoEdge * outerLip * uDp * (3.20 + lift * 2.40)
+      + anisoEdge * insetMeniscus * uDp * (2.10 + lift * 3.10)
+      - anisoEdge * bevel * (1.0 - latMask) * uDp * (1.10 + lift * 2.20)
+      + float2(-rightWave, rightWave * 0.30);
 
   float2 uv = fragCoord + refractOffset;
-  float2 disp = -anisoEdge * (0.60 + lift * 1.65) * uDp * bevel;
+  float2 disp = anisoEdge * (0.65 + lift * 1.65) * uDp * (insetMeniscus + bevel * 0.35);
 
   half4 gC = img.eval(uv);
   half4 rC = img.eval(uv + disp);
   half4 bC = img.eval(uv - disp);
 
-  float fringe = clamp((0.36 + 0.50 * lift) * bevel, 0.0, 0.88);
+  float fringe = clamp((0.38 + 0.50 * lift) * (insetMeniscus + bevel * 0.35), 0.0, 0.88);
   half r = mix(gC.r, rC.r, half(fringe));
   half b = mix(gC.b, bC.b, half(fringe));
   half rA = mix(gC.a, rC.a, half(fringe));
@@ -77,24 +81,28 @@ half4 main(in float2 fragCoord) {
   half contentA = max(gC.a, max(rA, bA));
   half4 refracted = half4(min(half3(contentA), half3(r, gC.g, b)), contentA) * half(pillAA);
 
-  // Inset optical rim (~2.5-3.5dp glass wall) + opposite-side curved meniscus object reflection.
-  float wallInset = mix(1.0, smoothstep(1.35, 3.80, dDp), latMask * 0.88);
-  float reflectInsetBand = smoothstep(1.6, 3.5, dDp) * smoothstep(10.5, 4.8, dDp) * pow(abs(edgeDir.x), 1.35);
-  float2 mirrorUV = center + float2(-p.x * 0.76, p.y * 0.90)
-      - anisoEdge * bevel * uDp * (1.20 + lift * 2.40);
-  float2 mirrorDisp = anisoEdge * uDp * (0.45 + 0.95 * lift) * bevel;
+  // Thin, radially-compressed opposite-rim meniscus reflection (~2.85dp inset from both ends).
+  // Only samples the opposite extreme edge (never the centered active tab) and never overwrites direct icons.
+  float reflectInsetBand = gaussian((dDp - 2.85) / 0.92)
+      * pow(abs(edgeDir.x), 1.65)
+      * smoothstep(0.68, 0.92, abs(relCenter.x));
+  float oppDepthPx = (1.4 + clamp(dDp - 1.8, 0.0, 3.2) * 2.8) * uDp;
+  float oppX = -sign(p.x) * max(0.0, size.x - oppDepthPx);
+  float2 mirrorUV = center + float2(oppX, p.y * (0.76 + 0.14 * bevel));
+  float2 mirrorDisp = anisoEdge * uDp * (0.50 + 0.95 * lift);
   half4 mG = img.eval(mirrorUV);
-  half mR = img.eval(mirrorUV + mirrorDisp).r;
-  half mB = img.eval(mirrorUV - mirrorDisp).b;
-  half4 mirrorCol = half4(min(half3(mG.a), half3(mR, mG.g, mB)), mG.a);
-  half4 reflectedObj = mirrorCol * half(reflectInsetBand * (0.34 + 0.36 * lift) * pillAA);
+  half4 mRC = img.eval(mirrorUV + mirrorDisp);
+  half4 mBC = img.eval(mirrorUV - mirrorDisp);
+  half mA = max(mG.a, max(mRC.a, mBC.a));
+  half4 mirrorCol = half4(min(half3(mA), half3(mRC.r, mG.g, mBC.b)), mA);
+  float reflectMask = reflectInsetBand * (0.22 + 0.22 * lift) * (1.0 - float(refracted.a) * 0.85) * pillAA;
+  half4 reflectedObj = mirrorCol * half(reflectMask);
 
-  half4 directObj = refracted * half(wallInset);
-  float combinedA = clamp(max(float(directObj.a), float(reflectedObj.a) * 0.92), 0.0, 1.0);
-  half3 combinedRGB = min(half3(combinedA), directObj.rgb + reflectedObj.rgb * half(1.0 - float(directObj.a) * 0.35));
+  float combinedA = clamp(float(refracted.a) + float(reflectedObj.a) * (1.0 - float(refracted.a)), 0.0, 1.0);
+  half3 combinedRGB = min(half3(combinedA), refracted.rgb + reflectedObj.rgb * half(1.0 - float(refracted.a)));
   half4 glassContent = half4(combinedRGB, half(combinedA));
 
-  // Zero perimeter wireframe outline; resting top-left crescent + right-side liquid tide.
+  // Crisp outer specular glint + right-side liquid tide ("прилив справа").
   float angle = -2.356 + move * 0.58;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
@@ -102,23 +110,23 @@ half4 main(in float2 fragCoord) {
   float catchArc = pow(max(-rawDot, 0.0), 2.6);
   float rightFlowArc = smoothstep(-0.05, 0.85, edgeDir.x)
       * smoothstep(-0.75, 0.92, edgeDir.y + move * 0.42);
-  float capMask = rightFlowArc * (0.38 + 0.34 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.20 * lift);
+  float capMask = rightFlowArc * (0.36 + 0.32 * lift) + pow(abs(edgeDir.x), 2.6) * (0.12 + 0.18 * lift);
 
-  float edgeGlow = gaussian((dDp - 1.85) / 1.30);
-  float darkRim = gaussian((dDp - 2.60) / 1.30) * (0.04 + 0.05 * lift);
-  float innerMeniscus = gaussian((dDp - 3.55) / 2.00);
-  float rightTideBand = gaussian((dDp - (2.55 + 1.05 * lift)) / (1.80 + 0.60 * lift));
+  float edgeGlow = gaussian((dDp - 1.25) / 1.15);
+  float darkRim = gaussian((dDp - 2.30) / 1.25) * (0.03 + 0.04 * lift);
+  float innerMeniscus = gaussian((dDp - 3.15) / 1.85);
+  float rightTideBand = gaussian((dDp - (2.30 + 1.00 * lift)) / (1.70 + 0.55 * lift));
 
-  float rimGlint = (keyArc * 0.44 + catchArc * 0.42 + capMask)
-          * (edgeGlow * 0.68 + innerMeniscus * 0.32) * (0.14 + 0.26 * lift)
-      + rightFlowArc * rightTideBand * (0.12 + 0.20 * lift);
+  float rimGlint = (keyArc * 0.42 + catchArc * 0.40 + capMask)
+          * (edgeGlow * 0.72 + innerMeniscus * 0.28) * (0.12 + 0.22 * lift)
+      + rightFlowArc * rightTideBand * (0.10 + 0.18 * lift);
 
   float sweepCoord = relCenter.x * 0.80 + relCenter.y * 0.42 - move * 0.42;
   float oppSweepCoord = -relCenter.x * 0.80 - relCenter.y * 0.42 - move * 0.34;
   float sweep = (gaussian((sweepCoord - 0.52) / 0.24) + gaussian((oppSweepCoord - 0.52) / 0.24) * 0.86)
       * (0.10 * abs(move) + 0.06 * press) * bevel;
 
-  float specAlpha = clamp(rimGlint + sweep, 0.0, 0.36) * pillAA;
+  float specAlpha = clamp(rimGlint + sweep, 0.0, 0.32) * pillAA;
   half3 specRGB = mix(half3(0.74, 0.90, 1.0), half3(1.0, 0.96, 0.88),
       half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0))) * half(specAlpha);
 
