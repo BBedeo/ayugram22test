@@ -10543,7 +10543,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             final String product = params == null ? null : params.getString("product");
             final String phone = params == null ? null : params.getString("phoneFormated");
             final String phoneHash = params == null ? null : params.getString("phoneHash");
-            final String support_email_email = params == null ? null : params.getString("support_email_email");
+            final String support_email_email = params == null ? null : params.getString("support_email_address");
             final String support_email_subject = params == null ? null : params.getString("support_email_subject");
             final String currency = params == null ? null : params.getString("currency");
             final long amount = params == null ? 0 : params.getLong("amount");
