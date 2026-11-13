@@ -70,7 +70,7 @@ public class BlurredBackgroundProviderImpl {
                     final float baseAlpha = isDark ? 0.16f : 0.28f;
                     final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
                     final int crystalTarget = isDark
-                        ? ColorUtils.blendARGB(colorTarget, 0xFFDCE8F6, 0.24f)
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.14f)
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
                     final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 14 : 24, isDark ? 92 : 128);
                     return ColorUtils.setAlphaComponent(crystalTarget, a);
@@ -324,7 +324,7 @@ public class BlurredBackgroundProviderImpl {
                     final float baseAlpha = isDark ? 0.16f : 0.28f;
                     final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
                     final int crystalTarget = isDark
-                        ? ColorUtils.blendARGB(colorTarget, 0xFFDCE8F6, 0.24f)
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.14f)
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
                     final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 14 : 24, isDark ? 92 : 128);
                     return ColorUtils.setAlphaComponent(crystalTarget, a);

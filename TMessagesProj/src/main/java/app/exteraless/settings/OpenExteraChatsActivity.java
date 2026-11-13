@@ -180,6 +180,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int deleteChatForBothSidesRow = -1;
     private int hideKeyboardOnScrollRow = -1;
     private int forwardMultiSelectRow = -1;
+    private int dismissMenuOnDragOutRow = -1;
     private int disableGlobalSearchRow = -1;
     private int searchHashtagChatRow = -1;
     private int searchHashtagChannelRow = -1;
@@ -483,6 +484,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         deleteChatForBothSidesRow = addRow("deleteChatForBothSides", "DeleteChatForBothSides");
         hideKeyboardOnScrollRow = addRow("hideKeyboardOnScroll");
         forwardMultiSelectRow = addRow("forwardMultiSelect");
+        dismissMenuOnDragOutRow = addRow("dismissMenuOnDragOut");
         chatsDividerRow = addRow();
 
         inputHeaderRow = addRow("inputHeader");
@@ -2087,6 +2089,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == disableGreetingRow) return NekoConfig.dontSendGreetingSticker;
         if (position == hideKeyboardOnScrollRow) return NekoConfig.hideKeyboardOnChatScroll;
         if (position == forwardMultiSelectRow) return NekoConfig.forwardMultiSelectByTap;
+        if (position == dismissMenuOnDragOutRow) return ChatsConfig.dismissMenuOnDragOut;
         if (position == disableGlobalSearchRow) return NaConfig.INSTANCE.getDisableGlobalSearch();
         if (position == addCommaRow) return OpenExteraConfig.addCommaAfterMention;
         if (position == inlineMathRow) return ChatsConfig.inlineMathResult;
@@ -2799,6 +2802,11 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                         getString(R.string.ExFullGramForwardMultiSelect),
                         getString(R.string.ExFullGramForwardMultiSelectInfo),
                         NekoConfig.forwardMultiSelectByTap.Bool(), false, true);
+            } else if (position == dismissMenuOnDragOutRow) {
+                cell.setTextAndValueAndCheck(
+                        getString(R.string.OEChatsDismissMenuOnDragOut),
+                        getString(R.string.OEChatsDismissMenuOnDragOutInfo),
+                        ChatsConfig.dismissMenuOnDragOut.Bool(), false, false);
             } else if (position == disableGlobalSearchRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsDisableGlobalSearch), NaConfig.INSTANCE.getDisableGlobalSearch().Bool(), true);
             } else if (position == addCommaRow) {

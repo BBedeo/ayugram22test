@@ -150,6 +150,16 @@ object ChatsConfig {
     @JvmField
     val keepAttachButton = addConfig("OEChatsKeepAttachButton", ConfigItem.configTypeBool, false)
 
+    /** Закрывать зажатое или открытое свайпом меню при отпускании пальца за его пределами без выбранного пункта. */
+    @JvmField
+    val dismissMenuOnDragOut = addConfig("OEChatsDismissMenuOnDragOut", ConfigItem.configTypeBool, true)
+
+    @JvmStatic
+    fun dismissMenuOnDragOut(): Boolean {
+        ensureLoaded()
+        return dismissMenuOnDragOut.Bool()
+    }
+
     /** Скрыть плитку камеры в шторке вложений. */
     @JvmField
     val hideCameraTile = addConfig("OEChatsHideCameraTile", ConfigItem.configTypeBool, false)

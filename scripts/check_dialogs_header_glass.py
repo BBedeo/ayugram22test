@@ -79,6 +79,10 @@ item_options = read(JAVA / "org/telegram/ui/Components/ItemOptions.java")
 search_field = read(JAVA / "org/telegram/ui/Components/FragmentSearchField.java")
 dialogs = read(JAVA / "org/telegram/ui/DialogsActivity.java")
 popup_window = read(JAVA / "org/telegram/ui/ActionBar/ActionBarPopupWindow.java")
+menu_item = read(JAVA / "org/telegram/ui/ActionBar/ActionBarMenuItem.java")
+menu_sub_item = read(JAVA / "org/telegram/ui/ActionBar/ActionBarMenuSubItem.java")
+chats_config = read(ROOT / "TMessagesProj/src/main/kotlin/app/exteraless/chats/ChatsConfig.kt")
+oe_chats = read(JAVA / "app/exteraless/settings/OpenExteraChatsActivity.java")
 
 REQUIRED_UNIFORMS = [
     "uniform shader img;",
@@ -199,6 +203,22 @@ checks = {
         and "checkUi_searchFieldStyle();" in dialogs
         and "getRightSlidingProgress()" in dialogs
         and "(headerGlass && (child instanceof ViewPage || child == searchViewPager))" in dialogs
+    ),
+    "Header glass tames 3x slate over-saturation, expanded menus skip coarse corner glare, hover uses directional glass pill, and drag-out dismisses menus per ChatsConfig": (
+        "clamp(minHalf / 23.0, 1.0, 3.6)" in header_shader
+        and "deSatScale" in header_shader
+        and "half3(0.92, 0.96, 1.0)" in header_shader
+        and "glass.setHeaderGlassLens(false);" in menu_overlay
+        and ".setHeaderGlassLens(false)" in action_bar
+        and "public void setUseCustomGlassHover(boolean enabled)" in menu_sub_item
+        and "applyCustomGlassHoverToTree(" in popup_window
+        and "dragHoverFillPaint.setShader(new LinearGradient(" in popup_window
+        and "dragHoverStrokePaint.setShader(new LinearGradient(" in popup_window
+        and "ChatsConfig.dismissMenuOnDragOut()" in menu_item
+        and "ChatsConfig.dismissMenuOnDragOut()" in popup_window
+        and "ChatsConfig.dismissMenuOnDragOut()" in item_options
+        and "val dismissMenuOnDragOut" in chats_config
+        and "OEChatsDismissMenuOnDragOut" in oe_chats
     ),
 }
 

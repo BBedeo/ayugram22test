@@ -156,4 +156,6 @@
     <string name="OEChatsVoiceHeader">Wiadomości głosowe</string>
     <string name="OEDoubleTapSaveToDevice">Zapisz na urządzeniu</string>
     <string name="OESendAfterSlowMode">Wyślij po trybie powolnym</string>
+    <string name="OEChatsDismissMenuOnDragOut">Zamknij menu po puszczeniu poza nim</string>
+    <string name="OEChatsDismissMenuOnDragOutInfo">Zamyka przytrzymane lub wysunięte menu, gdy przesuniesz palec i puścisz go poza pozycjami.</string>
 </resources>

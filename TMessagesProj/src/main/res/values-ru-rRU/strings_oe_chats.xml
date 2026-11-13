@@ -189,4 +189,6 @@
     <string name="OEChatsVoiceHeader">Голосовые сообщения</string>
     <string name="OEDoubleTapSaveToDevice">Сохранить на устройство</string>
     <string name="OESendAfterSlowMode">Отправить после слоумода</string>
+    <string name="OEChatsDismissMenuOnDragOut">Закрывать меню при отпускании вне</string>
+    <string name="OEChatsDismissMenuOnDragOutInfo">Если зажать меню и отпустить палец за его пределами без выбранного пункта, меню закроется.</string>
 </resources>

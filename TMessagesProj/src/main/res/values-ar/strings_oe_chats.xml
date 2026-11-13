@@ -160,4 +160,6 @@
     <string name="OEChatsVoiceHeader">الرسائل الصوتية</string>
     <string name="OEDoubleTapSaveToDevice">حفظ على الجهاز</string>
     <string name="OESendAfterSlowMode">إرسال بعد انتهاء الوضع البطيء</string>
+    <string name="OEChatsDismissMenuOnDragOut">إغلاق القائمة عند الإفلات خارجها</string>
+    <string name="OEChatsDismissMenuOnDragOutInfo">يغلق القوائم المفتوحة بالضغط المطوّل عند سحب الإصبع وإفلاته خارج أي عنصر.</string>
 </resources>

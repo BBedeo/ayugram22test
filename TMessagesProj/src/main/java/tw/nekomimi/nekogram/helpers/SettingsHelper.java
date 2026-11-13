@@ -72,6 +72,7 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEChats:hideSettingsSections", "OEAppearanceHideSettingsSections");
         SEARCH_TITLE_ALIASES.put("OEChats:disableGreeting", "OEChatsDisableGreetingSticker");
         SEARCH_TITLE_ALIASES.put("OEChats:hideKeyboardOnScroll", "HideKeyboardOnChatScroll");
+        SEARCH_TITLE_ALIASES.put("OEChats:dismissMenuOnDragOut", "OEChatsDismissMenuOnDragOut");
         SEARCH_TITLE_ALIASES.put("OEChats:transcribeProvider", "PremiumPreviewVoiceToText");
         SEARCH_TITLE_ALIASES.put("OEGeneral:translator", "TranslatorSettings");
         SEARCH_TITLE_ALIASES.put("OEGeneral:translateInSheet", "OEChatsTranslateInSheet");

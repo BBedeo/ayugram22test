@@ -192,4 +192,6 @@
     <string name="OEChatsVoiceHeader">Voice Messages</string>
     <string name="OEDoubleTapSaveToDevice">Save to device</string>
     <string name="OESendAfterSlowMode">Send when slow mode ends</string>
+    <string name="OEChatsDismissMenuOnDragOut">Close menu on release outside</string>
+    <string name="OEChatsDismissMenuOnDragOutInfo">Closes held or drag-opened popup menus when you slide off and release outside any item.</string>
 </resources>

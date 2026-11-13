@@ -238,6 +238,10 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
                     glasses.put(bar, glass);
                 }
             }
+            if (glass != null) {
+                glass.setHeaderGlassLens(false);
+                glass.setLiquidOptics(0.08f, app.exteraless.appearance.LiquidGlassTuning.lightAngleRadians(), 0f);
+            }
             glassBar = bar;
         }
         final ViewParent parent = getParent();
