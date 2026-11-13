@@ -284,6 +284,7 @@ def main() -> None:
         all(
             token in ab_src
             for token in (
+                "import org.telegram.messenger.Utilities;",
                 "public void setMenuOverlayProvider(",
                 "public void setAllowMenuOverlayFallback(",
                 "boolean isMenuOverlayFallbackAllowed(",
