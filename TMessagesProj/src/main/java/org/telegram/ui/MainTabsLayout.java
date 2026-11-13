@@ -626,7 +626,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 cy + height * .5f);
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
                 Theme.isCurrentThemeDark(), direction * Math.min(1f, totalStretch / dp(16)),
-                elasticTouchStartedOnPill && !elasticMenuShownDuringTouch);
+                (elasticTouchStartedOnPill && !elasticMenuShownDuringTouch)
+                        || ((elasticDragging || elasticPressValue > 0.05f) && !elasticMenuShownDuringTouch));
         updateElasticTabLensScale(centerX, widthAtX, totalStretch);
     }
 
@@ -703,7 +704,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             final float cy = selectorRect.centerY();
             final float hw = selectorRect.width() * .5f;
             final float hh = selectorRect.height() * .5f;
-            final float press = elasticGlassPill.getOpticalPress();
+            final float press = Math.max(elasticGlassPill.getOpticalPress(), elasticPressValue);
             final float motion = elasticGlassPill.getLightPhase();
             if (Math.abs(lastPillShaderCx - cx) > .15f
                     || Math.abs(lastPillShaderCy - cy) > .15f
