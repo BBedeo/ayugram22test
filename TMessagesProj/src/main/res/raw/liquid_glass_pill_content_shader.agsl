@@ -41,27 +41,33 @@ half4 main(in float2 fragCoord) {
   float move = clamp(glass_motion, -1.0, 1.0);
   float lift = clamp(max(press, abs(move) * 1.15), 0.0, 1.0);
 
-  // Symmetric dual-side Apple optical lens bevel across both curved ends of the pill;
-  // dampen vertical edge pull so icons/text bend cleanly around both left & right sides.
+  // Symmetric dual-side Apple optical lens bevel with right-side liquid reflow ("прилив справа");
+  // dampen vertical edge pull so icons/text bend cleanly around both curved caps.
   float lensH = clamp((7.2 + 2.8 * lift) * uDp, 5.5, minHalf * 0.62);
   float lensDepth = clamp(-sd / minHalf, 0.0, 1.0);
   float rimT = clamp(1.0 + sd / lensH, 0.0, 1.0);
   float slope = circleMap(rimT);
   float bevel = mix(slope, rimT * rimT, 0.38);
 
+  float2 invSize = 1.0 / max(size, float2(1.0));
+  float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
+  float rightSide = smoothstep(-0.05, 0.90, relCenter.x);
+  float rightWave = sin(relCenter.y * 2.6 - move * 2.2) * rightSide * bevel * uDp * (0.45 + 1.15 * lift);
+
   float2 anisoEdge = float2(edgeDir.x, edgeDir.y * 0.20);
-  float magFactor = (0.014 + lift * 0.105) * (0.35 + 0.65 * lensDepth);
+  float magFactor = (0.024 + lift * 0.105) * (0.35 + 0.65 * lensDepth);
   float2 refractOffset = -p * magFactor
-      - anisoEdge * bevel * uDp * (1.55 + lift * 4.10);
+      - anisoEdge * bevel * uDp * (1.65 + lift * 4.10)
+      + float2(-rightWave, rightWave * 0.35);
 
   float2 uv = fragCoord + refractOffset;
-  float2 disp = -anisoEdge * (0.55 + lift * 1.65) * uDp * bevel;
+  float2 disp = -anisoEdge * (0.60 + lift * 1.65) * uDp * bevel;
 
   half4 gC = img.eval(uv);
   half4 rC = img.eval(uv + disp);
   half4 bC = img.eval(uv - disp);
 
-  float fringe = clamp((0.32 + 0.52 * lift) * bevel, 0.0, 0.88);
+  float fringe = clamp((0.36 + 0.50 * lift) * bevel, 0.0, 0.88);
   half r = mix(gC.r, rC.r, half(fringe));
   half b = mix(gC.b, bC.b, half(fringe));
   half rA = mix(gC.a, rC.a, half(fringe));
@@ -69,29 +75,31 @@ half4 main(in float2 fragCoord) {
   half contentA = max(gC.a, max(rA, bA));
   half4 refracted = half4(min(half3(contentA), half3(r, gC.g, b)), contentA) * half(pillAA);
 
-  // Zero static white outline at rest; twin opposite-side internal caustic refraction during lift/drag.
-  float2 invSize = 1.0 / max(size, float2(1.0));
-  float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
+  // Zero perimeter wireframe outline; resting top-left crescent + right-side liquid tide.
   float angle = -2.356 + move * 0.58;
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot, 0.0), 3.0);
-  float catchArc = pow(max(-rawDot, 0.0), 3.0) * 0.88;
-  float capMask = pow(abs(edgeDir.x), 2.8) * (0.18 * lift);
+  float keyArc = pow(max(rawDot, 0.0), 2.8);
+  float catchArc = pow(max(-rawDot, 0.0), 2.6);
+  float rightFlowArc = smoothstep(-0.05, 0.85, edgeDir.x)
+      * smoothstep(-0.75, 0.92, edgeDir.y + move * 0.42);
+  float capMask = rightFlowArc * (0.38 + 0.34 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.20 * lift);
 
-  float edgeGlow = gaussian((dDp - 1.50) / 1.40);
+  float edgeGlow = gaussian((dDp - 1.40) / 1.30);
   float darkRim = gaussian((dDp - 2.30) / 1.30) * (0.04 + 0.05 * lift);
-  float innerMeniscus = gaussian((dDp - 3.30) / 2.00);
+  float innerMeniscus = gaussian((dDp - 3.25) / 2.00);
+  float rightTideBand = gaussian((dDp - (2.35 + 1.05 * lift)) / (1.80 + 0.60 * lift));
 
-  float rimGlint = (keyArc * 0.36 + catchArc * 0.34 + capMask)
-      * (edgeGlow * 0.65 + innerMeniscus * 0.35) * (0.02 + 0.22 * lift);
+  float rimGlint = (keyArc * 0.44 + catchArc * 0.42 + capMask)
+          * (edgeGlow * 0.68 + innerMeniscus * 0.32) * (0.14 + 0.26 * lift)
+      + rightFlowArc * rightTideBand * (0.12 + 0.20 * lift);
 
   float sweepCoord = relCenter.x * 0.80 + relCenter.y * 0.42 - move * 0.42;
   float oppSweepCoord = -relCenter.x * 0.80 - relCenter.y * 0.42 - move * 0.34;
   float sweep = (gaussian((sweepCoord - 0.52) / 0.24) + gaussian((oppSweepCoord - 0.52) / 0.24) * 0.86)
       * (0.10 * abs(move) + 0.06 * press) * bevel;
 
-  float specAlpha = clamp(rimGlint + sweep, 0.0, 0.28) * pillAA;
+  float specAlpha = clamp(rimGlint + sweep, 0.0, 0.36) * pillAA;
   half3 specRGB = mix(half3(0.74, 0.90, 1.0), half3(1.0, 0.96, 0.88),
       half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0))) * half(specAlpha);
 

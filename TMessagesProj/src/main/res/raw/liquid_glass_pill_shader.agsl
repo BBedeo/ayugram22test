@@ -72,56 +72,67 @@ half4 main(in float2 fragCoord) {
   float2 relCenter = clamp(p * invSize, float2(-1.0), float2(1.0));
   float2 isoRel = clamp(p / minHalf, float2(-2.2), float2(2.2));
 
-  // Symmetric dual-side Snell refraction across both ends of the capsule.
-  float2 uv = fragCoord + ray.xy * (0.48 * rayDepth * refract_intensity)
-      * (0.28 + lift * 0.56);
-  uv += -isoRel * (0.018 + lift * 0.065) * t * (0.35 + 0.65 * domeT);
+  // Symmetric dual-side Snell refraction with right-side meniscus reflow ("прилив справа").
+  float rightSide = smoothstep(-0.05, 0.90, relCenter.x);
+  float rightWave = sin(relCenter.y * 2.6 - move * 2.2) * rightSide * bevel * uDp * (0.55 + 1.35 * lift);
+  float2 uv = fragCoord + ray.xy * (0.52 * rayDepth * refract_intensity)
+      * (0.36 + lift * 0.56);
+  uv += float2(-rightWave, rightWave * 0.35)
+      - isoRel * (0.022 + lift * 0.065) * t * (0.35 + 0.65 * domeT);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
   uv = clamp(uv, uvMin, uvMax);
 
   // Optical prism RGB separation on both opposite curved ends.
-  float2 disp = ray.xy * uDp * (1.10 + lift * 2.20) * bevel;
+  float2 disp = ray.xy * uDp * (1.20 + lift * 2.30) * bevel;
   half4 backdrop = img.eval(uv);
   half rChan = img.eval(clamp(uv + disp, uvMin, uvMax)).r;
   half bChan = img.eval(clamp(uv - disp, uvMin, uvMax)).b;
-  float dispMix = clamp((0.34 + 0.46 * lift) * bevel, 0.0, 0.85);
+  float dispMix = clamp((0.38 + 0.48 * lift) * bevel, 0.0, 0.88);
   backdrop.r = mix(backdrop.r, rChan, half(dispMix));
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
   // Crisp optical color vibrancy without adding milky grey plastic wash.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
-  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.18 + 0.16 * lift)), half3(0.0), half3(1.0));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(1.20 + 0.16 * lift)), half3(0.0), half3(1.0));
 
-  // Clear crystal lens on press/drag; subtle dark-crystal tint at rest.
+  // Clear crystal lens on press/drag; subtle dimensional crystal dome at rest.
   float bgLumaF = float(luma);
   float darkAdaptive = mix(1.0, 0.45, smoothstep(0.08, 0.42, bgLumaF));
-  half4 fgTint = half4(foreground_color_premultiplied) * half((1.0 - lift * 0.85) * darkAdaptive);
+  half4 fgTint = half4(foreground_color_premultiplied) * half((1.0 - lift * 0.75) * darkAdaptive);
   half4 surface = srcOver(fgTint, backdrop);
+
+  float domeSheen = smoothstep(0.70, -0.85, relCenter.y * 0.72 + relCenter.x * 0.32)
+      * (1.0 - bevel * 0.45) * (0.065 - 0.035 * lift);
+  surface.rgb = min(half3(1.0), surface.rgb + half3(0.82, 0.92, 1.0) * half(domeSheen * float(surface.a)));
 
   // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline).
   float outerWall = gaussian((dDp - 2.30) / 1.40);
   float meniscus = gaussian((dDp - 4.00) / 1.85);
   surface.rgb *= half(1.0 - (0.04 + 0.05 * lift) * outerWall - (0.02 + 0.03 * lift) * meniscus);
 
-  // Twin opposite-side Apple light refraction lobes (zero outline where rawDot is neutral).
-  float angle = glass_light_angle + move * 0.58;
+  // Unified top-left -> bottom-right axis + dedicated right-side liquid tide ("прилив справа").
+  float angle = -2.356 + move * 0.58 + (glass_light_angle - 5.4978);
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot, 0.0), 3.0) * 0.85;
-  float catchArc = pow(max(-rawDot, 0.0), 3.0) * 0.80;
-  float capBoost = pow(abs(edgeDir.x), 2.8) * (0.24 * lift);
+  float keyArc = pow(max(rawDot, 0.0), 2.8) * 0.88;
+  float catchArc = pow(max(-rawDot, 0.0), 2.6) * 0.86;
+  float rightFlowArc = smoothstep(-0.05, 0.85, edgeDir.x)
+      * smoothstep(-0.75, 0.92, edgeDir.y + move * 0.42);
+  float capBoost = rightFlowArc * (0.42 + 0.38 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.22 * lift);
   float fresnelSide = 0.0;
 
-  float rimCore = gaussian((dDp - 1.45) / 1.35);
-  float innerRidge = gaussian((dDp - 3.40) / 2.10);
+  float rimCore = gaussian((dDp - 1.35) / 1.25);
+  float innerRidge = gaussian((dDp - 3.20) / 2.15);
+  float rightTideBand = gaussian((dDp - (2.40 + 1.10 * lift)) / (1.85 + 0.65 * lift));
   float rimSpec = (keyArc + catchArc + capBoost + fresnelSide)
-      * (rimCore * 0.68 + innerRidge * 0.32) * (0.05 + 0.36 * lift);
+          * (rimCore * 0.72 + innerRidge * 0.28) * (0.28 + 0.38 * lift)
+      + rightFlowArc * rightTideBand * (0.16 + 0.28 * lift);
 
   // Dual opposite-side moving light caustics inside the lens.
   float lowerCaustic = (smoothstep(0.30, 0.96, relCenter.y) + smoothstep(0.30, 0.96, -relCenter.y) * 0.82)
-      * bevel * (0.05 * lift);
+      * bevel * (0.03 + 0.05 * lift);
   float sweepCoord = relCenter.x * 0.80 + relCenter.y * 0.42 - move * 0.42;
   float oppSweepCoord = -relCenter.x * 0.80 - relCenter.y * 0.42 - move * 0.34;
   float sweep = gaussian(sweepCoord / 0.22) * (0.12 * abs(move) + 0.06 * press) * (0.25 + 0.75 * bevel)
