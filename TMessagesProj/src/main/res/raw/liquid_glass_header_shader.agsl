@@ -13,10 +13,10 @@ uniform float glass_motion;
 uniform float glass_adaptive;
 uniform float4 foreground_color_premultiplied;
 
-half sdfRect(half2 p, half4 r) {
+float sdfRect(float2 p, float4 r) {
   r.xy = (p.x > 0.0) ? r.xy : r.zw;
   r.x  = (p.y > 0.0) ? r.x  : r.y;
-  half2 q = abs(p) - size + r.x;
+  float2 q = abs(p) - size + r.x;
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r.x;
 }
 
@@ -36,17 +36,20 @@ float circleMap(float x) {
 
 half4 main(in float2 fragCoord) {
   float2 p = fragCoord - center;
-  float sdRaw = float(sdfRect(half2(p), half4(radius)));
+  float sdRaw = sdfRect(p, radius);
   float sd = min(sdRaw, 0.0);
 
   float2 gradRaw = float2(
-      float(sdfRect(half2(p + float2(1.0, 0.0)), half4(radius))) - sdRaw,
-      float(sdfRect(half2(p + float2(0.0, 1.0)), half4(radius))) - sdRaw);
+      sdfRect(p + float2(0.5, 0.0), radius) - sdfRect(p - float2(0.5, 0.0), radius),
+      sdfRect(p + float2(0.0, 0.5), radius) - sdfRect(p - float2(0.0, 0.5), radius));
   float gradLen = length(gradRaw);
   float2 edgeDir = gradLen > 0.001 ? gradRaw / gradLen : float2(0.0, -1.0);
 
   float minHalf = max(min(size.x, size.y), 4.0);
-  float uDp = clamp(minHalf / 23.0, 1.0, 3.6);
+  float maxR = max(max(radius.x, radius.y), max(radius.z, radius.w));
+  float optHalf = maxR > 1.5 ? min(minHalf, maxR * 1.05) : minHalf;
+  float uDp = clamp(optHalf / 23.0, 1.0, 3.6);
+  float cardWeight = smoothstep(1.12, 2.25, minHalf / max(maxR, 1.0));
   float dDp = -sd / uDp;
   float t = clamp(thickness, 2.0, minHalf * 0.92);
   float press = clamp(glass_press, 0.0, 1.0);
@@ -75,8 +78,8 @@ half4 main(in float2 fragCoord) {
 
   // Crisp readable core with vivid passive & pressed perimeter Snell lens refraction.
   float2 uv = fragCoord + ray.xy * (0.64 * rayDepth * refract_intensity)
-      * (0.86 + lift * 0.34);
-  uv -= isoRel * (0.028 + lift * 0.042) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.32 * bevel);
+      * (0.86 + lift * 0.34) * mix(1.0, 0.74, cardWeight);
+  uv -= isoRel * (0.028 + lift * 0.042) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.32 * bevel) * (1.0 - 0.88 * cardWeight);
 
   float2 uvMin = center - size + 0.5;
   float2 uvMax = center + size - 0.5;
@@ -94,10 +97,11 @@ half4 main(in float2 fragCoord) {
   backdrop.b = mix(backdrop.b, bChan, half(dispMix));
 
   float oppDepthPx = (1.9 + clamp(dDp - 1.4, 0.0, 3.0) * 2.1) * uDp;
+  float mirrorScale = 1.0 - 0.88 * cardWeight;
   float hReflWeight = gaussian((dDp - 2.45) / 0.92)
       * pow(abs(edgeDir.x), 1.55)
       * smoothstep(0.58, 0.90, abs(relCenter.x))
-      * insetFade;
+      * insetFade * mirrorScale;
   float2 mirrorSideUV = clamp(
       center + float2(-sign(p.x) * max(0.0, size.x - oppDepthPx), p.y * 0.78),
       uvMin, uvMax);
@@ -107,7 +111,7 @@ half4 main(in float2 fragCoord) {
   float vReflWeight = gaussian((dDp - 2.35) / 0.95)
       * pow(abs(edgeDir.y), 1.70)
       * (1.0 - abs(relCenter.x) * 0.22)
-      * insetFade;
+      * insetFade * mirrorScale;
   float2 mirrorVertUV = clamp(
       center + float2(p.x * 0.94, -sign(p.y) * max(0.0, size.y - oppDepthPx)),
       uvMin, uvMax);
@@ -146,21 +150,22 @@ half4 main(in float2 fragCoord) {
   float2 perpDir = float2(-lightDir.y, lightDir.x);
   float perpDot = dot(edgeDir, perpDir);
 
-  // Keep diagonal corner glints balanced between circular buttons and wide pills without lighting
-  // horizontal straight edges or wrapping dark surfaces in an artificial 360deg white wireframe.
-  float pillWeight = smoothstep(0.18, 0.95, max(0.0, (size.x - size.y) / max(size.y, 1.0)));
+  // Keep diagonal corner glints balanced between circular buttons, wide pills, and tall glass menus
+  // without bloated corner squares or wrapping dark surfaces in an artificial 360deg white wireframe.
+  float pillWeight = smoothstep(0.18, 0.95, max(0.0, (size.x - size.y) / max(size.y, 1.0))) * (1.0 - 0.75 * cardWeight);
   float keyPow = mix(3.2, 2.9, pillWeight);
   float catchPow = mix(3.2, 2.9, pillWeight);
   float keyArc = pow(max(rawDot, 0.0), keyPow) * 0.82;
   float catchArc = pow(max(-rawDot, 0.0), catchPow) * 0.64;
   float offDiagTopRight = pow(max(perpDot, 0.0), 4.4) * (0.34 * pillWeight);
   float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.4) * (0.24 * pillWeight);
-  float capBoost = pow(abs(edgeDir.x), 3.4) * (0.12 + 0.16 * lift) * (1.0 - 0.35 * pillWeight);
+  float capBoost = pow(abs(edgeDir.x), 3.4) * (0.12 + 0.16 * lift) * (1.0 - 0.35 * pillWeight) * (1.0 - 0.72 * cardWeight);
   float rimCore = gaussian((dDp - 1.50) / 1.40);
   float innerRidge = gaussian((dDp - 3.35) / 2.20);
-  float darkGlintScale = mix(0.92, 0.74, darkCrystalTint);
+  float darkGlintScale = mix(0.92, mix(0.74, 0.88, cardWeight), darkCrystalTint);
+  float rimProfile = rimCore * mix(0.70, 0.84, cardWeight) + innerRidge * mix(0.30, 0.16, cardWeight);
   float rimSpec = (keyArc + catchArc + offDiagTopRight + offDiagBotLeft + capBoost)
-      * (rimCore * 0.70 + innerRidge * 0.30) * (0.34 + 0.32 * lift) * darkGlintScale;
+      * rimProfile * (0.34 + 0.32 * lift) * darkGlintScale;
 
   float highlightStrength = clamp(glass_highlight, 0.06, 1.35);
   if (glass_adaptive > 0.5) {

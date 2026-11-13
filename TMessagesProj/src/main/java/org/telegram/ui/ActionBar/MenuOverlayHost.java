@@ -70,4 +70,9 @@ public interface MenuOverlayHost {
     default int getMenuRise() {
         return 0;
     }
+
+    /** Whether menus opening from this host should use the crystal header AGSL lens profile. */
+    default boolean isHeaderGlassLensEnabled() {
+        return false;
+    }
 }

@@ -410,7 +410,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (factory == null) {
             return null;
         }
-        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(false).setLiquidOptics(0.08f, 0f, 0f);
+        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(headerGlassLens);
+    }
+
+    @Override
+    public boolean isHeaderGlassLensEnabled() {
+        return headerGlassLens;
     }
 
     @Override
