@@ -106,8 +106,12 @@ public class BlurredBackgroundProviderImpl {
                 if (!checkBlurEnabled(r)) {
                     return ColorUtils.setAlphaComponent(colorSubmenu, 255);
                 }
+                final boolean crystalMenu = isHeaderLiquidShaderActive(r);
                 final float baseAlpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.72f : 0.80f;
-                final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, baseAlpha);
+                final float tunedAlpha = LiquidGlassTuning.tintAlphaMenu(isDark, baseAlpha);
+                final float alpha = crystalMenu && LiquidGlassTuning.isActive()
+                    ? Math.max(isDark ? 0.44f : 0.50f, tunedAlpha * 0.82f)
+                    : tunedAlpha;
                 final int tinted = isDark
                     ? ColorUtils.blendARGB(colorSubmenu, 0xFF1A232E, 0.25f)
                     : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.65f);

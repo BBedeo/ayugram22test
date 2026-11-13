@@ -289,6 +289,11 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6)).setHeaderGlassLens(true);
     }
 
+    @Override
+    public boolean isHeaderGlassLensEnabled() {
+        return true;
+    }
+
     /* Menu overlay */
 
     /** Where the menus open: the overlay of the fragment, see {@link BaseFragment#getSimpleMenuOverlay()}. */

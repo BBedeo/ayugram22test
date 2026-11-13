@@ -239,8 +239,7 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
                 }
             }
             if (glass != null) {
-                glass.setHeaderGlassLens(false);
-                glass.setLiquidOptics(0.08f, app.exteraless.appearance.LiquidGlassTuning.lightAngleRadians(), 0f);
+                glass.setHeaderGlassLens(bar.isHeaderGlassLensEnabled());
             }
             glassBar = bar;
         }

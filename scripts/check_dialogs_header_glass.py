@@ -74,6 +74,7 @@ provider = read(JAVA / "org/telegram/ui/Components/blur3/drawable/color/impl/Blu
 action_bar = read(JAVA / "org/telegram/ui/ActionBar/ActionBar.java")
 simple_action_bar = read(JAVA / "org/telegram/ui/ActionBar/SimpleActionBar.java")
 simple_text = read(JAVA / "org/telegram/ui/ActionBar/SimpleTextView.java")
+menu_overlay_host = read(JAVA / "org/telegram/ui/ActionBar/MenuOverlayHost.java")
 menu_overlay = read(JAVA / "org/telegram/ui/ActionBar/SimpleActionBarMenuOverlay.java")
 item_options = read(JAVA / "org/telegram/ui/Components/ItemOptions.java")
 search_field = read(JAVA / "org/telegram/ui/Components/FragmentSearchField.java")
@@ -204,12 +205,23 @@ checks = {
         and "getRightSlidingProgress()" in dialogs
         and "(headerGlass && (child instanceof ViewPage || child == searchViewPager))" in dialogs
     ),
-    "Header glass tames 3x slate over-saturation, expanded menus skip coarse corner glare, hover uses directional glass pill, and drag-out dismisses menus per ChatsConfig": (
-        "clamp(minHalf / 23.0, 1.0, 3.6)" in header_shader
+    "Header glass tames 3x slate over-saturation, preserves continuous crystal menu morph without corner glare artifacts, hover uses directional glass pill, and drag-out dismisses menus per ChatsConfig": (
+        "clamp(optHalf / 23.0, 1.0, 3.6)" in header_shader
+        and "cardWeight" in header_shader
+        and "mirrorScale" in header_shader
+        and "rimProfile" in header_shader
         and "deSatScale" in header_shader
         and "half3(0.92, 0.96, 1.0)" in header_shader
-        and "glass.setHeaderGlassLens(false);" in menu_overlay
-        and ".setHeaderGlassLens(false)" in action_bar
+        and "default boolean isHeaderGlassLensEnabled()" in menu_overlay_host
+        and "glass.setHeaderGlassLens(bar.isHeaderGlassLensEnabled());" in menu_overlay
+        and ".setHeaderGlassLens(headerGlassLens)" in action_bar
+        and "public boolean isHeaderGlassLensEnabled()" in action_bar
+        and "public boolean isHeaderGlassLensEnabled()" in simple_action_bar
+        and "crystalMenu" in provider
+        and "setHeaderGlassLens(false)" not in menu_overlay
+        and "setHeaderGlassLens(false)" not in action_bar
+        and "setLiquidOptics(0.08f" not in menu_overlay
+        and "setLiquidOptics(0.08f" not in action_bar
         and "public void setUseCustomGlassHover(boolean enabled)" in menu_sub_item
         and "applyCustomGlassHoverToTree(" in popup_window
         and "dragHoverFillPaint.setShader(new LinearGradient(" in popup_window
