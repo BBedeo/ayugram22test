@@ -242,7 +242,9 @@ public class NekoPasscodeSettingsActivity extends BaseNekoSettingsActivity {
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, @SuppressLint("RecyclerView") int position) {
             switch (holder.getItemViewType()) {
                 case 1: {
-                    if (position == clearPasscodes2Row) {
+                    if (app.exteraless.appearance.AppearanceConfig.sectionRadius() > 0) {
+                        holder.itemView.setBackground(null);
+                    } else if (position == clearPasscodes2Row) {
                         holder.itemView.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
                     } else {
                         holder.itemView.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
@@ -285,7 +287,11 @@ public class NekoPasscodeSettingsActivity extends BaseNekoSettingsActivity {
                 case 7: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     cell.setEnabled(passcodeSet, null);
-                    cell.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
+                    if (app.exteraless.appearance.AppearanceConfig.sectionRadius() > 0) {
+                        cell.setBackground(null);
+                    } else {
+                        cell.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
+                    }
                     if (position == accountsEndRow) {
                         cell.setText(getString(R.string.PasscodeAbout));
                     } else if (position == panicCode2Row) {
@@ -306,7 +312,11 @@ public class NekoPasscodeSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setText(stringBuilder);
                     } else if (position == showNotificationContentWhenLocked2Row) {
                         cell.setText(getString(R.string.PasscodeShowMessagePreviewWhenLockedAbout));
-                        cell.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
+                        if (app.exteraless.appearance.AppearanceConfig.sectionRadius() > 0) {
+                            cell.setBackground(null);
+                        } else {
+                            cell.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
+                        }
                     }
                     break;
                 }

@@ -1328,7 +1328,9 @@ public class ActionBarMenuItem extends FrameLayout {
         }
 
         if (subMenuFactory != null) {
-            ItemOptions.setGapBackgroundColor(popupLayout, Theme.multAlpha(getThemedColor(Theme.key_actionBarDefaultSubmenuItem), 0.06f));
+            ItemOptions.setGapCollapsedForGlass(popupLayout, true);
+        } else {
+            ItemOptions.setGapCollapsedForGlass(popupLayout, false);
         }
 
         popupWindow = new ActionBarPopupWindow(container, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT);
@@ -3376,10 +3378,8 @@ public class ActionBarMenuItem extends FrameLayout {
     }
 
     public static FrameLayout addColoredGap(ActionBarPopupWindow.ActionBarPopupWindowLayout windowLayout, Theme.ResourcesProvider resourcesProvider) {
-        CombinedDrawable shadowDrawable = new CombinedDrawable(new ColorDrawable(Theme.getColor(Theme.key_actionBarDefaultSubmenuSeparator, resourcesProvider)), Theme.getThemedDrawable(windowLayout.getContext(), R.drawable.greydivider, Theme.getColor(Theme.key_windowBackgroundGrayShadow, resourcesProvider)));
-        shadowDrawable.setFullsize(true);
-        FrameLayout gap = new FrameLayout(windowLayout.getContext());
-        gap.setBackground(shadowDrawable);
+        ActionBarPopupWindow.GapView gap = new ActionBarPopupWindow.GapView(windowLayout.getContext(), resourcesProvider, Theme.key_actionBarDefaultSubmenuSeparator);
+        gap.setTag(R.id.fit_width_tag, 1);
         windowLayout.addView(gap, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
         return gap;
     }

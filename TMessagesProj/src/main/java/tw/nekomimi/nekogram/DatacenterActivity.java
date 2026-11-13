@@ -164,7 +164,9 @@ public class DatacenterActivity extends BaseNekoSettingsActivity implements Noti
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
             switch (holder.getItemViewType()) {
                 case 1: {
-                    if (position == datacenters2Row) {
+                    if (app.exteraless.appearance.AppearanceConfig.sectionRadius() > 0) {
+                        holder.itemView.setBackground(null);
+                    } else if (position == datacenters2Row) {
                         holder.itemView.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider_bottom, getThemedColor(Theme.key_windowBackgroundGrayShadow)));
                     } else {
                         holder.itemView.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider, getThemedColor(Theme.key_windowBackgroundGrayShadow)));

@@ -388,7 +388,7 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         content.setAlpha(1f);
         // the items are out of the view tree while closed: a theme switch since the last open has not reached them
         ThemeBind.updateTree(content, false);
-        ItemOptions.setGapBackgroundColor(content, Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, bar.getMenuResourcesProvider()), 0.06f));
+        ItemOptions.setGapCollapsedForGlass(content, true);
         content.updateRadialSelectors();
         final PopupSwipeBackLayout swipeBack = content.getSwipeBack();
         if (swipeBack != null) {
@@ -406,7 +406,7 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
                     // the padding of the popup's background: the rows go to the edges of the glass as on the main page
                     takeOffPopupLook(page, 0);
                     ThemeBind.updateTree(page, false);
-                    ItemOptions.setGapBackgroundColor(page, Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, bar.getMenuResourcesProvider()), 0.06f));
+                    ItemOptions.setGapCollapsedForGlass(page, true);
                 }
             }
         }

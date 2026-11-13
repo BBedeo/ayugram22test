@@ -375,6 +375,9 @@ public final class MenuInjector {
             boolean hasItems = wrapper.hasItems();
             if (hasItems) {
                 wrapper.rebuildMenu(null);
+                if (app.exteraless.appearance.LiquidGlassTuning.isActive() && wrapper.getSwipeBack() != null) {
+                    ItemOptions.setGapCollapsedForGlass(wrapper.getSwipeBack(), true);
+                }
             }
             item.setVisibility(hasItems ? View.VISIBLE : View.GONE);
         }
@@ -407,6 +410,9 @@ public final class MenuInjector {
             ActionBarMenuItem.Item item;
             if (sameHost) {
                 wrapper.rebuildMenu(null);
+                if (app.exteraless.appearance.LiquidGlassTuning.isActive() && wrapper.getSwipeBack() != null) {
+                    ItemOptions.setGapCollapsedForGlass(wrapper.getSwipeBack(), true);
+                }
                 item = headerItem.lazilyReuseItem(previous.item);
             } else {
                 item = headerItem.lazilyAddSwipeBackItem(

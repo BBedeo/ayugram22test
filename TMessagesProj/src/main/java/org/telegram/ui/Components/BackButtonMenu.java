@@ -208,8 +208,13 @@ public class BackButtonMenu {
             });
             layout.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 44, 0, Gravity.NO_GRAVITY, 0, first ? 3 : 0, 0, last ? 3 : 0));
             if (addDivider) {
-                FrameLayout gap = new FrameLayout(context);
+                ActionBarPopupWindow.GapView gap = new ActionBarPopupWindow.GapView(context, resourcesProvider);
                 ThemeBind.backgroundColor(gap, Theme.key_actionBarDefaultSubmenuSeparator, resourcesProvider);
+                if (app.exteraless.appearance.LiquidGlassTuning.isActive()) {
+                    gap.setColor(android.graphics.Color.TRANSPARENT);
+                    gap.setDividerVisible(false);
+                    gap.setCollapsedForGlass(true);
+                }
                 gap.setTag(R.id.fit_width_tag, 1);
                 layout.addView(gap, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
             }

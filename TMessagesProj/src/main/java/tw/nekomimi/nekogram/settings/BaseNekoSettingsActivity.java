@@ -486,11 +486,15 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
          * поведение полностью стоковое: сплошной фон, как задавалось при создании ячейки.
          */
         protected void applySectionBackground(@NonNull RecyclerView.ViewHolder holder, int position) {
+            int radiusDp = app.exteraless.appearance.AppearanceConfig.sectionRadius();
             int viewType = holder.getItemViewType();
             if (!isSectionContent(viewType)) {
+                if (radiusDp > 0 && (holder.itemView instanceof org.telegram.ui.Cells.ShadowSectionCell
+                        || holder.itemView instanceof org.telegram.ui.Cells.TextInfoPrivacyCell)) {
+                    holder.itemView.setBackground(null);
+                }
                 return;
             }
-            int radiusDp = app.exteraless.appearance.AppearanceConfig.sectionRadius();
             if (radiusDp <= 0) {
                 // Дефолт-safe (0) = сток: сплошной фон, ровно как задавалось при создании ячейки.
                 holder.itemView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
