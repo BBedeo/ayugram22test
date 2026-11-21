@@ -898,6 +898,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         } else if (position == universalLiquidGlassRow) {
             boolean enabled = AppearanceConfig.universalLiquidGlass.toggleConfigBool();
+            if (!enabled) {
+                LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, false);
+            }
             org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings();
             rebuildRowsAndNotify();
             rebuildAll();

@@ -297,12 +297,16 @@ object AppearancePresets {
         AppearanceConfig.sectionRadius.setConfigInt(spec.sectionRadius)
         AppearanceConfig.separateHeaders.setConfigBool(spec.separateHeaders)
         AppearanceConfig.dividerStyle.setConfigInt(spec.dividerStyle)
+        AppearanceConfig.segmentedDialogs.setConfigBool(spec.dividerStyle == AppearanceConfig.DIVIDER_SEGMENTS)
+        AppearanceConfig.iosMiniPlayer.setConfigBool(spec.universalLiquidGlass)
         NaConfig.hideDividers.setConfigBool(spec.dividerStyle == AppearanceConfig.DIVIDER_HIDDEN)
         AppearanceConfig.invalidateDividerStyle()
 
         if (spec.universalLiquidGlass) {
             LiteMode.toggleFlag(LiteMode.FLAG_CHAT_BLUR, true)
             LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, true)
+        } else {
+            LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, false)
         }
 
         GlassEngine.getCurrentGlassSettings()
