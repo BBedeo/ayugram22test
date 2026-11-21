@@ -23,9 +23,17 @@ public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider mainTabs(Theme.ResourcesProvider resourcesProvider) {
         final BlurredBackgroundProviderBuilder builder = new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
-                final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTabs, r);
+                if (isHeaderLiquidShaderActive(r)) {
+                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.18f : 0.28f);
+                    final int crystalTarget = isDark
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.10f)
+                        : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
+                    return ColorUtils.setAlphaComponent(crystalTarget,
+                        MathUtils.clamp(Math.round(255f * alpha), isDark ? 20 : 28, isDark ? 105 : 135));
+                }
+                final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 return solveSrcColor(colorBg, colorTarget, alpha);
             })
             .setShadowColor(0x20000000, 0x24000000)
@@ -37,9 +45,17 @@ public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider topPanel(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
-                final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
+                if (isHeaderLiquidShaderActive(r)) {
+                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.18f : 0.28f);
+                    final int crystalTarget = isDark
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.12f)
+                        : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
+                    return ColorUtils.setAlphaComponent(crystalTarget,
+                        MathUtils.clamp(Math.round(255f * alpha), isDark ? 20 : 28, isDark ? 105 : 135));
+                }
+                final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 return solveSrcColor(colorBg, colorTarget, alpha);
             })
             .setStrokeColorTop(0x11000000, 0)
@@ -67,12 +83,12 @@ public class BlurredBackgroundProviderImpl {
                 if (isHeaderLiquidShaderActive(r)) {
                     // Crystal-clear floating lens tint: keep the core highly transparent so
                     // scrolling avatars visibly refract through the capsule while preserving contrast.
-                    final float baseAlpha = isDark ? 0.16f : 0.28f;
+                    final float baseAlpha = isDark ? 0.09f : 0.20f;
                     final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
                     final int crystalTarget = isDark
                         ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.14f)
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
-                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 14 : 24, isDark ? 92 : 128);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 12 : 20, isDark ? 72 : 112);
                     return ColorUtils.setAlphaComponent(crystalTarget, a);
                 }
                 final float fallbackAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);
@@ -107,11 +123,15 @@ public class BlurredBackgroundProviderImpl {
                     return ColorUtils.setAlphaComponent(colorSubmenu, 255);
                 }
                 final boolean crystalMenu = isHeaderLiquidShaderActive(r);
+                if (crystalMenu) {
+                    final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.22f : 0.30f);
+                    final int tinted = isDark
+                        ? ColorUtils.blendARGB(colorSubmenu, 0xFFE6ECF2, 0.12f)
+                        : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.78f);
+                    return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 24 : 34, isDark ? 115 : 145));
+                }
                 final float baseAlpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.72f : 0.80f;
-                final float tunedAlpha = LiquidGlassTuning.tintAlphaMenu(isDark, baseAlpha);
-                final float alpha = crystalMenu && LiquidGlassTuning.isActive()
-                    ? Math.max(isDark ? 0.44f : 0.50f, tunedAlpha * 0.82f)
-                    : tunedAlpha;
+                final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, baseAlpha);
                 final int tinted = isDark
                     ? ColorUtils.blendARGB(colorSubmenu, 0xFF1A232E, 0.25f)
                     : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.65f);
@@ -234,6 +254,14 @@ public class BlurredBackgroundProviderImpl {
                     if (!checkBlurEnabled(resourcesProvider)) {
                         return ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_chat_messagePanelBackground, r), 255);
                     }
+                    if (isHeaderLiquidShaderActive(r)) {
+                        final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.20f : 0.28f);
+                        final int colorBg = Theme.getColor(Theme.key_chat_messagePanelBackground, r);
+                        final int crystal = isDark
+                            ? ColorUtils.blendARGB(colorBg, 0xFFE6ECF2, 0.10f)
+                            : ColorUtils.blendARGB(colorBg, 0xFFFFFFFF, 0.82f);
+                        return ColorUtils.setAlphaComponent(crystal, MathUtils.clamp(Math.round(255f * alpha), 20, 128));
+                    }
 
                     final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                     final int colorBg = Theme.getColor(Theme.key_chat_messagePanelBackground, r);
@@ -295,6 +323,14 @@ public class BlurredBackgroundProviderImpl {
                         return ColorUtils.setAlphaComponent(Theme.getColor(isDark ?
                             Theme.key_actionBarDefault : Theme.key_chat_topPanelBackground, r), 255);
                     }
+                    if (isHeaderLiquidShaderActive(r)) {
+                        final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, isDark ? 0.12f : 0.22f);
+                        final int colorBg = Theme.getColor(Theme.key_chat_topPanelBackground, r);
+                        final int crystal = isDark
+                            ? ColorUtils.blendARGB(colorBg, 0xFFE6ECF2, 0.12f)
+                            : ColorUtils.blendARGB(colorBg, 0xFFFFFFFF, 0.84f);
+                        return ColorUtils.setAlphaComponent(crystal, MathUtils.clamp(Math.round(255f * alpha), 14, 112));
+                    }
 
                     final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                     final int colorBg = Theme.getColor(Theme.key_chat_topPanelBackground, r);
@@ -325,12 +361,12 @@ public class BlurredBackgroundProviderImpl {
                     return solveSrcColor(colorBg, colorTarget, fallbackAlpha);
                 }
                 if (isHeaderLiquidShaderActive(r)) {
-                    final float baseAlpha = isDark ? 0.16f : 0.28f;
+                    final float baseAlpha = isDark ? 0.09f : 0.20f;
                     final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
                     final int crystalTarget = isDark
                         ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.14f)
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
-                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 14 : 24, isDark ? 92 : 128);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 12 : 20, isDark ? 72 : 112);
                     return ColorUtils.setAlphaComponent(crystalTarget, a);
                 }
                 final float frostedAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);
@@ -361,7 +397,8 @@ public class BlurredBackgroundProviderImpl {
     /** A frosted sheet over the content, e.g. the list over the map: the content shows through its blur. */
     public static BlurredBackgroundProvider frostedSheet(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
-            .setBackgroundColor((r, isDark) -> Theme.multAlpha(Theme.getColor(Theme.key_dialogBackground, r), isDark ? 0.82f : 0.78f))
+            .setBackgroundColor((r, isDark) -> Theme.multAlpha(Theme.getColor(Theme.key_dialogBackground, r),
+                isHeaderLiquidShaderActive(r) ? LiquidGlassTuning.tintAlphaMenu(isDark, 0.34f) : (isDark ? 0.82f : 0.78f)))
             .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
             .setStrokeColorBottom(0, 0)
             .setShadowColor(0x16333333, 0)

@@ -631,8 +631,8 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         if (glass != null) {
             // from the color of the button's glass (a tinted header) to the menu's
             glassColorsFactor = startFromPill ? Utilities.clamp01(m) : 1f;
-            // and from the button's glass to the frosted glass of the open menu
-            bar.setMenuGlassFrostedProgress(glassColorsFactor);
+            // keep mostly crisp optical refraction (like the bottom pill) with only gentle frost for text contrast
+            bar.setMenuGlassFrostedProgress(glassColorsFactor * 0.28f);
             glass.updateColors();
             // the stroke's width goes over too: the buttons' glass may have thinner or thicker lines than the menu's
             glass.setStrokeWidth(

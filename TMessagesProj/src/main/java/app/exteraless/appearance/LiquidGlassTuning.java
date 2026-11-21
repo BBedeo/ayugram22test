@@ -148,11 +148,11 @@ public final class LiquidGlassTuning {
         if (!isActive()) return original;
         final float base;
         switch (AppearanceConfig.liquidGlassMaterial()) {
-            case 0: base = dark ? .38f : .29f; break;
-            case 2: base = dark ? .61f : .48f; break;
-            default: base = dark ? .49f : .39f; break;
+            case 0: base = dark ? .14f : .18f; break;
+            case 2: base = dark ? .28f : .34f; break;
+            default: base = dark ? .20f : .26f; break;
         }
-        return tuneTransparency(base, dark ? .24f : .20f);
+        return tuneTransparency(base, dark ? .08f : .12f);
     }
 
     /** Crystal-clear floating header pill tint scaled by material and Transparency slider. */
@@ -160,29 +160,29 @@ public final class LiquidGlassTuning {
         if (!isActive()) return original;
         final float base;
         switch (AppearanceConfig.liquidGlassMaterial()) {
-            case 0: base = dark ? .09f : .18f; break;
-            case 2: base = dark ? .20f : .34f; break;
-            default: base = dark ? .14f : .26f; break;
+            case 0: base = dark ? .06f : .14f; break;
+            case 2: base = dark ? .14f : .26f; break;
+            default: base = dark ? .09f : .20f; break;
         }
-        return tuneTransparency(base, dark ? .06f : .14f);
+        return tuneTransparency(base, dark ? .05f : .10f);
     }
 
-    /** Text-heavy floating surfaces need more opacity than navigation chrome. */
+    /** Crystal-transparent floating menu tint matching the bottom navigation pill. */
     public static float tintAlphaMenu(boolean dark, float original) {
         if (!isActive()) return original;
         final float base;
         switch (AppearanceConfig.liquidGlassMaterial()) {
-            case 0: base = dark ? .63f : .58f; break;
-            case 2: base = dark ? .80f : .73f; break;
-            default: base = dark ? .71f : .65f; break;
+            case 0: base = dark ? .16f : .22f; break;
+            case 2: base = dark ? .30f : .38f; break;
+            default: base = dark ? .22f : .30f; break;
         }
-        return tuneTransparency(base, .48f);
+        return tuneTransparency(base, dark ? .12f : .18f);
     }
 
-    /** Hints and notifications may contain white text over arbitrary imagery. */
+    /** Translucent overlays and hints that keep text crisp over arbitrary imagery. */
     public static float tintAlphaOverlay(boolean dark, float original) {
         if (!isActive()) return original;
-        return tuneTransparency(dark ? .83f : .76f, .62f);
+        return tuneTransparency(dark ? .42f : .48f, .24f);
     }
 
     /** Per-material multiplier for Telegram's existing refraction intensity. */
