@@ -171,8 +171,20 @@ public class GlassFadeBlurredDrawable extends GlassDrawable {
 
 
 
+    private boolean suppressInM3Opaque;
+
+    public void setSuppressInM3Opaque(boolean suppress) {
+        if (suppressInM3Opaque != suppress) {
+            suppressInM3Opaque = suppress;
+            invalidateSelf();
+        }
+    }
+
     @Override
     public void draw(@NonNull Canvas canvas) {
+        if (suppressInM3Opaque && app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome()) {
+            return;
+        }
         final Rect bounds = getBounds();
         if (bounds.isEmpty() || getAlpha() <= 0) {
             return;

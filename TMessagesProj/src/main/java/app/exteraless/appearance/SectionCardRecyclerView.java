@@ -72,7 +72,7 @@ public class SectionCardRecyclerView extends BlurredRecyclerView {
             strokePaint.clearShadowLayer();
             strokePaint.setStyle(Paint.Style.STROKE);
             strokePaint.setStrokeWidth(AndroidUtilities.dpf2(1f));
-            strokePaint.setColor(Theme.multAlpha(isDark ? 0xCC49454F : 0xB8CAC4D0, alpha));
+            strokePaint.setColor(Theme.multAlpha(M3SurfaceHelper.getOutlineVariantColor(resourcesProvider), alpha));
         } else if (outline == GlassOutlineStyle.HIDDEN) {
             fillPaint.clearShadowLayer();
             strokePaint.clearShadowLayer();
@@ -84,7 +84,7 @@ public class SectionCardRecyclerView extends BlurredRecyclerView {
             strokePaint.setShadowLayer(AndroidUtilities.dpf2(0.33f), 0, 0, Theme.multAlpha(0x0C000000, alpha));
             fillPaint.setShadowLayer(AndroidUtilities.dpf2(2f), 0, AndroidUtilities.dpf2(0.33f), Theme.multAlpha(0x0A000000, alpha));
         }
-        fillPaint.setColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider), alpha));
+        fillPaint.setColor(Theme.multAlpha(M3SurfaceHelper.getCardColor(resourcesProvider), alpha));
 
         if (topRadius == bottomRadius) {
             canvas.drawRoundRect(rect, topRadius, topRadius, fillPaint);
@@ -101,6 +101,14 @@ public class SectionCardRecyclerView extends BlurredRecyclerView {
                 canvas.drawPath(path, strokePaint);
             }
         }
+    }
+
+    @Override
+    public void onDraw(Canvas c) {
+        if (M3SurfaceHelper.isMaterial3SurfaceMode()) {
+            c.drawColor(M3SurfaceHelper.getCanvasColor(resourcesProvider));
+        }
+        super.onDraw(c);
     }
 
     @Override

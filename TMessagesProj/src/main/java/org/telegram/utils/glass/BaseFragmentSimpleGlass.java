@@ -177,6 +177,7 @@ public class BaseFragmentSimpleGlass {
 
         glassBlurredFadeDrawable.setOverlayOnlyAlpha(210);
         glassBlurredFadeDrawable.setOverlayOnlyRange(gradientRangeFallback);
+        glassBlurredFadeDrawable.setSuppressInM3Opaque(true);
 
         glassEngine.registerDrawable(view, glassBlurredFadeDrawable);
         return glassBlurredFadeDrawable;
@@ -202,6 +203,7 @@ public class BaseFragmentSimpleGlass {
 
         glassBlurredFadeDrawable.setOverlayOnlyAlpha(210);
         glassBlurredFadeDrawable.setOverlayOnlyRange(gradientRangeFallback);
+        glassBlurredFadeDrawable.setSuppressInM3Opaque(true);
 
         glassEngine.registerDrawable(view, glassBlurredFadeDrawable);
         return glassBlurredFadeDrawable;

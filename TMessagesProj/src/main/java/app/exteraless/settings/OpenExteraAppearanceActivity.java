@@ -457,6 +457,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 listView.invalidate();
                 listView.invalidateItemDecorations();
             }
+            if (fragmentView != null) {
+                fragmentView.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(resourcesProvider));
+            }
+            if (actionBar != null) {
+                actionBar.invalidate();
+            }
             if (fabShapeCell != null) {
                 fabShapeCell.updateSelection(true);
             }

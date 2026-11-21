@@ -877,6 +877,43 @@ object AppearanceConfig {
         migrateIosChatHeader()
         migrateModernStyles()
         migrateDecorations()
+        migrateMaterial3PresetDefaults()
+    }
+
+    private const val M3_PRESET_SYNC_KEY = "OEAppearanceM3PresetSyncV2"
+
+    /**
+     * One-time synchronization for users who already selected the Material Design 3 preset
+     * before borderless tonal cards (glassOutlineStyle=2), 16dp corners, and forced-off chat blur.
+     */
+    private fun migrateMaterial3PresetDefaults() {
+        val preferences = getPreferences()
+        if (preferences.getBoolean(M3_PRESET_SYNC_KEY, false)) return
+        preferences.edit().putBoolean(M3_PRESET_SYNC_KEY, true).apply()
+        val isEarlierM3 = !universalLiquidGlass.Bool() &&
+            !iosNavigationBarStyle.Bool() &&
+            !iosChatHeader.Bool() &&
+            m3ListItems.Bool() &&
+            newNavigationBarStyle.Bool() &&
+            newChatHeaderStyle.Bool() &&
+            dividerStyle.Int() == DIVIDER_SEGMENTS &&
+            !NaConfig.hideBottomNavigationBar.Bool() &&
+            NaConfig.switchStyle.Int() == 3 &&
+            NaConfig.sliderStyle.Int() == 2
+        if (isEarlierM3) {
+            glassOutlineStyle.setConfigInt(2)
+            sectionRadius.setConfigInt(16)
+            segmentedDialogs.setConfigBool(true)
+            separateHeaders.setConfigBool(true)
+            segmentGap.setConfigInt(0)
+            try {
+                org.telegram.messenger.LiteMode.toggleFlag(org.telegram.messenger.LiteMode.FLAG_LIQUID_GLASS, false)
+                org.telegram.messenger.LiteMode.toggleFlag(org.telegram.messenger.LiteMode.FLAG_CHAT_BLUR, false)
+                org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings()
+            } catch (_: Throwable) {
+            }
+            GlassOutlineStyle.dispatchChange()
+        }
     }
 
     private fun migrateCenterTitle() {

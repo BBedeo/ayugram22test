@@ -2966,11 +2966,16 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (headerGlassLens) {
             glassDrawable.setElasticPressProgress(titlePress * 0.85f);
         }
-        if (!doNotDrawCenterGlass) {
+        if (!doNotDrawCenterGlass && !isMaterial3OpaqueBar()) {
             glassDrawable.draw(canvas);
         } else {
             glassTitleRestRect.setEmpty();
         }
+    }
+
+    private boolean isMaterial3OpaqueBar() {
+        return glassMode && !glassOnlyBack
+                && app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome();
     }
 
     private int forcedMenuWidth;
@@ -3036,7 +3041,17 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        if (drawSectionsBackground) {
+        final boolean m3OpaqueBar = isMaterial3OpaqueBar();
+        if (m3OpaqueBar) {
+            final int barBottom = drawGlassTitle
+                    ? Math.max(0, getHeight() - extraHeight)
+                    : (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
+            if (barBottom > 0) {
+                final int barColor = app.exteraless.appearance.M3SurfaceHelper.getTopBarColor(resourcesProvider, drawGlassTitle);
+                canvas.drawRect(0, 0, getWidth(), barBottom, Theme.fillingPaint(barColor));
+            }
+        }
+        if (drawSectionsBackground && !m3OpaqueBar) {
             final int color = Theme.multAlpha(getThemedColor(Theme.key_windowBackgroundGray), customHeaderAlpha / 255f);
 
             final int t = getHeight() - extraHeight;
@@ -3170,7 +3185,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 if (headerGlassLens) {
                     glassDrawable.setElasticPressProgress(titlePress * 0.85f);
                 }
-                if (!doNotDrawCenterGlass) {
+                if (!doNotDrawCenterGlass && !m3OpaqueBar) {
                     glassDrawable.draw(canvas);
                 } else {
                     glassTitleRestRect.setEmpty();
@@ -3215,7 +3230,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 if (headerGlassLens) {
                     glassDrawable.setElasticPressProgress(titlePress * 0.85f);
                 }
-                if (!doNotDrawCenterGlass) {
+                if (!doNotDrawCenterGlass && !m3OpaqueBar) {
                     glassDrawable.draw(canvas);
                 } else {
                     glassTitleRestRect.setEmpty();
@@ -3234,7 +3249,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     glassDrawableBack.setElasticPressProgress(backPress * 0.88f);
                 }
                 glassDrawableBack.setAlpha(backAlphaInt);
-                glassDrawableBack.draw(canvas);
+                if (!m3OpaqueBar) {
+                    glassDrawableBack.draw(canvas);
+                } else {
+                    glassBackRestRect.setEmpty();
+                }
             }
         }
         glassMenuRestRect.setEmpty();
@@ -3247,7 +3266,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 glassDrawableMenu.setElasticPressProgress(menuPress * 0.88f);
             }
             glassDrawableMenu.setAlpha(menuAlphaInt);
-            glassDrawableMenu.draw(canvas);
+            if (!m3OpaqueBar) {
+                glassDrawableMenu.draw(canvas);
+            } else {
+                glassMenuRestRect.setEmpty();
+            }
         }
 
         if (blurredBackground && actionBarColor != Color.TRANSPARENT) {

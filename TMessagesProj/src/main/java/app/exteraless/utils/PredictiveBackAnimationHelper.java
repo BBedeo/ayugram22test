@@ -88,7 +88,7 @@ public final class PredictiveBackAnimationHelper {
             fragment = visible;
         }
         if (fragment instanceof ProfileActivity) {
-            return new ColorDrawable(Theme.getColor(Theme.key_windowBackgroundGray, fragment.getResourceProvider()));
+            return new ColorDrawable(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(fragment.getResourceProvider()));
         }
         final View view = fragment != null ? fragment.fragmentView : null;
         Drawable background = view != null ? view.getBackground() : null;
@@ -98,7 +98,7 @@ public final class PredictiveBackAnimationHelper {
         if (background != null) {
             return background;
         }
-        return new ColorDrawable(Theme.getColor(Theme.key_windowBackgroundGray, fragment != null ? fragment.getResourceProvider() : null));
+        return new ColorDrawable(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(fragment != null ? fragment.getResourceProvider() : null));
     }
 
     private float getYOffset(float currentHeight, float touchY) {
@@ -250,7 +250,9 @@ public final class PredictiveBackAnimationHelper {
     public void updateCommitProgress(float rawProgress) {
         final float t = Utilities.clamp01(rawProgress);
         final float interpolated = postCommitInterpolator.getInterpolation(t);
-        closingAlpha = Math.max(1.0f - 5.0f * t, 0.0f);
+        closingAlpha = app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome()
+                ? (t < 0.78f ? 1.0f : Math.max(1.0f - (t - 0.78f) * 4.5f, 0.0f))
+                : Math.max(1.0f - 5.0f * t, 0.0f);
         scrimAlphaMultiplier = 1.0f - t;
         interpolate(currentClosingRect, commitStartClosingRect, commitTargetClosingRect, interpolated);
         interpolate(currentEnteringRect, commitStartEnteringRect, commitTargetEnteringRect, interpolated);

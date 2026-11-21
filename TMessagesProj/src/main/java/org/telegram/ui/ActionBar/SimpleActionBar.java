@@ -387,6 +387,18 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     protected void dispatchDraw(@NonNull Canvas canvas) {
         animationsAllowed = attached;
 
+        if ((glassBack != null || glassMenu != null || glassTitle != null)
+                && app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome()) {
+            final int barBottom = Math.max(0, getHeight() - extraHeight);
+            final int barColor = app.exteraless.appearance.M3SurfaceHelper.getTopBarColor(resourcesProvider, true);
+            canvas.drawRect(0, 0, getWidth(), barBottom, Theme.fillingPaint(barColor));
+            glassBackRect.setEmpty();
+            glassDoneRect.setEmpty();
+            titlePillRect.setEmpty();
+            super.dispatchDraw(canvas);
+            return;
+        }
+
         final int p = dp(6);
         final boolean motionEnabled = app.exteraless.appearance.LiquidGlassTuning.motionEnabled();
 

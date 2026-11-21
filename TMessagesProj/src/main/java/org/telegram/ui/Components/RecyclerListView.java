@@ -3665,10 +3665,14 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     int getSectionColorForDecoration() {
-        return Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+        return app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourcesProvider);
     }
 
     int getSectionsBackgroundColorForDecoration() {
+        if (bitmapSectionsBackgroundColorKey == Theme.key_windowBackgroundGray
+                && app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
+            return app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(resourcesProvider);
+        }
         return ColorUtils.setAlphaComponent(Theme.getColor(bitmapSectionsBackgroundColorKey, resourcesProvider), 0xFF);
     }
 
@@ -3721,7 +3725,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                         if (!first && this.parent.useSegmentedSections()
                                 && this.parent.isViewTypeSection != null
                                 && this.parent.isViewTypeSection.run(adapter.getItemViewType(position - 1))) {
-                            outRect.top += dp(2);
+                            outRect.top += dp(app.exteraless.appearance.AppearanceConfig.segmentGapDp());
                         }
                     }
                 }
@@ -3766,9 +3770,9 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
      * наполовину рабочим: разделители пропадали, а строки оставались одной
      * общей карточкой.
      */
-    private boolean useSegmentedSections() {
+    boolean useSegmentedSections() {
         return segmentedSectionsEnabled
-                && sectionsItemDecoration != null
+                && (sectionsItemDecoration != null || bitmapSectionsItemDecoration != null)
                 && (app.exteraless.appearance.AppearanceConfig.dividerStyle()
                         == app.exteraless.appearance.AppearanceConfig.DIVIDER_SEGMENTS
                         || app.exteraless.appearance.M3ListItems.enabled());
@@ -3824,7 +3828,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     private boolean setSegmentedSectionRect(View child, RectF rect) {
-        if (child == null || sectionsItemDecoration == null) return false;
+        if (child == null || (sectionsItemDecoration == null && bitmapSectionsItemDecoration == null)) return false;
         float bottomMargin = 0;
         if (child instanceof JoinToSendSettingsView) {
             bottomMargin = ((JoinToSendSettingsView) child).getBottomInfoMargin();
@@ -3866,13 +3870,13 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     private void drawSegmentedSectionsBackgrounds(Canvas canvas) {
-        if (sectionsItemDecoration == null) return;
+        if (sectionsItemDecoration == null && bitmapSectionsItemDecoration == null) return;
         for (int i = 0; i < getChildCount(); ++i) {
             final View child = getChildAt(i);
             if (
                 child == emptyView ||
                 child.getVisibility() != View.VISIBLE || child.getAlpha() <= 0 ||
-                !sectionsItemDecoration.isSectionItem.run(child) ||
+                !isVisualSectionItem(child) ||
                 isInsideForcedSection(getChildAdapterPosition(child))
             ) continue;
             drawSegmentedSectionBackground(canvas, child);
@@ -3918,7 +3922,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         return false;
     }
     public void drawSectionsBackgrounds(Canvas canvas) {
-        if (drawSectionBackground == null || sectionsItemDecoration == null) return;
+        if (drawSectionBackground == null || (sectionsItemDecoration == null && bitmapSectionsItemDecoration == null)) return;
         drawSectionsBackgroundsInternal(canvas);
     }
 
@@ -3933,7 +3937,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 if (
                     child == emptyView ||
                     child.getVisibility() != View.VISIBLE || child.getAlpha() <= 0 ||
-                    !sectionsItemDecoration.isSectionItem.run(child)
+                    !isVisualSectionItem(child)
                 ) continue;
 
                 float from = top(child);
@@ -3982,7 +3986,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 if (
                     child == emptyView ||
                     child.getVisibility() != View.VISIBLE || child.getAlpha() <= 0 ||
-                    !sectionsItemDecoration.isSectionItem.run(child) ||
+                    !isVisualSectionItem(child) ||
                     isInsideForcedSection(getChildAdapterPosition(child))
                 ) {
                     drawSectionBackground(canvas, start, prev, hasAbove(start, startIndex), hasBelow(prev, prevIndex));
@@ -4041,17 +4045,33 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     private final static float[] radii = new float[8];
     public static void drawBackgroundRect(Canvas canvas, RectF rect, float topRadius, float bottomRadius, float alpha, Theme.ResourcesProvider resourcesProvider) {
         sectionBackgroundPaint.setShadowLayer(0, 0, 0, 0);
-        sectionBackgroundPaint.setColor(multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider), alpha));
+        sectionBackgroundPaint.setColor(multAlpha(app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourcesProvider), alpha));
+        final org.telegram.ui.Components.blur3.GlassOutlineStyle outline = org.telegram.ui.Components.blur3.GlassOutlineStyle.current();
+        final boolean drawSolidStroke = outline == org.telegram.ui.Components.blur3.GlassOutlineStyle.SOLID;
+        if (drawSolidStroke) {
+            sectionBackgroundStrokePaint.setStyle(Paint.Style.STROKE);
+            sectionBackgroundStrokePaint.setStrokeWidth(AndroidUtilities.dpf2(1f));
+            sectionBackgroundStrokePaint.setColor(multAlpha(app.exteraless.appearance.M3SurfaceHelper.getOutlineVariantColor(resourcesProvider), alpha));
+        }
         if (topRadius <= 0 && bottomRadius <= 0) {
             canvas.drawRect(rect, sectionBackgroundPaint);
+            if (drawSolidStroke) {
+                canvas.drawRect(rect, sectionBackgroundStrokePaint);
+            }
         } else if (topRadius == bottomRadius) {
             canvas.drawRoundRect(rect, topRadius, topRadius, sectionBackgroundPaint);
+            if (drawSolidStroke) {
+                canvas.drawRoundRect(rect, topRadius, topRadius, sectionBackgroundStrokePaint);
+            }
         } else {
             sectionBackgroundPath.rewind();
             radii[0] = radii[1] = radii[2] = radii[3] = topRadius;
             radii[4] = radii[5] = radii[6] = radii[7] = bottomRadius;
             sectionBackgroundPath.addRoundRect(rect, radii, Path.Direction.CW);
             canvas.drawPath(sectionBackgroundPath, sectionBackgroundPaint);
+            if (drawSolidStroke) {
+                canvas.drawPath(sectionBackgroundPath, sectionBackgroundStrokePaint);
+            }
         }
     }
     public void drawBackgroundRect(Canvas canvas, RectF rect, float topRadius, float bottomRadius, float alpha) {
@@ -4067,7 +4087,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     private void clipChild(Canvas canvas, View child) {
-        if (bitmapSectionsItemDecoration != null || child == null || !shouldClipChildToSection(child) || !sectionsItemDecoration.isSectionItem.run(child) || !isVisualSectionItem(child))
+        if ((bitmapSectionsItemDecoration != null && !useSegmentedSections()) || child == null || !shouldClipChildToSection(child) || !isVisualSectionItem(child))
             return;
         if (useSegmentedSections()) {
             clipChildWithSegmentedSection(canvas, child);
@@ -4305,7 +4325,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             Utilities.Callback5<Float, Float, Float, Float, Float> drawRoundRect
         ) {
             final float inner = Math.min(roundRadius, dp(4));
-            final float tolerance = dp(2) + CONNECT_TOLERANCE;
+            final float tolerance = dp(app.exteraless.appearance.AppearanceConfig.segmentGapDp()) + CONNECT_TOLERANCE;
             for (int i = 0; i < sections.size(); ++i) {
                 final Section section = sections.get(i);
                 if (section.alpha < 0.001f || section.to <= section.from) continue;

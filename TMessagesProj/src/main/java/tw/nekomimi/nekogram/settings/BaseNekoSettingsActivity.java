@@ -119,7 +119,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
     public View createView(Context context) {
         final boolean simpleHeaderGlass = useSimpleHeaderGlass();
         fragmentView = simpleHeaderGlass ? new SizeNotifierFrameLayout(context) : new BlurContentView(context);
-        fragmentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+        fragmentView.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(resourcesProvider));
         SizeNotifierFrameLayout frameLayout = (SizeNotifierFrameLayout) fragmentView;
 
         if (!simpleHeaderGlass && needActionBarBlur()) {

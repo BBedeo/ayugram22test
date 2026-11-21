@@ -352,7 +352,7 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
         listView = new RecyclerListView(context);
         if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
             listView.setSections();
-            listView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray, resourceProvider));
+            listView.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(resourceProvider));
         }
         searchListViewAdapter = new SearchAdapter(listView, context, ignoreUsers, selectedContacts, allowUsernameSearch, false, false, allowBots, allowSelf, true, 0, resourceProvider) {
             @Override
@@ -421,7 +421,11 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
             }
         };
         listView.setSections();
-        ThemeBind.backgroundColor(contentView, Theme.key_windowBackgroundGray, getResourceProvider());
+        if (app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
+            contentView.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(getResourceProvider()));
+        } else {
+            ThemeBind.backgroundColor(contentView, Theme.key_windowBackgroundGray, getResourceProvider());
+        }
 
         FlickerLoadingView flickerLoadingView = new FlickerLoadingView(context);
         flickerLoadingView.setViewType(FlickerLoadingView.PROFILE_SEARCH_CELL);

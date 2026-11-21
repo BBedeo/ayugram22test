@@ -25,24 +25,18 @@ public class BlurredBackgroundProviderImpl {
      * Role: 0 = surfaceContainerLow, 1 = surfaceContainer, 2 = surfaceContainerHigh.
      */
     private static int m3Surface(Theme.ResourcesProvider r, boolean isDark, int role) {
-        final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
-        final int m3Token;
-        final float weight;
         if (role == 0) {
-            m3Token = isDark ? 0xFF1D1B20 : 0xFFF7F2FA;
-            weight = isDark ? 0.55f : 0.45f;
+            return app.exteraless.appearance.M3SurfaceHelper.getMenuSurfaceColor(r);
         } else if (role == 2) {
-            m3Token = isDark ? 0xFF2B2930 : 0xFFECE6F0;
-            weight = isDark ? 0.72f : 0.65f;
-        } else {
-            m3Token = isDark ? 0xFF211F26 : 0xFFF3EDF7;
-            weight = isDark ? 0.65f : 0.55f;
+            return app.exteraless.appearance.M3SurfaceHelper.getSearchBarColor(r);
+        } else if (role == 3) {
+            return app.exteraless.appearance.M3SurfaceHelper.getTopBarColor(r, true);
         }
-        return ColorUtils.setAlphaComponent(ColorUtils.blendARGB(colorBg, m3Token, weight), 255);
+        return app.exteraless.appearance.M3SurfaceHelper.getNavBarColor(r);
     }
 
     private static int m3OutlineVariant(Theme.ResourcesProvider r, boolean isDark) {
-        return isDark ? 0xCC49454F : 0xB8CAC4D0;
+        return app.exteraless.appearance.M3SurfaceHelper.getOutlineVariantColor(r);
     }
 
     public static BlurredBackgroundProvider mainTabs(Theme.ResourcesProvider resourcesProvider) {
@@ -140,6 +134,37 @@ public class BlurredBackgroundProviderImpl {
                 }
                 return isDark ? 0 : 0x1E000000;
             })
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
+            .setShadowColor(0x20000000, 0x26000000)
+            .setShadowLayer(dpf2(4.0f), 0, dpf2(1.1f))
+            .setStrokeWidth(dpf2(0.45f), dpf2(0.45f))
+            .build();
+    }
+
+    /** Opaque M3 search pill ({@code surfaceContainerHigh}) when blur is disabled, crystal glass otherwise. */
+    public static BlurredBackgroundProvider dialogsSearchGlass(Theme.ResourcesProvider resourcesProvider) {
+        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+            .setBackgroundColor((r, isDark) -> {
+                final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
+                if (!checkBlurEnabled(r)) {
+                    return m3Surface(r, isDark, 2);
+                }
+                if (isHeaderLiquidShaderActive(r)) {
+                    final float baseAlpha = isDark ? 0.09f : 0.20f;
+                    final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, baseAlpha);
+                    final int crystalTarget = isDark
+                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.14f)
+                        : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.86f);
+                    final int a = MathUtils.clamp(Math.round(255f * alpha), isDark ? 12 : 20, isDark ? 72 : 112);
+                    return ColorUtils.setAlphaComponent(crystalTarget, a);
+                }
+                final float fallbackAlpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.56f : 0.68f);
+                final int frostedTarget = isDark ? colorTarget : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
+                return ColorUtils.setAlphaComponent(frostedTarget,
+                    MathUtils.clamp(Math.round(255f * fallbackAlpha), isDark ? 64 : 90, 220));
+            })
+            .setStrokeColorTop((r, isDark) -> isHeaderLiquidShaderActive(r) ? (isDark ? 0 : 0x0D000000) : (isDark ? 0 : 0x14000000))
+            .setStrokeColorBottom((r, isDark) -> isHeaderLiquidShaderActive(r) ? (isDark ? 0 : 0x16000000) : (isDark ? 0 : 0x1E000000))
             .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor(0x20000000, 0x26000000)
             .setShadowLayer(dpf2(4.0f), 0, dpf2(1.1f))

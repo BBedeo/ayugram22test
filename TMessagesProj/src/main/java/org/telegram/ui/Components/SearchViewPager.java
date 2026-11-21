@@ -319,6 +319,10 @@ public class SearchViewPager extends ViewPagerFixed implements FilteredSearchVie
         searchListView.setVerticalScrollbarPosition(LocaleController.isRTL ? RecyclerListView.SCROLLBAR_POSITION_LEFT : RecyclerListView.SCROLLBAR_POSITION_RIGHT);
         searchListView.setLayoutManager(searchLayoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         searchListView.setAnimateEmptyView(true, RecyclerListView.EMPTY_VIEW_ANIMATION_TYPE_ALPHA);
+        if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+            searchListView.setSections();
+            searchListView.setSectionsDrawBackground(true);
+        }
         searchListView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -405,6 +409,10 @@ public class SearchViewPager extends ViewPagerFixed implements FilteredSearchVie
         channelsSearchListView.setLayoutManager(channelsSearchLayoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         channelsSearchListView.setAnimateEmptyView(true, RecyclerListView.EMPTY_VIEW_ANIMATION_TYPE_ALPHA);
         channelsSearchListView.setClipToPadding(false);
+        if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+            channelsSearchListView.setSections();
+            channelsSearchListView.setSectionsDrawBackground(true);
+        }
 
         loadingView = new FlickerLoadingView(context);
         loadingView.setViewType(1);

@@ -51,13 +51,13 @@ public final class MainTabsUiHelper {
 
     /** M3 — 64dp, иначе высота из MainTabsHelper. */
     public static int getTabsViewHeightDp() {
-        return isMaterial3NavigationBar() ? 64 : MainTabsHelper.getMainTabsHeightWithMargins();
+        return isMaterial3NavigationBar() ? 72 : MainTabsHelper.getMainTabsHeightWithMargins();
     }
 
-    /** M3 — dp(64) плюс системный отступ снизу, иначе высота из MainTabsHelper. */
+    /** M3 — dp(72) плюс системный отступ снизу, иначе высота из MainTabsHelper. */
     public static int getTabsViewHeight(int bottomInset) {
         return isMaterial3NavigationBar()
-                ? AndroidUtilities.dp(64) + bottomInset
+                ? AndroidUtilities.dp(72) + bottomInset
                 : AndroidUtilities.dp(MainTabsHelper.getMainTabsHeightWithMargins());
     }
 
@@ -88,9 +88,9 @@ public final class MainTabsUiHelper {
         return isMaterial3NavigationBar() || isIosNavigationBar() ? LayoutHelper.MATCH_PARENT : MainTabsHelper.getTabsViewWidth();
     }
 
-    /** Сдвиг кнопки «написать» над панелью: в M3 всегда 64. */
+    /** Сдвиг кнопки «написать» над панелью: в M3 всегда 72. */
     public static int getTabsFabOffsetDp() {
-        return isMaterial3NavigationBar() ? 64 : MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin();
+        return isMaterial3NavigationBar() ? 72 : MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin();
     }
 
     /** В M3 и iOS-стиле панель во всю ширину (в M3 ещё и без внутренних отступов). */
@@ -145,7 +145,7 @@ public final class MainTabsUiHelper {
         final int top;
         if (isMaterial3NavigationBar()) {
             bottom = view.getMeasuredHeight();
-            top = bottom - AndroidUtilities.dp(64) - bottomInset;
+            top = bottom - AndroidUtilities.dp(72) - bottomInset;
         } else {
             bottom = view.getMeasuredHeight() - bottomInset - AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin());
             top = bottom - AndroidUtilities.dp(MainTabsHelper.getMainTabsHeight());
@@ -154,21 +154,22 @@ public final class MainTabsUiHelper {
     }
 
     public static void setMainTabSelectedIndicatorBounds(RectF rectF, float width, int height) {
-        final float w = Math.min(AndroidUtilities.dp(56), Math.max(0, width - AndroidUtilities.dp(4) * 2));
+        final float maxPillW = AndroidUtilities.dp(isMaterial3NavigationBar() ? 64 : 56);
+        final float w = Math.min(maxPillW, Math.max(0, width - AndroidUtilities.dp(4) * 2));
         final float h = Math.min(AndroidUtilities.dp(32), height);
         final float x = (width - w) / 2f;
         final float y = MainTabsHelper.isMainTabsHideTitleStyle()
                 ? (height - h) / 2f
-                : AndroidUtilities.dp(6);
+                : AndroidUtilities.dp(isMaterial3NavigationBar() ? 10 : 6);
         rectF.set(x, y, w + x, h + y);
     }
 
     public static int getMainTabSelectedIndicatorColor(int color, float factor) {
-        return Theme.multAlpha(color, factor * (isMaterial3NavigationBar() ? 0.20f : 0.125f));
+        return Theme.multAlpha(color, factor * (isMaterial3NavigationBar() ? 0.28f : 0.125f));
     }
 
     public static float getMaterial3MainTabIconTopDp() {
-        return 10.0f;
+        return 14.0f;
     }
 
     public static float getMaterial3MainTabAvatarTopDp() {
@@ -197,7 +198,7 @@ public final class MainTabsUiHelper {
         animator.setInterpolator(CubicBezierInterpolator.Emphasized);
         textView.setIncludeFontPadding(false);
         textView.setLetterSpacing(0.04166667f);
-        textView.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 16.0f, 49, 0.0f, 42.0f, 0.0f, 0.0f));
+        textView.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 16.0f, 49, 0.0f, 46.0f, 0.0f, 0.0f));
     }
 
     public static void setMaterial3MainTabSelected(BoolAnimator selected, BoolAnimator background, boolean value, boolean animated) {

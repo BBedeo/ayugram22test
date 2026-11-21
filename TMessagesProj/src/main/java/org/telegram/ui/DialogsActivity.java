@@ -686,6 +686,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         return !onlySelect && !inPreviewMode;
     }
 
+    private boolean isMaterial3OpaqueHeader() {
+        return app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome();
+    }
+
     private void updateDialogsTopFadeColor() {
         if (dialogsTopFadeView != null && dialogsTopFadeView.getBackground() instanceof BlurredBackgroundWithFadeDrawable) {
             ((BlurredBackgroundWithFadeDrawable) dialogsTopFadeView.getBackground())
@@ -965,10 +969,15 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 canvas.save();
 
                 final boolean headerGlass = shouldUseDialogsHeaderGlass();
+                final boolean m3Opaque = isMaterial3OpaqueHeader();
                 final boolean doNotClip = child == topPanelLayout || child == filterTabsView || child == dialogsTopFadeView
-                        || (headerGlass && (child instanceof ViewPage || child == searchViewPager));
+                        || (!m3Opaque && (headerGlass && (child instanceof ViewPage || child == searchViewPager)));
                 if (!doNotClip) {
-                    canvas.clipRect(0, -getY() + getActionBarTop() + getActionBarFullHeight(), getMeasuredWidth(), getMeasuredHeight());
+                    final float rawClipTop = -getY() + getActionBarTop() + getActionBarFullHeight();
+                    final float clipTop = m3Opaque
+                            ? Math.max(actionBar != null ? actionBar.getHeight() : 0, rawClipTop)
+                            : rawClipTop;
+                    canvas.clipRect(0, clipTop, getMeasuredWidth(), getMeasuredHeight());
                 }
                 if (slideFragmentProgress != 1f) {
                     if (slideFragmentLite) {
@@ -1021,6 +1030,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         @Override
         protected void dispatchDraw(Canvas canvas) {
             glassEngine.invalidate();
+            if (app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
+                canvas.drawColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(resourceProvider));
+            }
             if (invalidateScrollY && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment()) && progressToActionMode == 0) {
                 invalidateScrollY = false;
                 int firstItemPosition = hasHiddenArchive() && viewPages[0].dialogsType == DIALOGS_TYPE_DEFAULT ? 1 : 0;
@@ -1159,11 +1171,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             updateContextViewPosition();
             updateStoriesViewAlpha(storiesAlpha);
             if (dialogsTopFadeView != null) {
-                final float topFadeAlpha = shouldUseDialogsHeaderGlass()
+                final float topFadeAlpha = shouldUseDialogsHeaderGlass() && !isMaterial3OpaqueHeader()
                         ? (1f - Math.min(1f, progressToActionMode)) * (1f - Math.min(1f, getRightSlidingProgress()))
                         : 0f;
                 dialogsTopFadeView.setAlpha(topFadeAlpha);
                 dialogsTopFadeView.setVisibility(topFadeAlpha > 0.01f ? View.VISIBLE : View.GONE);
+            }
+            if (isMaterial3OpaqueHeader() && !inPreviewMode) {
+                final float rawHeaderBottom = -getY() + getActionBarTop() + getActionBarFullHeight();
+                final float m3HeaderBottom = Math.max(actionBar != null ? actionBar.getHeight() : 0, rawHeaderBottom);
+                if (m3HeaderBottom > 0) {
+                    final boolean scrolled = scrollYOffset < -dp(2) || searchAnimationProgress > 0f;
+                    final int m3HeaderColor = app.exteraless.appearance.M3SurfaceHelper.getTopBarColor(resourceProvider, scrolled);
+                    canvas.drawRect(0, 0, getMeasuredWidth(), m3HeaderBottom, Theme.fillingPaint(m3HeaderColor));
+                }
             }
             super.dispatchDraw(canvas);
             if (!shouldUseDialogsHeaderGlass() || progressToActionMode > 0f) {
@@ -5434,7 +5455,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 iBlur3FactoryLiquidGlass.create(
                     fragmentSearchField,
                     shouldUseDialogsHeaderGlass()
-                        ? BlurredBackgroundProviderImpl.dialogsHeaderGlass(resourceProvider)
+                        ? BlurredBackgroundProviderImpl.dialogsSearchGlass(resourceProvider)
                         : BlurredBackgroundProviderImpl.topPanel(resourceProvider))
                     .setHeaderGlassLens(shouldUseDialogsHeaderGlass()));
         }
@@ -6920,10 +6941,16 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         if (topBubblesFadeView != null) {
-            topBubblesFadeView.setTranslationY(fadeViewT - searchOffset);
-            final float s = lerp(dp(7), dp(50), Math.min(topPanelsVisibility, filtersTabVisibility));
-            topBubblesFadeView.setPosition(s, Math.min(dp(40), topPanelsHeight + filtersTabHeight - s));
-            topBubblesFadeView.setAlpha(Math.max(filtersTabVisibility, topPanelsVisibility));
+            if (isMaterial3OpaqueHeader()) {
+                topBubblesFadeView.setAlpha(0f);
+                topBubblesFadeView.setVisibility(View.GONE);
+            } else {
+                topBubblesFadeView.setVisibility(View.VISIBLE);
+                topBubblesFadeView.setTranslationY(fadeViewT - searchOffset);
+                final float s = lerp(dp(7), dp(50), Math.min(topPanelsVisibility, filtersTabVisibility));
+                topBubblesFadeView.setPosition(s, Math.min(dp(40), topPanelsHeight + filtersTabHeight - s));
+                topBubblesFadeView.setAlpha(Math.max(filtersTabVisibility, topPanelsVisibility));
+            }
         }
     }
 
@@ -7961,7 +7988,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             setDialogsListFrozen(true);
             viewPages[0].listView.setVerticalScrollBarEnabled(false);
             if (searchViewPager != null) {
-                ThemeBind.backgroundColor(searchViewPager, Theme.key_windowBackgroundWhite, getResourceProvider());
+                if (app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
+                    searchViewPager.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(getResourceProvider()));
+                } else {
+                    ThemeBind.backgroundColor(searchViewPager, Theme.key_windowBackgroundWhite, getResourceProvider());
+                }
             }
             searchAnimator = new AnimatorSet();
             ArrayList<Animator> animators = new ArrayList<>();

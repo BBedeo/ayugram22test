@@ -72,17 +72,39 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         if (pos < 0 || pos >= adapter.getItemCount()) {
             return false;
         }
+        if (adapter instanceof DialogsAdapter) {
+            return ((DialogsAdapter) adapter).isDialogPinnedAt(pos);
+        }
         final RecyclerView.ViewHolder vh = parent.findViewHolderForAdapterPosition(pos);
         if (vh != null && vh.itemView instanceof DialogCell) {
-            return ((DialogCell) vh.itemView).getIsPinned();
-        }
-        if (adapter instanceof DialogsAdapter) {
-            final Object item = ((DialogsAdapter) adapter).getItem(pos);
-            if (item instanceof TLRPC.Dialog) {
-                return ((TLRPC.Dialog) item).pinned;
-            }
+            return ((DialogCell) vh.itemView).getIsPinned() && !((DialogCell) vh.itemView).isFolderCell();
         }
         return fallback;
+    }
+
+    private static boolean isSameCluster(RecyclerView parent, RecyclerView.Adapter<?> adapter, int pos, int neighborPos, int currType, boolean currPinned, boolean currFolder) {
+        if (!isNeighborSameDialogType(adapter, neighborPos, currType)) {
+            return false;
+        }
+        final boolean neighborFolder = isPositionFolder(parent, adapter, neighborPos);
+        if (currFolder != neighborFolder) {
+            return false;
+        }
+        if (currFolder) {
+            return true;
+        }
+        return isNeighborPinned(parent, adapter, neighborPos, currPinned) == currPinned;
+    }
+
+    private static boolean isPositionFolder(RecyclerView parent, RecyclerView.Adapter<?> adapter, int pos) {
+        if (pos < 0 || pos >= adapter.getItemCount()) {
+            return false;
+        }
+        if (adapter instanceof DialogsAdapter) {
+            return ((DialogsAdapter) adapter).isDialogFolderAt(pos);
+        }
+        final RecyclerView.ViewHolder vh = parent.findViewHolderForAdapterPosition(pos);
+        return vh != null && vh.itemView instanceof DialogCell && ((DialogCell) vh.itemView).isFolderCell();
     }
 
     @Override
@@ -109,15 +131,21 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
             return;
         }
         final int currType = adapter.getItemViewType(pos);
-        final boolean currPinned = ((DialogCell) view).getIsPinned();
+        final DialogCell currCell = (DialogCell) view;
+        final boolean currFolder = adapter instanceof DialogsAdapter
+                ? ((DialogsAdapter) adapter).isDialogFolderAt(pos)
+                : currCell.isFolderCell();
+        final boolean currPinned = !currFolder && (adapter instanceof DialogsAdapter
+                ? ((DialogsAdapter) adapter).isDialogPinnedAt(pos)
+                : currCell.getIsPinned());
         final int gap = dp(AppearanceConfig.segmentGapDp());
         if (isNeighborSameDialogType(adapter, pos - 1, currType)) {
-            final boolean prevPinned = isNeighborPinned(parent, adapter, pos - 1, currPinned);
-            outRect.top = prevPinned != currPinned ? gap + dp(8) : gap;
+            final boolean sameCluster = isSameCluster(parent, adapter, pos, pos - 1, currType, currPinned, currFolder);
+            outRect.top = sameCluster ? gap : gap + dp(8);
         } else {
             outRect.top = dp(6);
         }
-        if (hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
+        if (!currFolder && hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
             outRect.top += dp(22);
         }
         if (pos == adapter.getItemCount() - 1) {
@@ -134,19 +162,19 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         if (adapter == null) {
             return;
         }
-        final int bgColor = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
+        final int bgColor = M3SurfaceHelper.getCanvasColor(resourcesProvider);
         bgPaint.setColor(bgColor);
         c.drawRect(0, 0, parent.getWidth(), parent.getHeight(), bgPaint);
 
-        final int cardColor = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+        final int cardColor = M3SurfaceHelper.getCardColor(resourcesProvider);
         cardPaint.setColor(cardColor);
-        final int pinnedOverlay = Theme.getColor(Theme.key_chats_pinnedOverlay, resourcesProvider);
-        pinnedPaint.setColor(pinnedOverlay);
+        final int pinnedColor = M3SurfaceHelper.getPinnedCardColor(resourcesProvider);
+        pinnedPaint.setColor(pinnedColor);
         final boolean isDark = Theme.isCurrentThemeDark();
         final GlassOutlineStyle outline = GlassOutlineStyle.current();
         if (outline == GlassOutlineStyle.SOLID) {
             borderPaint.setStrokeWidth(dp(1));
-            borderPaint.setColor(isDark ? 0xCC49454F : 0xB8CAC4D0);
+            borderPaint.setColor(M3SurfaceHelper.getOutlineVariantColor(resourcesProvider));
         } else if (outline == GlassOutlineStyle.HIDDEN) {
             borderPaint.setColor(0);
         } else {
@@ -155,7 +183,7 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         }
 
         final float outerR = dp(Math.max(4, AppearanceConfig.sectionRadius()));
-        final float innerR = dp(4);
+        final float innerR = Math.min(outerR, dp(4));
 
         final int count = parent.getChildCount();
         for (int i = 0; i < count; i++) {
@@ -169,12 +197,15 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
                 continue;
             }
             final int currType = adapter.getItemViewType(pos);
-            final boolean currPinned = cell.getIsPinned();
+            final boolean currFolder = adapter instanceof DialogsAdapter
+                    ? ((DialogsAdapter) adapter).isDialogFolderAt(pos)
+                    : cell.isFolderCell();
+            final boolean currPinned = !currFolder && (adapter instanceof DialogsAdapter
+                    ? ((DialogsAdapter) adapter).isDialogPinnedAt(pos)
+                    : cell.getIsPinned());
 
-            final boolean samePrev = isNeighborSameDialogType(adapter, pos - 1, currType);
-            final boolean sameNext = isNeighborSameDialogType(adapter, pos + 1, currType);
-            final boolean isFirst = !samePrev || isNeighborPinned(parent, adapter, pos - 1, currPinned) != currPinned;
-            final boolean isLast = !sameNext || isNeighborPinned(parent, adapter, pos + 1, currPinned) != currPinned;
+            final boolean isFirst = !isSameCluster(parent, adapter, pos, pos - 1, currType, currPinned, currFolder);
+            final boolean isLast = !isSameCluster(parent, adapter, pos, pos + 1, currType, currPinned, currFolder);
 
             final float topR = isFirst ? outerR : innerR;
             final float botR = isLast ? outerR : innerR;
@@ -187,14 +218,11 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
 
             cardPath.reset();
             cardPath.addRoundRect(cardRect, radii, Path.Direction.CW);
-            c.drawPath(cardPath, cardPaint);
-            if (currPinned && (pinnedOverlay >>> 24) > 0) {
-                c.drawPath(cardPath, pinnedPaint);
-            }
+            c.drawPath(cardPath, currPinned ? pinnedPaint : cardPaint);
             if (borderPaint.getColor() != 0) {
                 c.drawPath(cardPath, borderPaint);
             }
-            if (hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
+            if (!currFolder && hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
                 headerPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader, resourcesProvider));
                 final String title = currPinned
                         ? LocaleController.getString(R.string.PinnedMessages)

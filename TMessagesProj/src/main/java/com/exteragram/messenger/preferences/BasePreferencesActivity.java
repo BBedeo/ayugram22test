@@ -65,7 +65,7 @@ public abstract class BasePreferencesActivity extends BaseFragment {
         });
 
         final FrameLayout contentView = new FrameLayout(context);
-        contentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        contentView.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(getResourceProvider()));
 
         listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, this::onLongClick);
         listView.setSections();

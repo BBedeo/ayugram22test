@@ -536,7 +536,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         if (ElasticPillGesture.enabled()) {
             drawElasticGlassSelector(canvas);
             if (drawRefractedTabsContent(canvas)) {
-                if (drawTopDivider && MainTabsUiHelper.isMaterial3NavigationBar()) {
+                if (drawTopDivider && MainTabsUiHelper.isMaterial3NavigationBar()
+                        && !app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
                     dividerPaint.setColor(Theme.getDividerColor(resourcesProvider));
                     canvas.drawLine(0, 1, getMeasuredWidth(), 1, dividerPaint);
                 }
@@ -564,7 +565,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
         super.dispatchDraw(canvas);
 
-        if (drawTopDivider && MainTabsUiHelper.isMaterial3NavigationBar()) {
+        if (drawTopDivider && MainTabsUiHelper.isMaterial3NavigationBar()
+                && !app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
             dividerPaint.setColor(Theme.getDividerColor(resourcesProvider));
             canvas.drawLine(0, 1, getMeasuredWidth(), 1, dividerPaint);
         }

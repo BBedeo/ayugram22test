@@ -146,12 +146,24 @@ public class BitmapSectionsItemDecoration extends RecyclerView.ItemDecoration im
         if (position == RecyclerView.NO_POSITION) return;
         if (position == 0) outRect.top = enableTopPadding ? padding : AndroidUtilities.dp(4);
         if (position == adapter.getItemCount() - 1) outRect.bottom = padding;
+        if (position > 0 && parent.useSegmentedSections()
+                && isViewTypeSection != null
+                && isViewTypeSection.run(adapter.getItemViewType(position - 1))) {
+            outRect.top += AndroidUtilities.dp(app.exteraless.appearance.AppearanceConfig.segmentGapDp());
+        }
     }
 
     @Override
     public void onDraw(@NonNull Canvas canvas, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.State state) {
         if (recyclerView != parent) return;
         updateBackgroundColor();
+        if (parent.useSegmentedSections()) {
+            if (drawBackground) {
+                canvas.drawRect(0.0f, 0.0f, parent.getWidth(), parent.getHeight(), backgroundPaint);
+            }
+            parent.drawSectionsBackgrounds(canvas);
+            return;
+        }
         if (!drawBackground) {
             drawSectionsBackgrounds(canvas);
             return;
@@ -191,7 +203,11 @@ public class BitmapSectionsItemDecoration extends RecyclerView.ItemDecoration im
         try {
             canvas.clipRect(position);
             capturingSections = true;
-            drawSectionsBackgrounds(canvas);
+            if (parent.useSegmentedSections()) {
+                parent.drawSectionsBackgrounds(canvas);
+            } else {
+                drawSectionsBackgrounds(canvas);
+            }
         } finally {
             capturingSections = false;
             canvas.restore();
@@ -660,7 +676,7 @@ public class BitmapSectionsItemDecoration extends RecyclerView.ItemDecoration im
 
     @Override
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.State state) {
-        if (recyclerView != parent || radius <= 0.0f) return;
+        if (recyclerView != parent || radius <= 0.0f || parent.useSegmentedSections()) return;
         updateBackgroundColor();
         ensureBitmaps();
         collectingCornerVertices = drawBackground && drawingMode == RecyclerListView.SectionsDrawingMode.DRAW_VERTICES;

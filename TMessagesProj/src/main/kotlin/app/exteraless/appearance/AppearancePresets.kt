@@ -164,8 +164,8 @@ object AppearancePresets {
             glassLightAngle = 315,
             glassMotion = true,
             glassAdaptive = true,
-            glassOutlineStyle = 1,
-            glassMessageMenu = true,
+            glassOutlineStyle = 2,
+            glassMessageMenu = false,
             disableAvatarBlur = false,
             iosNavigationBarStyle = false,
             iosChatHeader = false,
@@ -177,7 +177,7 @@ object AppearancePresets {
             gooeyAvatarAnimation = false,
             dismissMenuOnDragOut = null,
             backAnimationStyle = null,
-            sectionRadius = 18,
+            sectionRadius = 16,
             separateHeaders = true,
             dividerStyle = AppearanceConfig.DIVIDER_SEGMENTS,
             newLoadingStyle = true,
@@ -354,6 +354,9 @@ object AppearancePresets {
             AppearanceConfig.md3Player.Bool() == spec.md3Player &&
             AppearanceConfig.md3MiniPlayer.Bool() == spec.md3MiniPlayer &&
             NaConfig.sliderStyle.Int() == spec.sliderStyle &&
-            NaConfig.switchStyle.Int() == spec.switchStyle
+            NaConfig.switchStyle.Int() == spec.switchStyle &&
+            (spec.id != PRESET_MATERIAL3 ||
+                (!LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR) &&
+                 !LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS)))
     }
 }

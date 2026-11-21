@@ -1861,6 +1861,22 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
         return 0;
     }
 
+    public boolean isDialogPinnedAt(int position) {
+        if (position < 0 || position >= itemInternals.size()) {
+            return false;
+        }
+        final ItemInternal item = itemInternals.get(position);
+        return item.viewType == VIEW_TYPE_DIALOG && !item.isFolder && item.pinned;
+    }
+
+    public boolean isDialogFolderAt(int position) {
+        if (position < 0 || position >= itemInternals.size()) {
+            return false;
+        }
+        final ItemInternal item = itemInternals.get(position);
+        return item.viewType == VIEW_TYPE_DIALOG && item.isFolder;
+    }
+
     protected boolean showOpenBotButton() {
         return false;
     }
