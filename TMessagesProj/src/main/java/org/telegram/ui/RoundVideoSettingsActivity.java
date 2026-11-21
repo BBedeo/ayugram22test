@@ -137,9 +137,16 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             showChoice(
                     R.string.RoundVideoFrameRate,
                     new CharSequence[]{"30 FPS", "60 FPS"},
-                    index -> SharedSettings.roundVideoFrameRate.set(index == 0
-                            ? RoundVideoSession.FrameRate.FPS_30
-                            : RoundVideoSession.FrameRate.FPS_60)
+                    index -> {
+                        // Also sync the exteraGram "extended FPS range" toggle: the recording
+                        // pipeline (InstantCameraView, Camera2Session, CameraXSession,
+                        // InstantCameraView2) only reads that flag, so without this sync the
+                        // 60 FPS choice here had no effect.
+                        SharedSettings.roundVideoFrameRate.set(index == 0
+                                ? RoundVideoSession.FrameRate.FPS_30
+                                : RoundVideoSession.FrameRate.FPS_60);
+                        app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.setConfigBool(index != 0);
+                    }
             );
         } else if (position == ROW_BITRATE) {
             CharSequence[] labels = new CharSequence[BITRATES.length];
@@ -282,7 +289,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                 } else if (position == ROW_FRAME_RATE) {
                     cell.setTextAndValue(
                             LocaleController.getString(R.string.RoundVideoFrameRate),
-                            SharedSettings.roundVideoFrameRate.get().getValue() + " FPS",
+                            SharedSettings.isRoundVideo60FpsRequested() ? "60 FPS" : "30 FPS",
                             true
                     );
                 } else {
