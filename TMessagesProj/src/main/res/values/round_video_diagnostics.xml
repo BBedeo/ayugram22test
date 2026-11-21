@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="RoundVideoDiagnostics">Camera diagnostics</string>
-    <string name="RoundVideoDiagnosticsValue">Check 60 FPS support</string>
+    <string name="RoundVideoDiagnosticsValue">FPS, lenses &amp; stabilization</string>
 </resources>

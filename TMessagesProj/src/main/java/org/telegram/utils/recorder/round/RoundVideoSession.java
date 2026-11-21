@@ -72,8 +72,12 @@ public final class RoundVideoSession {
     public enum FrameRate {
         /** Records at 30 frames per second. */
         FPS_30(30),
-        /** Requests 60 fps through regular AE ranges and falls back when either camera lacks it. */
-        FPS_60(60);
+        /** Requests 60 fps through regular or high-speed ranges and falls back cleanly. */
+        FPS_60(60),
+        /** Requests 120 fps through high-speed or AE ranges and falls back to 60/30 fps. */
+        FPS_120(120),
+        /** Requests the maximum supported frame rate per camera (up to 120 fps). */
+        FPS_MAX(120);
 
         private final int value;
 
@@ -84,6 +88,11 @@ public final class RoundVideoSession {
         /** Returns the requested frames per second. */
         public int getValue() {
             return value;
+        }
+
+        /** Returns whether per-camera auto maximum frame rate was requested. */
+        public boolean isMaxAuto() {
+            return this == FPS_MAX;
         }
     }
 
@@ -403,7 +412,9 @@ public final class RoundVideoSession {
         private final FrameRate requestedFrameRate;
         private final FrameRate activeFrameRate;
         private final FlashType flashType;
+        private final float minimumZoomRatio;
         private final float maximumZoomRatio;
+        private final boolean ultrawideAvailable;
 
         private CameraCapabilities(
                 CameraFacing requestedFacing,
@@ -413,7 +424,9 @@ public final class RoundVideoSession {
                 FrameRate requestedFrameRate,
                 FrameRate activeFrameRate,
                 FlashType flashType,
-                float maximumZoomRatio
+                float minimumZoomRatio,
+                float maximumZoomRatio,
+                boolean ultrawideAvailable
         ) {
             this.requestedFacing = requestedFacing;
             this.activeFacing = activeFacing;
@@ -422,7 +435,9 @@ public final class RoundVideoSession {
             this.requestedFrameRate = requestedFrameRate;
             this.activeFrameRate = activeFrameRate;
             this.flashType = flashType;
+            this.minimumZoomRatio = minimumZoomRatio;
             this.maximumZoomRatio = maximumZoomRatio;
+            this.ultrawideAvailable = ultrawideAvailable;
         }
 
         /** Returns the camera requested for the current or next segment. */
@@ -446,11 +461,19 @@ public final class RoundVideoSession {
         /** Returns the flash implementation available for the configured camera. */
         public @NonNull FlashType getFlashType() { return flashType; }
 
+        /** Returns the minimum zoom ratio supported by the active camera (e.g. 0.5f for ultrawide). */
+        public float getMinimumZoomRatio() { return minimumZoomRatio; }
+
         /** Returns the maximum zoom ratio exposed by the normalized zoom control. */
         public float getMaximumZoomRatio() { return maximumZoomRatio; }
 
-        /** Returns whether the configured camera supports zoom. */
-        public boolean isZoomSupported() { return maximumZoomRatio > 1f; }
+        /** Returns whether an ultrawide lens or < 1.0x zoom ratio is available on this camera. */
+        public boolean isUltrawideAvailable() { return ultrawideAvailable; }
+
+        /** Returns whether the configured camera supports zoom or ultrawide lens switching. */
+        public boolean isZoomSupported() {
+            return maximumZoomRatio > 1f || minimumZoomRatio < 1f || ultrawideAvailable;
+        }
     }
 
     /** Immutable description of the completed output file. */
@@ -525,8 +548,11 @@ public final class RoundVideoSession {
     private CameraResolution activeCameraResolution;
     private FrameRate activeFrameRate;
     private FlashType flashType = FlashType.NONE;
+    private float minimumZoomRatio = 1f;
     private float maximumZoomRatio = 1f;
+    private boolean ultrawideAvailable;
     private float zoomProgress;
+    private float zoomRatio = 1f;
     private boolean flashEnabled;
     private boolean screenFlashEnabled;
     private boolean cameraSwitching;
@@ -747,7 +773,26 @@ public final class RoundVideoSession {
         requireMainThread();
         if (state != State.RECORDING || cameraSwitching) return false;
         zoomProgress = clamp(progress, 0f, 1f);
+        zoomRatio = 1f + zoomProgress * (maximumZoomRatio - 1f);
         return cameraController.setZoom(zoomProgress);
+    }
+
+    /** Applies an explicit zoom ratio (e.g. 0.5f ultrawide, 1f wide, 2f tele) with seamless lens switching. */
+    @MainThread
+    public boolean setZoomRatio(float ratio) {
+        requireMainThread();
+        if (state != State.RECORDING || cameraSwitching) return false;
+        float minZoom = ultrawideAvailable && minimumZoomRatio >= 0.95f ? 0.5f : minimumZoomRatio;
+        zoomRatio = clamp(ratio, minZoom, maximumZoomRatio);
+        zoomProgress = maximumZoomRatio <= 1f
+                ? 0f
+                : clamp((zoomRatio - 1f) / (maximumZoomRatio - 1f), 0f, 1f);
+        return cameraController.setZoomRatio(zoomRatio);
+    }
+
+    /** Returns the currently requested zoom ratio. */
+    public float getZoomRatio() {
+        return zoomRatio;
     }
 
     /** Enables the rear torch or requests front-camera screen flash. */
@@ -935,7 +980,9 @@ public final class RoundVideoSession {
         activeFacing = info.facing;
         activeCameraResolution = info.cameraResolution;
         activeFrameRate = info.frameRate;
+        minimumZoomRatio = info.minimumZoomRatio;
         maximumZoomRatio = info.maximumZoomRatio;
+        ultrawideAvailable = info.ultrawideAvailable;
         flashType = info.facing == CameraFacing.FRONT
                 ? screenFlashController == null ? FlashType.NONE : FlashType.SCREEN
                 : info.torchAvailable ? FlashType.TORCH : FlashType.NONE;
@@ -945,7 +992,9 @@ public final class RoundVideoSession {
                 + ", preview=" + info.previewSize
                 + ", recording=" + info.recordingSize
                 + ", fps=" + info.frameRate.getValue()
+                + ", minZoom=" + minimumZoomRatio
                 + ", maxZoom=" + maximumZoomRatio
+                + ", ultrawide=" + ultrawideAvailable
                 + ", flash=" + flashType
                 + ", switch=" + cameraSwitch);
         if (cameraSwitch || cameraSwitching) {
@@ -1420,12 +1469,15 @@ public final class RoundVideoSession {
                 requestedFrameRate,
                 activeFrameRate,
                 flashType,
-                maximumZoomRatio
+                minimumZoomRatio,
+                maximumZoomRatio,
+                ultrawideAvailable
         ));
     }
 
     private void disableCameraEffects() {
         zoomProgress = 0f;
+        zoomRatio = 1f;
         flashEnabled = false;
         cameraController.setZoom(0f);
         cameraController.setTorchEnabled(false);

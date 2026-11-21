@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="nkmrcfg.xml" />
+        <include domain="sharedpref" path="mainconfig.xml" />
+        <include domain="sharedpref" path="exteraconfig.xml" />
+        <include domain="sharedpref" path="pillstackconfig.xml" />
+        <include domain="sharedpref" path="exfullgram_account_profiles_meta.xml" />
+        <include domain="sharedpref" path="exfullgram_account_profiles_template.xml" />
+        <include domain="sharedpref" path="saved_tokens.xml" />
+        <include domain="sharedpref" path="saved_tokens_login.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="nkmrcfg.xml" />
+        <include domain="sharedpref" path="mainconfig.xml" />
+        <include domain="sharedpref" path="exteraconfig.xml" />
+        <include domain="sharedpref" path="pillstackconfig.xml" />
+        <include domain="sharedpref" path="exfullgram_account_profiles_meta.xml" />
+        <include domain="sharedpref" path="exfullgram_account_profiles_template.xml" />
+        <include domain="sharedpref" path="saved_tokens.xml" />
+        <include domain="sharedpref" path="saved_tokens_login.xml" />
+    </device-transfer>
+</data-extraction-rules>

@@ -3,7 +3,11 @@ package org.telegram.ui;
 import android.content.Context;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.params.StreamConfigurationMap;
+import android.os.Build;
 import android.util.Range;
+import android.util.Size;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -56,7 +60,9 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             750_000,
             1_000_000,
             1_200_000,
-            2_000_000
+            2_000_000,
+            3_000_000,
+            4_000_000
     };
 
     private RecyclerListView listView;
@@ -145,21 +151,26 @@ public class RoundVideoSettingsActivity extends BaseFragment {
         } else if (position == ROW_FRAME_RATE) {
             showChoice(
                     R.string.RoundVideoFrameRate,
-                    new CharSequence[]{"30 FPS", "60 FPS"},
+                    new CharSequence[]{"30 FPS", "60 FPS", "120 FPS", "Max (Auto)"},
                     index -> {
-                        // Also sync the exteraGram "extended FPS range" toggle: the recording
-                        // pipeline (InstantCameraView, Camera2Session, CameraXSession,
-                        // InstantCameraView2) only reads that flag, so without this sync the
-                        // 60 FPS choice here had no effect.
-                        SharedSettings.roundVideoFrameRate.set(index == 0
-                                ? RoundVideoSession.FrameRate.FPS_30
-                                : RoundVideoSession.FrameRate.FPS_60);
+                        RoundVideoSession.FrameRate rate;
+                        if (index == 0) {
+                            rate = RoundVideoSession.FrameRate.FPS_30;
+                        } else if (index == 1) {
+                            rate = RoundVideoSession.FrameRate.FPS_60;
+                        } else if (index == 2) {
+                            rate = RoundVideoSession.FrameRate.FPS_120;
+                        } else {
+                            rate = RoundVideoSession.FrameRate.FPS_MAX;
+                        }
+                        SharedSettings.roundVideoFrameRate.set(rate);
                         app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.setConfigBool(index != 0);
                     }
             );
         } else if (position == ROW_BITRATE) {
-            CharSequence[] labels = new CharSequence[BITRATES.length];
-            for (int i = 0; i < (BITRATES.length - (BuildVars.DEBUG_PRIVATE_VERSION ? 0 : 1)); i++) {
+            int count = BITRATES.length - (BuildVars.DEBUG_PRIVATE_VERSION ? 0 : 1);
+            CharSequence[] labels = new CharSequence[count];
+            for (int i = 0; i < count; i++) {
                 labels[i] = formatBitrate(BITRATES[i]);
             }
             showChoice(
@@ -186,27 +197,71 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                         continue;
                     }
                     found = true;
-                    text.append(facing == CameraCharacteristics.LENS_FACING_FRONT ? "Front camera:\n" : "Back camera:\n");
+                    text.append(facing == CameraCharacteristics.LENS_FACING_FRONT ? "Front" : "Back")
+                            .append(" camera (id=").append(id).append("):\n");
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        java.util.Set<String> physicalIds = characteristics.getPhysicalCameraIds();
+                        if (physicalIds != null && !physicalIds.isEmpty()) {
+                            text.append("Physical IDs: ").append(physicalIds).append('\n');
+                        }
+                    }
+                    float[] focals = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                    if (focals != null && focals.length > 0) {
+                        text.append("Focal mm: ").append(java.util.Arrays.toString(focals)).append('\n');
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        Range<Float> zoomRange = characteristics.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE);
+                        if (zoomRange != null) {
+                            text.append("Zoom range: [").append(zoomRange.getLower())
+                                    .append(", ").append(zoomRange.getUpper()).append("]\n");
+                        }
+                    }
                     Range<Integer>[] fpsRanges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
                     int maxUpper = 0;
                     if (fpsRanges != null) {
+                        text.append("AE FPS: ");
                         for (Range<Integer> range : fpsRanges) {
                             text.append('[').append(range.getLower()).append(',').append(range.getUpper()).append("] ");
                             maxUpper = Math.max(maxUpper, range.getUpper());
                         }
+                        text.append('\n');
                     }
-                    text.append("\n60 FPS: ").append(maxUpper >= 60 ? "YES" : "NO (max " + maxUpper + " fps)");
-                    android.hardware.camera2.params.StreamConfigurationMap streamMap =
+                    StreamConfigurationMap streamMap =
                             characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
                     Range<Integer>[] highSpeed = streamMap != null ? streamMap.getHighSpeedVideoFpsRanges() : null;
+                    int maxHighSpeed = 0;
                     if (highSpeed != null && highSpeed.length > 0) {
-                        text.append("\nHigh speed: ");
+                        text.append("High speed: ");
                         for (Range<Integer> range : highSpeed) {
                             text.append('[').append(range.getLower()).append(',').append(range.getUpper()).append("] ");
+                            maxHighSpeed = Math.max(maxHighSpeed, range.getUpper());
                         }
+                        Size[] hsSizes = streamMap.getHighSpeedVideoSizes();
+                        if (hsSizes != null && hsSizes.length > 0) {
+                            text.append("\nHS sizes: ").append(java.util.Arrays.toString(hsSizes));
+                        }
+                        text.append('\n');
+                    }
+                    int effectiveMax = Math.max(maxUpper, maxHighSpeed);
+                    text.append("Max hardware FPS: ").append(effectiveMax).append(" fps");
+                    int[] ois = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION);
+                    int[] eis = characteristics.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES);
+                    text.append("\nStab: OIS=")
+                            .append(containsInt(ois, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON))
+                            .append(", EIS=")
+                            .append(containsInt(eis, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON));
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        text.append(", PreviewEIS=")
+                                .append(containsInt(eis, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_PREVIEW_STABILIZATION));
                     }
                     text.append("\n\n");
                 } catch (Exception ignored) {
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                java.util.Set<java.util.Set<String>> concurrent = manager.getConcurrentCameraIds();
+                if (concurrent != null && !concurrent.isEmpty()) {
+                    text.append("Concurrent sets: ").append(concurrent).append('\n');
                 }
             }
         } catch (Throwable e) {
@@ -244,6 +299,25 @@ public class RoundVideoSettingsActivity extends BaseFragment {
 
     private interface ChoiceHandler {
         void onChoice(int index);
+    }
+
+    private static boolean containsInt(int[] values, int target) {
+        if (values == null) return false;
+        for (int v : values) {
+            if (v == target) return true;
+        }
+        return false;
+    }
+
+    private static String frameRateLabel(RoundVideoSession.FrameRate rate) {
+        if (rate == RoundVideoSession.FrameRate.FPS_120) {
+            return "120 FPS";
+        } else if (rate == RoundVideoSession.FrameRate.FPS_MAX) {
+            return "Max (Auto)";
+        } else if (rate == RoundVideoSession.FrameRate.FPS_60 || SharedSettings.isRoundVideo60FpsRequested()) {
+            return "60 FPS";
+        }
+        return "30 FPS";
     }
 
     private static String cameraResolutionLabel(RoundVideoSession.CameraResolution resolution) {
@@ -347,7 +421,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                 } else if (position == ROW_FRAME_RATE) {
                     cell.setTextAndValue(
                             LocaleController.getString(R.string.RoundVideoFrameRate),
-                            SharedSettings.isRoundVideo60FpsRequested() ? "60 FPS" : "30 FPS",
+                            frameRateLabel(SharedSettings.getRequestedRoundVideoFrameRate()),
                             true
                     );
                 } else if (position == ROW_DIAGNOSTICS) {

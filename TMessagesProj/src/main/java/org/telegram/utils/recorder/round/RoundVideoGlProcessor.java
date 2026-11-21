@@ -60,8 +60,14 @@ final class RoundVideoGlProcessor {
     private boolean secondaryTimestampRealtime;
     private volatile long presentationTimeOriginNs;
     private volatile int highSpeedFrameDivisor = 1;
+    private volatile int targetOutputFps = 30;
     private long highSpeedFrameCounter;
     private long droppedHighSpeedFrames;
+    private long lastCameraFrameIntervalNs;
+    private long lastRealCameraTimestampNs;
+    private int pacedFramesSinceReal;
+    private int lastCameraTexture;
+    private final float[] lastCameraMatrix = new float[16];
     private volatile long presentationTimeLimitNs = Long.MAX_VALUE;
     private final FrameTimingListener frameTimingListener;
     private final ErrorListener errorListener;
@@ -131,6 +137,7 @@ final class RoundVideoGlProcessor {
     private volatile RuntimeException initializationError;
 
     private final Runnable switchFrameRunnable = this::drawSwitchFrame;
+    private final Runnable pacedFrameRunnable = this::drawPacedFrame;
 
     RoundVideoGlProcessor(
             @NonNull Size inputSize,
@@ -249,6 +256,7 @@ final class RoundVideoGlProcessor {
         HandlerThread currentThread = thread;
         if (currentHandler != null) {
             currentHandler.removeCallbacks(switchFrameRunnable);
+            currentHandler.removeCallbacks(pacedFrameRunnable);
         }
         handler = null;
         thread = null;
@@ -313,6 +321,8 @@ final class RoundVideoGlProcessor {
                 overlayRenderer.updateInputConfiguration(inputSize, sourceCropSize);
             }
             firstCameraTimestamp = -1;
+            lastRealCameraTimestampNs = 0;
+            pacedFramesSinceReal = 0;
             dualSwitchFrameListener = firstSelectedFrameListener;
             diagnostics.log("GL dual input selected: input=" + (secondary ? 1 : 0));
         });
@@ -347,6 +357,9 @@ final class RoundVideoGlProcessor {
                     + ", revealMs="
                     + (switchCrossfadeDurationNs + switchUnblurDurationNs) / 1_000_000L);
             firstCameraTimestamp = -1;
+            lastRealCameraTimestampNs = 0;
+            pacedFramesSinceReal = 0;
+            currentHandler.removeCallbacks(pacedFrameRunnable);
             currentHandler.removeCallbacks(switchFrameRunnable);
             currentHandler.post(switchFrameRunnable);
         });
@@ -372,6 +385,9 @@ final class RoundVideoGlProcessor {
         }
         presentationTimeOriginNs = timeOriginNs;
         firstCameraTimestamp = -1;
+        lastRealCameraTimestampNs = 0;
+        lastCameraFrameIntervalNs = 0;
+        pacedFramesSinceReal = 0;
         firstPresentationTime = 0;
         lastPresentationTime = -1;
         presentationTimeLimitNs = Long.MAX_VALUE;
@@ -383,6 +399,7 @@ final class RoundVideoGlProcessor {
         Handler currentHandler = handler;
         if (currentHandler != null) {
             currentHandler.removeCallbacks(switchFrameRunnable);
+            currentHandler.removeCallbacks(pacedFrameRunnable);
         }
     }
 
@@ -664,6 +681,10 @@ final class RoundVideoGlProcessor {
                         + ", elapsedMs=" + elapsedMs(glStartedNs));
             }
             if (secondary != secondaryInputActive) return;
+            Handler currentHandler = handler;
+            if (currentHandler != null) {
+                currentHandler.removeCallbacks(pacedFrameRunnable);
+            }
             if (!recordingStarted) {
                 renderPreviewAndNotify(cameraTexture, matrix);
                 Runnable listener = firstFrameListener;
@@ -764,9 +785,27 @@ final class RoundVideoGlProcessor {
                     return;
                 }
             }
-            long presentationTime = getCameraPresentationTime(timestamp) / highSpeedFrameDivisor;
+            long presentationTime = getCameraPresentationTime(timestamp);
             if (presentationTime < presentationTimeLimitNs) {
                 submitFrame(presentationTime);
+            }
+            if (highSpeedFrameDivisor <= 1 && targetOutputFps >= 60 && timestamp > 0) {
+                if (lastRealCameraTimestampNs > 0) {
+                    long deltaNs = timestamp - lastRealCameraTimestampNs;
+                    if (deltaNs > 5_000_000L && deltaNs < 200_000_000L) {
+                        lastCameraFrameIntervalNs = lastCameraFrameIntervalNs == 0
+                                ? deltaNs
+                                : (lastCameraFrameIntervalNs * 3L + deltaNs) / 4L;
+                    }
+                }
+                lastRealCameraTimestampNs = timestamp;
+                lastCameraTexture = cameraTexture;
+                System.arraycopy(matrix, 0, lastCameraMatrix, 0, 16);
+                pacedFramesSinceReal = 0;
+                long targetStepNs = 1_000_000_000L / targetOutputFps;
+                if (currentHandler != null && lastCameraFrameIntervalNs > (long) (targetStepNs * 1.45f)) {
+                    currentHandler.postDelayed(pacedFrameRunnable, Math.max(8L, 1000L / targetOutputFps));
+                }
             }
             renderPreviewAndNotify(cameraTexture, matrix);
         } catch (RuntimeException e) {
@@ -908,6 +947,49 @@ final class RoundVideoGlProcessor {
     public void setHighSpeedFrameDivisor(int divisor) {
         highSpeedFrameDivisor = Math.max(1, divisor);
         highSpeedFrameCounter = 0;
+    }
+
+    public void setTargetOutputFps(int fps) {
+        targetOutputFps = Math.max(30, fps);
+    }
+
+    private void drawPacedFrame() {
+        if (!started
+                || !recordingStarted
+                || switchState != SWITCH_NONE
+                || !hasCameraFrame
+                || overlayRenderer == null
+                || highSpeedFrameDivisor > 1
+                || targetOutputFps < 60
+                || lastCameraTexture == 0
+                || pacedFramesSinceReal >= 2) {
+            return;
+        }
+        try {
+            long stepNs = 1_000_000_000L / targetOutputFps;
+            long presentationTime = Math.max(lastPresentationTime + stepNs, getRealtimePresentationTime());
+            if (presentationTime >= presentationTimeLimitNs) {
+                return;
+            }
+            overlayRenderer.render(
+                    lastCameraTexture,
+                    lastCameraMatrix,
+                    SystemClock.elapsedRealtimeNanos(),
+                    outputWidth,
+                    outputHeight
+            );
+            submitFrame(presentationTime);
+            pacedFramesSinceReal++;
+            int extraNeeded = lastCameraFrameIntervalNs > 0
+                    ? Math.min(2, Math.round(lastCameraFrameIntervalNs / (float) stepNs) - 1)
+                    : 0;
+            Handler currentHandler = handler;
+            if (currentHandler != null && pacedFramesSinceReal < extraNeeded) {
+                currentHandler.postDelayed(pacedFrameRunnable, Math.max(8L, 1000L / targetOutputFps));
+            }
+        } catch (RuntimeException e) {
+            reportError(e);
+        }
     }
 
     private long getCameraPresentationTime(long cameraTimestamp) {

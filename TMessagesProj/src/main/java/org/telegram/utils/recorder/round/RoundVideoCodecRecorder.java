@@ -40,7 +40,7 @@ final class RoundVideoCodecRecorder implements RoundVideoGlProcessor.FrameTiming
     private final long timelineOffsetUs;
     private final int outputSize;
     private final int videoBitrate;
-    private final int videoFrameRate;
+    private int videoFrameRate;
     private final RoundVideoDiagnostics diagnostics;
     private final ErrorListener errorListener;
     private final ErrorListener segmentRejectedListener;
@@ -303,23 +303,42 @@ final class RoundVideoCodecRecorder implements RoundVideoGlProcessor.FrameTiming
     }
 
     private void createVideoEncoder() throws IOException {
-        MediaFormat format = createVideoEncoderFormat(outputSize, videoBitrate, videoFrameRate);
+        int targetFps = videoFrameRate;
+        MediaFormat format = createVideoEncoderFormat(outputSize, videoBitrate, targetFps);
         videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         MediaCodecInfo.VideoCapabilities capabilities = videoCodec.getCodecInfo()
                 .getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC)
                 .getVideoCapabilities();
-        if (!capabilities.isSizeSupported(outputSize, outputSize)
-                || !capabilities.areSizeAndRateSupported(
-                outputSize,
-                outputSize,
-                videoFrameRate
-        )) {
-            throw new IOException("Video encoder does not support "
-                    + outputSize + "x" + outputSize + " at " + videoFrameRate + " fps");
+        if (!capabilities.isSizeSupported(outputSize, outputSize)) {
+            throw new IOException("Video encoder does not support " + outputSize + "x" + outputSize);
+        }
+        if (!capabilities.areSizeAndRateSupported(outputSize, outputSize, targetFps)) {
+            if (targetFps > 60 && capabilities.areSizeAndRateSupported(outputSize, outputSize, 60)) {
+                diagnostics.log("video encoder fallback: " + targetFps + " fps unsupported, using 60 fps");
+                targetFps = 60;
+                videoFrameRate = 60;
+                format = createVideoEncoderFormat(outputSize, videoBitrate, targetFps);
+            } else {
+                throw new IOException("Video encoder does not support "
+                        + outputSize + "x" + outputSize + " at " + targetFps + " fps");
+            }
         }
         diagnostics.log("video encoder configure: codec=" + videoCodec.getName()
                 + ", format=" + format);
-        videoCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        try {
+            videoCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        } catch (MediaCodec.CodecException | IllegalArgumentException e) {
+            if (targetFps > 60) {
+                diagnostics.log("video encoder configure failed at " + targetFps + " fps (" + e + "); retrying at 60 fps");
+                videoCodec.release();
+                videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+                videoFrameRate = 60;
+                format = createVideoEncoderFormat(outputSize, videoBitrate, 60);
+                videoCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            } else {
+                throw e;
+            }
+        }
         videoInputSurface = videoCodec.createInputSurface();
     }
 

@@ -10,7 +10,17 @@ public class BackupAgent extends BackupAgentHelper {
 
     @Override
     public void onCreate() {
-        SharedPreferencesBackupHelper helper = new SharedPreferencesBackupHelper(this, "saved_tokens", "saved_tokens_login");
+        SharedPreferencesBackupHelper helper = new SharedPreferencesBackupHelper(
+                this,
+                "saved_tokens",
+                "saved_tokens_login",
+                "nkmrcfg",
+                "mainconfig",
+                "exteraconfig",
+                "pillstackconfig",
+                "exfullgram_account_profiles_meta",
+                "exfullgram_account_profiles_template"
+        );
         addHelper("prefs", helper);
     }
 

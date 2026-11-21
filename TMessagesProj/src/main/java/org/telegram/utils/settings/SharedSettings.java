@@ -44,8 +44,19 @@ public final class SharedSettings {
      * flags, but reading the combined state is useful: it also covers the standalone exteraGram toggle.
      */
     public static boolean isRoundVideo60FpsRequested() {
-        return roundVideoFrameRate.get() == RoundVideoSession.FrameRate.FPS_60
+        return roundVideoFrameRate.get() != RoundVideoSession.FrameRate.FPS_30
                 || app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool();
+    }
+
+    /** Returns the effective frame-rate target combining Round Video settings and ChatsConfig extended FPS toggle. */
+    public static RoundVideoSession.FrameRate getRequestedRoundVideoFrameRate() {
+        RoundVideoSession.FrameRate selected = roundVideoFrameRate.get();
+        if (selected != RoundVideoSession.FrameRate.FPS_30) {
+            return selected;
+        }
+        return app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool()
+                ? RoundVideoSession.FrameRate.FPS_60
+                : RoundVideoSession.FrameRate.FPS_30;
     }
 
     public static final EnumSetting<SimpleActionBarDoneButton.Style> headerDoneButtonStyle =
