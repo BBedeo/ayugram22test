@@ -372,7 +372,7 @@ public class GlassCaptureSourceCanvas {
             renderNode = new RenderNode("cap-" + index);
             renderNode.setUseCompositingLayer(true, null);
             renderNodeGlass = new RenderNode("glass-" + index);
-            renderNodeGlass.setRenderEffect(RenderNodeEffects.getSaturationX3RenderEffect());
+            renderNodeGlass.setRenderEffect(RenderEffect.createColorFilterEffect(IDENTITY_FILTER));
             renderNodeGlassFrosted = new RenderNode("glass-frosted-" + index);
             renderNodeFiltered = new RenderNode("filtered-" + index);
             renderNodeFiltered.setRenderEffect(RenderEffect.createColorFilterEffect(IDENTITY_FILTER));

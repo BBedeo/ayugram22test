@@ -118,14 +118,13 @@ half4 main(in float2 fragCoord) {
   half4 vertMirror = img.eval(mirrorVertUV);
   backdrop.rgb = mix(backdrop.rgb, vertMirror.rgb, half(vReflWeight * (0.18 + 0.14 * lift)));
 
-  // Source backdrop carries pre-applied 3x saturation; restore vivid natural chroma matching the bottom pill
-  // while taming slate over-saturation on low-luma Dark Blue cards.
+  // Source backdrop preserves real 1x background colors directly without artificial saturation boost.
   half luma = dot(backdrop.rgb, half3(0.2126, 0.7152, 0.0722));
   float bgLumaF = float(luma);
   float fgAlpha = clamp(float(foreground_color_premultiplied.a), 0.001, 1.0);
   float fgLumaF = float(dot(foreground_color_premultiplied.rgb / half(fgAlpha), half3(0.2126, 0.7152, 0.0722)));
   float darkCrystalTint = 1.0 - smoothstep(0.38, 0.65, fgLumaF);
-  float deSatScale = mix(0.62, mix(0.34, 0.58, smoothstep(0.14, 0.48, bgLumaF)), darkCrystalTint);
+  float deSatScale = mix(1.0, 0.96, darkCrystalTint);
   backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(deSatScale)), half3(0.0), half3(1.0));
   // In light theme let bright backdrop colors breathe; in dark theme keep full clarity with a gentle
   // contrast veil only if very bright pixels pass behind white header labels.
