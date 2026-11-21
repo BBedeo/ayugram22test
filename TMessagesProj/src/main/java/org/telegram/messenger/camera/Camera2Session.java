@@ -563,15 +563,28 @@ public class Camera2Session {
         return cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
     }
 
+    /**
+     * AE fps range for 60 FPS recording. exteraGram only accepted the locked [60,60] range,
+     * but vendor HALs (e.g. Huawei/Honor) often expose only variable ranges like [24,60]/[30,60],
+     * so recording silently fell back to 30 FPS. Prefer [60,60]; otherwise accept any range
+     * with an upper bound of exactly 60, picking the narrowest lower bound. Ranges like
+     * [60,120] are rejected so the camera does not exceed the encoder frame rate.
+     */
     private Range<Integer> selectExtendedFpsRange() {
         final Range<Integer>[] ranges = getAvailableFpsRanges();
         if (ranges == null) return null;
+        Range<Integer> variable = null;
         for (Range<Integer> r : ranges) {
-            if (r != null && r.getLower() == 60 && r.getUpper() == 60) {
+            if (r == null) continue;
+            if (r.getUpper() != 60) continue;
+            if (r.getLower() == 60) {
                 return r;
             }
+            if (variable == null || r.getLower() > variable.getLower()) {
+                variable = r;
+            }
         }
-        return null;
+        return variable;
     }
 
     /** Оптическая стабилизация в приоритете над электронной, они взаимоисключающие. */
