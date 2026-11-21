@@ -694,6 +694,21 @@ object AppearanceConfig {
         return dividerStyle.Int() == DIVIDER_SEGMENTS && segmentedDialogs.Bool()
     }
 
+    /** Зазор между карточками чатов: 0 — плотно (2dp), 1 — обычный (4dp), 2 — свободный (7dp). */
+    @JvmField
+    val segmentGap =
+        addConfig("OEAppearanceSegmentGap", ConfigItem.configTypeInt, 1)
+
+    @JvmStatic
+    fun segmentGapDp(): Int {
+        ensureLoaded()
+        return when (segmentGap.Int()) {
+            0 -> 2
+            2 -> 7
+            else -> 4
+        }
+    }
+
     const val DIVIDER_HIDDEN = 0
     const val DIVIDER_LINE = 1
     const val DIVIDER_SEGMENTS = 2

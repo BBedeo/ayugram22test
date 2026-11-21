@@ -115,6 +115,10 @@
     <string name="OEAppearanceDividerLine">Line</string>
     <string name="OEAppearanceDividerSegments">Segments</string>
     <string name="OEAppearanceSegmentedDialogs">Segments in chats &amp; contacts</string>
+    <string name="OEAppearanceSegmentGap">Gap between cards</string>
+    <string name="OEAppearanceSegmentGapCompact">Compact</string>
+    <string name="OEAppearanceSegmentGapNormal">Normal</string>
+    <string name="OEAppearanceSegmentGapSpacious">Spacious</string>
     <string name="OEAppearanceSegmentedDialogsSub">Group pinned chats, regular chats, and contacts into Material You cards</string>
     <string name="OEAppearanceGlassOutline">Glass Outline</string>
     <string name="OEAppearanceGlassOutlineGlare">Glare</string>

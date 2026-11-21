@@ -85,9 +85,10 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         }
         final int currType = adapter.getItemViewType(pos);
         final boolean currPinned = ((DialogCell) view).getIsPinned();
+        final int gap = dp(AppearanceConfig.segmentGapDp());
         if (isNeighborSameDialogType(adapter, pos - 1, currType)) {
             final boolean prevPinned = isNeighborPinned(parent, adapter, pos - 1, currPinned);
-            outRect.top = prevPinned != currPinned ? dp(10) : dp(2);
+            outRect.top = prevPinned != currPinned ? gap + dp(8) : gap;
         } else {
             outRect.top = dp(6);
         }

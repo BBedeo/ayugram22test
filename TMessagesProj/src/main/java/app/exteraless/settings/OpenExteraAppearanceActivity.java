@@ -107,6 +107,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int separateHeadersRow;
     private int dividerStyleRow;
     private int segmentedDialogsRow;
+    private int segmentGapRow;
     private int sectionsDividerRow;
 
     // Blur
@@ -283,6 +284,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         dividerStyleRow = addRow("dividerStyle");
         segmentedDialogsRow = AppearanceConfig.dividerStyle.Int() == AppearanceConfig.DIVIDER_SEGMENTS
                 ? addRow("segmentedDialogs") : -1;
+        segmentGapRow = segmentedDialogsRow >= 0 ? addRow("segmentGap") : -1;
         sectionsDividerRow = addRow();
 
         blurHeaderRow = addRow("blurHeader");
@@ -878,6 +880,13 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     getString(R.string.OEAppearanceDividerSegments)
             }, AppearanceConfig.dividerStyle, this::onDividerStyleChanged);
             return;
+        } else if (position == segmentGapRow && segmentGapRow >= 0) {
+            showSelector(position, getString(R.string.OEAppearanceSegmentGap), new CharSequence[]{
+                    getString(R.string.OEAppearanceSegmentGapCompact),
+                    getString(R.string.OEAppearanceSegmentGapNormal),
+                    getString(R.string.OEAppearanceSegmentGapSpacious)
+            }, AppearanceConfig.segmentGap, this::rebuildAll);
+            return;
         } else if (position == universalLiquidGlassRow) {
             boolean enabled = AppearanceConfig.universalLiquidGlass.toggleConfigBool();
             org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings();
@@ -1382,6 +1391,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == dividerStyleRow) {
                         String[] v = {getString(R.string.OEAppearanceDividerHidden), getString(R.string.OEAppearanceDividerLine), getString(R.string.OEAppearanceDividerSegments)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceDividerStyle), v[clamp(AppearanceConfig.dividerStyle.Int(), v.length)], segmentedDialogsRow >= 0);
+                    } else if (position == segmentGapRow && segmentGapRow >= 0) {
+                        String[] v = {getString(R.string.OEAppearanceSegmentGapCompact), getString(R.string.OEAppearanceSegmentGapNormal), getString(R.string.OEAppearanceSegmentGapSpacious)};
+                        cell.setTextAndValue(getString(R.string.OEAppearanceSegmentGap), v[clamp(AppearanceConfig.segmentGap.Int(), v.length)], false);
                     } else if (position == liquidGlassMaterialRow) {
                         String[] v = {getString(R.string.OEAppearanceLiquidGlassClear),
                                 getString(R.string.OEAppearanceLiquidGlassBalanced),
@@ -1526,6 +1538,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     || position == iosNavBarRow || position == iosChatHeaderRow) {
                 return TYPE_ROUND_CHECK;
             } else if (position == designPresetRow || position == dividerStyleRow || position == glassOutlineRow
+                    || (position == segmentGapRow && segmentGapRow >= 0)
                     || position == liquidGlassMaterialRow || position == tabTitleStyleRow
                     || position == startupFolderRow
                     || position == tabCounterRow || position == titleTextRow) {
