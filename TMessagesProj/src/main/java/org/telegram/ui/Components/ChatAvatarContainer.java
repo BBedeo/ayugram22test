@@ -436,7 +436,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
                         muted ? R.drawable.msg_unmute : R.drawable.msg_mute,
                         LocaleController.getString(muted ? R.string.UnmuteNotifications : R.string.MuteNotifications),
                         () -> {
-                            parentFragment.getNotificationsController().muteDialog(dialogId, topicId, !muted);
+                            org.telegram.messenger.NotificationsController.getInstance(currentAccount).muteDialog(dialogId, topicId, !muted);
                             BulletinFactory.createMuteBulletin(parentFragment, !muted, resourcesProvider).show();
                         }
                 );
