@@ -6,6 +6,9 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.core.graphics.ColorUtils;
+import androidx.core.math.MathUtils;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
@@ -46,12 +49,20 @@ public abstract class GlassMenuHelper {
     private static BlurredBackgroundProviderBuilder scrimMenuGlass(Theme.ResourcesProvider resourcesProvider) {
         final boolean liquid = LiquidGlassTuning.isActive();
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
-            .setBackgroundColor((r, isDark) -> Theme.multAlpha(
-                Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground),
-                LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.85f : 0.76f)))
+            .setBackgroundColor((r, isDark) -> {
+                final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
+                if (liquid) {
+                    final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.26f : 0.34f);
+                    final int tinted = isDark
+                        ? 0xFF1C1D20
+                        : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.80f);
+                    return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 28 : 36, isDark ? 120 : 150));
+                }
+                return Theme.multAlpha(colorSubmenu, LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.85f : 0.76f));
+            })
             // Clean dark blur separation without harsh white wireframe borders.
-            .setStrokeColorTop(liquid ? 0x12000000 : 0, 0)
-            .setStrokeColorBottom(liquid ? 0x1A000000 : 0, 0)
+            .setStrokeColorTop(liquid ? 0x14000000 : 0, 0)
+            .setStrokeColorBottom(liquid ? 0x1E000000 : 0, 0)
             .setStrokeColorFull(0, 0)
             .setStrokeWidth(liquid ? AndroidUtilities.dpf2(0.45f) : 0.0f, 0.0f);
     }

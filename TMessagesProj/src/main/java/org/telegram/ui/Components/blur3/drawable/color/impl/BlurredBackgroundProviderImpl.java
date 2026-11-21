@@ -126,7 +126,7 @@ public class BlurredBackgroundProviderImpl {
                 if (crystalMenu) {
                     final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.22f : 0.30f);
                     final int tinted = isDark
-                        ? ColorUtils.blendARGB(colorSubmenu, 0xFFE6ECF2, 0.12f)
+                        ? 0xFF1C1D20
                         : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.78f);
                     return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 24 : 34, isDark ? 115 : 145));
                 }
@@ -200,6 +200,14 @@ public class BlurredBackgroundProviderImpl {
                     if (!LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR) && !LiquidGlassTuning.isActive()) {
                         return Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground);
                     }
+                    if (isHeaderLiquidShaderActive(r)) {
+                        final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
+                        final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.24f : 0.32f);
+                        final int tinted = isDark
+                            ? 0xFF1C1D20
+                            : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.78f);
+                        return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 26 : 34, isDark ? 120 : 145));
+                    }
                     return Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground),
                             LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.85f : 0.825f));
                 })
@@ -213,8 +221,17 @@ public class BlurredBackgroundProviderImpl {
 
     public static BlurredBackgroundProvider scrimMenuBackground(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
-            .setBackgroundColor((r, isDark) ->
-                Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r), isDark ? 0.85f : 0.825f))
+            .setBackgroundColor((r, isDark) -> {
+                final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
+                if (isHeaderLiquidShaderActive(r)) {
+                    final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.24f : 0.32f);
+                    final int tinted = isDark
+                        ? 0xFF1C1D20
+                        : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.78f);
+                    return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 26 : 34, isDark ? 120 : 145));
+                }
+                return Theme.multAlpha(colorSubmenu, isDark ? 0.85f : 0.825f);
+            })
             .setStrokeColorTop(0x44FFFFFF, 0)
             .setStrokeColorBottom(0x22FFFFFF, 0)
             .setShadowColor(0x26000000, 0)

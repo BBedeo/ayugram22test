@@ -348,8 +348,17 @@ public class ActionBarPopupWindow extends PopupWindow {
         }
 
         public void setBackgroundColor(int color) {
-            if (backgroundColor != color && backgroundDrawable != null) {
-                backgroundDrawable.setColorFilter(new PorterDuffColorFilter(backgroundColor = color, PorterDuff.Mode.MULTIPLY));
+            if (backgroundDrawable != null) {
+                int resolved = color;
+                if (app.exteraless.appearance.LiquidGlassTuning.isActive()
+                        && !(backgroundDrawable instanceof org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable)
+                        && color != Color.TRANSPARENT
+                        && AndroidUtilities.computePerceivedBrightness(color) < 0.35f) {
+                    resolved = 0xD81C1D20;
+                }
+                if (backgroundColor != resolved) {
+                    backgroundDrawable.setColorFilter(new PorterDuffColorFilter(backgroundColor = resolved, PorterDuff.Mode.MULTIPLY));
+                }
             }
         }
 

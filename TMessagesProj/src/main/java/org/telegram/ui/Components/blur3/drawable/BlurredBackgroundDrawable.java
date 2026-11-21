@@ -74,6 +74,7 @@ import java.util.Arrays;
 public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Colorable, GlassOutlineStyle.Listener {
     private ValueAnimator pressAnimator;
     private boolean pressTarget;
+    private boolean pressAnimatingUp;
     private float pressProgress;
 
     @Override
@@ -94,19 +95,34 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
         }
         if (pressTarget == pressed) return false;
         pressTarget = pressed;
-        if (pressAnimator != null) {
-            pressAnimator.cancel();
-            pressAnimator = null;
-        }
         if (!LiquidGlassTuning.motionEnabled()
                 || (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled())) {
+            if (pressAnimator != null) {
+                pressAnimator.cancel();
+                pressAnimator = null;
+            }
+            pressAnimatingUp = false;
             pressProgress = 0f;
             invalidateDisplayList();
             invalidateSelf();
             return true;
         }
-        pressAnimator = ValueAnimator.ofFloat(pressProgress, pressed ? 1f : 0f);
-        pressAnimator.setDuration(pressed ? 170 : 260);
+        // On a quick tap, let the lift animation finish to peak (1.0f) before springing back (0.0f).
+        if (!pressed && pressAnimator != null && pressAnimator.isRunning() && pressAnimatingUp && pressProgress < 0.99f) {
+            return true;
+        }
+        startPressAnimator(pressed);
+        return true;
+    }
+
+    private void startPressAnimator(boolean up) {
+        if (pressAnimator != null) {
+            pressAnimator.cancel();
+            pressAnimator = null;
+        }
+        pressAnimatingUp = up;
+        pressAnimator = ValueAnimator.ofFloat(pressProgress, up ? 1f : 0f);
+        pressAnimator.setDuration(up ? 165 : 250);
         pressAnimator.addUpdateListener(a -> {
             final float next = (float) a.getAnimatedValue();
             // No continuous redraw while idle; press animation only.
@@ -116,8 +132,18 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 invalidateSelf();
             }
         });
+        pressAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                if (pressAnimator == animation) {
+                    pressAnimator = null;
+                    if (pressAnimatingUp && !pressTarget) {
+                        startPressAnimator(false);
+                    }
+                }
+            }
+        });
         pressAnimator.start();
-        return true;
     }
 
     private final GlassSource glassSource;

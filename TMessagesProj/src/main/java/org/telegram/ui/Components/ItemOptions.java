@@ -1464,6 +1464,16 @@ public class ItemOptions {
 
         prepareItemsForShow();
 
+        if (LiquidGlassTuning.isActive()
+                && Build.VERSION.SDK_INT >= 31
+                && !blur
+                && !blurForMenu
+                && scrimView != null
+                && layout != null
+                && !(layout.getBackground() instanceof BlurredBackgroundDrawable)) {
+            blurForMenu = true;
+        }
+
         if ((blur || blurForMenu) && scrimBlur3SourceBitmap == null) {
             scrimBlur3SourceBitmap = new GlassSourceBitmap();
         }
@@ -1699,7 +1709,11 @@ public class ItemOptions {
         if (blurForMenu && scrimBlur3SourceBitmap != null) {
             setGapBackgroundColor(Color.TRANSPARENT);
             setGapCollapsedForGlass(true);
-            BlurredBackgroundDrawable bg = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap)
+            final BlurredBackgroundDrawableViewFactory menuFactory = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap);
+            if (LiquidGlassTuning.isActive()) {
+                menuFactory.setLiquidGlassEffectAllowed(true);
+            }
+            BlurredBackgroundDrawable bg = menuFactory
                 .create(layout, true)
                 // Use the real captured backdrop and glass material when the
                 // user has enabled Liquid Glass, not a static fake menu.
@@ -1708,7 +1722,10 @@ public class ItemOptions {
                         : BlurredBackgroundProviderImpl.scrimMenuBackground(resourcesProvider))
                 .setPadding(dp(8))
                 .setHasPadding(true)
-                .setRadius(dp(12));
+                .setRadius(dp(LiquidGlassTuning.isActive() ? 20 : 12));
+            if (LiquidGlassTuning.isActive()) {
+                bg.setHeaderGlassLens(true);
+            }
 
             bg.setSourceOffset(X + this.translateX, Y + this.translateY);
             layout.setBackground(bg);
@@ -2355,9 +2372,13 @@ public class ItemOptions {
 
             if (blur || blurForMenu) {
                 blurPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-                scrimView.setAlpha(0.0f);
+                if (scrimView != null) {
+                    scrimView.setAlpha(0.0f);
+                }
                 ScrimOptions.makeGlobalBlurBitmaps(pointContainer, (bitmapBg, bitmapOptions) -> {
-                    scrimView.setAlpha(1.0f);
+                    if (scrimView != null) {
+                        scrimView.setAlpha(1.0f);
+                    }
                     if (blur) blurBitmap = bitmapBg;
                     if (scrimBlur3SourceBitmap != null) {
                         scrimBlur3SourceBitmap.setBitmap(bitmapOptions);
