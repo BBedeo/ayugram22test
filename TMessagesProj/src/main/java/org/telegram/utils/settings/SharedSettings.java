@@ -37,6 +37,17 @@ public final class SharedSettings {
     public static final EnumSetting<RoundVideoSession.CameraFacing> roundVideoLastCamera =
         EnumSetting.of("round_video_last_camera", RoundVideoSession.CameraFacing.FRONT);
 
+    /**
+     * 60 FPS for video messages requested by either of the two settings: the experimental
+     * "Round Video -> Frame rate" ({@link #roundVideoFrameRate}) or the exteraGram "extended FPS
+     * range" toggle (ChatsConfig.extendedFramesPerSecond). The experimental menu choice syncs both
+     * flags, but reading the combined state is useful: it also covers the standalone exteraGram toggle.
+     */
+    public static boolean isRoundVideo60FpsRequested() {
+        return roundVideoFrameRate.get() == RoundVideoSession.FrameRate.FPS_60
+                || app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool();
+    }
+
     public static final EnumSetting<SimpleActionBarDoneButton.Style> headerDoneButtonStyle =
         EnumSetting.of("header_done_button_style", SimpleActionBarDoneButton.Style.GLASS);
 
