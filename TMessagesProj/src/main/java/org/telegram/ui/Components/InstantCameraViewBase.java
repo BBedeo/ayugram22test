@@ -50,9 +50,21 @@ public abstract class InstantCameraViewBase extends FrameLayout {
             Theme.ResourcesProvider resourcesProvider,
             boolean isNewDesign
     ) {
-        return app.exteraless.chats.ChatsConfig.cameraType() == app.exteraless.chats.ChatsConfig.CAMERA_TYPE_TELEGRAM
+        return isRoundVideoRecorderV2(UserConfig.selectedAccount)
                 ? new InstantCameraView2(context, delegate, resourcesProvider, isNewDesign)
                 : new InstantCameraView(context, delegate, resourcesProvider, isNewDesign);
+    }
+
+    /**
+     * Whether round videos are recorded with the new RoundVideoSession pipeline:
+     * the explicit toggle from the round video settings screen wins,
+     * otherwise the camera type decides (the "Telegram" type always uses the new recorder).
+     */
+    public static boolean isRoundVideoRecorderV2(int account) {
+        if (SharedSettings.roundVideoCamera2Enabled.isSet()) {
+            return SharedSettings.roundVideoCamera2Enabled.get();
+        }
+        return app.exteraless.chats.ChatsConfig.cameraType() == app.exteraless.chats.ChatsConfig.CAMERA_TYPE_TELEGRAM;
     }
 
     /** Returns whether the Camera2 implementation is used: the local choice, else the server flag. */
