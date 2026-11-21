@@ -4848,6 +4848,7 @@ public class ChatActivity extends BaseFragment implements
             }
             createTopicsPanelItem(menu);
             headerItem = menu.addItem(chat_menu_options, otherIcon);
+            headerItem.setDragOpenMenu(true);
             updateTopicsPanelItem();
             headerItem.setSubMenuDelegate(new ActionBarMenuItem.ActionBarSubMenuItemDelegate() {
                 @Override
@@ -5135,6 +5136,7 @@ public class ChatActivity extends BaseFragment implements
             }
         } else if (chatMode == MODE_EDIT_BUSINESS_LINK) {
             headerItem = menu.addItem(chat_menu_options, otherIcon);
+            headerItem.setDragOpenMenu(true);
             updateTopicsPanelItem();
             otherIcon.addView(headerItem.getIconView());
             headerItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));

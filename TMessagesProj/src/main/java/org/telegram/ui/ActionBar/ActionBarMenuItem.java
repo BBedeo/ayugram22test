@@ -375,7 +375,19 @@ public class ActionBarMenuItem extends FrameLayout {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (parentMenu != null && !isSearchField() && parentMenu.searchFieldVisible()) {
+        return handleDragTouchEvent(this, event, false);
+    }
+
+    /**
+     * Handles press-hold / pull-down submenu opening and continuous drag-hover selection on behalf of {@code anchorView}.
+     * Used directly by this item and by external anchor views (such as the centered chat header avatar).
+     */
+    public boolean handleExternalDragTouchEvent(@NonNull View anchorView, @NonNull MotionEvent event) {
+        return handleDragTouchEvent(anchorView, event, true);
+    }
+
+    private boolean handleDragTouchEvent(@NonNull View anchorView, @NonNull MotionEvent event, boolean externalAnchor) {
+        if (!externalAnchor && parentMenu != null && !isSearchField() && parentMenu.searchFieldVisible()) {
             setPressed(false);
             return true;
         }
@@ -389,7 +401,7 @@ public class ActionBarMenuItem extends FrameLayout {
         final boolean popupShown = ownPopupShown || extPopupShown;
         final boolean canOpenByGesture = !popupShown && !overlayShown
                 && ((dragOpenMenu && (dragOpenMenuExplicitlySet || longClickEnabled))
-                        || ((longClickEnabled || overlayMenu) && hasSubMenu()));
+                        || ((longClickEnabled || overlayMenu || externalAnchor) && hasSubMenu()));
         final int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) {
             touchDownX = event.getX();
@@ -401,19 +413,22 @@ public class ActionBarMenuItem extends FrameLayout {
             subMenuOpenedByGesture = false;
             pendingInitialHoverSync = false;
             if (canOpenByGesture) {
-                if (getParent() != null) {
-                    getParent().requestDisallowInterceptTouchEvent(true);
+                if (anchorView.getParent() != null) {
+                    anchorView.getParent().requestDisallowInterceptTouchEvent(true);
                 }
                 cancelShowMenuByLongPress();
                 showMenuRunnable = () -> {
                     showMenuRunnable = null;
-                    if (getParent() != null) {
-                        getParent().requestDisallowInterceptTouchEvent(true);
+                    if (anchorView.getParent() != null) {
+                        anchorView.getParent().requestDisallowInterceptTouchEvent(true);
                     }
-                    cancelLongPress();
+                    anchorView.cancelLongPress();
                     if (openSubMenuForDragGesture()) {
-                        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        anchorView.setPressed(false);
+                        anchorView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                         subMenuOpenedByGesture = true;
+                        final SimpleActionBarMenuOverlay openedOverlay = getShownSubMenuOverlay();
+                        selectMenuViewUnder(lastDragRawX, lastDragRawY, openedOverlay, openedOverlay != null && openedOverlay.isOpened());
                     }
                 };
                 AndroidUtilities.runOnUIThread(showMenuRunnable, 200);
@@ -424,7 +439,7 @@ public class ActionBarMenuItem extends FrameLayout {
             final float dy = event.getY() - touchDownY;
             lastDragRawX = event.getRawX();
             lastDragRawY = event.getRawY();
-            if (!isInside(event, slop)) {
+            if (!isInside(anchorView, event, slop)) {
                 draggedPastButton = true;
             }
             if (showMenuRunnable != null) {
@@ -436,29 +451,35 @@ public class ActionBarMenuItem extends FrameLayout {
             }
             // Top-right "..." menus expand below and to the left, so diagonal down-left pulls are intentional.
             final boolean pullDownIntent = dy > slop * 0.7f && Math.abs(dx) <= Math.max(dy * 2.1f, slop * 2.5f);
-            if ((showSubmenuByMove || dragOpenMenu) && canOpenByGesture && (event.getY() > getHeight() || pullDownIntent)) {
+            if ((showSubmenuByMove || dragOpenMenu || externalAnchor) && canOpenByGesture && (event.getY() > anchorView.getHeight() || pullDownIntent)) {
                 cancelShowMenuByLongPress();
-                cancelLongPress();
-                if (getParent() != null) {
-                    getParent().requestDisallowInterceptTouchEvent(true);
+                anchorView.cancelLongPress();
+                if (anchorView.getParent() != null) {
+                    anchorView.getParent().requestDisallowInterceptTouchEvent(true);
                 }
                 if (openSubMenuForDragGesture()) {
-                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                    anchorView.setPressed(false);
+                    anchorView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
                     subMenuOpenedByGesture = true;
                     draggedPastButton = true;
                     final SimpleActionBarMenuOverlay openedOverlay = getShownSubMenuOverlay();
                     selectMenuViewUnder(lastDragRawX, lastDragRawY, openedOverlay, openedOverlay != null && openedOverlay.isOpened());
                     return true;
                 }
-            } else if ((showSubmenuByMove || dragOpenMenu || subMenuOpenedByGesture) && (popupShown || overlayShown)) {
-                if (getParent() != null) {
-                    getParent().requestDisallowInterceptTouchEvent(true);
+            } else if ((showSubmenuByMove || dragOpenMenu || subMenuOpenedByGesture || externalAnchor) && (popupShown || overlayShown)) {
+                if (anchorView.getParent() != null) {
+                    anchorView.getParent().requestDisallowInterceptTouchEvent(true);
                 }
+                anchorView.setPressed(false);
                 selectMenuViewUnder(lastDragRawX, lastDragRawY, overlay, overlayShown);
+                if (externalAnchor) {
+                    return true;
+                }
             }
         } else if (action == MotionEvent.ACTION_UP && (popupShown || overlayShown)) {
             cancelShowMenuByLongPress();
-            cancelLongPress();
+            anchorView.cancelLongPress();
+            anchorView.setPressed(false);
             pendingInitialHoverSync = false;
             lastDragRawX = event.getRawX();
             lastDragRawY = event.getRawY();
@@ -472,7 +493,7 @@ public class ActionBarMenuItem extends FrameLayout {
                 if (tag instanceof ActionRow.ActionItem) {
                     ActionRow.ActionItem item = (ActionRow.ActionItem) tag;
                     if (processedPopupClick) {
-                        return super.onTouchEvent(event);
+                        return externalAnchor || super.onTouchEvent(event);
                     }
                     processedPopupClick = true;
                     if (item.enabled && item.action != null) {
@@ -495,13 +516,13 @@ public class ActionBarMenuItem extends FrameLayout {
                     }
                 }
             } else if (app.exteraless.chats.ChatsConfig.dismissMenuOnDragOut()
-                    && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())
+                    && !isInside(anchorView, event, ViewConfiguration.get(getContext()).getScaledTouchSlop())
                     && (dragHoverEnteredMenu || draggedPastButton)
                     && !isPointInsideActiveMenu(lastDragRawX, lastDragRawY, overlay, overlayShown)) {
                 dismissSubMenuOnClick();
             } else if (!app.exteraless.chats.ChatsConfig.dismissMenuOnDragOut()
                     && showSubmenuByMove && !overlayShown && draggedPastButton
-                    && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
+                    && !isInside(anchorView, event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
                 if (externalPopupWindow != null) {
                     externalPopupWindow.dismiss();
                 } else if (popupWindow != null) {
@@ -512,23 +533,31 @@ public class ActionBarMenuItem extends FrameLayout {
             if (subMenuOpenedByGesture) {
                 // the release of the gesture that opened the menu is not a click on the button, which would close it
                 subMenuOpenedByGesture = false;
-                final MotionEvent cancel = MotionEvent.obtain(event);
-                cancel.setAction(MotionEvent.ACTION_CANCEL);
-                super.onTouchEvent(cancel);
-                cancel.recycle();
+                if (!externalAnchor) {
+                    final MotionEvent cancel = MotionEvent.obtain(event);
+                    cancel.setAction(MotionEvent.ACTION_CANCEL);
+                    super.onTouchEvent(cancel);
+                    cancel.recycle();
+                }
+                return true;
+            }
+            if (externalAnchor) {
                 return true;
             }
         } else {
             if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                 cancelShowMenuByLongPress();
-                cancelLongPress();
+                anchorView.cancelLongPress();
                 pendingInitialHoverSync = false;
                 clearLastDragHighlight();
+                if (action == MotionEvent.ACTION_CANCEL) {
+                    subMenuOpenedByGesture = false;
+                }
             }
             clearHoverSelection(selectedMenuView);
             selectedMenuView = null;
         }
-        return super.onTouchEvent(event);
+        return !externalAnchor && super.onTouchEvent(event);
     }
 
     private boolean openSubMenuForDragGesture() {
@@ -585,8 +614,8 @@ public class ActionBarMenuItem extends FrameLayout {
         }
     }
 
-    private boolean isInside(MotionEvent event, float slop) {
-        return event.getX() >= -slop && event.getY() >= -slop && event.getX() < getWidth() + slop && event.getY() < getHeight() + slop;
+    private static boolean isInside(View view, MotionEvent event, float slop) {
+        return event.getX() >= -slop && event.getY() >= -slop && event.getX() < view.getWidth() + slop && event.getY() < view.getHeight() + slop;
     }
 
     /** Was the open sub menu opened by the current gesture (a long press or a move down), its release chooses an item. */

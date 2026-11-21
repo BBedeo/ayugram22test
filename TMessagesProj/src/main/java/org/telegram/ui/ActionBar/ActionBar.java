@@ -468,10 +468,35 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         return menu;
     }
 
+    @Nullable
+    private View getCenteredPillAvatarView() {
+        final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
+        if (avatarContainer == null || avatarContainer.getVisibility() != VISIBLE || !avatarContainer.isAvatarCentered()) {
+            return null;
+        }
+        final View avatarView = avatarContainer.getAvatarImageView();
+        return avatarView != null && avatarView.getVisibility() == VISIBLE && avatarView.getWidth() > 0 ? avatarView : null;
+    }
+
+    @Nullable
+    @Override
+    public View getMenuPillExtraView() {
+        return getCenteredPillAvatarView();
+    }
+
+    /** True while the centered avatar pill is being drawn inside the open menu overlay rather than underneath it. */
+    public boolean isMenuAvatarInOverlay() {
+        return openMenuOverlay != null && isMenuPillInOverlay() && getCenteredPillAvatarView() != null;
+    }
+
     @Override
     public void setMenuOverlay(SimpleActionBarMenuOverlay overlay, ActionBarMenuItem item) {
         openMenuOverlay = overlay;
         openMenuItem = item;
+        final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
+        if (avatarContainer != null) {
+            avatarContainer.invalidate();
+        }
         invalidate();
     }
 
@@ -3025,11 +3050,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (hasMenuPill) {
             menuLeft = getWidth() - Math.max(s, menuWidth) - p * 2;
             final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
-            final View avatarView = avatarContainer != null
-                    && avatarContainer.getVisibility() == VISIBLE
-                    && avatarContainer.isAvatarCentered()
-                    ? avatarContainer.getAvatarImageView() : null;
-            if (avatarView != null && avatarView.getVisibility() == VISIBLE && avatarView.getWidth() > 0) {
+            final View avatarView = getCenteredPillAvatarView();
+            if (avatarView != null) {
                 final float cx = avatarContainer.getLeft() + avatarContainer.getTranslationX()
                         + avatarView.getLeft() + avatarView.getWidth() / 2f;
                 final float cy = avatarContainer.getTop() + avatarContainer.getTranslationY()

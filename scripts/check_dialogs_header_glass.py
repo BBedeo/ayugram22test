@@ -308,6 +308,27 @@ checks = {
         read(JAVA / "org/telegram/ui/Components/EmojiPacksAlert.java"),
         read(JAVA / "org/telegram/ui/Components/StickersAlert.java"),
     ),
+    "Centered ChatActivity avatar header keeps avatar icon visible through overlay morph/wobble and shares ActionBarMenuItem drag-hover highlight": (
+        lambda chat, avatar_container: (
+            "default View getMenuPillExtraView()" in menu_overlay_host
+            and "private View getCenteredPillAvatarView()" in action_bar
+            and "public boolean isMenuAvatarInOverlay()" in action_bar
+            and "public View getMenuPillExtraView()" in action_bar
+            and "drawMorphingPillIcon(" in menu_overlay
+            and "bar.getMenuPillExtraView()" in menu_overlay
+            and "public boolean handleExternalDragTouchEvent(" in menu_item
+            and "private boolean handleDragTouchEvent(" in menu_item
+            and "avatarOptionsMenuItem.handleExternalDragTouchEvent(this, event)" in avatar_container
+            and "actionBar.isMenuAvatarInOverlay()" in avatar_container
+            and "avatarOptionsSelectedView" not in avatar_container
+            and "headerItem.setDragOpenMenu(true);" in chat
+            and balanced_delimiters(chat)
+            and balanced_delimiters(avatar_container)
+        )
+    )(
+        read(JAVA / "org/telegram/ui/ChatActivity.java"),
+        read(JAVA / "org/telegram/ui/Components/ChatAvatarContainer.java"),
+    ),
 }
 
 for title, ok in checks.items():

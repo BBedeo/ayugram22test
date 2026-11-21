@@ -43,6 +43,12 @@ public interface MenuOverlayHost {
     /** The pill with its buttons, drawn by the overlay while a menu grows out of it. */
     View getMenuView();
 
+    /** Optional extra view sharing the menu glass pill (for example a centered chat avatar), drawn by the overlay with the pill. */
+    @Nullable
+    default View getMenuPillExtraView() {
+        return null;
+    }
+
     /** The overlay draws the glass of {@code item} while its menu is shown; null when it has closed. */
     void setMenuOverlay(@Nullable SimpleActionBarMenuOverlay overlay, @Nullable ActionBarMenuItem item);
 

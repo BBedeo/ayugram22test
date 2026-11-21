@@ -664,15 +664,14 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         // the buttons (the whole pill, or just this button) fade and shrink away inside the shape (the first ~30%),
         // come back while the items are still fading out on closing
         final float ia = 1f - Utilities.clamp01(m / (opened ? 0.3f : 0.7f));
-        final View icon = startFromPill ? bar.getMenuView() : item.getIconView();
-        if (ia > 0.004f && icon != null) {
-            computeViewRect(icon, tmpRect);
+        if (ia > 0.004f) {
             final float s = 1f - 0.15f * Utilities.clamp01(m / 0.3f);
-            saveFaded(canvas, tmpRect.left, tmpRect.top, tmpRect.right, tmpRect.bottom, ia);
-            canvas.scale(s * (1f + wobble * 0.5f), s * (1f - wobble), tmpRect.centerX(), tmpRect.centerY());
-            canvas.translate(tmpRect.left, tmpRect.top);
-            icon.draw(canvas);
-            canvas.restore();
+            if (startFromPill) {
+                drawMorphingPillIcon(canvas, bar.getMenuView(), ia, s);
+                drawMorphingPillIcon(canvas, bar.getMenuPillExtraView(), ia, s);
+            } else if (item != null) {
+                drawMorphingPillIcon(canvas, item.getIconView(), ia, s);
+            }
         }
 
         // the items grow with the shape from its corner at the button and fade in once it has grown a bit;
@@ -705,6 +704,18 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         if (animating) {
             invalidate();
         }
+    }
+
+    private void drawMorphingPillIcon(Canvas canvas, @Nullable View view, float alpha, float scale) {
+        if (view == null || view.getVisibility() != VISIBLE || view.getWidth() <= 0 || view.getHeight() <= 0) {
+            return;
+        }
+        computeViewRect(view, tmpRect);
+        saveFaded(canvas, tmpRect.left, tmpRect.top, tmpRect.right, tmpRect.bottom, alpha);
+        canvas.scale(scale * (1f + wobble * 0.5f), scale * (1f - wobble), tmpRect.centerX(), tmpRect.centerY());
+        canvas.translate(tmpRect.left, tmpRect.top);
+        view.draw(canvas);
+        canvas.restore();
     }
 
     /**
