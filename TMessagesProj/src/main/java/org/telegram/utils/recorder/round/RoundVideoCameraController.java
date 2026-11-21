@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 final class RoundVideoCameraController {
@@ -1729,8 +1730,11 @@ final class RoundVideoCameraController {
         if (session == null || builder == null) return;
         if (activeHighSpeed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && session instanceof CameraConstrainedHighSpeedCaptureSession) {
-            builder = ((CameraConstrainedHighSpeedCaptureSession) session)
-                    .createHighSpeedRequest(builder, CameraDevice.TEMPLATE_RECORD);
+            List<CaptureRequest> highSpeedRequests =
+                    ((CameraConstrainedHighSpeedCaptureSession) session)
+                            .createHighSpeedRequestList(builder.build());
+            session.setRepeatingBurst(highSpeedRequests, captureCallback, cameraHandler);
+            return;
         }
         CaptureRequest request = builder.build();
         session.setRepeatingRequest(request, captureCallback, cameraHandler);
