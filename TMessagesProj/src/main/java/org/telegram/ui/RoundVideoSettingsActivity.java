@@ -106,11 +106,11 @@ public class RoundVideoSettingsActivity extends BaseFragment {
 
     private void onRowClicked(int position) {
         if (position == ROW_ENABLED) {
-            SharedSettings.roundVideoCamera2Enabled.set(!InstantCameraViewBase.isCamera2Enabled(currentAccount));
+            SharedSettings.roundVideoCamera2Enabled.set(!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount));
             adapter.notifyDataSetChanged();
             return;
         }
-        if (!InstantCameraViewBase.isCamera2Enabled(currentAccount)) {
+        if (!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount)) {
             return;
         }
         if (position == ROW_OUTPUT_RESOLUTION) {
@@ -215,7 +215,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             if (position == ROW_ENABLED) {
                 return true;
             }
-            if (!InstantCameraViewBase.isCamera2Enabled(currentAccount)) {
+            if (!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount)) {
                 return false;
             }
             return position == ROW_OUTPUT_RESOLUTION
@@ -249,7 +249,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
 
         @Override
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-            boolean enabled = InstantCameraViewBase.isCamera2Enabled(currentAccount);
+            boolean enabled = InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount);
             if (holder.getItemViewType() == TYPE_HEADER) {
                 HeaderCell cell = (HeaderCell) holder.itemView;
                 cell.setText(position == ROW_GENERAL_HEADER

@@ -321,6 +321,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int rememberLastUsedCameraRow = -1;
     private int zoomSliderRow = -1;
     private int staticZoomRow = -1;
+    private int roundVideoQualityRow = -1;
     private int cameraDividerRow = -1;
 
     // Photos
@@ -681,6 +682,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         }
         zoomSliderRow = addRow("zoomSlider");
         staticZoomRow = addRow("staticZoom");
+        roundVideoQualityRow = addRow("roundVideoQuality");
         cameraDividerRow = addRow();
 
         photoHeaderRow = addRow("photoHeader");
@@ -1815,6 +1817,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 // от варианта зависит, показывать ли «запоминать последнюю камеру»
                 reloadList();
             });
+            return;
+        } else if (position == roundVideoQualityRow) {
+            presentFragment(new org.telegram.ui.RoundVideoSettingsActivity());
             return;
         } else if (position == doubleTapSeekDurationRow) {
             showOptions(view, position, seekDurationOptions(), ChatsConfig.doubleTapSeekDuration);
@@ -2985,6 +2990,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 CharSequence[] options = videoMessagesCameraOptions();
                 cell.setTextAndValue(getString(R.string.CameraInVideoMessages),
                         options[clampIndex(NaConfig.INSTANCE.getCameraInVideoMessages().Int(), options.length)], true);
+            } else if (position == roundVideoQualityRow) {
+                cell.setText(getString(R.string.RoundVideoSettings), false);
             } else if (position == doubleTapSeekDurationRow) {
                 CharSequence[] options = seekDurationOptions();
                 cell.setTextAndValue(getString(R.string.OEChatsDoubleTapSeekDuration),
@@ -3117,7 +3124,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         private boolean isSettings(int position) {
             return position == doubleTapIncomingRow || position == doubleTapOutgoingRow
                     || position == bottomButtonRow || position == cameraTypeRow || position == stickerTimeRow
-                    || position == videoMessagesCameraRow || position == doubleTapSeekDurationRow
+                    || position == videoMessagesCameraRow || position == roundVideoQualityRow || position == doubleTapSeekDurationRow
                     || position == videoPlayerDecoderRow
                     || position == searchHashtagChatRow || position == searchHashtagChannelRow
                     || position == openLinkConfirmationRow || position == transcribeProviderRow
