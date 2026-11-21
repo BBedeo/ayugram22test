@@ -15,7 +15,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
-import android.hardware.camera2.params.CameraConstrainedHighSpeedCaptureSession;
+import android.hardware.camera2.CameraConstrainedHighSpeedCaptureSession;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Build;
 import android.os.Handler;
@@ -2524,7 +2524,6 @@ final class RoundVideoCameraController {
      * at higher rates the range may drop only to half of the target. The narrowest range
      * containing the target is only the fallback.
      */
-    @Nullable
     @Nullable
     private FrameRatePlan resolveHighSpeedFrameRatePlan(
             @NonNull String id,
