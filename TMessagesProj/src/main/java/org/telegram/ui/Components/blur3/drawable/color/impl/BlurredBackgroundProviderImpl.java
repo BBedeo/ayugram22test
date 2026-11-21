@@ -26,12 +26,12 @@ public class BlurredBackgroundProviderImpl {
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTabs, r);
                 if (isHeaderLiquidShaderActive(r)) {
-                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.18f : 0.28f);
+                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.16f : 0.28f);
                     final int crystalTarget = isDark
-                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.10f)
+                        ? 0xFF1C1D20
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
                     return ColorUtils.setAlphaComponent(crystalTarget,
-                        MathUtils.clamp(Math.round(255f * alpha), isDark ? 20 : 28, isDark ? 105 : 135));
+                        MathUtils.clamp(Math.round(255f * alpha), isDark ? 18 : 28, isDark ? 95 : 135));
                 }
                 final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 return solveSrcColor(colorBg, colorTarget, alpha);
@@ -48,12 +48,12 @@ public class BlurredBackgroundProviderImpl {
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
                 if (isHeaderLiquidShaderActive(r)) {
-                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.18f : 0.28f);
+                    final float alpha = LiquidGlassTuning.tintAlpha(isDark, isDark ? 0.16f : 0.28f);
                     final int crystalTarget = isDark
-                        ? ColorUtils.blendARGB(colorTarget, 0xFFE6ECF2, 0.12f)
+                        ? 0xFF1C1D20
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
                     return ColorUtils.setAlphaComponent(crystalTarget,
-                        MathUtils.clamp(Math.round(255f * alpha), isDark ? 20 : 28, isDark ? 105 : 135));
+                        MathUtils.clamp(Math.round(255f * alpha), isDark ? 18 : 28, isDark ? 95 : 135));
                 }
                 final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 return solveSrcColor(colorBg, colorTarget, alpha);

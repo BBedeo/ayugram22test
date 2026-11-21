@@ -114,31 +114,31 @@ half4 main(in float2 fragCoord) {
   half4 surface = srcOver(fgTint, backdrop);
 
   float domeSheen = smoothstep(0.70, -0.85, relCenter.y * 0.72 + relCenter.x * 0.32)
-      * (1.0 - bevel * 0.45) * (0.065 - 0.035 * lift);
+      * (1.0 - bevel * 0.45) * (0.025 - 0.015 * lift);
   surface.rgb = min(half3(1.0), surface.rgb + half3(0.82, 0.92, 1.0) * half(domeSheen * float(surface.a)));
 
-  // Subtle soft TIR depth gradient inside the bevel (no hard dark ring or outline).
-  float outerWall = gaussian((dDp - 2.25) / 1.35);
-  float meniscus = gaussian((dDp - 3.95) / 1.80);
-  surface.rgb *= half(1.0 - (0.035 + 0.045 * lift) * outerWall - (0.018 + 0.025 * lift) * meniscus);
+  // Subtle hairline TIR depth gradient right near the edge (no thick soap bevel).
+  float outerWall = gaussian((dDp - 1.35) / 0.85);
+  float meniscus = gaussian((dDp - 2.35) / 1.15);
+  surface.rgb *= half(1.0 - (0.014 + 0.018 * lift) * outerWall - (0.006 + 0.010 * lift) * meniscus);
 
   // Unified top-left -> bottom-right axis + dedicated right-side liquid tide ("прилив справа").
   float angle = -2.356 + move * 0.58 + (glass_light_angle - 5.4978);
   float2 lightDir = float2(cos(angle), sin(angle));
   float rawDot = dot(edgeDir, lightDir);
-  float keyArc = pow(max(rawDot, 0.0), 2.8) * 0.88;
-  float catchArc = pow(max(-rawDot, 0.0), 2.6) * 0.86;
+  float keyArc = pow(max(rawDot, 0.0), 3.4) * 0.80;
+  float catchArc = pow(max(-rawDot, 0.0), 3.2) * 0.74;
   float rightFlowArc = smoothstep(-0.05, 0.85, edgeDir.x)
       * smoothstep(-0.75, 0.92, edgeDir.y + move * 0.42);
-  float capBoost = rightFlowArc * (0.40 + 0.36 * lift) + pow(abs(edgeDir.x), 2.6) * (0.14 + 0.20 * lift);
+  float capBoost = rightFlowArc * (0.32 + 0.30 * lift) + pow(abs(edgeDir.x), 3.2) * (0.08 + 0.14 * lift);
   float fresnelSide = 0.0;
 
-  float rimCore = gaussian((dDp - 1.30) / 1.18);
-  float innerRidge = gaussian((dDp - 3.10) / 2.05);
-  float rightTideBand = gaussian((dDp - (2.35 + 1.05 * lift)) / (1.80 + 0.60 * lift));
+  float rimCore = gaussian((dDp - 0.70) / 0.58);
+  float innerRidge = gaussian((dDp - 1.75) / 0.90);
+  float rightTideBand = gaussian((dDp - (1.45 + 0.85 * lift)) / (1.05 + 0.45 * lift));
   float rimSpec = (keyArc + catchArc + capBoost + fresnelSide)
-          * (rimCore * 0.72 + innerRidge * 0.28) * (0.28 + 0.38 * lift)
-      + rightFlowArc * rightTideBand * (0.16 + 0.28 * lift);
+          * (rimCore * 0.90 + innerRidge * 0.10) * (0.22 + 0.28 * lift)
+      + rightFlowArc * rightTideBand * (0.12 + 0.20 * lift);
 
   // Dual opposite-side moving light caustics inside the lens.
   float lowerCaustic = (smoothstep(0.30, 0.96, relCenter.y) + smoothstep(0.30, 0.96, -relCenter.y) * 0.82)
