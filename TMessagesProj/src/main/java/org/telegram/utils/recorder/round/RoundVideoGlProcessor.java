@@ -59,6 +59,9 @@ final class RoundVideoGlProcessor {
     private boolean primaryTimestampRealtime;
     private boolean secondaryTimestampRealtime;
     private volatile long presentationTimeOriginNs;
+    private volatile int highSpeedFrameDivisor = 1;
+    private long highSpeedFrameCounter;
+    private long droppedHighSpeedFrames;
     private volatile long presentationTimeLimitNs = Long.MAX_VALUE;
     private final FrameTimingListener frameTimingListener;
     private final ErrorListener errorListener;
@@ -753,7 +756,15 @@ final class RoundVideoGlProcessor {
                         + ", maxMs=" + gpuTimingMaxNs / 1_000_000f);
             }
 
-            long presentationTime = getCameraPresentationTime(timestamp);
+            if (highSpeedFrameDivisor > 1) {
+                highSpeedFrameCounter++;
+                if (highSpeedFrameCounter % highSpeedFrameDivisor != 0) {
+                    droppedHighSpeedFrames++;
+                    renderPreviewAndNotify(cameraTexture, matrix);
+                    return;
+                }
+            }
+            long presentationTime = getCameraPresentationTime(timestamp) / highSpeedFrameDivisor;
             if (presentationTime < presentationTimeLimitNs) {
                 submitFrame(presentationTime);
             }
@@ -892,6 +903,11 @@ final class RoundVideoGlProcessor {
     private void reportError(@NonNull RuntimeException error) {
         diagnostics.error("GL error", error);
         if (errorListener != null) errorListener.onError(error);
+    }
+
+    public void setHighSpeedFrameDivisor(int divisor) {
+        highSpeedFrameDivisor = Math.max(1, divisor);
+        highSpeedFrameCounter = 0;
     }
 
     private long getCameraPresentationTime(long cameraTimestamp) {

@@ -15,6 +15,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.CameraConstrainedHighSpeedCaptureSession;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Build;
 import android.os.Handler;
@@ -94,6 +95,8 @@ final class RoundVideoCameraController {
         final Range<Integer> fpsRange;
         final OutputPair regularFallbackPair;
         final float maximumZoomRatio;
+        final boolean highSpeed;
+        final int frameDivisor;
 
         CameraSelection(
                 String id,
@@ -106,7 +109,9 @@ final class RoundVideoCameraController {
                 RoundVideoSession.FrameRate frameRate,
                 Range<Integer> fpsRange,
                 OutputPair regularFallbackPair,
-                float maximumZoomRatio
+                float maximumZoomRatio,
+                boolean highSpeed,
+                int frameDivisor
         ) {
             this.id = id;
             this.facing = facing;
@@ -119,6 +124,8 @@ final class RoundVideoCameraController {
             this.fpsRange = fpsRange;
             this.regularFallbackPair = regularFallbackPair;
             this.maximumZoomRatio = maximumZoomRatio;
+            this.highSpeed = highSpeed;
+            this.frameDivisor = Math.max(1, frameDivisor);
         }
     }
 
@@ -195,6 +202,8 @@ final class RoundVideoCameraController {
     private boolean frameRateFallbackAttempted;
     private boolean frameRatePolicyResolved;
     private RoundVideoSession.FrameRate pipelineFrameRate;
+    private boolean activeHighSpeed;
+    private int activeFrameDivisor = 1;
     private boolean force30Fps;
     private int encoderFrameRate;
     private CameraSelection frontSelection;
@@ -1379,13 +1388,24 @@ final class RoundVideoCameraController {
                     + ", recording=" + recordingSize
                     + ", fpsRange=" + activeFpsRange
                     + ", glPreview=" + glPreviewEnabled);
-            device.createCaptureSession(
-                    glPreviewEnabled
-                            ? Arrays.asList(recordingSurface)
-                            : Arrays.asList(previewSurface, recordingSurface),
-                    sessionCallback,
-                    cameraHandler
-            );
+            if (activeHighSpeed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                diagnostics.log("high-speed capture session requested: divisor=" + activeFrameDivisor);
+                device.createConstrainedHighSpeedCaptureSession(
+                        glPreviewEnabled
+                                ? Arrays.asList(recordingSurface)
+                                : Arrays.asList(previewSurface, recordingSurface),
+                        sessionCallback,
+                        cameraHandler
+                );
+            } else {
+                device.createCaptureSession(
+                        glPreviewEnabled
+                                ? Arrays.asList(recordingSurface)
+                                : Arrays.asList(previewSurface, recordingSurface),
+                        sessionCallback,
+                        cameraHandler
+                );
+            }
         } catch (CameraAccessException | IllegalArgumentException e) {
             if (warmCameraDevice != null && !warmSwitchDisabled) {
                 if (switchingCamera && lastSwitchUsedWarmDevice) {
@@ -1417,7 +1437,11 @@ final class RoundVideoCameraController {
                     try {
                         activeFacing = selectedFacing;
                         repeatingBuilder = createRepeatingRequestBuilder(true);
-                        if (glProcessor != null) glProcessor.onCameraSessionConfigured();
+                        if (glProcessor != null) {
+                            glProcessor.setHighSpeedFrameDivisor(
+                                    activeHighSpeed ? activeFrameDivisor : 1);
+                            glProcessor.onCameraSessionConfigured();
+                        }
                         boolean pendingDualSwitch = dualActiveMode
                                 && pendingWarmSwitchFacing != null;
                         boolean wasSwitch = notifySwitchCompletion && !pendingDualSwitch;
@@ -1703,6 +1727,11 @@ final class RoundVideoCameraController {
         CameraCaptureSession session = captureSession;
         CaptureRequest.Builder builder = repeatingBuilder;
         if (session == null || builder == null) return;
+        if (activeHighSpeed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && session instanceof CameraConstrainedHighSpeedCaptureSession) {
+            builder = ((CameraConstrainedHighSpeedCaptureSession) session)
+                    .createHighSpeedRequest(builder, CameraDevice.TEMPLATE_RECORD);
+        }
         CaptureRequest request = builder.build();
         session.setRepeatingRequest(request, captureCallback, cameraHandler);
     }
@@ -2030,6 +2059,8 @@ final class RoundVideoCameraController {
         characteristics = selectedCharacteristics;
         activeFrameRate = frameRatePlan.frameRate;
         activeFpsRange = frameRatePlan.fpsRange;
+        activeHighSpeed = frameRatePlan.highSpeed;
+        activeFrameDivisor = frameRatePlan.frameDivisor;
         frameRateFallbackAttempted = false;
         regularFallbackPair = regularPair;
         resetCaptureFpsMeasurement();
@@ -2093,7 +2124,9 @@ final class RoundVideoCameraController {
                 activeFrameRate,
                 activeFpsRange,
                 regularFallbackPair,
-                maximumZoomRatio
+                maximumZoomRatio,
+                activeHighSpeed,
+                activeFrameDivisor
         );
     }
 
@@ -2107,6 +2140,8 @@ final class RoundVideoCameraController {
         activeCameraResolution = selection.cameraResolution;
         activeFrameRate = selection.frameRate;
         activeFpsRange = selection.fpsRange;
+        activeHighSpeed = selection.highSpeed;
+        activeFrameDivisor = selection.frameDivisor;
         regularFallbackPair = selection.regularFallbackPair;
         maximumZoomRatio = selection.maximumZoomRatio;
         frameRateFallbackAttempted = false;
@@ -2359,6 +2394,10 @@ final class RoundVideoCameraController {
                     + Arrays.toString(ranges));
         }
 
+        FrameRatePlan highSpeedPlan = resolveHighSpeedFrameRatePlan(id, map, targetFps);
+        if (highSpeedPlan != null) {
+            return highSpeedPlan;
+        }
         Range<Integer> fallbackRange = findBestFpsRange(ranges, 30);
         diagnostics.log("fps selection: id=" + id
                 + ", requested=" + targetFps
@@ -2434,6 +2473,8 @@ final class RoundVideoCameraController {
             return;
         }
         activeFrameRate = RoundVideoSession.FrameRate.FPS_30;
+        activeHighSpeed = false;
+        activeFrameDivisor = 1;
         Range<Integer>[] ranges = characteristics == null
                 ? null
                 : characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
@@ -2484,6 +2525,57 @@ final class RoundVideoCameraController {
      * containing the target is only the fallback.
      */
     @Nullable
+    @Nullable
+    private FrameRatePlan resolveHighSpeedFrameRatePlan(
+            @NonNull String id,
+            @NonNull StreamConfigurationMap map,
+            int targetFps
+    ) {
+        try {
+            Range<Integer>[] highSpeedRanges = map.getHighSpeedVideoFpsRanges();
+            if (highSpeedRanges == null || highSpeedRanges.length == 0) return null;
+            Range<Integer> fixedRange = null;
+            for (Range<Integer> range : highSpeedRanges) {
+                if (range.getLower().equals(range.getUpper())
+                        && range.getUpper() >= targetFps
+                        && range.getUpper() % targetFps == 0
+                        && (fixedRange == null || range.getUpper() < fixedRange.getUpper())) {
+                    fixedRange = range;
+                }
+            }
+            if (fixedRange == null) return null;
+            Size[] highSpeedSizes = map.getHighSpeedVideoSizesFor(fixedRange);
+            if (highSpeedSizes == null || highSpeedSizes.length == 0) {
+                highSpeedSizes = map.getHighSpeedVideoSizes();
+            }
+            if (highSpeedSizes == null || highSpeedSizes.length == 0) return null;
+            OutputPair pair = chooseOutputPair(
+                    highSpeedSizes,
+                    outputResolution,
+                    requestedCameraResolution
+            );
+            int divisor = fixedRange.getUpper() / targetFps;
+            diagnostics.log("fps selection: id=" + id
+                    + ", requested=" + targetFps
+                    + ", mode=HIGH_SPEED, range=" + fixedRange
+                    + ", frameDivisor=" + divisor
+                    + ", preview=" + pair.preview
+                    + ", recording=" + pair.recording
+                    + ", highSpeedSizes=" + Arrays.toString(highSpeedSizes));
+            return new FrameRatePlan(
+                    RoundVideoSession.FrameRate.FPS_60,
+                    fixedRange,
+                    pair,
+                    true,
+                    divisor
+            );
+        } catch (RuntimeException e) {
+            diagnostics.log("fps selection: id=" + id
+                    + ", high-speed probe failed: " + e);
+            return null;
+        }
+    }
+
     private static Range<Integer> findBestFpsRange(
             @Nullable Range<Integer>[] ranges,
             int targetFps
@@ -2915,15 +3007,29 @@ final class RoundVideoCameraController {
         final RoundVideoSession.FrameRate frameRate;
         final Range<Integer> fpsRange;
         final OutputPair outputPair;
+        final boolean highSpeed;
+        final int frameDivisor;
 
         FrameRatePlan(
                 @NonNull RoundVideoSession.FrameRate frameRate,
                 @Nullable Range<Integer> fpsRange,
                 @NonNull OutputPair outputPair
         ) {
+            this(frameRate, fpsRange, outputPair, false, 1);
+        }
+
+        FrameRatePlan(
+                @NonNull RoundVideoSession.FrameRate frameRate,
+                @Nullable Range<Integer> fpsRange,
+                @NonNull OutputPair outputPair,
+                boolean highSpeed,
+                int frameDivisor
+        ) {
             this.frameRate = frameRate;
             this.fpsRange = fpsRange;
             this.outputPair = outputPair;
+            this.highSpeed = highSpeed;
+            this.frameDivisor = Math.max(1, frameDivisor);
         }
     }
 
