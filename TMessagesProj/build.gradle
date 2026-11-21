@@ -25,8 +25,17 @@ idea {
 def buildTimestamp = System.getenv('BUILD_TIMESTAMP') ?: '0'
 def commitId = System.getenv('COMMIT_ID')
 def shortCommit = commitId?.take(7) ?: ''
-def verName = "${APP_VERSION_NAME}${shortCommit ? "-${shortCommit}" : ''}"
-def verCode = 1261
+def exFullCommits = 0
+try {
+    def proc = ['git', '-C', rootProject.projectDir.absolutePath, 'rev-list', '--count', '6ba4739f1^..HEAD'].execute()
+    proc.waitFor()
+    if (proc.exitValue() == 0) {
+        exFullCommits = proc.text.trim().toInteger()
+    }
+} catch (Exception ignored) {}
+def exFullVer = exFullCommits > 0 ? "1.${exFullCommits.intdiv(100)}.${exFullCommits % 100}" : APP_VERSION_NAME
+def verName = "${exFullVer}${shortCommit ? "-${shortCommit}" : ''}"
+def verCode = 1261 + exFullCommits
 
 def officialVer = APP_VERSION_NAME
 def officialCode = APP_VERSION_CODE
@@ -181,7 +190,7 @@ android {
 
         manifestPlaceholders += [MAPS_API_KEY: mapsKey, GLYPH_API_KEY: glyphKey]
 
-        buildConfigField 'String', 'BUILD_VERSION_STRING', '"' + APP_VERSION_NAME + '"'
+        buildConfigField 'String', 'BUILD_VERSION_STRING', '"' + exFullVer + '"'
         buildConfigField 'String', 'BUILD_COMMIT_ID', '"' + shortCommit + '"'
         buildConfigField 'String', 'OFFICIAL_VERSION', '"' + officialVer + '"'
         buildConfigField 'int', 'OFFICIAL_VERSION_CODE', officialCode + ''
