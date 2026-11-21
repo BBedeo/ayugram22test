@@ -244,6 +244,7 @@ android {
     buildTypes {
         debug {
             isDefault = true
+            applicationIdSuffix '.debug'
             debuggable = true
             jniDebuggable = true
             multiDexEnabled = true
