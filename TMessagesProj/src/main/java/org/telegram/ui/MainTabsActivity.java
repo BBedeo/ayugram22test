@@ -594,6 +594,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         tabsViewBackground = iBlur3FactoryGlass.create(tabsView, BlurredBackgroundProviderImpl.mainTabs(resourceProvider));
         tabsViewBackground.setRadius(MainTabsUiHelper.getBackgroundRadius());
         tabsViewBackground.setPadding(MainTabsUiHelper.getBackgroundInset());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && app.exteraless.appearance.LiquidGlassTuning.isActive()) {
+            tabsViewBackground.setHeaderGlassLens(true);
+        }
         tabsView.setBackground(tabsViewBackground);
         if (ElasticPillGesture.enabled()) {
             // The selection pill gets its own native glass lens sampling our

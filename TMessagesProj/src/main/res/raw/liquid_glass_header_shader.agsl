@@ -153,9 +153,9 @@ half4 main(in float2 fragCoord) {
   float keyPow = mix(4.2, 3.8, pillWeight);
   float catchPow = mix(4.2, 3.8, pillWeight);
   float keyArc = pow(max(rawDot, 0.0), keyPow) * 0.72;
-  float catchArc = pow(max(-rawDot, 0.0), catchPow) * 0.52;
-  float offDiagTopRight = pow(max(perpDot, 0.0), 4.8) * (0.16 * pillWeight);
-  float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.8) * (0.12 * pillWeight);
+  float catchArc = pow(max(-rawDot, 0.0), catchPow) * 0.66;
+  float offDiagTopRight = pow(max(perpDot, 0.0), 4.6) * (0.20 * pillWeight);
+  float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.6) * (0.24 * pillWeight);
   float capBoost = pow(abs(edgeDir.x), 3.8) * (0.06 + 0.08 * lift) * (1.0 - 0.35 * pillWeight) * (1.0 - 0.72 * cardWeight);
   float rimCore = gaussian((dDp - 0.65) / 0.55);
   float innerRidge = gaussian((dDp - 1.65) / 0.85);
