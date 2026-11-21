@@ -3078,6 +3078,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         int menuRight = getWidth();
         int menuBottom = b;
         int menuAlphaInt = 0;
+        boolean menuHugsAvatar = false;
         if (hasMenuPill) {
             menuLeft = getWidth() - Math.max(s, menuWidth) - p * 2;
             final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
@@ -3088,7 +3089,21 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 final float cy = avatarContainer.getTop() + avatarContainer.getTranslationY()
                         + avatarView.getTop() + avatarView.getHeight() / 2f;
                 final int half = (s + p * 2) / 2;
-                if (menu == null || menu.getVisibility() != VISIBLE || menu.getItemsWidth() <= 0) {
+                boolean menuHasVisibleItems = false;
+                if (menu != null && menu.getVisibility() == VISIBLE && menu.getItemsWidth() > 0) {
+                    for (int i = 0, n = menu.getChildCount(); i < n; i++) {
+                        final View child = menu.getChildAt(i);
+                        if (child != null && child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f
+                                && child.getWidth() > 0) {
+                            menuHasVisibleItems = true;
+                            break;
+                        }
+                    }
+                }
+                if (!menuHasVisibleItems) {
+                    // Только круглая аватарка без пунктов меню: пилюля строго по размеру иконки,
+                    // без лишнего хвоста справа.
+                    menuHugsAvatar = true;
                     menuLeft = Math.round(cx) - half;
                     menuRight = Math.round(cx) + half;
                     menuTop = Math.round(cy) - half;
@@ -3155,7 +3170,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 final int rightOffset = lerp(menuWidthWithPadding, Math.max(menuWidthWithPadding, p + s), chatAvatarContainer == null ? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
 
                 final int leftDefault = lerp(hasBackButton ? s + p : 0, s + p, chatAvatarContainer == null? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
-                final int rightDefault = getWidth() - rightOffset;
+                final int rightDefault = menuHugsAvatar
+                        ? Math.min(getWidth() - rightOffset, menuLeft - p)
+                        : getWidth() - rightOffset;
                 final int widthDefault = rightDefault - leftDefault;
                 final int left, right;
                 if (chatAvatarContainer != null && chatAvatarContainer.isAvatarCentered()) {
