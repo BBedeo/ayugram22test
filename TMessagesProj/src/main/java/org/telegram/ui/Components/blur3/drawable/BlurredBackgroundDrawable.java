@@ -121,10 +121,23 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
             pressAnimator = null;
         }
         pressAnimatingUp = up;
+        final boolean jelly = app.exteraless.appearance.AppearanceConfig.isJellyAnimations();
         pressAnimator = ValueAnimator.ofFloat(pressProgress, up ? 1f : 0f);
-        pressAnimator.setDuration(up ? 165 : 250);
+        pressAnimator.setDuration(jelly ? (up ? 260 : 620) : (up ? 165 : 250));
+        if (jelly) {
+            if (up) {
+                // Перелёт выше пика и мягкая посадка — «желе».
+                pressAnimator.setInterpolator(new android.view.animation.OvershootInterpolator(2.4f));
+            } else {
+                // Затухающая пружина: возврат с небольшим переходом через ноль.
+                pressAnimator.setInterpolator(t -> (float) (1.0 - Math.exp(-5.5 * t) * Math.cos(2.6 * Math.PI * t)));
+            }
+        }
         pressAnimator.addUpdateListener(a -> {
-            final float next = (float) a.getAnimatedValue();
+            float next = (float) a.getAnimatedValue();
+            if (jelly) {
+                next = Math.max(-0.2f, Math.min(1.25f, next));
+            }
             // No continuous redraw while idle; press animation only.
             if (Math.abs(next - pressProgress) >= .025f || next == 0f || next == 1f) {
                 pressProgress = next;

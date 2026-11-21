@@ -683,16 +683,23 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         float pressPivotX = 0f;
         float pressPivotY = 0f;
         if (headerGlassLens && LiquidGlassTuning.motionEnabled()) {
+            final boolean jelly = app.exteraless.appearance.AppearanceConfig.isJellyAnimations();
             if (child == backButtonImageView) {
-                final float f = animatorBackGlassPressed.getFloatValue();
+                float f = animatorBackGlassPressed.getFloatValue();
                 if (f > 0.001f) {
+                    if (jelly) {
+                        f *= 1f + 0.45f * (float) Math.sin(f * Math.PI);
+                    }
                     pressScale = 1f + 0.045f * f;
                     pressPivotX = child.getX() + child.getWidth() * 0.5f;
                     pressPivotY = child.getY() + child.getHeight() * 0.5f;
                 }
             } else if (child == menu && !glassMenuRestRect.isEmpty()) {
-                final float f = animatorMenuGlassPressed.getFloatValue();
+                float f = animatorMenuGlassPressed.getFloatValue();
                 if (f > 0.001f) {
+                    if (jelly) {
+                        f *= 1f + 0.45f * (float) Math.sin(f * Math.PI);
+                    }
                     pressScale = 1f + 0.032f * f;
                     pressPivotX = glassMenuRestRect.centerX();
                     pressPivotY = glassMenuRestRect.centerY();
@@ -700,8 +707,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             } else if ((child == titlesContainer || child == titleTextView[0] || child == titleTextView[1]
                     || child == subtitleTextView || child == additionalSubtitleTextView || child == chatAvatarContainer)
                     && !glassTitleRestRect.isEmpty()) {
-                final float f = animatorTitleGlassPressed.getFloatValue();
+                float f = animatorTitleGlassPressed.getFloatValue();
                 if (f > 0.001f) {
+                    if (jelly) {
+                        f *= 1f + 0.45f * (float) Math.sin(f * Math.PI);
+                    }
                     pressScale = 1f + 0.028f * f;
                     pressPivotX = glassTitleRestRect.centerX();
                     pressPivotY = glassTitleRestRect.centerY();

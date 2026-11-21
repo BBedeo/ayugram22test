@@ -120,6 +120,14 @@
     <string name="OEAppearanceSegmentGapNormal">Normal</string>
     <string name="OEAppearanceSegmentGapSpacious">Spacious</string>
     <string name="OEAppearanceSegmentedDialogsSub">Group pinned chats, regular chats, and contacts into Material You cards</string>
+    <string name="OEAppearanceDetailedSettings">Detailed settings mode</string>
+    <string name="OEAppearanceDetailedSettingsSub">Show all fine-tuning controls for sections, blur, and Liquid Glass</string>
+    <string name="OEAppearanceJellyAnimations">Jelly press animations</string>
+    <string name="OEAppearanceJellyAnimationsSub">Elastic overshoot and spring bounce when tapping glass buttons and pills</string>
+    <string name="OEAppearanceIosMiniPlayer">iOS Liquid Glass mini-player</string>
+    <string name="OEAppearanceIosMiniPlayerSub">Use a translucent Liquid Glass capsule instead of a solid Material You card</string>
+    <string name="OEAppearanceSegmentedGroupHeaders">Group headers in chats</string>
+    <string name="OEAppearanceSegmentedGroupHeadersSub">Show Pinned and Chats headers above segmented card clusters</string>
     <string name="OEAppearanceGlassOutline">Glass Outline</string>
     <string name="OEAppearanceGlassOutlineGlare">Glare</string>
     <string name="OEAppearanceGlassOutlineSolid">Solid</string>

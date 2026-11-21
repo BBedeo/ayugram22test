@@ -126,6 +126,27 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
         this(context, fragment, resourcesProvider, false);
     }
 
+    private org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable glassBg;
+
+    /**
+     * iOS-режим: сплошная карточка Material заменяется стеклянной капсулой
+     * (то же стекло, что у нижней панели). Радиус берётся из выбранной формы мини-плеера.
+     */
+    public void setGlassBackground(org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable drawable) {
+        glassBg = drawable;
+        if (drawable == null) {
+            card.setBackground(cardBg);
+            return;
+        }
+        drawable.setRadius(cardRadius);
+        drawable.setHeaderGlassLens(true);
+        card.setBackground(drawable);
+    }
+
+    public android.view.View getCardView() {
+        return card;
+    }
+
     public static PlayerMiniView preview(Context context) {
         return new PlayerMiniView(context, null, null, true);
     }
@@ -256,6 +277,9 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
         card.setPadding(dp((height - coverSize) / 2f), 0, dp(6), 0);
         cardRadius = shape == PlayerStyle.MINI_SHAPE_PILL ? dp(height) / 2f : dp(shape == PlayerStyle.MINI_SHAPE_SQUARE ? 10 : 20);
         cardBg.setCornerRadius(cardRadius);
+        if (glassBg != null) {
+            glassBg.setRadius(cardRadius);
+        }
         card.invalidateOutline();
 
         boolean coverVisible = coverMode != PlayerStyle.MINI_COVER_HIDDEN;

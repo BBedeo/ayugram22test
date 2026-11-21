@@ -216,10 +216,14 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
             );
             bg.draw(canvas);
         }
+        float pressFactor = LiquidGlassTuning.motionEnabled()
+                ? animatorGlassPressed.getFloatValue()
+                : 0f;
+        if (pressFactor > 0.001f && app.exteraless.appearance.AppearanceConfig.isJellyAnimations()) {
+            pressFactor *= 1f + 0.45f * (float) Math.sin(pressFactor * Math.PI);
+        }
         if (blurredBackgroundDrawable != null) {
-            final int pressSwell = LiquidGlassTuning.motionEnabled()
-                    ? Math.round(dp(1.8f) * animatorGlassPressed.getFloatValue())
-                    : 0;
+            final int pressSwell = Math.round(dp(1.8f) * pressFactor);
             blurredBackgroundDrawable.setBounds(
                     getPaddingLeft() - dp(4) - pressSwell,
                     getPaddingTop() - dp(4) - pressSwell,
@@ -227,9 +231,7 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
                     (getHeight() - getPaddingBottom()) + dp(4) + pressSwell);
             blurredBackgroundDrawable.draw(canvas);
         }
-        final float pressScale = LiquidGlassTuning.motionEnabled()
-                ? (1f + 0.015f * animatorGlassPressed.getFloatValue())
-                : 1f;
+        final float pressScale = 1f + 0.015f * pressFactor;
         if (pressScale > 1.0005f) {
             canvas.save();
             canvas.scale(pressScale, pressScale, getWidth() / 2f, getHeight() / 2f);

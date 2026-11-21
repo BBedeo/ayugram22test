@@ -65,6 +65,14 @@
     <string name="OEAppearanceSegmentGapNormal">Обычный</string>
     <string name="OEAppearanceSegmentGapSpacious">Свободный</string>
     <string name="OEAppearanceSegmentedDialogsSub">Разделять закреплённые и обычные чаты, а также контакты в карточки Material You</string>
+    <string name="OEAppearanceDetailedSettings">Детальный режим настроек</string>
+    <string name="OEAppearanceDetailedSettingsSub">Показывать все тонкие настройки секций, размытия и жидкого стекла</string>
+    <string name="OEAppearanceJellyAnimations">Желейные анимации нажатий</string>
+    <string name="OEAppearanceJellyAnimationsSub">Упругий перелёт и пружинный возврат при нажатии на стеклянные кнопки и пилюли</string>
+    <string name="OEAppearanceIosMiniPlayer">Мини-плеер iOS Liquid Glass</string>
+    <string name="OEAppearanceIosMiniPlayerSub">Прозрачная капсула жидкого стекла вместо сплошной карточки Material You</string>
+    <string name="OEAppearanceSegmentedGroupHeaders">Заголовки групп в чатах</string>
+    <string name="OEAppearanceSegmentedGroupHeadersSub">Показывать заголовки «Закреплённые» и «Чаты» над группами карточек</string>
     <string name="OEAppearanceGlassOutline">Стеклянный контур</string>
     <string name="OEAppearanceGlassOutlineGlare">Блик</string>
     <string name="OEAppearanceGlassOutlineSolid">Сплошной</string>

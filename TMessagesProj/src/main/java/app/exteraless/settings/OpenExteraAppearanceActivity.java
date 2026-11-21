@@ -108,6 +108,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int dividerStyleRow;
     private int segmentedDialogsRow;
     private int segmentGapRow;
+    private int segmentedGroupHeadersRow;
+    private int jellyRow;
+    private int iosMiniPlayerRow;
+    private int detailedSettingsRow;
     private int sectionsDividerRow;
 
     // Blur
@@ -275,35 +279,40 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
         gooeyAvatarRow = addRow("gooeyAvatar");
         elasticDragPillsRow = addRow("elasticDragPills");
+        jellyRow = addRow("jellyAnimations");
+        iosMiniPlayerRow = addRow("iosMiniPlayer");
         customThemesRow = addRow("customThemes");
         appearanceDividerRow = addRow();
 
+        final boolean detailed = AppearanceConfig.detailedSettings.Bool();
+        detailedSettingsRow = addRow("detailedSettings");
         sectionsHeaderRow = addRow("sectionsHeader");
         sectionRadiusRow = addRow("sectionRadius");
-        separateHeadersRow = addRow("separateHeaders");
+        separateHeadersRow = detailed ? addRow("separateHeaders") : -1;
         dividerStyleRow = addRow("dividerStyle");
         segmentedDialogsRow = AppearanceConfig.dividerStyle.Int() == AppearanceConfig.DIVIDER_SEGMENTS
                 ? addRow("segmentedDialogs") : -1;
-        segmentGapRow = segmentedDialogsRow >= 0 ? addRow("segmentGap") : -1;
+        segmentGapRow = (segmentedDialogsRow >= 0 && detailed) ? addRow("segmentGap") : -1;
+        segmentedGroupHeadersRow = (segmentedDialogsRow >= 0 && detailed) ? addRow("segmentedGroupHeaders") : -1;
         sectionsDividerRow = addRow();
 
         blurHeaderRow = addRow("blurHeader");
         universalLiquidGlassRow = addRow("universalLiquidGlass");
         liquidGlassMaterialRow = AppearanceConfig.universalLiquidGlass() ? addRow("liquidGlassMaterial") : -1;
-        glassAdvancedRow = AppearanceConfig.universalLiquidGlass() ? addRow("glassAdvanced") : -1;
+        glassAdvancedRow = (AppearanceConfig.universalLiquidGlass() && detailed) ? addRow("glassAdvanced") : -1;
         for (int i = 0; i < GLASS_SLIDER_COUNT; i++) liquidGlassSliderRows[i] = -1;
         glassMotionRow = glassAdaptiveRow = -1;
-        if (AppearanceConfig.universalLiquidGlass() && AppearanceConfig.liquidGlassAdvanced.Bool()) {
+        if (detailed && AppearanceConfig.universalLiquidGlass() && AppearanceConfig.liquidGlassAdvanced.Bool()) {
             for (int i = 0; i < GLASS_SLIDER_COUNT; i++) {
                 liquidGlassSliderRows[i] = addRow("glassPrecision" + i);
             }
             glassMotionRow = addRow("glassMotion");
             glassAdaptiveRow = addRow("glassAdaptive");
         }
-        glassOutlineRow = addRow("glassOutline");
-        glassMessageMenuRow = addRow("glassMessageMenu");
-        forceBlurRow = addRow("forceBlur");
-        disableAvatarBlurRow = addRow("disableAvatarBlur");
+        glassOutlineRow = detailed ? addRow("glassOutline") : -1;
+        glassMessageMenuRow = detailed ? addRow("glassMessageMenu") : -1;
+        forceBlurRow = detailed ? addRow("forceBlur") : -1;
+        disableAvatarBlurRow = detailed ? addRow("disableAvatarBlur") : -1;
         blurDividerRow = addRow();
 
         callsHeaderRow = addRow("callsHeader");
@@ -738,7 +747,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 && !AppearanceConfig.separateHeaders.Bool()) {
             AppearanceConfig.separateHeaders.setConfigBool(true);
         }
-        if (listAdapter != null) {
+        if (listAdapter != null && separateHeadersRow >= 0) {
             listAdapter.notifyItemChanged(separateHeadersRow);
         }
         rebuildRowsAndNotify();
@@ -1080,6 +1089,16 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         } else if (position == segmentedDialogsRow) {
             item = AppearanceConfig.segmentedDialogs;
             rebuild = true;
+        } else if (position == segmentedGroupHeadersRow) {
+            item = AppearanceConfig.segmentedGroupHeaders;
+            rebuild = true;
+        } else if (position == jellyRow) {
+            item = AppearanceConfig.jellyAnimations;
+        } else if (position == iosMiniPlayerRow) {
+            item = AppearanceConfig.iosMiniPlayer;
+            rebuild = true;
+        } else if (position == detailedSettingsRow) {
+            item = AppearanceConfig.detailedSettings;
         } else if (position == disableAvatarBlurRow) {
             item = NaConfig.INSTANCE.getDisableAvatarBlur();
             rebuild = true;
@@ -1100,6 +1119,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(value);
+        }
+        if (position == detailedSettingsRow || position == segmentedDialogsRow) {
+            rebuildRowsAndNotify();
         }
         if (rebuild) {
             rebuildAll();
@@ -1281,8 +1303,20 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceElasticDragPills),
                                 getString(R.string.OEAppearanceElasticDragPillsInfo),
                                 AppearanceConfig.elasticDragPills.Bool(), true, true);
+                    } else if (position == jellyRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceJellyAnimations),
+                                getString(R.string.OEAppearanceJellyAnimationsSub),
+                                AppearanceConfig.jellyAnimations.Bool(), true, true);
+                    } else if (position == iosMiniPlayerRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceIosMiniPlayer),
+                                getString(R.string.OEAppearanceIosMiniPlayerSub),
+                                AppearanceConfig.iosMiniPlayer.Bool(), true, true);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
+                    } else if (position == detailedSettingsRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceDetailedSettings),
+                                getString(R.string.OEAppearanceDetailedSettingsSub),
+                                AppearanceConfig.detailedSettings.Bool(), true, true);
                     } else if (position == hideVoIPLabelsRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceHideVoIPControlLabels),
                                 AppearanceConfig.hideVoIPControlLabels.Bool(), false);
@@ -1291,7 +1325,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == segmentedDialogsRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceSegmentedDialogs),
                                 getString(R.string.OEAppearanceSegmentedDialogsSub),
-                                AppearanceConfig.segmentedDialogs.Bool(), true, false);
+                                AppearanceConfig.segmentedDialogs.Bool(), true, segmentedGroupHeadersRow >= 0 || segmentGapRow >= 0);
+                    } else if (position == segmentedGroupHeadersRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceSegmentedGroupHeaders),
+                                getString(R.string.OEAppearanceSegmentedGroupHeadersSub),
+                                AppearanceConfig.segmentedGroupHeaders.Bool(), true, false);
                     } else if (position == glassAdvancedRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceGlassAdvanced),
                                 AppearanceConfig.liquidGlassAdvanced.Bool(), true);

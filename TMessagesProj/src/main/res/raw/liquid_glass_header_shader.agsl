@@ -137,7 +137,7 @@ half4 main(in float2 fragCoord) {
   }
 
   // Subtle hairline TIR depth gradient right near the edge (no thick soap bevel).
-  float lightWallBoost = mix(1.0, 1.85, smoothstep(0.55, 0.92, bgLumaF));
+  float lightWallBoost = mix(1.0, 1.15, smoothstep(0.55, 0.92, bgLumaF));
   float outerWall = gaussian((dDp - 1.35) / 0.85);
   float meniscus = gaussian((dDp - 2.35) / 1.15);
   surface.rgb *= half(1.0 - lightWallBoost * ((0.014 + 0.014 * lift) * outerWall + (0.006 + 0.008 * lift) * meniscus));

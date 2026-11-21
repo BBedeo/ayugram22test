@@ -7,11 +7,15 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.text.TextPaint;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Adapters.DialogsAdapter;
@@ -29,6 +33,7 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
     private final Paint cardPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pinnedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final TextPaint headerPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final RectF cardRect = new RectF();
     private final Path cardPath = new Path();
     private final float[] radii = new float[8];
@@ -37,6 +42,25 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         this.resourcesProvider = resourcesProvider;
         borderPaint.setStyle(Paint.Style.STROKE);
         borderPaint.setStrokeWidth(dp(0.5f));
+        headerPaint.setTextSize(dp(13));
+        headerPaint.setTypeface(AndroidUtilities.bold());
+    }
+
+    private static boolean hasClusterHeader(
+            RecyclerView parent,
+            RecyclerView.Adapter<?> adapter,
+            int pos,
+            int currType,
+            boolean currPinned
+    ) {
+        if (!AppearanceConfig.isSegmentedGroupHeadersEnabled()) {
+            return false;
+        }
+        if (!isNeighborSameDialogType(adapter, pos - 1, currType)) {
+            return currPinned;
+        }
+        final boolean prevPinned = isNeighborPinned(parent, adapter, pos - 1, currPinned);
+        return prevPinned != currPinned;
     }
 
     private static boolean isNeighborSameDialogType(RecyclerView.Adapter<?> adapter, int pos, int currType) {
@@ -91,6 +115,9 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
             outRect.top = prevPinned != currPinned ? gap + dp(8) : gap;
         } else {
             outRect.top = dp(6);
+        }
+        if (hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
+            outRect.top += dp(22);
         }
         if (pos == adapter.getItemCount() - 1) {
             outRect.bottom = dp(12);
@@ -155,6 +182,13 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
                 c.drawPath(cardPath, pinnedPaint);
             }
             c.drawPath(cardPath, borderPaint);
+            if (hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
+                headerPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader, resourcesProvider));
+                final String title = currPinned
+                        ? LocaleController.getString(R.string.PinnedMessages)
+                        : LocaleController.getString(R.string.FilterChats);
+                c.drawText(title, cardRect.left + dp(14), cardRect.top - dp(7), headerPaint);
+            }
         }
     }
 }

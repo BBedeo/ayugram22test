@@ -189,6 +189,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private FrameLayout tabsViewWrapper;
     private MainTabsLayout tabsView;
     private BlurredBackgroundDrawable tabsViewBackground;
+    private BlurredBackgroundDrawableViewFactory iBlur3FactoryGlass;
     private View fadeView;
     private boolean lastHideContacts = NaConfig.INSTANCE.getMainTabsHideContacts().Bool();
     private boolean lastHideCalls = MainTabsHelper.isCallsTabHidden();
@@ -584,7 +585,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         final ViewPositionWatcher viewPositionWatcher = new ViewPositionWatcher(contentView);
 
-        BlurredBackgroundDrawableViewFactory iBlur3FactoryGlass = new BlurredBackgroundDrawableViewFactory(
+        iBlur3FactoryGlass = new BlurredBackgroundDrawableViewFactory(
             iBlur3SourceTabGlass != null ? iBlur3SourceTabGlass : iBlur3SourceColor,
             iBlur3SourceTabFrosted != null ? iBlur3SourceTabFrosted : iBlur3SourceColor,
             iBlur3SourceColor);
@@ -659,6 +660,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         contentView.addView(fadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 0, Gravity.BOTTOM));
 
         miniPlayer = new app.exteraless.player.PlayerMiniView(context, this, resourceProvider);
+        if (app.exteraless.appearance.AppearanceConfig.isIosMiniPlayer()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            miniPlayer.setGlassBackground(iBlur3FactoryGlass.create(
+                    miniPlayer.getCardView(), BlurredBackgroundProviderImpl.mainTabs(resourceProvider)));
+        }
         miniPlayer.setOffsetListener(this::onMiniPlayerOffsetChanged);
         contentView.addView(miniPlayer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, app.exteraless.player.PlayerMiniView.HEIGHT_DP + 16, Gravity.BOTTOM));
         contentView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
@@ -1851,6 +1857,15 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         }
         if (tabsView != null) {
             tabsView.updateElasticPillColors();
+        }
+        if (miniPlayer != null && iBlur3FactoryGlass != null) {
+            if (app.exteraless.appearance.AppearanceConfig.isIosMiniPlayer()
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                miniPlayer.setGlassBackground(iBlur3FactoryGlass.create(
+                        miniPlayer.getCardView(), BlurredBackgroundProviderImpl.mainTabs(resourceProvider)));
+            } else {
+                miniPlayer.setGlassBackground(null);
+            }
         }
         blur3_invalidateBlur();
         if (fadeView != null) {

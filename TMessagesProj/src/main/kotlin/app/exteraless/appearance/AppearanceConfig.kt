@@ -709,6 +709,44 @@ object AppearanceConfig {
         }
     }
 
+    /** Детальный режим настроек: показывать все тонкие настройки эффектов, а не только основные. */
+    @JvmField
+    val detailedSettings =
+        addConfig("OEAppearanceDetailedSettings", ConfigItem.configTypeBool, false)
+
+    /** Мини-плеер в стиле iOS: стеклянная капсула вместо сплошной карточки Material. */
+    @JvmField
+    val iosMiniPlayer =
+        addConfig("OEAppearanceIosMiniPlayer", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isIosMiniPlayer(): Boolean {
+        ensureLoaded()
+        return iosMiniPlayer.Bool()
+    }
+
+    /** «Желейные» анимации: нажатие поднимает элемент с перелётом и пружинным возвратом. */
+    @JvmField
+    val jellyAnimations =
+        addConfig("OEAppearanceJellyAnimations", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isJellyAnimations(): Boolean {
+        ensureLoaded()
+        return jellyAnimations.Bool()
+    }
+
+    /** Показывать заголовки групп («Закреплённые» / «Чаты») над кластерами карточек в списке чатов. */
+    @JvmField
+    val segmentedGroupHeaders =
+        addConfig("OEAppearanceSegmentedGroupHeaders", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isSegmentedGroupHeadersEnabled(): Boolean {
+        ensureLoaded()
+        return isSegmentedDialogsEnabled() && segmentedGroupHeaders.Bool()
+    }
+
     const val DIVIDER_HIDDEN = 0
     const val DIVIDER_LINE = 1
     const val DIVIDER_SEGMENTS = 2

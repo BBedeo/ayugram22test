@@ -27,6 +27,7 @@ import android.os.Bundle;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
@@ -420,7 +421,28 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     private Runnable onLongClick = () -> {
         pressed = false;
         bounce.setPressed(false);
-        if (canSearch()) {
+        if (parentFragment != null && parentFragment.getParentActivity() != null) {
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            final long dialogId = parentFragment.getDialogId();
+            final long topicId = parentFragment.getTopicId();
+            final boolean muted = parentFragment.getMessagesController().isDialogMuted(dialogId, topicId);
+            final ItemOptions options = ItemOptions.makeOptions(parentFragment, ChatAvatarContainer.this);
+            options.add(R.drawable.msg_info, LocaleController.getString(R.string.OpenProfile), () -> openProfile(false));
+            if (canSearch()) {
+                options.add(R.drawable.msg_search, LocaleController.getString(R.string.Search), this::openSearch);
+            }
+            if (dialogId != 0 && dialogId != UserConfig.getInstance(currentAccount).getClientUserId()) {
+                options.add(
+                        muted ? R.drawable.msg_unmute : R.drawable.msg_mute,
+                        LocaleController.getString(muted ? R.string.UnmuteNotifications : R.string.MuteNotifications),
+                        () -> {
+                            parentFragment.getNotificationsController().muteDialog(dialogId, topicId, !muted);
+                            BulletinFactory.createMuteBulletin(parentFragment, !muted, resourcesProvider).show();
+                        }
+                );
+            }
+            options.show();
+        } else if (canSearch()) {
             openSearch();
         }
     };
@@ -428,7 +450,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     private boolean pressed;
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        if (ev.getAction() == MotionEvent.ACTION_DOWN && canSearch()) {
+        if (ev.getAction() == MotionEvent.ACTION_DOWN && (canSearch() || parentFragment != null)) {
             pressed = true;
             bounce.setPressed(true);
             AndroidUtilities.cancelRunOnUIThread(this.onLongClick);
