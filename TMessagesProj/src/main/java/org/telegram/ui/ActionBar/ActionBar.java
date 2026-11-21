@@ -2411,24 +2411,42 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 final boolean titleHit = !backHit && !menuHit && glassDrawable != null && glassDrawable.getAlpha() > 12
                         && drawGlassMiddlePill && !glassOnlyBack && drawGlassTitle && !doNotDrawCenterGlass
                         && containsRectSlop(titleR, x, y, 0);
+                backGlassPendingRelease = false;
+                menuGlassPendingRelease = false;
+                titleGlassPendingRelease = false;
                 animatorBackGlassPressed.setValue(backHit, true);
                 animatorMenuGlassPressed.setValue(menuHit, true);
                 animatorTitleGlassPressed.setValue(titleHit, true);
             } else if (action == MotionEvent.ACTION_MOVE) {
                 final int slop = dp(6);
                 if (animatorBackGlassPressed.getValue() && (glassDrawableBack == null || !containsRectSlop(glassBackRestRect, x, y, slop))) {
+                    backGlassPendingRelease = false;
                     animatorBackGlassPressed.setValue(false, true);
                 }
                 if (animatorMenuGlassPressed.getValue() && (glassDrawableMenu == null || isMenuPillInOverlay() || !containsRectSlop(glassMenuRestRect, x, y, slop))) {
+                    menuGlassPendingRelease = false;
                     animatorMenuGlassPressed.setValue(false, true);
                 }
                 if (animatorTitleGlassPressed.getValue() && (glassDrawable == null || !containsRectSlop(glassTitleRestRect, x, y, slop))) {
+                    titleGlassPendingRelease = false;
                     animatorTitleGlassPressed.setValue(false, true);
                 }
             } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                animatorBackGlassPressed.setValue(false, true);
-                animatorMenuGlassPressed.setValue(false, true);
-                animatorTitleGlassPressed.setValue(false, true);
+                if (animatorBackGlassPressed.getValue() && animatorBackGlassPressed.getFloatValue() < 0.96f) {
+                    backGlassPendingRelease = true;
+                } else {
+                    animatorBackGlassPressed.setValue(false, true);
+                }
+                if (animatorMenuGlassPressed.getValue() && animatorMenuGlassPressed.getFloatValue() < 0.96f) {
+                    menuGlassPendingRelease = true;
+                } else {
+                    animatorMenuGlassPressed.setValue(false, true);
+                }
+                if (animatorTitleGlassPressed.getValue() && animatorTitleGlassPressed.getFloatValue() < 0.96f) {
+                    titleGlassPendingRelease = true;
+                } else {
+                    animatorTitleGlassPressed.setValue(false, true);
+                }
             }
         } else if (animatorBackGlassPressed.getValue() || animatorMenuGlassPressed.getValue() || animatorTitleGlassPressed.getValue()) {
             animatorBackGlassPressed.setValue(false, true);
@@ -2794,6 +2812,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private final BoolAnimator animatorBackGlassPressed = new BoolAnimator(10, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
     private final BoolAnimator animatorMenuGlassPressed = new BoolAnimator(11, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
     private final BoolAnimator animatorTitleGlassPressed = new BoolAnimator(12, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
+    private boolean backGlassPendingRelease;
+    private boolean menuGlassPendingRelease;
+    private boolean titleGlassPendingRelease;
 
     private final Rect glassBackRestRect = new Rect();
     private final Rect glassMenuRestRect = new Rect();
@@ -2801,6 +2822,16 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
+        if (id == 10 && backGlassPendingRelease && factor >= 0.96f) {
+            backGlassPendingRelease = false;
+            animatorBackGlassPressed.setValue(false, true);
+        } else if (id == 11 && menuGlassPendingRelease && factor >= 0.96f) {
+            menuGlassPendingRelease = false;
+            animatorMenuGlassPressed.setValue(false, true);
+        } else if (id == 12 && titleGlassPendingRelease && factor >= 0.96f) {
+            titleGlassPendingRelease = false;
+            animatorTitleGlassPressed.setValue(false, true);
+        }
         invalidate();
     }
 
