@@ -12,14 +12,15 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Adapters.DialogsAdapter;
 import org.telegram.ui.Cells.DialogCell;
 
 /**
  * Material You segmented card decoration for chat lists (DialogsActivity).
- * Groups pinned chats and regular chats into distinct rounded card clusters
- * with 2dp segment gaps inside a cluster and a 10dp cluster break between
- * pinned and regular chats.
+ * Uses adapter item types and pinned state directly so gaps and corner radii
+ * stay 100% uniform across all rows regardless of ViewHolder recycling/layout order.
  */
 public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
 
@@ -36,6 +37,27 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         this.resourcesProvider = resourcesProvider;
         borderPaint.setStyle(Paint.Style.STROKE);
         borderPaint.setStrokeWidth(dp(0.5f));
+    }
+
+    private static boolean isNeighborSameDialogType(RecyclerView.Adapter<?> adapter, int pos, int currType) {
+        return pos >= 0 && pos < adapter.getItemCount() && adapter.getItemViewType(pos) == currType;
+    }
+
+    private static boolean isNeighborPinned(RecyclerView parent, RecyclerView.Adapter<?> adapter, int pos, boolean fallback) {
+        if (pos < 0 || pos >= adapter.getItemCount()) {
+            return false;
+        }
+        final RecyclerView.ViewHolder vh = parent.findViewHolderForAdapterPosition(pos);
+        if (vh != null && vh.itemView instanceof DialogCell) {
+            return ((DialogCell) vh.itemView).getIsPinned();
+        }
+        if (adapter instanceof DialogsAdapter) {
+            final Object item = ((DialogsAdapter) adapter).getItem(pos);
+            if (item instanceof TLRPC.Dialog) {
+                return ((TLRPC.Dialog) item).pinned;
+            }
+        }
+        return fallback;
     }
 
     @Override
@@ -61,13 +83,13 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         if (pos == RecyclerView.NO_POSITION) {
             return;
         }
+        final int currType = adapter.getItemViewType(pos);
         final boolean currPinned = ((DialogCell) view).getIsPinned();
-        final RecyclerView.ViewHolder prevVh = pos > 0 ? parent.findViewHolderForAdapterPosition(pos - 1) : null;
-        if (prevVh != null && prevVh.itemView instanceof DialogCell) {
-            final boolean prevPinned = ((DialogCell) prevVh.itemView).getIsPinned();
+        if (isNeighborSameDialogType(adapter, pos - 1, currType)) {
+            final boolean prevPinned = isNeighborPinned(parent, adapter, pos - 1, currPinned);
             outRect.top = prevPinned != currPinned ? dp(10) : dp(2);
         } else {
-            outRect.top = pos == 0 ? dp(6) : dp(4);
+            outRect.top = dp(6);
         }
         if (pos == adapter.getItemCount() - 1) {
             outRect.bottom = dp(12);
@@ -77,6 +99,10 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
     @Override
     public void onDraw(@NonNull Canvas c, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
         if (!AppearanceConfig.isSegmentedDialogsEnabled()) {
+            return;
+        }
+        final RecyclerView.Adapter<?> adapter = parent.getAdapter();
+        if (adapter == null) {
             return;
         }
         final int bgColor = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
@@ -104,14 +130,13 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
             if (pos == RecyclerView.NO_POSITION) {
                 continue;
             }
+            final int currType = adapter.getItemViewType(pos);
             final boolean currPinned = cell.getIsPinned();
-            final RecyclerView.ViewHolder prevVh = pos > 0 ? parent.findViewHolderForAdapterPosition(pos - 1) : null;
-            final RecyclerView.ViewHolder nextVh = parent.findViewHolderForAdapterPosition(pos + 1);
 
-            final boolean isFirst = prevVh == null || !(prevVh.itemView instanceof DialogCell)
-                    || ((DialogCell) prevVh.itemView).getIsPinned() != currPinned;
-            final boolean isLast = nextVh == null || !(nextVh.itemView instanceof DialogCell)
-                    || ((DialogCell) nextVh.itemView).getIsPinned() != currPinned;
+            final boolean samePrev = isNeighborSameDialogType(adapter, pos - 1, currType);
+            final boolean sameNext = isNeighborSameDialogType(adapter, pos + 1, currType);
+            final boolean isFirst = !samePrev || isNeighborPinned(parent, adapter, pos - 1, currPinned) != currPinned;
+            final boolean isLast = !sameNext || isNeighborPinned(parent, adapter, pos + 1, currPinned) != currPinned;
 
             final float topR = isFirst ? outerR : innerR;
             final float botR = isLast ? outerR : innerR;
