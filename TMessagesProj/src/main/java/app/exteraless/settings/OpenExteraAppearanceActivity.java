@@ -309,9 +309,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             glassMotionRow = addRow("glassMotion");
             glassAdaptiveRow = addRow("glassAdaptive");
         }
-        glassOutlineRow = detailed ? addRow("glassOutline") : -1;
+        glassOutlineRow = addRow("glassOutline");
         glassMessageMenuRow = detailed ? addRow("glassMessageMenu") : -1;
-        forceBlurRow = detailed ? addRow("forceBlur") : -1;
+        forceBlurRow = addRow("forceBlur");
         disableAvatarBlurRow = detailed ? addRow("disableAvatarBlur") : -1;
         blurDividerRow = addRow();
 
@@ -898,7 +898,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         } else if (position == universalLiquidGlassRow) {
             boolean enabled = AppearanceConfig.universalLiquidGlass.toggleConfigBool();
-            if (!enabled) {
+            if (enabled) {
+                LiteMode.toggleFlag(LiteMode.FLAG_CHAT_BLUR, true);
+                LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, true);
+            } else {
                 LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, false);
             }
             org.telegram.utils.glass.GlassEngine.getCurrentGlassSettings();

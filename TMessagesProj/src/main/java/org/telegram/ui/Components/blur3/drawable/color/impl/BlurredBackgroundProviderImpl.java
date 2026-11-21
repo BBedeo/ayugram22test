@@ -20,6 +20,31 @@ import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProviderBuilder;
 
 public class BlurredBackgroundProviderImpl {
+    /**
+     * Opaque Material Design 3 tonal surface container blended over the active theme surface.
+     * Role: 0 = surfaceContainerLow, 1 = surfaceContainer, 2 = surfaceContainerHigh.
+     */
+    private static int m3Surface(Theme.ResourcesProvider r, boolean isDark, int role) {
+        final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
+        final int m3Token;
+        final float weight;
+        if (role == 0) {
+            m3Token = isDark ? 0xFF1D1B20 : 0xFFF7F2FA;
+            weight = isDark ? 0.55f : 0.45f;
+        } else if (role == 2) {
+            m3Token = isDark ? 0xFF2B2930 : 0xFFECE6F0;
+            weight = isDark ? 0.72f : 0.65f;
+        } else {
+            m3Token = isDark ? 0xFF211F26 : 0xFFF3EDF7;
+            weight = isDark ? 0.65f : 0.55f;
+        }
+        return ColorUtils.setAlphaComponent(ColorUtils.blendARGB(colorBg, m3Token, weight), 255);
+    }
+
+    private static int m3OutlineVariant(Theme.ResourcesProvider r, boolean isDark) {
+        return isDark ? 0xCC49454F : 0xB8CAC4D0;
+    }
+
     public static BlurredBackgroundProvider mainTabs(Theme.ResourcesProvider resourcesProvider) {
         final BlurredBackgroundProviderBuilder builder = new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
@@ -32,6 +57,9 @@ public class BlurredBackgroundProviderImpl {
                         : ColorUtils.blendARGB(colorTarget, 0xFFFFFFFF, 0.82f);
                     return ColorUtils.setAlphaComponent(crystalTarget,
                         MathUtils.clamp(Math.round(255f * alpha), isDark ? 18 : 28, isDark ? 95 : 135));
+                }
+                if (!checkBlurEnabled(r) || app.exteraless.appearance.MainTabsUiHelper.isMaterial3NavigationBar()) {
+                    return m3Surface(r, isDark, 1);
                 }
                 final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 return solveSrcColor(colorBg, colorTarget, alpha);
@@ -55,11 +83,15 @@ public class BlurredBackgroundProviderImpl {
                     return ColorUtils.setAlphaComponent(crystalTarget,
                         MathUtils.clamp(Math.round(255f * alpha), isDark ? 18 : 28, isDark ? 95 : 135));
                 }
+                if (!checkBlurEnabled(r)) {
+                    return m3Surface(r, isDark, 1);
+                }
                 final float alpha = LiquidGlassTuning.tintAlpha(isDark, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f);
                 return solveSrcColor(colorBg, colorTarget, alpha);
             })
             .setStrokeColorTop(0x11000000, 0)
             .setStrokeColorBottom(0x20000000, 0)
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor(0x20000000, 0x24000000)
             .setShadowLayer(dpf2(2.667f), 0, dpf2(0.85f))
             .setStrokeWidth(dpf2(0.4f), dpf2(0.4f))
@@ -75,10 +107,9 @@ public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider dialogsHeaderGlass(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
-                final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
                 if (!checkBlurEnabled(r)) {
-                    return isDark ? Theme.blendOver(colorBg, 0x16FFFFFF) : Theme.blendOver(colorBg, 0x0A000000);
+                    return m3Surface(r, isDark, 1);
                 }
                 if (isHeaderLiquidShaderActive(r)) {
                     // Crystal-clear floating lens tint: keep the core highly transparent so
@@ -109,6 +140,7 @@ public class BlurredBackgroundProviderImpl {
                 }
                 return isDark ? 0 : 0x1E000000;
             })
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor(0x20000000, 0x26000000)
             .setShadowLayer(dpf2(4.0f), 0, dpf2(1.1f))
             .setStrokeWidth(dpf2(0.45f), dpf2(0.45f))
@@ -120,7 +152,7 @@ public class BlurredBackgroundProviderImpl {
             .setBackgroundColor((r, isDark) -> {
                 final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
                 if (!checkBlurEnabled(r)) {
-                    return ColorUtils.setAlphaComponent(colorSubmenu, 255);
+                    return m3Surface(r, isDark, 0);
                 }
                 final boolean crystalMenu = isHeaderLiquidShaderActive(r);
                 if (crystalMenu) {
@@ -139,6 +171,7 @@ public class BlurredBackgroundProviderImpl {
             })
             .setStrokeColorTop(0x16000000, 0)
             .setStrokeColorBottom(0x20000000, 0)
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor(0x2A000000, 0x38000000)
             .setShadowLayer(dpf2(9.0f), 0, dpf2(2.6f))
             .setStrokeWidth(dpf2(0.55f), dpf2(0.45f))
@@ -198,7 +231,7 @@ public class BlurredBackgroundProviderImpl {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
                 .setBackgroundColor((r, isDark) -> {
                     if (!LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR) && !LiquidGlassTuning.isActive()) {
-                        return Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground);
+                        return m3Surface(r, isDark, 0);
                     }
                     if (isHeaderLiquidShaderActive(r)) {
                         final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
@@ -213,6 +246,7 @@ public class BlurredBackgroundProviderImpl {
                 })
                 .setStrokeColorTop(0x44FFFFFF, 0)
                 .setStrokeColorBottom(0x22FFFFFF, 0)
+                .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
                 .setShadowColor(0x38000000, 0)
                 .setShadowLayer(dpf2(3.5f), 0, 0)
                 .setStrokeWidth(dpf2(2 / 3f), dpf2(2 / 3f))
@@ -223,6 +257,9 @@ public class BlurredBackgroundProviderImpl {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
                 final int colorSubmenu = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
+                if (!checkBlurEnabled(r)) {
+                    return m3Surface(r, isDark, 0);
+                }
                 if (isHeaderLiquidShaderActive(r)) {
                     final float alpha = LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.24f : 0.32f);
                     final int tinted = isDark
@@ -234,6 +271,7 @@ public class BlurredBackgroundProviderImpl {
             })
             .setStrokeColorTop(0x44FFFFFF, 0)
             .setStrokeColorBottom(0x22FFFFFF, 0)
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor(0x26000000, 0)
             .setShadowLayer(dpf2(4f), 0, 0)
             .setStrokeWidth(dpf2(2 / 3f), dpf2(2 / 3f))
@@ -337,8 +375,7 @@ public class BlurredBackgroundProviderImpl {
             }
                 .setBackgroundColor((r, isDark) -> {
                     if (!checkBlurEnabled(resourcesProvider)) {
-                        return ColorUtils.setAlphaComponent(Theme.getColor(isDark ?
-                            Theme.key_actionBarDefault : Theme.key_chat_topPanelBackground, r), 255);
+                        return m3Surface(r, isDark, 1);
                     }
                     if (isHeaderLiquidShaderActive(r)) {
                         final float alpha = LiquidGlassTuning.tintAlphaHeader(isDark, isDark ? 0.12f : 0.22f);
@@ -355,7 +392,7 @@ public class BlurredBackgroundProviderImpl {
                 })
                 .setStrokeColorTop(0xFFFFFFFF, 0)
                 .setStrokeColorBottom(0xFFFFFFFF, 0)
-                .setStrokeColorFull((r, isDark) -> Theme.getDividerColor(r))
+                .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
                 .setShadowColor(0x20000000, 0)
                 //.setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
                 .setStrokeWidth(dpf2(0.55f), dpf2(0.55f))
@@ -374,6 +411,10 @@ public class BlurredBackgroundProviderImpl {
                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundGray, r);
                 final int colorTarget = Theme.getColor(Theme.key_windowBackgroundWhite, r);
                 if (!checkBlurEnabled(r)) {
+                    if (app.exteraless.appearance.AppearanceConfig.newChatHeaderStyle()
+                            || org.telegram.ui.Components.blur3.GlassOutlineStyle.current() == org.telegram.ui.Components.blur3.GlassOutlineStyle.SOLID) {
+                        return m3Surface(r, isDark, 1);
+                    }
                     final float fallbackAlpha = LiquidGlassTuning.tintAlpha(isDark, 0.85f);
                     return solveSrcColor(colorBg, colorTarget, fallbackAlpha);
                 }
@@ -403,6 +444,7 @@ public class BlurredBackgroundProviderImpl {
                 }
                 return isDark ? 0 : 0x1E000000;
             })
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor((r, isDark) -> isHeaderLiquidShaderActive(r)
                 ? (isDark ? 0x26000000 : 0x20000000)
                 : (isDark ? 0 : 0x16333333))
@@ -414,10 +456,16 @@ public class BlurredBackgroundProviderImpl {
     /** A frosted sheet over the content, e.g. the list over the map: the content shows through its blur. */
     public static BlurredBackgroundProvider frostedSheet(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
-            .setBackgroundColor((r, isDark) -> Theme.multAlpha(Theme.getColor(Theme.key_dialogBackground, r),
-                isHeaderLiquidShaderActive(r) ? LiquidGlassTuning.tintAlphaMenu(isDark, 0.34f) : (isDark ? 0.82f : 0.78f)))
-            .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
+            .setBackgroundColor((r, isDark) -> {
+                if (!checkBlurEnabled(r)) {
+                    return m3Surface(r, isDark, 0);
+                }
+                return Theme.multAlpha(Theme.getColor(Theme.key_dialogBackground, r),
+                    isHeaderLiquidShaderActive(r) ? LiquidGlassTuning.tintAlphaMenu(isDark, 0.34f) : (isDark ? 0.82f : 0.78f));
+            })
+            .setStrokeColorTop((r, isDark) -> isHeaderLiquidShaderActive(r) ? (isDark ? 0x20FFFFFF : 0xFFFFFFFF) : 0)
             .setStrokeColorBottom(0, 0)
+            .setStrokeColorFull(BlurredBackgroundProviderImpl::m3OutlineVariant)
             .setShadowColor(0x16333333, 0)
             .setShadowLayer(dpf2(24 / 3f), 0, -dpf2(2f / 3f))
             .setStrokeWidth(dpf2(0.55f), 0)

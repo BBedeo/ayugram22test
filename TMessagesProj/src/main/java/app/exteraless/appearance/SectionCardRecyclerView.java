@@ -9,6 +9,7 @@ import android.graphics.RectF;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BlurredRecyclerView;
+import org.telegram.ui.Components.blur3.GlassOutlineStyle;
 
 /**
  * openExtera: список настроек с единой скруглённой карточкой-секцией и мягкой тенью-elevation,
@@ -64,21 +65,41 @@ public class SectionCardRecyclerView extends BlurredRecyclerView {
             return;
         }
 
-        strokePaint.setColor(0);
-        strokePaint.setShadowLayer(AndroidUtilities.dpf2(0.33f), 0, 0, Theme.multAlpha(0x0C000000, alpha));
-        fillPaint.setShadowLayer(AndroidUtilities.dpf2(2f), 0, AndroidUtilities.dpf2(0.33f), Theme.multAlpha(0x0A000000, alpha));
+        final GlassOutlineStyle outline = GlassOutlineStyle.current();
+        final boolean isDark = Theme.isCurrentThemeDark();
+        if (outline == GlassOutlineStyle.SOLID) {
+            fillPaint.clearShadowLayer();
+            strokePaint.clearShadowLayer();
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeWidth(AndroidUtilities.dpf2(1f));
+            strokePaint.setColor(Theme.multAlpha(isDark ? 0xCC49454F : 0xB8CAC4D0, alpha));
+        } else if (outline == GlassOutlineStyle.HIDDEN) {
+            fillPaint.clearShadowLayer();
+            strokePaint.clearShadowLayer();
+            strokePaint.setStyle(Paint.Style.FILL);
+            strokePaint.setColor(0);
+        } else {
+            strokePaint.setStyle(Paint.Style.FILL);
+            strokePaint.setColor(0);
+            strokePaint.setShadowLayer(AndroidUtilities.dpf2(0.33f), 0, 0, Theme.multAlpha(0x0C000000, alpha));
+            fillPaint.setShadowLayer(AndroidUtilities.dpf2(2f), 0, AndroidUtilities.dpf2(0.33f), Theme.multAlpha(0x0A000000, alpha));
+        }
         fillPaint.setColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider), alpha));
 
         if (topRadius == bottomRadius) {
-            canvas.drawRoundRect(rect, topRadius, topRadius, strokePaint);
             canvas.drawRoundRect(rect, topRadius, topRadius, fillPaint);
+            if (strokePaint.getColor() != 0 || outline == GlassOutlineStyle.GLARE) {
+                canvas.drawRoundRect(rect, topRadius, topRadius, strokePaint);
+            }
         } else {
             path.rewind();
             radii[0] = radii[1] = radii[2] = radii[3] = topRadius;
             radii[4] = radii[5] = radii[6] = radii[7] = bottomRadius;
             path.addRoundRect(rect, radii, Path.Direction.CW);
-            canvas.drawPath(path, strokePaint);
             canvas.drawPath(path, fillPaint);
+            if (strokePaint.getColor() != 0 || outline == GlassOutlineStyle.GLARE) {
+                canvas.drawPath(path, strokePaint);
+            }
         }
     }
 

@@ -298,7 +298,9 @@ object AppearancePresets {
         AppearanceConfig.separateHeaders.setConfigBool(spec.separateHeaders)
         AppearanceConfig.dividerStyle.setConfigInt(spec.dividerStyle)
         AppearanceConfig.segmentedDialogs.setConfigBool(spec.dividerStyle == AppearanceConfig.DIVIDER_SEGMENTS)
+        AppearanceConfig.segmentGap.setConfigInt(if (spec.id == PRESET_MATERIAL3) 0 else 1)
         AppearanceConfig.iosMiniPlayer.setConfigBool(spec.universalLiquidGlass)
+        AppearanceConfig.jellyAnimations.setConfigBool(spec.universalLiquidGlass)
         NaConfig.hideDividers.setConfigBool(spec.dividerStyle == AppearanceConfig.DIVIDER_HIDDEN)
         AppearanceConfig.invalidateDividerStyle()
 
@@ -307,10 +309,14 @@ object AppearancePresets {
             LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, true)
         } else {
             LiteMode.toggleFlag(LiteMode.FLAG_LIQUID_GLASS, false)
+            if (spec.id == PRESET_MATERIAL3) {
+                LiteMode.toggleFlag(LiteMode.FLAG_CHAT_BLUR, false)
+            }
         }
 
         GlassEngine.getCurrentGlassSettings()
         Theme.applyCommonTheme()
+        org.telegram.ui.Components.blur3.GlassOutlineStyle.dispatchChange()
         return true
     }
 

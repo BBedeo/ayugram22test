@@ -506,6 +506,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
         strokeColorTop = glare ? LiquidGlassTuning.sanitizeRimStroke(colorProvider.getStrokeColorTop(), hasGpuGlass, darkTheme) : 0;
         strokeColorBottom = glare ? LiquidGlassTuning.sanitizeRimStroke(colorProvider.getStrokeColorBottom(), hasGpuGlass, darkTheme) : 0;
         strokeColorFull = solid ? colorProvider.getStrokeColorFull() : 0;
+        if (solid && strokeColorFull != 0) {
+            boundProps.strokeWidthFull = Math.max(dpf2(1.0f), boundProps.strokeWidthFull);
+        }
         // the outline and the shadow may follow the theme too (e.g. compact mode's glass)
         outlineShadowColor = glare ? colorProvider.getOutlineShadowColor() : 0;
         outlineColor = glare ? colorProvider.getOutlineColor() : 0;

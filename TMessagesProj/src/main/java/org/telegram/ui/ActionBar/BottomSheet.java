@@ -1557,6 +1557,25 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                         && LaunchActivity.systemBlurEnabled) {
                     window.setBackgroundBlurRadius(Math.round(dp(24) * LiquidGlassTuning.blurScale()));
                 }
+            } else if (org.telegram.ui.Components.blur3.GlassOutlineStyle.current() == org.telegram.ui.Components.blur3.GlassOutlineStyle.SOLID
+                    && !org.telegram.messenger.LiteMode.isEnabled(org.telegram.messenger.LiteMode.FLAG_CHAT_BLUR)) {
+                final int color = getThemedColor(Theme.key_dialogBackground);
+                final boolean dark = AndroidUtilities.computePerceivedBrightness(color) < .72f;
+                final int m3SurfaceLow = ColorUtils.blendARGB(color, dark ? 0xFF1D1B20 : 0xFFF7F2FA, 0.55f);
+                shadowDrawable.setAlpha(255);
+                shadowDrawable.setColorFilter(new PorterDuffColorFilter(m3SurfaceLow, PorterDuff.Mode.MULTIPLY));
+                GradientDrawable rim = new GradientDrawable();
+                rim.setColor(0x00000000);
+                final float radius = dp(28);
+                rim.setCornerRadii(new float[]{radius, radius, radius, radius, 0, 0, 0, 0});
+                rim.setStroke(dp(1), dark ? 0xCC49454F : 0xB8CAC4D0);
+                LayerDrawable material = new LayerDrawable(new Drawable[]{shadowDrawable, rim});
+                material.setLayerInset(1, backgroundPaddingLeft, backgroundPaddingTop,
+                        backgroundPaddingLeft, 0);
+                containerView.setBackgroundDrawable(material);
+                if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    window.setBackgroundBlurRadius(0);
+                }
             } else {
                 containerView.setBackgroundDrawable(shadowDrawable);
             }

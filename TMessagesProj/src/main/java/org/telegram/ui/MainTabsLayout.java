@@ -508,7 +508,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         skipDrawSelector |= ElasticPillGesture.enabled();
         drawCustomSelector = skipDrawSelector;
         if (drawCustomSelector) {
-            selectorPaint.setColor(Theme.multAlpha(Theme.getColor(Theme.key_glass_tabSelected, resourcesProvider), 0.09f));
+            final int selectedColor = Theme.getColor(Theme.key_glass_tabSelected, resourcesProvider);
+            selectorPaint.setColor(Theme.multAlpha(selectedColor,
+                    app.exteraless.appearance.MainTabsUiHelper.isMaterial3NavigationBar() ? 0.20f : 0.09f));
         }
         for (int a = 0, N = getChildCount(); a < N; a++) {
             final View child = getChildAt(a);

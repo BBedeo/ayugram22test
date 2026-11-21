@@ -128,8 +128,10 @@ public final class MainTabsUiHelper {
     public static BlurredBackgroundProviderBuilder applyBackgroundStroke(BlurredBackgroundProviderBuilder builder) {
         if (isMaterial3NavigationBar()) {
             return builder
+                    .setShadowColor(0, 0)
                     .setStrokeColorTop(0, 0)
                     .setStrokeColorBottom(0, 0)
+                    .setStrokeColorFull(0, 0)
                     .setStrokeWidth(0, 0);
         }
         return builder
@@ -162,7 +164,7 @@ public final class MainTabsUiHelper {
     }
 
     public static int getMainTabSelectedIndicatorColor(int color, float factor) {
-        return Theme.multAlpha(color, factor * 0.125f);
+        return Theme.multAlpha(color, factor * (isMaterial3NavigationBar() ? 0.20f : 0.125f));
     }
 
     public static float getMaterial3MainTabIconTopDp() {

@@ -383,10 +383,14 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         backgroundPaddings = new Rect();
         if (progressStyle != ALERT_TYPE_SPINNER || blurredBackground) {
             shadowDrawable = context.getResources().getDrawable(R.drawable.popup_fixed_alert4).mutate();
+            final boolean m3Opaque = !LiquidGlassTuning.isActive() && !LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR);
             blurOpacity = progressStyle == ALERT_TYPE_SPINNER ? 0.55f
                     : (optionalGlass ? LiquidGlassTuning.tintAlphaMenu(isDark, 0.80f)
-                    : (isDark ? 0.80f : 0.985f));
-            shadowDrawable.setColorFilter(new PorterDuffColorFilter(backgroundColor, PorterDuff.Mode.MULTIPLY));
+                    : (m3Opaque ? 1.0f : (isDark ? 0.80f : 0.985f)));
+            final int tint = m3Opaque
+                    ? androidx.core.graphics.ColorUtils.blendARGB(backgroundColor, isDark ? 0xFF2B2930 : 0xFFECE6F0, 0.60f)
+                    : backgroundColor;
+            shadowDrawable.setColorFilter(new PorterDuffColorFilter(tint, PorterDuff.Mode.MULTIPLY));
             shadowDrawable.getPadding(backgroundPaddings);
         }
         withCancelDialog = progressViewStyle == ALERT_TYPE_SPINNER;

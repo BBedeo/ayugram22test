@@ -58,12 +58,16 @@ public abstract class GlassMenuHelper {
                         : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.80f);
                     return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 28 : 36, isDark ? 120 : 150));
                 }
+                if (!org.telegram.messenger.LiteMode.isEnabled(org.telegram.messenger.LiteMode.FLAG_CHAT_BLUR)) {
+                    final int m3Token = isDark ? 0xFF1D1B20 : 0xFFF7F2FA;
+                    return ColorUtils.setAlphaComponent(ColorUtils.blendARGB(colorSubmenu, m3Token, 0.45f), 255);
+                }
                 return Theme.multAlpha(colorSubmenu, LiquidGlassTuning.tintAlphaMenu(isDark, isDark ? 0.85f : 0.76f));
             })
             // Clean dark blur separation without harsh white wireframe borders.
             .setStrokeColorTop(liquid ? 0x14000000 : 0, 0)
             .setStrokeColorBottom(liquid ? 0x1E000000 : 0, 0)
-            .setStrokeColorFull(0, 0)
+            .setStrokeColorFull((r, isDark) -> isDark ? 0xCC49454F : 0xB8CAC4D0)
             .setStrokeWidth(liquid ? AndroidUtilities.dpf2(0.45f) : 0.0f, 0.0f);
     }
 

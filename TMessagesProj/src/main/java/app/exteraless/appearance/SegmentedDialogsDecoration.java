@@ -20,6 +20,7 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Adapters.DialogsAdapter;
 import org.telegram.ui.Cells.DialogCell;
+import org.telegram.ui.Components.blur3.GlassOutlineStyle;
 
 /**
  * Material You segmented card decoration for chat lists (DialogsActivity).
@@ -142,7 +143,16 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
         final int pinnedOverlay = Theme.getColor(Theme.key_chats_pinnedOverlay, resourcesProvider);
         pinnedPaint.setColor(pinnedOverlay);
         final boolean isDark = Theme.isCurrentThemeDark();
-        borderPaint.setColor(isDark ? 0x10FFFFFF : 0x0C000000);
+        final GlassOutlineStyle outline = GlassOutlineStyle.current();
+        if (outline == GlassOutlineStyle.SOLID) {
+            borderPaint.setStrokeWidth(dp(1));
+            borderPaint.setColor(isDark ? 0xCC49454F : 0xB8CAC4D0);
+        } else if (outline == GlassOutlineStyle.HIDDEN) {
+            borderPaint.setColor(0);
+        } else {
+            borderPaint.setStrokeWidth(dp(0.5f));
+            borderPaint.setColor(isDark ? 0x10FFFFFF : 0x0C000000);
+        }
 
         final float outerR = dp(Math.max(4, AppearanceConfig.sectionRadius()));
         final float innerR = dp(4);
@@ -181,7 +191,9 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
             if (currPinned && (pinnedOverlay >>> 24) > 0) {
                 c.drawPath(cardPath, pinnedPaint);
             }
-            c.drawPath(cardPath, borderPaint);
+            if (borderPaint.getColor() != 0) {
+                c.drawPath(cardPath, borderPaint);
+            }
             if (hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
                 headerPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader, resourcesProvider));
                 final String title = currPinned
