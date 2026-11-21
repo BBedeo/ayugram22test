@@ -1125,7 +1125,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         int height;
         if (isForumCell() && !isTransitionSupport && !collapsed) {
             height = dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 86 : 91);
-            if (useSeparator) {
+            if (useSeparator && !app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
                 height += 1;
             }
             if (hasTags()) {
@@ -5049,7 +5049,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             canvas.restore();
         }
 
-        if (useSeparator) {
+        if (useSeparator && !app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
             int left;
             if (fullSeparator || currentDialogFolderId != 0 && archiveHidden && !fullSeparator2 || fullSeparator2 && !archiveHidden) {
                 left = 0;

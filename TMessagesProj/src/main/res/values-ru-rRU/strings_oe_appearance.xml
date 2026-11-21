@@ -59,6 +59,8 @@
     <string name="OEAppearanceDividerHidden">Скрыт</string>
     <string name="OEAppearanceDividerLine">Линия</string>
     <string name="OEAppearanceDividerSegments">Сегменты</string>
+    <string name="OEAppearanceSegmentedDialogs">Сегменты в чатах и контактах</string>
+    <string name="OEAppearanceSegmentedDialogsSub">Разделять закреплённые и обычные чаты, а также контакты в карточки Material You</string>
     <string name="OEAppearanceGlassOutline">Стеклянный контур</string>
     <string name="OEAppearanceGlassOutlineGlare">Блик</string>
     <string name="OEAppearanceGlassOutlineSolid">Сплошной</string>

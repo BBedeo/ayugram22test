@@ -350,6 +350,10 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
         }
 
         listView = new RecyclerListView(context);
+        if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+            listView.setSections();
+            listView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray, resourceProvider));
+        }
         searchListViewAdapter = new SearchAdapter(listView, context, ignoreUsers, selectedContacts, allowUsernameSearch, false, false, allowBots, allowSelf, true, 0, resourceProvider) {
             @Override
             protected void onSearchProgressChanged() {

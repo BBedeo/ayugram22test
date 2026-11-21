@@ -114,6 +114,8 @@
     <string name="OEAppearanceDividerHidden">Hidden</string>
     <string name="OEAppearanceDividerLine">Line</string>
     <string name="OEAppearanceDividerSegments">Segments</string>
+    <string name="OEAppearanceSegmentedDialogs">Segments in chats &amp; contacts</string>
+    <string name="OEAppearanceSegmentedDialogsSub">Group pinned chats, regular chats, and contacts into Material You cards</string>
     <string name="OEAppearanceGlassOutline">Glass Outline</string>
     <string name="OEAppearanceGlassOutlineGlare">Glare</string>
     <string name="OEAppearanceGlassOutlineSolid">Solid</string>

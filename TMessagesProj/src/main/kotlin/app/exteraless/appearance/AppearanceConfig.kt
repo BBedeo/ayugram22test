@@ -683,6 +683,17 @@ object AppearanceConfig {
         return dividerStyle.Int()
     }
 
+    /** Применять стиль «Сегменты» (карточки Material You) также к списку чатов и контактов. */
+    @JvmField
+    val segmentedDialogs =
+        addConfig("OEAppearanceSegmentedDialogs", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isSegmentedDialogsEnabled(): Boolean {
+        ensureLoaded()
+        return dividerStyle.Int() == DIVIDER_SEGMENTS && segmentedDialogs.Bool()
+    }
+
     const val DIVIDER_HIDDEN = 0
     const val DIVIDER_LINE = 1
     const val DIVIDER_SEGMENTS = 2
