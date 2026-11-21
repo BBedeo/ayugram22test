@@ -307,7 +307,7 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         } else if (backend == Backend.CAMERA_2 && camera2Session != null) {
             frameRate = camera2Session.getRecordingFrameRate();
         } else if (backend == Backend.ROUND_VIDEO) {
-            frameRate = roundVideoFrameRate;
+            return Math.max(33L, 1000L / Math.max(1, roundVideoFrameRate));
         }
         if (frameRate <= 0) {
             frameRate = 30;

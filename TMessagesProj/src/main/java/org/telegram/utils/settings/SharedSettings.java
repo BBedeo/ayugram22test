@@ -34,6 +34,9 @@ public final class SharedSettings {
     public static final BooleanSetting roundVideoComposition =
         BooleanSetting.of("round_video_composition", true);
 
+    public static final BooleanSetting roundVideoShowFps =
+        BooleanSetting.of("round_video_show_fps", false);
+
     public static final EnumSetting<RoundVideoSession.CameraFacing> roundVideoLastCamera =
         EnumSetting.of("round_video_last_camera", RoundVideoSession.CameraFacing.FRONT);
 

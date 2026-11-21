@@ -26,6 +26,10 @@ final class RoundVideoGlProcessor {
         void onError(@NonNull Exception error);
     }
 
+    interface LiveFpsListener {
+        void onLiveFpsUpdated(int fps);
+    }
+
     private static final int EGL_RECORDABLE_ANDROID = 0x3142;
     private static final boolean ENABLE_BLOCKING_GPU_TIMING = false;
     private static final int GPU_TIMING_SAMPLE_INTERVAL = 30;
@@ -133,6 +137,9 @@ final class RoundVideoGlProcessor {
     private volatile boolean recordingStarted;
     private volatile Runnable firstFrameListener;
     private Runnable dualSwitchFrameListener;
+    private volatile LiveFpsListener liveFpsListener;
+    private long liveFpsWindowStartNs;
+    private int liveFpsWindowFrames;
     private boolean firstFrameReported;
     private volatile RuntimeException initializationError;
 
@@ -1028,6 +1035,28 @@ final class RoundVideoGlProcessor {
         if (frameTimingListener != null) {
             frameTimingListener.onFrameSubmitted(presentationTime / 1000L, submittedNs);
         }
+        LiveFpsListener fpsListener = liveFpsListener;
+        if (fpsListener != null) {
+            if (liveFpsWindowStartNs == 0L) {
+                liveFpsWindowStartNs = submittedNs;
+                liveFpsWindowFrames = 1;
+            } else {
+                liveFpsWindowFrames++;
+                long elapsedNs = submittedNs - liveFpsWindowStartNs;
+                if (elapsedNs >= 400_000_000L) {
+                    int fps = Math.max(1, Math.round(liveFpsWindowFrames * 1_000_000_000f / elapsedNs));
+                    liveFpsWindowStartNs = submittedNs;
+                    liveFpsWindowFrames = 0;
+                    fpsListener.onLiveFpsUpdated(fps);
+                }
+            }
+        }
+    }
+
+    void setLiveFpsListener(@Nullable LiveFpsListener listener) {
+        this.liveFpsListener = listener;
+        this.liveFpsWindowStartNs = 0L;
+        this.liveFpsWindowFrames = 0;
     }
 
     private static float clamp01(float value) {

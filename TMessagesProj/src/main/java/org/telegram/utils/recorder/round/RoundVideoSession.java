@@ -158,6 +158,8 @@ public final class RoundVideoSession {
         /** Called when camera-specific controls become available or change. */
         default void onCameraCapabilitiesChanged(@NonNull CameraCapabilities capabilities) {}
 
+        default void onLiveFpsUpdated(int fps) {}
+
         /** Called before the active Camera2 device starts changing. */
         default void onCameraSwitchStarted(@NonNull CameraFacing facing) {}
 
@@ -786,7 +788,7 @@ public final class RoundVideoSession {
     @MainThread
     public boolean setZoom(float progress) {
         requireMainThread();
-        if (state != State.RECORDING || cameraSwitching) return false;
+        if ((state != State.RECORDING && state != State.STARTING) || cameraSwitching) return false;
         zoomProgress = clamp(progress, 0f, 1f);
         zoomRatio = 1f + zoomProgress * (maximumZoomRatio - 1f);
         return cameraController.setZoom(zoomProgress);
@@ -796,7 +798,7 @@ public final class RoundVideoSession {
     @MainThread
     public boolean setZoomRatio(float ratio) {
         requireMainThread();
-        if (state != State.RECORDING || cameraSwitching) return false;
+        if ((state != State.RECORDING && state != State.STARTING) || cameraSwitching) return false;
         float minZoom = ultrawideAvailable && minimumZoomRatio >= 0.95f ? 0.5f : minimumZoomRatio;
         zoomRatio = clamp(ratio, minZoom, maximumZoomRatio);
         zoomProgress = maximumZoomRatio <= 1f
@@ -969,6 +971,13 @@ public final class RoundVideoSession {
                 @Override
                 public void onCameraSwitchFirstFrame() {
                     mainHandler.post(listener::onCameraSwitchFirstFrame);
+                }
+
+                @Override
+                public void onLiveFpsUpdated(int fps) {
+                    mainHandler.post(() -> {
+                        if (!isTerminalState()) listener.onLiveFpsUpdated(fps);
+                    });
                 }
 
                 @Override

@@ -83,6 +83,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
     private final FlashViews.ImageViewInvertable switchCameraButton;
     private final FlashViews.ImageViewInvertable flashButton;
     private final TextView zoomButton;
+    private final TextView fpsPillView;
     private final app.exteraless.camera.InstantCameraZoomSlider zoomSlider;
     private final ImageView muteImageView;
     private final FlashViews flashViews;
@@ -282,6 +283,26 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         zoomButton.setOnClickListener(view -> cycleZoomPreset());
         buttonsLayout.addView(zoomButton, LayoutHelper.createLinear(44, 44));
 
+        fpsPillView = new TextView(context);
+        fpsPillView.setGravity(Gravity.CENTER);
+        fpsPillView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        fpsPillView.setTypeface(AndroidUtilities.bold());
+        fpsPillView.setFontFeatureSettings("tnum");
+        fpsPillView.setTextColor(isNewDesign && resourcesProvider != null && !resourcesProvider.isDark() ? 0xFF1F1F1F : Color.WHITE);
+        fpsPillView.setPadding(dp(14), 0, dp(14), 0);
+        fpsPillView.setText("-- FPS");
+        fpsPillView.setAlpha(0f);
+        fpsPillView.setVisibility(GONE);
+        addView(fpsPillView, LayoutHelper.createFrame(
+                LayoutHelper.WRAP_CONTENT,
+                56,
+                Gravity.LEFT | Gravity.BOTTOM,
+                104,
+                0,
+                0,
+                0
+        ));
+
         buttonIconSize = dp(isNewDesign ? 24 : 28);
         switchCameraDrawable = new RLottieDrawable(
                 R.raw.roundcamera_flip,
@@ -320,6 +341,10 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         drawable.setPadding(dp(6));
         drawable.setRadius(dp(21));
         buttonsLayout.setBackground(drawable);
+        BlurredBackgroundDrawable fpsDrawable = factory.create(fpsPillView, colorProvider);
+        fpsDrawable.setPadding(dp(6));
+        fpsDrawable.setRadius(dp(21));
+        fpsPillView.setBackground(fpsDrawable);
         zoomSlider.setBlurBackground(factory.create(zoomSlider, colorProvider));
     }
 
@@ -332,6 +357,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
     public void setVisibility(int visibility) {
         super.setVisibility(visibility);
         buttonsLayout.setAlpha(0f);
+        fpsPillView.setAlpha(0f);
         zoomSlider.setOpenAlpha(0f);
         cameraContainer.setAlpha(0f);
         cameraContainer.setScaleX(setVisibilityFromPause ? 1f : 0.1f);
@@ -413,6 +439,12 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         currentZoomRatio = 1f;
         zoomProgress = 0f;
         updateZoomButton();
+        if (SharedSettings.roundVideoShowFps.get()) {
+            fpsPillView.setText("-- FPS");
+            fpsPillView.setVisibility(VISIBLE);
+        } else {
+            fpsPillView.setVisibility(GONE);
+        }
         upload = new TelegramRoundVideoUpload(currentAccount, secretChat);
         activeOutputResolution = SharedSettings.roundVideoOutputResolution.get();
         session = new RoundVideoSession.Builder(getContext(), textureView)
@@ -465,6 +497,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         visibilityAnimator = new AnimatorSet();
         visibilityAnimator.playTogether(
                 ObjectAnimator.ofFloat(buttonsLayout, View.ALPHA, open ? 1f : 0f),
+                ObjectAnimator.ofFloat(fpsPillView, View.ALPHA, open && SharedSettings.roundVideoShowFps.get() ? 1f : 0f),
                 ObjectAnimator.ofFloat(zoomSlider, app.exteraless.camera.InstantCameraZoomSlider.OPEN_ALPHA, open ? 1f : 0f),
                 ObjectAnimator.ofFloat(cameraContainer, View.ALPHA, open ? 1f : 0f),
                 ObjectAnimator.ofFloat(cameraContainer, View.SCALE_X, open ? 1f : 0.1f),
@@ -793,6 +826,13 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
             }
             bindZoomSlider();
             updateButtons();
+        }
+
+        @Override
+        public void onLiveFpsUpdated(int fps) {
+            if (fpsPillView.getVisibility() == VISIBLE) {
+                fpsPillView.setText(fps + " FPS");
+            }
         }
 
         @Override

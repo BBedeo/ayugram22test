@@ -54,6 +54,8 @@ final class RoundVideoCameraController {
         void onSegmentInterrupted(@NonNull Exception error);
 
         void onError(@NonNull Exception error);
+
+        default void onLiveFpsUpdated(int fps) {}
     }
 
     static final class CameraInfo {
@@ -465,7 +467,7 @@ final class RoundVideoCameraController {
         cameraHandler = new Handler(cameraThread.getLooper());
     }
 
-    private final Runnable applyZoomRunnable = this::applyRepeatingRequest;
+    private final Runnable applyZoomRunnable = this::applyZoomUpdate;
 
     private final TextureView.SurfaceTextureListener previewListener =
             new TextureView.SurfaceTextureListener() {
@@ -664,6 +666,7 @@ final class RoundVideoCameraController {
                 callback::onError
         );
         glProcessor.setTargetOutputFps(recorder.getVideoFrameRate());
+        glProcessor.setLiveFpsListener(callback::onLiveFpsUpdated);
         glProcessor.setFirstFrameListener(() -> {
             Handler handler = cameraHandler;
             if (handler != null) handler.post(this::startRecordingAfterFirstFrame);
@@ -1685,6 +1688,28 @@ final class RoundVideoCameraController {
         Handler handler = cameraHandler;
         if (handler != null) handler.removeCallbacks(commonStartTimeoutRunnable);
         commonStartRecorder = null;
+    }
+
+    private void applyZoomUpdate() {
+        CameraCaptureSession session = captureSession;
+        CaptureRequest.Builder builder = repeatingBuilder;
+        if (!active || session == null || cameraDevice == null) return;
+        if (builder == null) {
+            applyRepeatingRequest();
+            return;
+        }
+        try {
+            applyZoom(builder);
+            submitRepeatingRequest();
+        } catch (IllegalStateException e) {
+            if (dualActiveMode) {
+                fallbackFromDualMode("active zoom request rejected", e, false);
+            } else {
+                recoverFromClosedCamera(session, e);
+            }
+        } catch (CameraAccessException | IllegalArgumentException e) {
+            diagnostics.log("zoom request rejected: " + e);
+        }
     }
 
     private void applyRepeatingRequest() {

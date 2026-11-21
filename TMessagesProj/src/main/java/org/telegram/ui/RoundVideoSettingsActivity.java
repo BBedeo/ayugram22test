@@ -49,13 +49,14 @@ public class RoundVideoSettingsActivity extends BaseFragment {
     private static final int ROW_OUTPUT_RESOLUTION = 2;
     private static final int ROW_CAMERA_RESOLUTION = 3;
     private static final int ROW_FRAME_RATE = 4;
-    private static final int ROW_BITRATE = 5;
-    private static final int ROW_GENERAL_INFO = 6;
-    private static final int ROW_DIAGNOSTICS = 7;
-    private static final int ROW_COMPOSITION_HEADER = 8;
-    private static final int ROW_COMPOSITION = 9;
-    private static final int ROW_COMPOSITION_INFO = 10;
-    private static final int ROW_COUNT = BuildVars.DEBUG_PRIVATE_VERSION ? 11 : 8;
+    private static final int ROW_SHOW_FPS = 5;
+    private static final int ROW_BITRATE = 6;
+    private static final int ROW_GENERAL_INFO = 7;
+    private static final int ROW_DIAGNOSTICS = 8;
+    private static final int ROW_COMPOSITION_HEADER = 9;
+    private static final int ROW_COMPOSITION = 10;
+    private static final int ROW_COMPOSITION_INFO = 11;
+    private static final int ROW_COUNT = BuildVars.DEBUG_PRIVATE_VERSION ? 12 : 9;
 
     private static final int[] BITRATES = {
             750_000,
@@ -173,6 +174,9 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                         app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.setConfigBool(index != 0);
                     }
             );
+        } else if (position == ROW_SHOW_FPS) {
+            SharedSettings.roundVideoShowFps.set(!SharedSettings.roundVideoShowFps.get());
+            adapter.notifyItemChanged(position);
         } else if (position == ROW_BITRATE) {
             CharSequence[] labels = new CharSequence[BITRATES.length];
             for (int i = 0; i < BITRATES.length; i++) {
@@ -389,6 +393,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             return position == ROW_OUTPUT_RESOLUTION
                     || position == ROW_CAMERA_RESOLUTION
                     || position == ROW_FRAME_RATE
+                    || position == ROW_SHOW_FPS
                     || position == ROW_BITRATE
                     || position == ROW_COMPOSITION;
         }
@@ -431,6 +436,12 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                             LocaleController.getString(R.string.RoundVideoUseNewRecorder),
                             enabled,
                             false
+                    );
+                } else if (position == ROW_SHOW_FPS) {
+                    cell.setTextAndCheck(
+                            LocaleController.getString(R.string.RoundVideoShowFps),
+                            SharedSettings.roundVideoShowFps.get(),
+                            true
                     );
                 } else {
                     cell.setTextAndCheck(
@@ -487,6 +498,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                 return TYPE_HEADER;
             }
             if (position == ROW_ENABLED
+                    || position == ROW_SHOW_FPS
                     || position == ROW_COMPOSITION) {
                 return TYPE_CHECK;
             }

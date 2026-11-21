@@ -10,6 +10,7 @@
     <string name="OpenExteraCategories">Категории</string>
     <string name="OpenExteraGeneral">Основные</string>
     <string name="OpenExteraAppearance">Оформление</string>
+    <string name="RoundVideoShowFps">Показывать FPS</string>
     <string name="OpenExteraOther">Ещё</string>
 
     <string name="OpenExteraLinks">Ссылки</string>

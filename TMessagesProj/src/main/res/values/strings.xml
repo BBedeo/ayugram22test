@@ -11306,6 +11306,7 @@
     <string name="RoundVideoCameraResolutionMedium">Medium</string>
     <string name="RoundVideoCameraResolutionLow">Low</string>
     <string name="RoundVideoFrameRate">Frame rate</string>
+    <string name="RoundVideoShowFps">Show live FPS</string>
     <string name="RoundVideoBitrate">Video bitrate</string>
     <string name="RoundVideoGeneralInfo">60 FPS is used only when both front and rear cameras support it. Otherwise recording falls back to 30 FPS.</string>
     <string name="RoundVideoComposition">Composition</string>
