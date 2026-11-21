@@ -1,6 +1,7 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
@@ -62,7 +63,10 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             1_200_000,
             2_000_000,
             3_000_000,
-            4_000_000
+            4_000_000,
+            6_000_000,
+            8_000_000,
+            10_000_000
     };
 
     private RecyclerListView listView;
@@ -129,12 +133,17 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             return;
         }
         if (position == ROW_OUTPUT_RESOLUTION) {
+            final RoundVideoSession.OutputResolution[] resolutions = {
+                    RoundVideoSession.OutputResolution.P1080,
+                    RoundVideoSession.OutputResolution.P720,
+                    RoundVideoSession.OutputResolution.P640,
+                    RoundVideoSession.OutputResolution.P480,
+                    RoundVideoSession.OutputResolution.P360
+            };
             showChoice(
                     R.string.RoundVideoOutputResolution,
-                    new CharSequence[]{"480p", "360p"},
-                    index -> SharedSettings.roundVideoOutputResolution.set(index == 0
-                            ? RoundVideoSession.OutputResolution.P480
-                            : RoundVideoSession.OutputResolution.P360)
+                    new CharSequence[]{"1080p", "720p", "640p", "480p", "360p"},
+                    index -> SharedSettings.roundVideoOutputResolution.set(resolutions[index])
             );
         } else if (position == ROW_CAMERA_RESOLUTION) {
             showChoice(
@@ -149,28 +158,24 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                     )
             );
         } else if (position == ROW_FRAME_RATE) {
+            final RoundVideoSession.FrameRate[] frameRates = {
+                    RoundVideoSession.FrameRate.FPS_30,
+                    RoundVideoSession.FrameRate.FPS_60,
+                    RoundVideoSession.FrameRate.FPS_120,
+                    RoundVideoSession.FrameRate.FPS_240,
+                    RoundVideoSession.FrameRate.FPS_MAX
+            };
             showChoice(
                     R.string.RoundVideoFrameRate,
-                    new CharSequence[]{"30 FPS", "60 FPS", "120 FPS", "Max (Auto)"},
+                    new CharSequence[]{"30 FPS", "60 FPS", "120 FPS", "240 FPS", "Max (Auto)"},
                     index -> {
-                        RoundVideoSession.FrameRate rate;
-                        if (index == 0) {
-                            rate = RoundVideoSession.FrameRate.FPS_30;
-                        } else if (index == 1) {
-                            rate = RoundVideoSession.FrameRate.FPS_60;
-                        } else if (index == 2) {
-                            rate = RoundVideoSession.FrameRate.FPS_120;
-                        } else {
-                            rate = RoundVideoSession.FrameRate.FPS_MAX;
-                        }
-                        SharedSettings.roundVideoFrameRate.set(rate);
+                        SharedSettings.roundVideoFrameRate.set(frameRates[index]);
                         app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.setConfigBool(index != 0);
                     }
             );
         } else if (position == ROW_BITRATE) {
-            int count = BITRATES.length - (BuildVars.DEBUG_PRIVATE_VERSION ? 0 : 1);
-            CharSequence[] labels = new CharSequence[count];
-            for (int i = 0; i < count; i++) {
+            CharSequence[] labels = new CharSequence[BITRATES.length];
+            for (int i = 0; i < BITRATES.length; i++) {
                 labels[i] = formatBitrate(BITRATES[i]);
             }
             showChoice(
@@ -218,16 +223,43 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                     }
                     Range<Integer>[] fpsRanges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
                     int maxUpper = 0;
+                    StreamConfigurationMap streamMap =
+                            characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                    int sensorMaxFps = 0;
+                    java.util.ArrayList<String> fastSizes = new java.util.ArrayList<>();
+                    if (streamMap != null) {
+                        Size[] texSizes = streamMap.getOutputSizes(SurfaceTexture.class);
+                        if (texSizes != null) {
+                            for (Size size : texSizes) {
+                                long dur = streamMap.getOutputMinFrameDuration(SurfaceTexture.class, size);
+                                if (dur > 0L) {
+                                    int fps = (int) Math.round(1_000_000_000.0 / dur);
+                                    sensorMaxFps = Math.max(sensorMaxFps, fps);
+                                    if (dur <= 17_000_000L) {
+                                        fastSizes.add(size.getWidth() + "x" + size.getHeight() + "@" + fps + "fps");
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if (fpsRanges != null) {
-                        text.append("AE FPS: ");
+                        text.append("AE FPS (API): ");
                         for (Range<Integer> range : fpsRanges) {
                             text.append('[').append(range.getLower()).append(',').append(range.getUpper()).append("] ");
                             maxUpper = Math.max(maxUpper, range.getUpper());
                         }
+                        if (sensorMaxFps > maxUpper) {
+                            text.append("(OEM hides ").append(sensorMaxFps).append("+)");
+                        }
                         text.append('\n');
                     }
-                    StreamConfigurationMap streamMap =
-                            characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                    if (sensorMaxFps > maxUpper || !fastSizes.isEmpty()) {
+                        text.append("Sensor FPS (minDuration): ").append(sensorMaxFps).append(" fps");
+                        if (!fastSizes.isEmpty()) {
+                            text.append(" (").append(android.text.TextUtils.join(", ", fastSizes)).append(')');
+                        }
+                        text.append('\n');
+                    }
                     Range<Integer>[] highSpeed = streamMap != null ? streamMap.getHighSpeedVideoFpsRanges() : null;
                     int maxHighSpeed = 0;
                     if (highSpeed != null && highSpeed.length > 0) {
@@ -242,8 +274,10 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                         }
                         text.append('\n');
                     }
-                    int effectiveMax = Math.max(maxUpper, maxHighSpeed);
-                    text.append("Max hardware FPS: ").append(effectiveMax).append(" fps");
+                    int regularMax = Math.max(maxUpper, sensorMaxFps);
+                    int effectiveMax = Math.max(regularMax, maxHighSpeed);
+                    text.append("Max hardware FPS: ").append(effectiveMax)
+                            .append(" fps (regular: ").append(regularMax).append(" fps)");
                     int[] ois = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION);
                     int[] eis = characteristics.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES);
                     text.append("\nStab: OIS=")
@@ -310,7 +344,9 @@ public class RoundVideoSettingsActivity extends BaseFragment {
     }
 
     private static String frameRateLabel(RoundVideoSession.FrameRate rate) {
-        if (rate == RoundVideoSession.FrameRate.FPS_120) {
+        if (rate == RoundVideoSession.FrameRate.FPS_240) {
+            return "240 FPS";
+        } else if (rate == RoundVideoSession.FrameRate.FPS_120) {
             return "120 FPS";
         } else if (rate == RoundVideoSession.FrameRate.FPS_MAX) {
             return "Max (Auto)";

@@ -12,6 +12,7 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 
+import androidx.annotation.Nullable;
 import androidx.camera.core.ZoomState;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
@@ -65,7 +66,8 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         NONE,
         CAMERA_1,
         CAMERA_2,
-        CAMERA_X
+        CAMERA_X,
+        ROUND_VIDEO
     }
 
     private static final int MAX_BIND_RETRIES = 25;
@@ -89,6 +91,13 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
     private float defaultZoom = 1f;
     private float wideZoom = 1f;
     private float displayOneZoom = 1f;
+
+    private String roundVideoCameraId;
+    private float roundVideoMinZoom = 1f;
+    private float roundVideoMaxZoom = 1f;
+    private boolean roundVideoFront;
+    private float roundVideoCurrentZoom = 1f;
+    private int roundVideoFrameRate = 60;
 
     private OnCameraZoomChangeListener cameraZoomChangeListener;
     private BlurredBackgroundDrawable blurBackground;
@@ -297,6 +306,8 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
             frameRate = cameraXSession.getRecordingFrameRate();
         } else if (backend == Backend.CAMERA_2 && camera2Session != null) {
             frameRate = camera2Session.getRecordingFrameRate();
+        } else if (backend == Backend.ROUND_VIDEO) {
+            frameRate = roundVideoFrameRate;
         }
         if (frameRate <= 0) {
             frameRate = 30;
@@ -352,6 +363,9 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
                     camera1Session.setZoom(camera1LinearZoom);
                 }
                 reported = camera1LinearZoom;
+                break;
+            case ROUND_VIDEO:
+                roundVideoCurrentZoom = value;
                 break;
             default:
                 return;
@@ -429,6 +443,9 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
                     setZoom(camera1RatioForLinearZoom(camera1LinearZoom));
                 }
                 break;
+            case ROUND_VIDEO:
+                setZoom(roundVideoCurrentZoom);
+                break;
             default:
                 break;
         }
@@ -442,6 +459,9 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
                 setZoom(camera1RatioForLinearZoom(camera1LinearZoom));
             }
         } else if (backend == Backend.CAMERA_2) {
+            setZoom(value);
+        } else if (backend == Backend.ROUND_VIDEO) {
+            roundVideoCurrentZoom = value;
             setZoom(value);
         } else {
             syncZoom();
@@ -498,6 +518,37 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         tryBind();
     }
 
+    public void bindRoundVideo(
+            @Nullable String cameraId,
+            float minRatio,
+            float maxRatio,
+            boolean frontFace,
+            float currentZoom,
+            int frameRate
+    ) {
+        final boolean morph = switchingCamera
+                || (backend == Backend.ROUND_VIDEO && getVisibility() == VISIBLE && isLaidOut()
+                && ((cameraId != null && !cameraId.equals(roundVideoCameraId)) || frontFace != roundVideoFront));
+        switchingCamera = false;
+        if (morph) {
+            prepareZoomConfigurationTransition();
+        }
+        resetBinding(!morph);
+        backend = Backend.ROUND_VIDEO;
+        roundVideoCameraId = cameraId;
+        roundVideoMinZoom = minRatio;
+        roundVideoMaxZoom = maxRatio;
+        roundVideoFront = frontFace;
+        roundVideoCurrentZoom = currentZoom;
+        roundVideoFrameRate = frameRate > 0 ? frameRate : 60;
+        animateNextConfiguration = morph;
+        if (morph) {
+            setEnabled(false);
+            setExpanded(false, true);
+        }
+        tryBind();
+    }
+
     public void unbindSession() {
         switchingCamera = false;
         resetBinding(true);
@@ -526,6 +577,12 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         defaultZoom = 1f;
         wideZoom = 1f;
         displayOneZoom = 1f;
+        roundVideoCameraId = null;
+        roundVideoMinZoom = 1f;
+        roundVideoMaxZoom = 1f;
+        roundVideoFront = false;
+        roundVideoCurrentZoom = 1f;
+        roundVideoFrameRate = 60;
         bindRetries = 0;
         removeCallbacks(bindRunnable);
         animateNextConfiguration = false;
@@ -554,6 +611,9 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         }
         if (backend == Backend.CAMERA_2 && camera2Session != null) {
             return camera2Session.cameraId;
+        }
+        if (backend == Backend.ROUND_VIDEO) {
+            return roundVideoCameraId;
         }
         return null;
     }
@@ -604,6 +664,11 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
                 maxRatio = camera1ZoomRatios.length == 0 ? 1f : camera1ZoomRatios[camera1ZoomRatios.length - 1];
                 break;
             }
+            case ROUND_VIDEO:
+                minRatio = roundVideoMinZoom;
+                maxRatio = roundVideoMaxZoom;
+                frontFace = roundVideoFront;
+                break;
             default:
                 return;
         }
@@ -630,7 +695,8 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         final float current = clamp(
             backend == Backend.CAMERA_X ? getCameraXResetZoom()
                 : backend == Backend.CAMERA_2 ? camera2Session.getZoom()
-                    : camera1RatioForLinearZoom(camera1LinearZoom),
+                    : backend == Backend.ROUND_VIDEO ? roundVideoCurrentZoom
+                        : camera1RatioForLinearZoom(camera1LinearZoom),
             minRatio, maxRatio);
 
         final boolean morph = animateNextConfiguration;
@@ -649,7 +715,7 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
     // ---------- жесты снаружи ----------
 
     public void beginExternalZoomGesture() {
-        if (backend != Backend.CAMERA_X) {
+        if (backend != Backend.CAMERA_X && backend != Backend.ROUND_VIDEO) {
             return;
         }
         discardPendingZoom();

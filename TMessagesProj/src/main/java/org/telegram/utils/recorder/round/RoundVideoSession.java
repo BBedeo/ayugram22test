@@ -33,6 +33,12 @@ public final class RoundVideoSession {
 
     /** Square resolution written by the video encoder. */
     public enum OutputResolution {
+        /** 1080 x 1080 output. */
+        P1080(1080),
+        /** 720 x 720 output. */
+        P720(720),
+        /** 640 x 640 output. */
+        P640(640),
         /** 480 x 480 output. */
         P480(480),
         /** 360 x 360 output. */
@@ -76,8 +82,10 @@ public final class RoundVideoSession {
         FPS_60(60),
         /** Requests 120 fps through high-speed or AE ranges and falls back to 60/30 fps. */
         FPS_120(120),
-        /** Requests the maximum supported frame rate per camera (up to 120 fps). */
-        FPS_MAX(120);
+        /** Requests 240 fps through high-speed ranges and falls back to 120/60/30 fps. */
+        FPS_240(240),
+        /** Requests the maximum supported frame rate per camera (up to 240 fps). */
+        FPS_MAX(240);
 
         private final int value;
 
@@ -415,6 +423,7 @@ public final class RoundVideoSession {
         private final float minimumZoomRatio;
         private final float maximumZoomRatio;
         private final boolean ultrawideAvailable;
+        private final String cameraId;
 
         private CameraCapabilities(
                 CameraFacing requestedFacing,
@@ -426,7 +435,8 @@ public final class RoundVideoSession {
                 FlashType flashType,
                 float minimumZoomRatio,
                 float maximumZoomRatio,
-                boolean ultrawideAvailable
+                boolean ultrawideAvailable,
+                @Nullable String cameraId
         ) {
             this.requestedFacing = requestedFacing;
             this.activeFacing = activeFacing;
@@ -438,7 +448,11 @@ public final class RoundVideoSession {
             this.minimumZoomRatio = minimumZoomRatio;
             this.maximumZoomRatio = maximumZoomRatio;
             this.ultrawideAvailable = ultrawideAvailable;
+            this.cameraId = cameraId;
         }
+
+        /** Returns the Camera2 device ID active for the current camera, or null before ready. */
+        public @Nullable String getCameraId() { return cameraId; }
 
         /** Returns the camera requested for the current or next segment. */
         public @NonNull CameraFacing getRequestedFacing() { return requestedFacing; }
@@ -551,6 +565,7 @@ public final class RoundVideoSession {
     private float minimumZoomRatio = 1f;
     private float maximumZoomRatio = 1f;
     private boolean ultrawideAvailable;
+    private String cameraId;
     private float zoomProgress;
     private float zoomRatio = 1f;
     private boolean flashEnabled;
@@ -983,6 +998,7 @@ public final class RoundVideoSession {
         minimumZoomRatio = info.minimumZoomRatio;
         maximumZoomRatio = info.maximumZoomRatio;
         ultrawideAvailable = info.ultrawideAvailable;
+        cameraId = info.cameraId;
         flashType = info.facing == CameraFacing.FRONT
                 ? screenFlashController == null ? FlashType.NONE : FlashType.SCREEN
                 : info.torchAvailable ? FlashType.TORCH : FlashType.NONE;
@@ -1471,7 +1487,8 @@ public final class RoundVideoSession {
                 flashType,
                 minimumZoomRatio,
                 maximumZoomRatio,
-                ultrawideAvailable
+                ultrawideAvailable,
+                cameraId
         ));
     }
 

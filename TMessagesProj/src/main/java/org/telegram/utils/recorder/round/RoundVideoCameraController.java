@@ -57,6 +57,7 @@ final class RoundVideoCameraController {
     }
 
     static final class CameraInfo {
+        final String cameraId;
         final RoundVideoSession.CameraFacing facing;
         final RoundVideoSession.CameraResolution cameraResolution;
         final RoundVideoSession.FrameRate frameRate;
@@ -68,6 +69,7 @@ final class RoundVideoCameraController {
         final boolean torchAvailable;
 
         CameraInfo(
+                @Nullable String cameraId,
                 RoundVideoSession.CameraFacing facing,
                 RoundVideoSession.CameraResolution cameraResolution,
                 RoundVideoSession.FrameRate frameRate,
@@ -78,6 +80,7 @@ final class RoundVideoCameraController {
                 boolean ultrawideAvailable,
                 boolean torchAvailable
         ) {
+            this.cameraId = cameraId;
             this.facing = facing;
             this.cameraResolution = cameraResolution;
             this.frameRate = frameRate;
@@ -845,6 +848,7 @@ final class RoundVideoCameraController {
         previewView.post(RoundVideoCameraController.this::updatePreviewTransform);
         callback.onConfigured(
                 new CameraInfo(
+                        cameraId,
                         activeFacing,
                         activeCameraResolution,
                         activeFrameRate,
@@ -1528,6 +1532,7 @@ final class RoundVideoCameraController {
                         previewView.post(RoundVideoCameraController.this::updatePreviewTransform);
                         callback.onConfigured(
                                 new CameraInfo(
+                                        cameraId,
                                         activeFacing,
                                         activeCameraResolution,
                                         activeFrameRate,
@@ -1870,8 +1875,46 @@ final class RoundVideoCameraController {
                     captureFpsLastTimestampNs = timestampNs;
                     captureFrames = 1L;
                     captureLastCallbackNs = callbackNs;
+                    if (activeHighSpeed && !forceMax60Fps && measuredFps < 45f) {
+                        fallbackThrottledHighSpeedToRegular60(measuredFps);
+                    }
                 }
             };
+
+    private void fallbackThrottledHighSpeedToRegular60(float measuredFps) {
+        if (!active || stopping || switchingCamera || cameraDevice == null || activeFacing == null) {
+            return;
+        }
+        diagnostics.log("high-speed throttled (" + measuredFps + " fps); falling back to regular 60 fps");
+        forceMax60Fps = true;
+        frontSelection = null;
+        backSelection = null;
+        disableWarmSwitch("high-speed throttled below 45 fps", null);
+        try {
+            selectCameraAndSizes(activeFacing);
+            if (activeHighSpeed) {
+                return;
+            }
+            closeCaptureSession();
+            SurfaceTexture previewTexture = previewView.getSurfaceTexture();
+            if (!glPreviewEnabled && previewTexture != null) {
+                previewTexture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+            }
+            if (glProcessor != null) {
+                glProcessor.setHighSpeedFrameDivisor(1);
+                glProcessor.updateInputConfiguration(
+                        recordingSize,
+                        sourceCropSize,
+                        isCameraTimestampRealtime()
+                );
+                recordingSurface = glProcessor.getCameraSurface();
+            }
+            resetCaptureFpsMeasurement();
+            createCaptureSession();
+        } catch (Exception e) {
+            diagnostics.error("high-speed 60 fps watchdog fallback failed", e);
+        }
+    }
 
     private void verifyTorchResult(
             @NonNull CaptureRequest request,
@@ -2606,71 +2649,55 @@ final class RoundVideoCameraController {
                     regularPair
             );
         }
-        final int[] candidateTargets = effectiveRequest.getValue() >= 120
-                ? new int[]{120, 60}
-                : new int[]{60};
-        for (int targetFps : candidateTargets) {
-            RoundVideoSession.FrameRate rateEnum = targetFps >= 120
-                    ? RoundVideoSession.FrameRate.FPS_120
-                    : RoundVideoSession.FrameRate.FPS_60;
-            Range<Integer> normalRange = findBestFpsRange(ranges, targetFps);
-            if (normalRange != null) {
-                Size[] fastSizes = filterSizesForFrameRate(map, sizes, targetFps);
-                try {
-                    OutputPair pair = chooseOutputPair(
-                            fastSizes,
-                            outputResolution,
-                            requestedCameraResolution
-                    );
-                    diagnostics.log("fps selection: id=" + id
-                            + ", requested=" + targetFps
-                            + ", mode=REGULAR, range=" + normalRange
-                            + ", compatibleSizes=" + Arrays.toString(fastSizes));
-                    return new FrameRatePlan(
-                            rateEnum,
-                            normalRange,
-                            pair
-                    );
-                } catch (RuntimeException e) {
-                    diagnostics.log("fps selection: id=" + id
-                            + ", regular " + targetFps + " fps rejected: no compatible output pair"
-                            + ", compatibleSizes=" + Arrays.toString(fastSizes));
-                }
+        if (effectiveRequest.isMaxAuto()) {
+            FrameRatePlan regular120 = tryRegularFrameRatePlan(
+                    id, ranges, map, sizes, 120, RoundVideoSession.FrameRate.FPS_120
+            );
+            if (regular120 != null) return regular120;
+            FrameRatePlan regular60 = tryRegularFrameRatePlan(
+                    id, ranges, map, sizes, 60, RoundVideoSession.FrameRate.FPS_60
+            );
+            if (regular60 != null) return regular60;
+            FrameRatePlan unadvertised60 = tryUnadvertised60FpsPlan(id, map, sizes);
+            if (unadvertised60 != null) return unadvertised60;
+            FrameRatePlan highSpeed60 = resolveHighSpeedFrameRatePlan(
+                    id, map, 60, RoundVideoSession.FrameRate.FPS_60
+            );
+            if (highSpeed60 != null) return highSpeed60;
+            FrameRatePlan highSpeed120 = resolveHighSpeedFrameRatePlan(
+                    id, map, 120, RoundVideoSession.FrameRate.FPS_120
+            );
+            if (highSpeed120 != null) return highSpeed120;
+        } else {
+            final int[] candidateTargets;
+            if (effectiveRequest.getValue() >= 240) {
+                candidateTargets = new int[]{240, 120, 60};
+            } else if (effectiveRequest.getValue() >= 120) {
+                candidateTargets = new int[]{120, 60};
             } else {
-                diagnostics.log("fps selection: id=" + id
-                        + ", regular " + targetFps + " fps rejected: advertisedRanges="
-                        + Arrays.toString(ranges));
+                candidateTargets = new int[]{60};
             }
-
-            FrameRatePlan highSpeedPlan = resolveHighSpeedFrameRatePlan(id, map, targetFps, rateEnum);
-            if (highSpeedPlan != null) {
-                return highSpeedPlan;
-            }
-
-            if (targetFps == 60) {
-                Size[] fastSizes = filterSizesForFrameRate(map, sizes, 60);
-                if (fastSizes.length > 0) {
-                    try {
-                        OutputPair pair = chooseOutputPair(
-                                fastSizes,
-                                outputResolution,
-                                requestedCameraResolution
-                        );
-                        Range<Integer> unadvertisedRange = Range.create(60, 60);
-                        diagnostics.log("fps selection: id=" + id
-                                + ", requested=60, mode=UNADVERTISED_REGULAR"
-                                + ", range=" + unadvertisedRange
-                                + ", compatibleSizes=" + Arrays.toString(fastSizes));
-                        return new FrameRatePlan(
-                                RoundVideoSession.FrameRate.FPS_60,
-                                unadvertisedRange,
-                                pair
-                        );
-                    } catch (RuntimeException e) {
-                        diagnostics.log("fps selection: id=" + id
-                                + ", unadvertised regular 60 fps rejected: no compatible output pair"
-                                + ", compatibleSizes=" + Arrays.toString(fastSizes));
+            for (int targetFps : candidateTargets) {
+                RoundVideoSession.FrameRate rateEnum = targetFps >= 240
+                        ? RoundVideoSession.FrameRate.FPS_240
+                        : targetFps >= 120
+                        ? RoundVideoSession.FrameRate.FPS_120
+                        : RoundVideoSession.FrameRate.FPS_60;
+                FrameRatePlan regularPlan = tryRegularFrameRatePlan(
+                        id, ranges, map, sizes, targetFps, rateEnum
+                );
+                if (regularPlan != null) {
+                    return regularPlan;
+                }
+                if (targetFps == 60) {
+                    FrameRatePlan unadvertised60 = tryUnadvertised60FpsPlan(id, map, sizes);
+                    if (unadvertised60 != null) {
+                        return unadvertised60;
                     }
+                }
+                FrameRatePlan highSpeedPlan = resolveHighSpeedFrameRatePlan(id, map, targetFps, rateEnum);
+                if (highSpeedPlan != null) {
+                    return highSpeedPlan;
                 }
             }
         }
@@ -2683,6 +2710,76 @@ final class RoundVideoCameraController {
                 fallbackRange,
                 regularPair
         );
+    }
+
+    @Nullable
+    private FrameRatePlan tryRegularFrameRatePlan(
+            @NonNull String id,
+            @Nullable Range<Integer>[] ranges,
+            @NonNull StreamConfigurationMap map,
+            @NonNull Size[] sizes,
+            int targetFps,
+            @NonNull RoundVideoSession.FrameRate rateEnum
+    ) {
+        Range<Integer> normalRange = findBestFpsRange(ranges, targetFps);
+        if (normalRange != null) {
+            Size[] fastSizes = filterSizesForFrameRate(map, sizes, targetFps);
+            try {
+                OutputPair pair = chooseOutputPair(
+                        fastSizes,
+                        outputResolution,
+                        requestedCameraResolution
+                );
+                diagnostics.log("fps selection: id=" + id
+                        + ", requested=" + targetFps
+                        + ", mode=REGULAR, range=" + normalRange
+                        + ", compatibleSizes=" + Arrays.toString(fastSizes));
+                return new FrameRatePlan(rateEnum, normalRange, pair);
+            } catch (RuntimeException e) {
+                diagnostics.log("fps selection: id=" + id
+                        + ", regular " + targetFps + " fps rejected: no compatible output pair"
+                        + ", compatibleSizes=" + Arrays.toString(fastSizes));
+            }
+        } else {
+            diagnostics.log("fps selection: id=" + id
+                    + ", regular " + targetFps + " fps rejected: advertisedRanges="
+                    + Arrays.toString(ranges));
+        }
+        return null;
+    }
+
+    @Nullable
+    private FrameRatePlan tryUnadvertised60FpsPlan(
+            @NonNull String id,
+            @NonNull StreamConfigurationMap map,
+            @NonNull Size[] sizes
+    ) {
+        Size[] fastSizes = filterSizesForFrameRate(map, sizes, 60);
+        if (fastSizes.length == 0) {
+            return null;
+        }
+        try {
+            OutputPair pair = chooseOutputPair(
+                    fastSizes,
+                    outputResolution,
+                    requestedCameraResolution
+            );
+            Range<Integer> unadvertisedRange = Range.create(60, 60);
+            diagnostics.log("fps selection: id=" + id
+                    + ", requested=60, mode=UNADVERTISED_REGULAR"
+                    + ", range=" + unadvertisedRange
+                    + ", compatibleSizes=" + Arrays.toString(fastSizes));
+            return new FrameRatePlan(
+                    RoundVideoSession.FrameRate.FPS_60,
+                    unadvertisedRange,
+                    pair
+            );
+        } catch (RuntimeException e) {
+            diagnostics.log("fps selection: id=" + id
+                    + ", unadvertised regular 60 fps rejected: no compatible output pair"
+                    + ", compatibleSizes=" + Arrays.toString(fastSizes));
+            return null;
+        }
     }
 
     private static boolean supportsFrameDuration(
@@ -2735,7 +2832,7 @@ final class RoundVideoCameraController {
             ));
             return;
         }
-        if (activeFrameRate == RoundVideoSession.FrameRate.FPS_120 && !forceMax60Fps) {
+        if (activeFrameRate != null && activeFrameRate.getValue() > 60 && !forceMax60Fps) {
             forceMax60Fps = true;
             closeCaptureSession();
             frontSelection = null;
@@ -3269,8 +3366,14 @@ final class RoundVideoCameraController {
             @NonNull RoundVideoSession.OutputResolution outputResolution,
             @NonNull RoundVideoSession.CameraResolution cameraResolution
     ) {
+        int outputSize = outputResolution.getSize();
         if (cameraResolution == RoundVideoSession.CameraResolution.LOW) {
-            return outputResolution.getSize();
+            return outputSize;
+        }
+        if (outputSize > 480) {
+            return cameraResolution == RoundVideoSession.CameraResolution.HIGH
+                    ? Math.min(MAXIMUM_SOURCE_SHORT_SIDE, outputSize * 2)
+                    : Math.min(MAXIMUM_SOURCE_SHORT_SIDE, outputSize * 3 / 2);
         }
         if (outputResolution == RoundVideoSession.OutputResolution.P480) {
             return cameraResolution == RoundVideoSession.CameraResolution.HIGH ? 960 : 720;
