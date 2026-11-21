@@ -434,6 +434,7 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
         app.exteraless.proxy.ProxyPingController.init();
         app.exteraless.links.LinkCleaner.preloadIfEnabled();
         app.exteraless.appearance.M3CircularProgress.prewarm();
+        app.exteraless.demo.DemoBackend.purgeTestAccountsIfRelease();
 
         //if (BuildConfig.DEBUG_PRIVATE_VERSION) {
         //    Choreographer60FpsContent.getInstance().addFrameCallback(debugEverySecondChecks, 1);

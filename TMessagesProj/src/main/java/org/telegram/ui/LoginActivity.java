@@ -823,11 +823,13 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         if (BuildVars.SUPPORTS_PASSKEYS) moreButtonView.addSubItem(4, R.drawable.menu_passkey_add, getString(R.string.PasskeyLogin));
         moreButtonView.addSubItem(2, R.drawable.msg_permissions_solar, getString(R.string.CustomApi)).setContentDescription(getString(R.string.CustomApi));
         moreButtonView.addSubItem(3, R.drawable.msg_retry_solar, getString(R.string.TestBackend));
-        org.telegram.ui.ActionBar.ActionBarMenuSubItem testAccountMenuItem =
-                moreButtonView.addSubItem(5, R.drawable.msg_retry_solar, getString(R.string.ExFullGramDemoAccount));
-        testAccountMenuItem.setSubtext("ExFullGram");
-        testAccountMenuItem.setSubtextColor(Theme.multAlpha(
-                Theme.getColor(Theme.key_actionBarDefaultSubmenuItem), 0.55f));
+        if (BuildConfig.DEBUG) {
+            org.telegram.ui.ActionBar.ActionBarMenuSubItem testAccountMenuItem =
+                    moreButtonView.addSubItem(5, R.drawable.msg_retry_solar, getString(R.string.ExFullGramDemoAccount));
+            testAccountMenuItem.setSubtext("ExFullGram");
+            testAccountMenuItem.setSubtextColor(Theme.multAlpha(
+                    Theme.getColor(Theme.key_actionBarDefaultSubmenuItem), 0.55f));
+        }
         moreButtonView.setDelegate(id -> {
             if (id == 0) {
                 presentFragment(new ProxyListActivity());
@@ -849,7 +851,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 if (phoneView != null) {
                     phoneView.requestPasskey(true, true);
                 }
-            } else if (id == 5) {
+            } else if (id == 5 && BuildConfig.DEBUG) {
                 startLocalTestAccount();
             }
         });

@@ -83,6 +83,31 @@ public final class DemoBackend {
         // Test accounts are now detected by their reserved local user IDs.
     }
 
+    /**
+     * Removes any local Test accounts in release builds so the main app
+     * only exposes real Telegram accounts while debug builds retain Test mode.
+     */
+    public static void purgeTestAccountsIfRelease() {
+        if (org.telegram.messenger.BuildConfig.DEBUG) return;
+        boolean changed = false;
+        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            if (isTestSlot(a)) {
+                UserConfig.getInstance(a).clearConfig();
+                prefs().edit().remove(KEY_ACCOUNT_READY_PREFIX + a).apply();
+                changed = true;
+            }
+        }
+        if (changed && isTestSlot(UserConfig.selectedAccount)) {
+            for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+                if (UserConfig.getInstance(a).isClientActivated() && !isTestSlot(a)) {
+                    UserConfig.selectedAccount = a;
+                    UserConfig.getInstance(a).saveConfig(false);
+                    break;
+                }
+            }
+        }
+    }
+
     public static boolean isTestUserId(long userId) {
         return userId > SELF_ID_BASE && userId <= SELF_ID_BASE + UserConfig.MAX_ACCOUNT_COUNT;
     }
