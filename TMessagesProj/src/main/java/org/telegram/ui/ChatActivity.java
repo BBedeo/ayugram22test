@@ -5246,7 +5246,7 @@ public class ChatActivity extends BaseFragment implements
         contentView.setOccupyStatusBar(!inBubbleMode && !isInsideContainer && !inPreviewMode);
 
         actionBar.setupGlass(
-            glassBackgroundDrawableFactory,
+            glassBackgroundDrawableFactoryFrosted,
             BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
             ChatObject.isForum(currentChat));
         actionBar.setHeaderGlassLens(app.exteraless.appearance.LiquidGlassTuning.isActive());
