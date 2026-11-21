@@ -196,7 +196,9 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                         }
                     }
                     text.append("\n60 FPS: ").append(maxUpper >= 60 ? "YES" : "NO (max " + maxUpper + " fps)");
-                    Range<Integer>[] highSpeed = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_HIGH_SPEED_VIDEO_FPS_RANGES);
+                    android.hardware.camera2.params.StreamConfigurationMap streamMap =
+                            characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                    Range<Integer>[] highSpeed = streamMap != null ? streamMap.getHighSpeedVideoFpsRanges() : null;
                     if (highSpeed != null && highSpeed.length > 0) {
                         text.append("\nHigh speed: ");
                         for (Range<Integer> range : highSpeed) {
