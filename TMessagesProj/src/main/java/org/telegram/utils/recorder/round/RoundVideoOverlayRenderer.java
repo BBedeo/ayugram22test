@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.opengl.GLES20;
 import android.opengl.GLES11Ext;
 import android.util.Size;
+import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
 
@@ -57,8 +58,7 @@ final class RoundVideoOverlayRenderer {
     private static final int TEXTURE_NORMAL = 0;
     private static final int TEXTURE_BUFFER_WATERMARK = 8;
 
-    private static WatermarkAtlas cachedWatermark360;
-    private static WatermarkAtlas cachedWatermark480;
+    private static final SparseArray<WatermarkAtlas> cachedWatermarks = new SparseArray<>();
 
     private static final String TEXTURE_VERTEX_SHADER =
             "attribute vec4 aPosition;\n" +
@@ -943,14 +943,13 @@ final class RoundVideoOverlayRenderer {
             );
         }
 
-        float textScale = atlas.textSize / (float) outputSize;
         setTriangleVertexCoordinates(
                 vertexData,
                 VERTEX_WATERMARK,
-                1f - textScale * 2f,
+                -1f,
                 -1f,
                 1f,
-                -1f + textScale * 2f
+                1f
         );
         float logoScale = atlas.frameSize / (float) outputSize;
         setTriangleVertexCoordinates(
@@ -979,12 +978,10 @@ final class RoundVideoOverlayRenderer {
     }
 
     private static synchronized WatermarkAtlas getWatermarkAtlas(int outputSize) {
-        WatermarkAtlas cached = outputSize == 360
-                ? cachedWatermark360
-                : outputSize == 480 ? cachedWatermark480 : null;
+        WatermarkAtlas cached = cachedWatermarks.get(outputSize);
         if (cached != null) return cached;
 
-        int textSize = Math.round(outputSize * 372f / 1536f);
+        int textSize = outputSize;
         int logoSize = Math.round(outputSize * 0.2f);
         int logoOffset = Math.round(outputSize * 28f / 1536f);
         int frameSize = logoSize - logoOffset * 2;
@@ -1007,15 +1004,9 @@ final class RoundVideoOverlayRenderer {
             canvas.drawBitmap(frameBitmap, frameSize * x - logoOffset, frameSize * y - logoOffset, null);
         }
 
-        Bitmap text = AndroidUtilities.getBitmapFromRaw(R.raw.round_blur_overlay_text);
-        if (text != null) {
-            Bitmap scaled = Bitmap.createScaledBitmap(text, textSize, textSize, true);
-            Bitmap alpha = scaled.extractAlpha();
-            canvas.drawBitmap(alpha, 0f, logoAtlasHeight, null);
-            alpha.recycle();
-            scaled.recycle();
-            text.recycle();
-        }
+        Bitmap text = RoundVideoWatermarkOverlay.createAlphaBitmap(textSize);
+        canvas.drawBitmap(text, 0f, logoAtlasHeight, null);
+        text.recycle();
 
         if (atlasBitmap.getRowBytes() != atlasWidth) {
             atlasBitmap.recycle();
@@ -1037,8 +1028,7 @@ final class RoundVideoOverlayRenderer {
         atlasBitmap.recycle();
         frameBitmap.recycle();
         lottie.recycle();
-        if (outputSize == 360) cachedWatermark360 = result;
-        else if (outputSize == 480) cachedWatermark480 = result;
+        cachedWatermarks.put(outputSize, result);
         return result;
     }
 
