@@ -738,7 +738,6 @@ final class RoundVideoGlProcessor {
                     switchStageStartNs = now;
                 }
                 if (switchState == SWITCH_CROSSFADE || switchState == SWITCH_UNBLUR_NEW) {
-                    Handler currentHandler = handler;
                     if (currentHandler != null) {
                         currentHandler.removeCallbacks(switchFrameRunnable);
                     }
