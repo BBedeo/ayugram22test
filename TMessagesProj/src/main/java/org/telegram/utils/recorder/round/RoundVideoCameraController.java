@@ -572,7 +572,7 @@ final class RoundVideoCameraController {
             }
             SurfaceTexture previewTexture = previewView.getSurfaceTexture();
             if (previewTexture == null) return;
-            if (dualActiveMode) {
+            if (shouldUseGlPreview()) {
                 int glPreviewSize = Math.max(
                         1,
                         Math.min(
@@ -621,8 +621,15 @@ final class RoundVideoCameraController {
         }
     }
 
+    private boolean shouldUseGlPreview() {
+        return dualActiveMode
+                || activeHighSpeed
+                || (frontSelection != null && frontSelection.highSpeed)
+                || (backSelection != null && backSelection.highSpeed);
+    }
+
     private void createRecordingPipeline() throws IOException {
-        glPreviewEnabled = dualActiveMode;
+        glPreviewEnabled = shouldUseGlPreview();
         pipelineFrameRate = activeFrameRate;
         int targetEncoderFps = encoderFrameRate > 0 ? encoderFrameRate : resolveMaxSessionEncoderFps();
         encoderFrameRate = targetEncoderFps;
@@ -699,10 +706,12 @@ final class RoundVideoCameraController {
             recordingSurface = null;
             secondaryRecordingSurface = null;
             dualActiveMode = false;
-            glPreviewEnabled = false;
+            glPreviewEnabled = shouldUseGlPreview();
             warmSwitchSupported = false;
             warmSwitchDisabled = true;
-            previewTexture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+            if (!glPreviewEnabled) {
+                previewTexture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+            }
             createRecordingPipeline();
         }
     }
@@ -2637,6 +2646,33 @@ final class RoundVideoCameraController {
             if (highSpeedPlan != null) {
                 return highSpeedPlan;
             }
+
+            if (targetFps == 60) {
+                Size[] fastSizes = filterSizesForFrameRate(map, sizes, 60);
+                if (fastSizes.length > 0) {
+                    try {
+                        OutputPair pair = chooseOutputPair(
+                                fastSizes,
+                                outputResolution,
+                                requestedCameraResolution
+                        );
+                        Range<Integer> unadvertisedRange = Range.create(60, 60);
+                        diagnostics.log("fps selection: id=" + id
+                                + ", requested=60, mode=UNADVERTISED_REGULAR"
+                                + ", range=" + unadvertisedRange
+                                + ", compatibleSizes=" + Arrays.toString(fastSizes));
+                        return new FrameRatePlan(
+                                RoundVideoSession.FrameRate.FPS_60,
+                                unadvertisedRange,
+                                pair
+                        );
+                    } catch (RuntimeException e) {
+                        diagnostics.log("fps selection: id=" + id
+                                + ", unadvertised regular 60 fps rejected: no compatible output pair"
+                                + ", compatibleSizes=" + Arrays.toString(fastSizes));
+                    }
+                }
+            }
         }
         Range<Integer> fallbackRange = findBestFpsRange(ranges, 30);
         diagnostics.log("fps selection: id=" + id
@@ -2709,7 +2745,7 @@ final class RoundVideoCameraController {
                 selectCameraAndSizes(selectedFacing != null ? selectedFacing : requestedFacing);
                 if (activeFrameRate == RoundVideoSession.FrameRate.FPS_60) {
                     SurfaceTexture previewTexture = previewView.getSurfaceTexture();
-                    if (previewTexture != null) {
+                    if (previewTexture != null && !glPreviewEnabled) {
                         previewTexture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
                     }
                     if (glProcessor != null) {
@@ -2755,6 +2791,8 @@ final class RoundVideoCameraController {
         activeCameraResolution = pair.cameraResolution;
         frontSelection = null;
         backSelection = null;
+        encoderFrameRate = 0;
+        glPreviewEnabled = false;
         disableWarmSwitch("frame-rate fallback changed stream configuration", error);
         SurfaceTexture previewTexture = previewView.getSurfaceTexture();
         if (previewTexture != null) {
@@ -2863,15 +2901,26 @@ final class RoundVideoCameraController {
             int targetFps
     ) {
         if (ranges == null) return null;
-        int minimumFps = targetFps > 30 ? targetFps / 2 : 1;
-        Range<Integer> variable = null;
+        int minHighLower = targetFps / 2;
+        Range<Integer> locked = null;
+        Range<Integer> preferred30 = null;
+        Range<Integer> variableHigh = null;
         Range<Integer> narrowest = null;
         for (Range<Integer> range : ranges) {
             if (!range.contains(targetFps)) continue;
-            if (range.getUpper() == targetFps
-                    && range.getLower() >= minimumFps
-                    && (variable == null || range.getLower() < variable.getLower())) {
-                variable = range;
+            if (range.getLower() == targetFps && range.getUpper() == targetFps) {
+                locked = range;
+            }
+            if (targetFps == 30) {
+                if (range.getUpper() == 30
+                        && range.getLower() >= 24
+                        && (preferred30 == null || range.getLower() < preferred30.getLower())) {
+                    preferred30 = range;
+                }
+            } else if (range.getUpper() == targetFps
+                    && range.getLower() >= minHighLower
+                    && (variableHigh == null || range.getLower() > variableHigh.getLower())) {
+                variableHigh = range;
             }
             if (narrowest == null
                     || range.getLower() > narrowest.getLower()
@@ -2880,7 +2929,13 @@ final class RoundVideoCameraController {
                 narrowest = range;
             }
         }
-        return variable != null ? variable : narrowest;
+        if (targetFps == 30) {
+            return preferred30 != null ? preferred30 : (locked != null ? locked : narrowest);
+        }
+        if (locked != null) {
+            return locked;
+        }
+        return variableHigh != null ? variableHigh : narrowest;
     }
 
     @NonNull

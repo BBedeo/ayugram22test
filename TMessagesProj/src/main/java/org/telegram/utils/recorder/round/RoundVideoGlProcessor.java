@@ -747,6 +747,14 @@ final class RoundVideoGlProcessor {
             }
 
             hasCameraFrame = true;
+            if (highSpeedFrameDivisor > 1) {
+                highSpeedFrameCounter++;
+                if (highSpeedFrameCounter % highSpeedFrameDivisor != 0) {
+                    droppedHighSpeedFrames++;
+                    renderPreviewAndNotify(cameraTexture, matrix);
+                    return;
+                }
+            }
             boolean measureGpu = ENABLE_BLOCKING_GPU_TIMING
                     && diagnostics.isEnabled()
                     && gpuTimingFrame++ % GPU_TIMING_SAMPLE_INTERVAL == 0;
@@ -774,15 +782,6 @@ final class RoundVideoGlProcessor {
                         + ", averageMs="
                         + gpuTimingTotalNs / (float) gpuTimingSamples / 1_000_000f
                         + ", maxMs=" + gpuTimingMaxNs / 1_000_000f);
-            }
-
-            if (highSpeedFrameDivisor > 1) {
-                highSpeedFrameCounter++;
-                if (highSpeedFrameCounter % highSpeedFrameDivisor != 0) {
-                    droppedHighSpeedFrames++;
-                    renderPreviewAndNotify(cameraTexture, matrix);
-                    return;
-                }
             }
             long presentationTime = getCameraPresentationTime(timestamp);
             if (presentationTime < presentationTimeLimitNs) {
