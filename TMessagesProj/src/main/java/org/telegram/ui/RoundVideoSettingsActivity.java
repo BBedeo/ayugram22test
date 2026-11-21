@@ -1,6 +1,9 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
+import android.util.Range;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -10,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -42,10 +46,11 @@ public class RoundVideoSettingsActivity extends BaseFragment {
     private static final int ROW_FRAME_RATE = 4;
     private static final int ROW_BITRATE = 5;
     private static final int ROW_GENERAL_INFO = 6;
-    private static final int ROW_COMPOSITION_HEADER = 7;
-    private static final int ROW_COMPOSITION = 8;
-    private static final int ROW_COMPOSITION_INFO = 9;
-    private static final int ROW_COUNT = BuildVars.DEBUG_PRIVATE_VERSION ? 10 : 7;
+    private static final int ROW_DIAGNOSTICS = 7;
+    private static final int ROW_COMPOSITION_HEADER = 8;
+    private static final int ROW_COMPOSITION = 9;
+    private static final int ROW_COMPOSITION_INFO = 10;
+    private static final int ROW_COUNT = BuildVars.DEBUG_PRIVATE_VERSION ? 11 : 8;
 
     private static final int[] BITRATES = {
             750_000,
@@ -110,6 +115,10 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             adapter.notifyDataSetChanged();
             return;
         }
+        if (position == ROW_DIAGNOSTICS) {
+            showCameraDiagnostics();
+            return;
+        }
         if (!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount)) {
             return;
         }
@@ -164,6 +173,53 @@ public class RoundVideoSettingsActivity extends BaseFragment {
         }
     }
 
+    private void showCameraDiagnostics() {
+        StringBuilder text = new StringBuilder();
+        boolean found = false;
+        try {
+            CameraManager manager = (CameraManager) ApplicationLoader.applicationContext.getSystemService(Context.CAMERA_SERVICE);
+            for (String id : manager.getCameraIdList()) {
+                try {
+                    CameraCharacteristics characteristics = manager.getCameraCharacteristics(id);
+                    Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                    if (facing == null || (facing != CameraCharacteristics.LENS_FACING_FRONT && facing != CameraCharacteristics.LENS_FACING_BACK)) {
+                        continue;
+                    }
+                    found = true;
+                    text.append(facing == CameraCharacteristics.LENS_FACING_FRONT ? "Front camera:\n" : "Back camera:\n");
+                    Range<Integer>[] fpsRanges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+                    int maxUpper = 0;
+                    if (fpsRanges != null) {
+                        for (Range<Integer> range : fpsRanges) {
+                            text.append('[').append(range.getLower()).append(',').append(range.getUpper()).append("] ");
+                            maxUpper = Math.max(maxUpper, range.getUpper());
+                        }
+                    }
+                    text.append("\n60 FPS: ").append(maxUpper >= 60 ? "YES" : "NO (max " + maxUpper + " fps)");
+                    Range<Integer>[] highSpeed = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_HIGH_SPEED_VIDEO_FPS_RANGES);
+                    if (highSpeed != null && highSpeed.length > 0) {
+                        text.append("\nHigh speed: ");
+                        for (Range<Integer> range : highSpeed) {
+                            text.append('[').append(range.getLower()).append(',').append(range.getUpper()).append("] ");
+                        }
+                    }
+                    text.append("\n\n");
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (Throwable e) {
+            text.append("Error: ").append(e);
+        }
+        if (!found) {
+            text.append("Camera2 is not available on this device");
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.RoundVideoDiagnostics));
+        builder.setMessage(text.toString());
+        builder.setPositiveButton(LocaleController.getString(R.string.OK), null);
+        showDialog(builder.create());
+    }
+
     private void showChoice(int titleResId, CharSequence[] choices, ChoiceHandler handler) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
         builder.setTitle(LocaleController.getString(titleResId));
@@ -212,7 +268,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
             int position = holder.getAdapterPosition();
-            if (position == ROW_ENABLED) {
+            if (position == ROW_ENABLED || position == ROW_DIAGNOSTICS) {
                 return true;
             }
             if (!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount)) {
@@ -273,7 +329,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                 }
             } else if (holder.getItemViewType() == TYPE_VALUE) {
                 TextSettingsCell cell = (TextSettingsCell) holder.itemView;
-                cell.setEnabled(enabled);
+                cell.setEnabled(enabled || position == ROW_DIAGNOSTICS);
                 if (position == ROW_OUTPUT_RESOLUTION) {
                     cell.setTextAndValue(
                             LocaleController.getString(R.string.RoundVideoOutputResolution),
@@ -291,6 +347,12 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                             LocaleController.getString(R.string.RoundVideoFrameRate),
                             SharedSettings.isRoundVideo60FpsRequested() ? "60 FPS" : "30 FPS",
                             true
+                    );
+                } else if (position == ROW_DIAGNOSTICS) {
+                    cell.setTextAndValue(
+                            LocaleController.getString(R.string.RoundVideoDiagnostics),
+                            LocaleController.getString(R.string.RoundVideoDiagnosticsValue),
+                            false
                     );
                 } else {
                     cell.setTextAndValue(

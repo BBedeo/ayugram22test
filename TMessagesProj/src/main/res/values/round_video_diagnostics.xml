@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="RoundVideoDiagnostics">Camera diagnostics</string>
+    <string name="RoundVideoDiagnosticsValue">Check 60 FPS support</string>
+</resources>
