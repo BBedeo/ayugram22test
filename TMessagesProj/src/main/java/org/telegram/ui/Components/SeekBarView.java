@@ -312,11 +312,16 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
                 if (Math.abs(ev.getY() - sy) < vc.getScaledTouchSlop()) {
                     int additionWidth = (getMeasuredHeight() - thumbSize) / 2;
                     if (!(thumbX - additionWidth <= ev.getX() && ev.getX() <= thumbX + thumbSize + additionWidth)) {
-                        thumbX = (int) ev.getX() - thumbSize / 2;
-                        if (thumbX < minThumbX()) {
-                            thumbX = minThumbX();
-                        } else if (thumbX > getMeasuredWidth() - selectorWidth) {
-                            thumbX = getMeasuredWidth() - selectorWidth;
+                        int newThumbX = (int) ev.getX() - thumbSize / 2;
+                        if (newThumbX < minThumbX()) {
+                            newThumbX = minThumbX();
+                        } else if (newThumbX > getMeasuredWidth() - selectorWidth) {
+                            newThumbX = getMeasuredWidth() - selectorWidth;
+                        }
+                        if (newThumbX != thumbX) {
+                            transitionThumbX = thumbX;
+                            transitionProgress = 0f;
+                            thumbX = newThumbX;
                         }
                     }
                     thumbDX = (int) (ev.getX() - thumbX);
@@ -616,6 +621,10 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         } else if (delegate != null && delegate.needVisuallyDivideSteps()) {
             float step = (getMeasuredWidth() - selectorWidth) / ((float) delegate.getStepsCount() - 1f);
             thumbX = (int) (Math.round((thumbX) / step) * step);
+        }
+        if (transitionProgress < 1f && (customDraw == SLIDER_STYLE_IOS || isModern)) {
+            final float t = CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(transitionProgress);
+            thumbX = Math.round(AndroidUtilities.lerp((float) transitionThumbX, (float) thumbX, t));
         }
         int y = (getMeasuredHeight() - thumbSize) / 2;
         innerPaint1.setColor(getInnerTrackColor());
