@@ -242,8 +242,8 @@ public class UpdaterSheet extends BottomSheet {
             }
         };
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        logo.setBackgroundColor(AboutHeaderCell.LOGO_BACKGROUND);
-        logo.setImageResource(R.drawable.exteraless_icon);
+        logo.setBackground(null);
+        logo.setImageDrawable(AboutHeaderCell.createAppLogoDrawable(context));
         return logo;
     }
 

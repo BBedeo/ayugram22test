@@ -3,19 +3,32 @@ package app.exteraless.settings;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.SettingsSearchCell;
 import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Components.RecyclerListView;
 
+import java.util.ArrayList;
+
+import tw.nekomimi.nekogram.helpers.SettingsHelper;
+import tw.nekomimi.nekogram.helpers.SettingsSearchResult;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 
@@ -52,6 +65,13 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int designerRow;
     private int designStudioRow;
     private int designDividerRow;
+
+    private ActionBarMenuItem searchItem;
+    private boolean inSearchMode;
+    private String searchQuery = "";
+    private ArrayList<SettingsSearchResult> allSearchResults;
+    private final ArrayList<SettingsSearchResult> filteredSearchResults = new ArrayList<>();
+    private InlineSearchAdapter inlineSearchAdapter;
 
     @Override
     protected void updateRows() {
@@ -99,20 +119,40 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 actionBar.getTitleTextView().setVisibility(View.GONE);
             }
             final org.telegram.ui.ActionBar.ActionBarMenu menu = actionBar.createMenu();
-            menu.addItem(MENU_SEARCH, R.drawable.outline_header_search, getResourceProvider());
+            searchItem = menu.addItem(MENU_SEARCH, R.drawable.outline_header_search, getResourceProvider())
+                    .setIsSearchField(true)
+                    .setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
+                        @Override
+                        public void onSearchExpand() {
+                            enterInlineSearch();
+                        }
+
+                        @Override
+                        public void onSearchCollapse() {
+                            exitInlineSearch();
+                        }
+
+                        @Override
+                        public void onTextChanged(EditText editText) {
+                            filterInlineSearch(editText.getText().toString());
+                        }
+                    });
+            searchItem.setSearchFieldHint(getString(R.string.Search));
             menu.addItem(MENU_CLOUD, R.drawable.cloud_sync, getResourceProvider());
             if (app.exteraless.demo.DemoBackend.isDemoAccount(currentAccount)) {
                 menu.addItem(MENU_RESET_TEST, R.drawable.msg_retry_solar, getResourceProvider());
             }
-            actionBar.setActionBarMenuOnItemClick(new org.telegram.ui.ActionBar.ActionBar.ActionBarMenuOnItemClick() {
+            actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
                 @Override
                 public void onItemClick(int id) {
                     if (id == -1) {
-                        finishFragment();
+                        if (actionBar.isSearchFieldVisible()) {
+                            actionBar.closeSearchField();
+                        } else {
+                            finishFragment();
+                        }
                     } else if (id == MENU_CLOUD) {
                         presentFragment(new OpenExteraCloudActivity());
-                    } else if (id == MENU_SEARCH) {
-                        showSettingsSearchDialog();
                     } else if (id == MENU_RESET_TEST) {
                         app.exteraless.demo.DemoBackend.reset(currentAccount);
                         showDialog(new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
@@ -164,6 +204,19 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
+        if (inSearchMode) {
+            int idx = position - 1;
+            if (idx >= 0 && idx < filteredSearchResults.size()) {
+                SettingsSearchResult r = filteredSearchResults.get(idx);
+                if (actionBar != null && actionBar.isSearchFieldVisible()) {
+                    actionBar.closeSearchField(false);
+                }
+                if (r.openRunnable != null) {
+                    r.openRunnable.run();
+                }
+            }
+            return;
+        }
         if (position == generalRow) {
             presentFragment(new OpenExteraGeneralActivity());
         } else if (position == appearanceRow) {
@@ -185,6 +238,153 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             getMessagesController().openByUserName("the8055u", this, 1);
         } else if (position == designStudioRow) {
             getMessagesController().openByUserName("BlueprintDsgn", this, 1);
+        }
+    }
+
+    @Override
+    public boolean onBackPressed(boolean invoked) {
+        if (actionBar != null && actionBar.isSearchFieldVisible()) {
+            if (invoked) {
+                actionBar.closeSearchField();
+            }
+            return false;
+        }
+        return super.onBackPressed(invoked);
+    }
+
+    private void enterInlineSearch() {
+        if (listView == null) {
+            return;
+        }
+        inSearchMode = true;
+        if (allSearchResults == null) {
+            allSearchResults = SettingsHelper.onCreateSearchArray(fragment -> AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    presentFragment(fragment);
+                } catch (Exception ignore) {
+                }
+            }));
+        }
+        if (inlineSearchAdapter == null) {
+            inlineSearchAdapter = new InlineSearchAdapter(getParentActivity());
+        }
+        filterInlineSearch("");
+        listView.setAdapter(inlineSearchAdapter);
+        listView.scrollToPosition(0);
+    }
+
+    private void exitInlineSearch() {
+        if (!inSearchMode) {
+            return;
+        }
+        inSearchMode = false;
+        searchQuery = "";
+        if (listView != null && listAdapter != null) {
+            listView.setAdapter(listAdapter);
+        }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private void filterInlineSearch(String query) {
+        if (allSearchResults == null) {
+            return;
+        }
+        String q = query == null ? "" : query.toLowerCase().trim();
+        searchQuery = q;
+        filteredSearchResults.clear();
+        if (q.isEmpty()) {
+            filteredSearchResults.addAll(allSearchResults);
+        } else {
+            String[] parts = q.split("\\s+");
+            for (SettingsSearchResult item : allSearchResults) {
+                String title = item.searchTitle == null ? "" : item.searchTitle.toLowerCase();
+                boolean ok = true;
+                for (String p : parts) {
+                    if (!title.contains(p)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    filteredSearchResults.add(item);
+                }
+            }
+        }
+        if (inlineSearchAdapter != null) {
+            inlineSearchAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private class InlineSearchAdapter extends RecyclerListView.SelectionAdapter {
+        private static final int VIEW_TYPE_TOP_SPACE = 0;
+        private static final int VIEW_TYPE_RESULT = 1;
+        private final Context mContext;
+
+        InlineSearchAdapter(Context context) {
+            this.mContext = context;
+        }
+
+        @Override
+        public int getItemCount() {
+            return 1 + filteredSearchResults.size();
+        }
+
+        @Override
+        public int getItemViewType(int position) {
+            return position == 0 ? VIEW_TYPE_TOP_SPACE : VIEW_TYPE_RESULT;
+        }
+
+        @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            return holder.getItemViewType() == VIEW_TYPE_RESULT;
+        }
+
+        @NonNull
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            if (viewType == VIEW_TYPE_TOP_SPACE) {
+                View space = new View(mContext);
+                space.setTag(RecyclerListView.TAG_NOT_SECTION);
+                int topH = AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(8);
+                space.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, topH));
+                return new RecyclerListView.Holder(space);
+            }
+            SettingsSearchCell cell = new SettingsSearchCell(mContext);
+            cell.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
+            return new RecyclerListView.Holder(cell);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (holder.getItemViewType() != VIEW_TYPE_RESULT) {
+                return;
+            }
+            int idx = position - 1;
+            SettingsSearchResult r = filteredSearchResults.get(idx);
+            SettingsSearchCell cell = (SettingsSearchCell) holder.itemView;
+            String[] path = r.path2 != null ? new String[]{r.path1, r.path2} : new String[]{r.path1};
+            CharSequence titleToSet = r.searchTitle == null ? "" : r.searchTitle;
+            if (!searchQuery.isEmpty() && titleToSet.length() > 0) {
+                SpannableStringBuilder ss = new SpannableStringBuilder(titleToSet);
+                String lower = titleToSet.toString().toLowerCase();
+                String[] parts = searchQuery.split("\\s+");
+                int highlightColor = getThemedColor(Theme.key_windowBackgroundWhiteBlueText4);
+                for (String p : parts) {
+                    if (p.isEmpty()) continue;
+                    int pos = 0;
+                    while (true) {
+                        int found = lower.indexOf(p, pos);
+                        if (found == -1) break;
+                        try {
+                            ss.setSpan(new ForegroundColorSpan(highlightColor), found, found + p.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        } catch (Exception ignore) {
+                        }
+                        pos = found + p.length();
+                    }
+                }
+                titleToSet = ss;
+            }
+            cell.setTextAndValueAndIcon(titleToSet, path, r.iconResId, idx < filteredSearchResults.size() - 1);
         }
     }
 

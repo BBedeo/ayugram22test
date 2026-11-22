@@ -64,8 +64,8 @@ public class AboutHeaderCell extends LinearLayout {
             }
         };
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        logo.setBackgroundColor(LOGO_BACKGROUND);
-        logo.setImageResource(R.drawable.exteraless_icon);
+        logo.setBackground(null);
+        logo.setImageDrawable(createAppLogoDrawable(context));
         logo.setOnLongClickListener(v -> {
             IconPacksConfig.toggleSystemIconShape();
             IconShapeHelper.invalidate();
@@ -101,6 +101,18 @@ public class AboutHeaderCell extends LinearLayout {
 
     public void setOnLogoClickListener(OnClickListener listener) {
         logo.setOnClickListener(listener);
+    }
+
+    public static android.graphics.drawable.Drawable createAppLogoDrawable(Context context) {
+        android.graphics.drawable.Drawable bg = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.exteraless_icon_background);
+        android.graphics.drawable.Drawable fg = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.exteraless_icon_foreground);
+        if (bg == null || fg == null) {
+            return androidx.core.content.ContextCompat.getDrawable(context, R.drawable.exteraless_icon);
+        }
+        android.graphics.drawable.LayerDrawable layer = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{bg, fg});
+        int inset = -AndroidUtilities.dp(14);
+        layer.setLayerInset(1, inset, inset, inset, inset);
+        return layer;
     }
 
     /** "12.9.2 (1258)" — версия плюс versionCode из PackageInfo, как в оригинале. */
