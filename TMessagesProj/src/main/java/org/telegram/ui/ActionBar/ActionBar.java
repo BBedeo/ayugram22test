@@ -3310,7 +3310,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private boolean isAnimationsAllowed;
 
     public void checkMenuItemsWidth() {
-        int defaultMenuWidth = Math.max(0, menu != null ? (int) menu.getItemsWidth() - dp(1) - dp(1) : 0);
+        int defaultMenuWidth = Math.max(0, (!isSearchFieldVisible && menu != null) ? (int) menu.getItemsWidth() - dp(1) - dp(1) : 0);
         if (!isSearchFieldVisible && (chatAvatarContainer == null || chatAvatarContainer.isAvatarCentered() && chatAvatarContainer.hasVisibleAvatar()) && menu != null && menu.isCenteredTitle()) {
             defaultMenuWidth = Math.max(defaultMenuWidth, dp(46));
         }

@@ -200,6 +200,7 @@ public class ActionBarMenuItem extends FrameLayout {
     private int iconViewResId;
     protected TextView textView;
     private FrameLayout searchContainer;
+    private final ArrayList<View> hiddenSearchSiblingItems = new ArrayList<>();
     private boolean isSearchField;
     private boolean wrapSearchInScrollView;
     protected ActionBarMenuItemSearchListener listener;
@@ -1490,6 +1491,13 @@ public class ActionBarMenuItem extends FrameLayout {
 
         if (searchContainer.getTag() != null) {
             searchContainer.setTag(null);
+            for (int i = 0; i < hiddenSearchSiblingItems.size(); i++) {
+                View sibling = hiddenSearchSiblingItems.get(i);
+                if (sibling.getParent() == parentMenu) {
+                    sibling.setVisibility(VISIBLE);
+                }
+            }
+            hiddenSearchSiblingItems.clear();
             if (searchContainerAnimator != null) {
                 searchContainerAnimator.removeAllListeners();
                 searchContainerAnimator.cancel();
@@ -1557,6 +1565,14 @@ public class ActionBarMenuItem extends FrameLayout {
                 }
             });
             searchContainerAnimator.start();
+            hiddenSearchSiblingItems.clear();
+            for (int i = 0; i < parentMenu.getChildCount(); i++) {
+                View view = parentMenu.getChildAt(i);
+                if (view != this && view instanceof ActionBarMenuItem && view.getVisibility() == VISIBLE) {
+                    hiddenSearchSiblingItems.add(view);
+                    view.setVisibility(GONE);
+                }
+            }
             setVisibility(GONE);
             clearSearchFilters();
             searchField.setText("");
