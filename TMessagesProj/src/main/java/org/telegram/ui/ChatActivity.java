@@ -3007,7 +3007,7 @@ public class ChatActivity extends BaseFragment implements
         super(args);
 
         navbarContentSourceWallpaper = new GlassSourceWrapped();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SharedConfig.chatBlurEnabled()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (SharedConfig.chatBlurEnabled() || app.exteraless.appearance.LiquidGlassTuning.isActive())) {
             scrollableViewNoiseSuppressor = new DownscaleScrollableNoiseSuppressor();
 
             recommendedAdditionalSizeY = Math.max(0, dp(48) - Math.min(AndroidUtilities.navigationBarHeight, AndroidUtilities.statusBarHeight));
@@ -3019,7 +3019,7 @@ public class ChatActivity extends BaseFragment implements
             glassBackgroundDrawableFactoryFrosted = new BlurredBackgroundDrawableViewFactory(glassBackgroundSourceFrostedRenderNode);
             glassBackgroundDrawableFactoryFrosted.setLiquidGlassEffectAllowed(true);
 
-            if (LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS)) {
+            if (LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || app.exteraless.appearance.LiquidGlassTuning.isActive()) {
                 glassBackgroundSourceRenderNode = new GlassSourceRenderNode(navbarContentSourceWallpaper);
                 glassBackgroundSourceRenderNode.setScrollableNoiseSuppressor(scrollableViewNoiseSuppressor, DownscaleScrollableNoiseSuppressor.DRAW_GLASS);
                 glassBackgroundSourceRenderNode.setUnderSource(navbarContentSourceWallpaper);
@@ -17885,12 +17885,14 @@ public class ChatActivity extends BaseFragment implements
         int maxAdapterPosition = -1;
         int minAdapterPosition = -1;
 
-        boolean blurEnabled = SharedConfig.chatBlurEnabled();
+        boolean blurEnabled = BlurredBackgroundProviderImpl.checkBlurEnabled(currentAccount, themeDelegate);
 
         MessageObject messageStarter = isTopic ? topicStarterMessageObject : threadMessageObject;
 
         float clipTopFinal = clipTop - chatListViewPaddingVisibleOffset;
         float clipBottomFinal = chatListView.getMeasuredHeight() - blurredViewBottomOffset;
+        float mediaClipTop = blurEnabled ? 0f : clipTopFinal;
+        float mediaClipBottom = blurEnabled ? chatListView.getMeasuredHeight() : clipBottomFinal;
 
         boolean checkPremiumFloodWait = !UserConfig.getInstance(currentAccount).isPremium();
 
@@ -17926,21 +17928,64 @@ public class ChatActivity extends BaseFragment implements
                 messageCell = (ChatMessageCell) view;
             }
             if (messageCell != null) {
-                messageCell.isBlurred = (top < clipTop && bottom > clipTop) || (bottom > chatListView.getMeasuredHeight() - blurredViewBottomOffset && top < chatListView.getMeasuredHeight() - blurredViewBottomOffset);
+                boolean wasBlurred = messageCell.isBlurred;
+                messageCell.isBlurred = blurEnabled && ((top < clipTop + dp(48) && bottom > 0) || (bottom > chatListView.getMeasuredHeight() - blurredViewBottomOffset - dp(48) && top < chatListView.getMeasuredHeight()));
+                if (wasBlurred != messageCell.isBlurred && messageCell.getMessageObject() != null && (messageCell.getMessageObject().isVideo() || messageCell.getMessageObject().isRoundVideo())) {
+                    messageCell.checkVideoPlayback(true, null);
+                }
+            }
+
+            int viewTop = top >= 0 ? 0 : -top;
+            int viewBottom = view.getMeasuredHeight();
+            if (viewBottom > height) {
+                viewBottom = viewTop + height;
             }
 
             if (bottom <= clipTopFinal || top > clipBottomFinal) {
                 if (messageCell != null) {
-                    if (blurEnabled) {
+                    if (bottom <= mediaClipTop || top >= mediaClipBottom) {
                         messageCell.setVisibleOnScreen(false, 0, 0);
                     } else {
-                        messageCell.setVisibleOnScreen(true, 0, 0);
+                        messageCell.setVisibleOnScreen(true, mediaClipTop - top, bottom - mediaClipBottom);
+                    }
+                    MessageObject cellMsg = messageCell.getMessageObject();
+                    if (cellMsg != null) {
+                        if (blurEnabled && bottom > 0 && top < chatListView.getMeasuredHeight()) {
+                            messageCell.setParentBounds(0, chatListView.getMeasuredHeight());
+                            messageCell.setVisiblePart(
+                                viewTop,
+                                viewBottom - viewTop,
+                                recyclerChatViewHeight,
+                                0,
+                                view.getY() + (isKeyboardVisible() ? chatListView.getTop() : actionBar.getMeasuredHeight()) - contentView.getBackgroundTranslationY() - (1f - contentPanTranslationT) * chatListViewPaddingTop,
+                                chatListView.getMeasuredWidth(),
+                                contentView.getBackgroundSizeY(),
+                                blurredViewTopOffset,
+                                blurredViewBottomOffset,
+                                top - (int) chatListViewPaddingTop
+                            );
+                        }
+                        if (videoPlayerContainer != null && (cellMsg.isVideo() || cellMsg.isRoundVideo()) && !cellMsg.isVoiceTranscriptionOpen() && MediaController.getInstance().isPlayingMessage(cellMsg)) {
+                            ImageReceiver imageReceiver = messageCell.getPhotoImage();
+                            float imageTop = top + messageCell.getPaddingTop() + imageReceiver.getImageY();
+                            float imageBottom = top + messageCell.getPaddingTop() + imageReceiver.getImageY2();
+                            if (imageBottom <= mediaClipTop || imageTop >= mediaClipBottom) {
+                                foundTextureViewMessage = false;
+                            } else {
+                                videoPlayerContainer.setTranslationX(imageReceiver.getImageX() + messageCell.getX());
+                                float translationY = messageCell.getY() + messageCell.getPaddingTop() + imageReceiver.getImageY() + chatListView.getY() - videoPlayerContainer.getTop();
+                                videoPlayerContainer.setTranslationY(translationY);
+                                fragmentView.invalidate();
+                                videoPlayerContainer.invalidate();
+                                foundTextureViewMessage = true;
+                            }
+                        }
                     }
                 }
                 continue;
             }
             if (messageCell != null) {
-                messageCell.setVisibleOnScreen(true, clipTopFinal - top, bottom - clipBottomFinal);
+                messageCell.setVisibleOnScreen(true, mediaClipTop - top, bottom - mediaClipBottom);
                 if (checkPremiumFloodWait) {
                     if (messageCell.checkLoadCaughtPremiumFloodWait()) {
                         showPremiumFloodWaitBulletin(false);
@@ -17952,11 +17997,6 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
 
-            int viewTop = top >= 0 ? 0 : -top;
-            int viewBottom = view.getMeasuredHeight();
-            if (viewBottom > height) {
-                viewBottom = viewTop + height;
-            }
             int keyboardOffset = contentView.getKeyboardHeight();
             if (keyboardOffset < AndroidUtilities.dp(20) && chatActivityEnterView.isPopupShowing() || chatActivityEnterView.panelAnimationInProgress()) {
                 keyboardOffset = chatActivityEnterView.getEmojiPadding();
@@ -18011,7 +18051,9 @@ public class ChatActivity extends BaseFragment implements
                 }
                 if (videoPlayerContainer != null && (messageObject.isVideo() || messageObject.isRoundVideo()) && !messageObject.isVoiceTranscriptionOpen() && MediaController.getInstance().isPlayingMessage(messageObject)) {
                     ImageReceiver imageReceiver = messageCell.getPhotoImage();
-                    if (top + imageReceiver.getImageY2() < 0) {
+                    float imageTop = top + messageCell.getPaddingTop() + imageReceiver.getImageY();
+                    float imageBottom = top + messageCell.getPaddingTop() + imageReceiver.getImageY2();
+                    if (imageBottom <= mediaClipTop || imageTop >= mediaClipBottom) {
                         foundTextureViewMessage = false;
                     } else {
                         videoPlayerContainer.setTranslationX(imageReceiver.getImageX() + messageCell.getX());
@@ -39849,7 +39891,7 @@ public class ChatActivity extends BaseFragment implements
     }
 
     public GlassSourceRenderNode getGlassSource() {
-        return LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? glassBackgroundSourceRenderNode : glassBackgroundSourceFrostedRenderNode;
+        return (LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) || app.exteraless.appearance.LiquidGlassTuning.isActive()) ? glassBackgroundSourceRenderNode : glassBackgroundSourceFrostedRenderNode;
     }
 
     public void setGlassSourceInvalidationCallback(Runnable callback) {
@@ -46463,6 +46505,7 @@ public class ChatActivity extends BaseFragment implements
         @Override
         public void invalidateBlur() {
             contentView.invalidateBlur();
+            getGlassEngine().invalidate();
         }
 
         @Override

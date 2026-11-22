@@ -372,7 +372,8 @@ public class GlassEngine {
 
             final boolean invalidateAll = BitwiseUtils.hasFlag(flags, FLAG_INVALIDATED_POSITIONS);
             final boolean invalidateScroll = BitwiseUtils.hasFlag(flags, FLAG_INVALIDATED_SCROLL)
-                || BitwiseUtils.hasFlag(flags, FLAG_INVALIDATED_SCROLL_EDGES);
+                || BitwiseUtils.hasFlag(flags, FLAG_INVALIDATED_SCROLL_EDGES)
+                || BitwiseUtils.hasFlag(flags, FLAG_INVALIDATED_OTHER);
 
             Trace.beginSection("G.UpdateDisplayLists");
             for (int a = 0, N = viewPositionStates.size(); a < N; a++) {

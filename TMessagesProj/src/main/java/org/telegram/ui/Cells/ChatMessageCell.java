@@ -537,8 +537,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 invalidate();
             }
         }
-        clipTop -= photoImage.getImageY();
-        clipBottom -= (getMeasuredHeight() - photoImage.getImageY2());
+        clipTop -= (getPaddingTop() + photoImage.getImageY());
+        clipBottom -= (getMeasuredHeight() - (getPaddingTop() + photoImage.getImageY2()));
         float visibleImageHeight = photoImage.getImageHeight();
         if (clipTop > 0) {
             visibleImageHeight -= clipTop;
@@ -546,7 +546,17 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (clipBottom > 0) {
             visibleImageHeight -= clipBottom;
         }
-        photoImage.setSkipUpdateFrame(skipFrameUpdate = visibleImageHeight / photoImage.getImageHeight() < 0.25f);
+        final float imageHeight = photoImage.getImageHeight();
+        final boolean shouldSkip = !visibleOnScreen || (imageHeight > 0 && visibleImageHeight <= 0);
+        if (skipFrameUpdate != shouldSkip) {
+            skipFrameUpdate = shouldSkip;
+            photoImage.setSkipUpdateFrame(skipFrameUpdate);
+            if (!skipFrameUpdate) {
+                invalidate();
+            }
+        } else {
+            photoImage.setSkipUpdateFrame(skipFrameUpdate);
+        }
     }
 
     public void setParentBounds(float chatListViewPaddingTop, int blurredViewBottomOffset) {
@@ -10829,7 +10839,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     public void checkVideoPlayback(boolean allowStart, Bitmap thumb) {
         if (currentMessageObject.isVideo()) {
-            if (MediaController.getInstance().isPlayingMessage(currentMessageObject)) {
+            if (MediaController.getInstance().isPlayingMessage(currentMessageObject) && !isBlurred) {
                 photoImage.setAllowStartAnimation(false);
                 photoImage.stopAnimation();
             } else {
@@ -10839,7 +10849,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         } else {
             if (allowStart) {
                 MessageObject playingMessage = MediaController.getInstance().getPlayingMessageObject();
-                allowStart = playingMessage == null || !playingMessage.isRoundVideo();
+                allowStart = playingMessage == null || !playingMessage.isRoundVideo() || (isBlurred && playingMessage == currentMessageObject);
             }
             photoImage.setAllowStartAnimation(allowStart);
             if (thumb != null) {
