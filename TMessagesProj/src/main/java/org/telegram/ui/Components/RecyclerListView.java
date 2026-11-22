@@ -3926,6 +3926,10 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         drawSectionsBackgroundsInternal(canvas);
     }
 
+    private int getSectionsPadding() {
+        return sectionsItemDecoration != null ? sectionsItemDecoration.padding : sectionPadding;
+    }
+
     private void drawSectionsBackgroundsInternal(Canvas canvas) {
 
         if (isAnimating()) {
@@ -3955,7 +3959,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                                 break;
                             }
                         }
-                        if (nextStableChild != null && to > nextStableChild.getY() && sectionsItemDecoration.isSectionItem.run(nextStableChild)) {
+                        if (nextStableChild != null && to > nextStableChild.getY() && isVisualSectionItem(nextStableChild)) {
                             final ViewHolder nextStableHolder = getChildViewHolder(nextStableChild);
                             if (!nextStableHolder.isRemoved()) {
                                 from--;
@@ -3972,7 +3976,8 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             }
             SectionsDrawer.draw(sections, sectionRadius, (from, to, topRoundRadius, bottomRoundRadius, alpha) -> {
                 if (to <= from) return;
-                AndroidUtilities.rectTmp.set(getPaddingLeft() + sectionsItemDecoration.padding, from, getWidth() - sectionsItemDecoration.padding - getPaddingRight(), to);
+                final int padding = getSectionsPadding();
+                AndroidUtilities.rectTmp.set(getPaddingLeft() + padding, from, getWidth() - padding - getPaddingRight(), to);
                 drawSectionBackgroundRect(canvas, AndroidUtilities.rectTmp, topRoundRadius, bottomRoundRadius, alpha);
             }, useSegmentedSections());
             sections.clear();
@@ -4027,10 +4032,11 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 }
 
                 if (from < to) {
+                    final int padding = getSectionsPadding();
                     AndroidUtilities.rectTmp.set(
-                        getPaddingLeft() + sectionsItemDecoration.padding,
+                        getPaddingLeft() + padding,
                         from,
-                        getWidth() - getPaddingRight() - sectionsItemDecoration.padding,
+                        getWidth() - getPaddingRight() - padding,
                         to
                     );
                     drawSectionBackgroundRect(canvas, AndroidUtilities.rectTmp, sectionRadius, sectionRadius, 1.0f);

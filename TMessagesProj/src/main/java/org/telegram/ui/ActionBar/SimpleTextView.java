@@ -87,6 +87,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
     private int currentScrollDelay;
     private Paint fadePaint;
     private Paint fadePaintBack;
+    private int fadePaintWidth;
     private Paint fadeEllpsizePaint;
     private int fadeEllpsizePaintWidth;
     private int lastWidth;
@@ -245,7 +246,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
     }
 
     public void setEllipsizeByGradient(boolean value, Boolean forceLeft) {
-        if (scrollNonFitText == value) {
+        if (ellipsizeByGradient == value && (forceLeft == null ? forceEllipsizeByGradientLeft == null : forceLeft.equals(forceEllipsizeByGradientLeft))) {
             return;
         }
         ellipsizeByGradient = value;
@@ -265,14 +266,24 @@ public class SimpleTextView extends View implements Drawable.Callback {
     }
 
     private void updateFadePaints() {
-        if ((fadePaint == null || fadePaintBack == null) && scrollNonFitText) {
-            fadePaint = new Paint();
-            fadePaint.setShader(new LinearGradient(0, 0, dp(6), 0, new int[]{0xffffffff, 0}, new float[]{0f, 1f}, Shader.TileMode.CLAMP));
-            fadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        updateFadePaints(0);
+    }
 
-            fadePaintBack = new Paint();
-            fadePaintBack.setShader(new LinearGradient(0, 0, dp(6), 0, new int[]{0, 0xffffffff}, new float[]{0f, 1f}, Shader.TileMode.CLAMP));
-            fadePaintBack.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+    private void updateFadePaints(int clipWidth) {
+        final int targetFadeWidth = clipWidth > 0 ? Math.min(dp(12), Math.max(dp(4), clipWidth / 5)) : dp(12);
+        if ((fadePaint == null || fadePaintBack == null || fadePaintWidth != targetFadeWidth) && scrollNonFitText) {
+            fadePaintWidth = targetFadeWidth;
+            if (fadePaint == null) {
+                fadePaint = new Paint();
+                fadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+            }
+            fadePaint.setShader(new LinearGradient(0, 0, targetFadeWidth, 0, new int[]{0xffffffff, 0}, new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+
+            if (fadePaintBack == null) {
+                fadePaintBack = new Paint();
+                fadePaintBack.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+            }
+            fadePaintBack.setShader(new LinearGradient(0, 0, targetFadeWidth, 0, new int[]{0, 0xffffffff}, new float[]{0f, 1f}, Shader.TileMode.CLAMP));
         }
         boolean ellipsizeLeft;
         if (forceEllipsizeByGradientLeft != null) {
@@ -345,8 +356,24 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 textHeight = layout.getLineBottom(0);
             }
 
+            int rightDrawableWidth = 0;
+            if (rightDrawableInside) {
+                if (rightDrawable != null && !rightDrawableOutside) {
+                    rightDrawableWidth += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale);
+                }
+                if (rightDrawable2 != null && !rightDrawableOutside) {
+                    rightDrawableWidth += (int) (rightDrawable2.getIntrinsicWidth() * rightDrawableScale);
+                }
+            }
+            textDoesNotFit = textWidth + rightDrawableWidth > (width - paddingRight);
+            checkUi_layerType();
+
             if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL) {
-                offsetX = (width - textWidth) / 2 - (int) layout.getLineLeft(0);
+                if (scrollNonFitText && textDoesNotFit) {
+                    offsetX = -(int) layout.getLineLeft(0);
+                } else {
+                    offsetX = (width - textWidth) / 2 - (int) layout.getLineLeft(0);
+                }
             } else if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.LEFT) {
                 if (firstLineLayout != null) {
                     offsetX = -(int) firstLineLayout.getLineLeft(0);
@@ -363,17 +390,6 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 offsetX = -dp(8);
             }
             offsetX += getPaddingLeft();
-            int rightDrawableWidth = 0;
-            if (rightDrawableInside) {
-                if (rightDrawable != null && !rightDrawableOutside) {
-                    rightDrawableWidth += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale);
-                }
-                if (rightDrawable2 != null && !rightDrawableOutside) {
-                    rightDrawableWidth += (int) (rightDrawable2.getIntrinsicWidth() * rightDrawableScale);
-                }
-            }
-            textDoesNotFit = textWidth + rightDrawableWidth > (width - paddingRight);
-            checkUi_layerType();
 
             if (fullLayout != null && fullLayoutAdditionalWidth > 0) {
                 fullLayoutLeftCharactersOffset = fullLayout.getPrimaryHorizontal(0) - firstLineLayout.getPrimaryHorizontal(0);
@@ -1010,9 +1026,12 @@ public class SimpleTextView extends View implements Drawable.Callback {
         }
 
         if (layout != null) {
-            if (leftDrawableOutside || rightDrawableOutside || ellipsizeByGradient || paddingRight > 0) {
+            final int clipLeft = Math.max(textOffsetX, getPaddingLeft());
+            final int clipRight = Math.max(clipLeft, getMaxTextWidth() - getPaddingRight() - paddingRight - dp(rightDrawable != null && !(rightDrawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) && rightDrawableOutside ? 2 : 0));
+            final boolean needClip = leftDrawableOutside || rightDrawableOutside || ellipsizeByGradient || paddingRight > 0 || fade;
+            if (needClip) {
                 canvas.save();
-                canvas.clipRect(textOffsetX, 0, getMaxTextWidth() - paddingRight - dp(rightDrawable != null && !(rightDrawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) && rightDrawableOutside ? 2 : 0), getMeasuredHeight());
+                canvas.clipRect(clipLeft, 0, clipRight, getMeasuredHeight());
             }
             Emoji.emojiDrawingUseAlpha = usaAlphaForEmoji;
             if (wrapBackgroundDrawable != null) {
@@ -1106,31 +1125,40 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 totalWidth += drawablePadding + dw;
             }
             if (fade) {
-                if (scrollingOffset < dp(10)) {
-                    fadePaint.setAlpha((int) (255 * (scrollingOffset / dp(10))));
-                } else if (scrollingOffset > totalWidth + dp(DIST_BETWEEN_SCROLLING_TEXT) - dp(10)) {
-                    float dist = scrollingOffset - (totalWidth + dp(DIST_BETWEEN_SCROLLING_TEXT) - dp(10));
-                    fadePaint.setAlpha((int) (255 * (1.0f - dist / dp(10))));
+                updateFadePaints(clipRight - clipLeft);
+                final int marqueeFadeW = Math.max(1, fadePaintWidth);
+                final float ramp = Math.max(marqueeFadeW, dp(10));
+                if (scrollingOffset < ramp) {
+                    fadePaint.setAlpha((int) (255 * (scrollingOffset / ramp)));
+                } else if (scrollingOffset > totalWidth + dp(DIST_BETWEEN_SCROLLING_TEXT) - ramp) {
+                    float dist = scrollingOffset - (totalWidth + dp(DIST_BETWEEN_SCROLLING_TEXT) - ramp);
+                    fadePaint.setAlpha((int) (255 * Math.max(0f, 1.0f - dist / ramp)));
                 } else {
                     fadePaint.setAlpha(255);
                 }
-                canvas.drawRect(textOffsetX, 0, textOffsetX + dp(6), getMeasuredHeight(), fadePaint);
+                fadePaintBack.setAlpha(255);
                 canvas.save();
-                canvas.translate(getMaxTextWidth() - paddingRight - dp(6), 0);
-                canvas.drawRect(0, 0, 0 + dp(6), getMeasuredHeight(), fadePaintBack);
+                canvas.translate(clipLeft, 0);
+                canvas.drawRect(0, 0, marqueeFadeW, getMeasuredHeight(), fadePaint);
+                canvas.restore();
+                canvas.save();
+                canvas.translate(clipRight - marqueeFadeW, 0);
+                canvas.drawRect(0, 0, marqueeFadeW, getMeasuredHeight(), fadePaintBack);
                 canvas.restore();
             } else if (ellipsizeByGradient && textDoesNotFit && fadeEllpsizePaint != null) {
                 canvas.save();
                 updateFadePaints();
                 if (!ellipsizeByGradientLeft) {
-                    canvas.translate(getMaxTextWidth() - paddingRight - fadeEllpsizePaintWidth - dp(rightDrawable != null && !(rightDrawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) && rightDrawableOutside ? +2 : 0), 0);
+                    canvas.translate(clipRight - fadeEllpsizePaintWidth, 0);
+                    canvas.drawRect(0, 0, fadeEllpsizePaintWidth, getMeasuredHeight(), fadeEllpsizePaint);
+                } else {
+                    canvas.drawRect(clipLeft, 0, clipLeft + fadeEllpsizePaintWidth, getMeasuredHeight(), fadeEllpsizePaint);
                 }
-                canvas.drawRect(textOffsetX, 0, fadeEllpsizePaintWidth, getMeasuredHeight(), fadeEllpsizePaint);
                 canvas.restore();
             }
             updateScrollAnimation();
             Emoji.emojiDrawingUseAlpha = true;
-            if (leftDrawableOutside || rightDrawableOutside || ellipsizeByGradient || paddingRight > 0) {
+            if (needClip) {
                 canvas.restore();
             }
         }

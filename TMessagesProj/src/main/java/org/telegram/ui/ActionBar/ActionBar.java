@@ -56,6 +56,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.core.graphics.ColorUtils;
+import androidx.dynamicanimation.animation.DynamicAnimation;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -679,9 +683,19 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             canvas.save();
             canvas.clipRect(0, -getTranslationY() + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0), getMeasuredWidth(), getMeasuredHeight());
         }
-        float pressScale = 1f;
+        float pressScaleX = 1f;
+        float pressScaleY = 1f;
         float pressPivotX = 0f;
         float pressPivotY = 0f;
+        final float titleJelly = getTitlePillJellyValue();
+        if ((child == titlesContainer || child == titleTextView[0] || child == titleTextView[1]
+                || child == subtitleTextView || child == additionalSubtitleTextView || child == chatAvatarContainer)
+                && !glassTitleRestRect.isEmpty() && Math.abs(titleJelly) > 0.002f) {
+            pressScaleX *= 1f + 0.022f * titleJelly;
+            pressScaleY *= 1f - 0.014f * titleJelly;
+            pressPivotX = glassTitleRestRect.centerX();
+            pressPivotY = glassTitleRestRect.centerY();
+        }
         if (headerGlassLens && LiquidGlassTuning.motionEnabled()) {
             final boolean jelly = app.exteraless.appearance.AppearanceConfig.isJellyAnimations();
             if (child == backButtonImageView) {
@@ -690,7 +704,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     if (jelly) {
                         f *= 1f + 0.45f * (float) Math.sin(f * Math.PI);
                     }
-                    pressScale = 1f + 0.045f * f;
+                    pressScaleX = pressScaleY = 1f + 0.045f * f;
                     pressPivotX = child.getX() + child.getWidth() * 0.5f;
                     pressPivotY = child.getY() + child.getHeight() * 0.5f;
                 }
@@ -700,7 +714,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     if (jelly) {
                         f *= 1f + 0.45f * (float) Math.sin(f * Math.PI);
                     }
-                    pressScale = 1f + 0.032f * f;
+                    pressScaleX = pressScaleY = 1f + 0.032f * f;
                     pressPivotX = glassMenuRestRect.centerX();
                     pressPivotY = glassMenuRestRect.centerY();
                 }
@@ -712,15 +726,22 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     if (jelly) {
                         f *= 1f + 0.45f * (float) Math.sin(f * Math.PI);
                     }
-                    pressScale = 1f + 0.028f * f;
+                    final float sPress = 1f + 0.028f * f;
+                    pressScaleX *= sPress;
+                    pressScaleY *= sPress;
                     pressPivotX = glassTitleRestRect.centerX();
                     pressPivotY = glassTitleRestRect.centerY();
                 }
             }
         }
-        final int pressSave = pressScale > 1.0005f ? canvas.save() : -1;
+        final float pressScale = Math.max(pressScaleX, pressScaleY);
+        final int pressSave = (Math.abs(pressScaleX - 1f) > 0.0005f || Math.abs(pressScaleY - 1f) > 0.0005f) ? canvas.save() : -1;
         if (pressSave != -1) {
-            canvas.scale(pressScale, pressScale, pressPivotX, pressPivotY);
+            if (Math.abs(pressScaleX - pressScaleY) <= 0.0005f) {
+                canvas.scale(pressScale, pressScale, pressPivotX, pressPivotY);
+            } else {
+                canvas.scale(pressScaleX, pressScaleY, pressPivotX, pressPivotY);
+            }
         }
         boolean result = super.drawChild(canvas, child, drawingTime);
         if (supportsHolidayImage && !titleOverlayShown && !LocaleController.isRTL && (child == titleTextView[0] || child == titleTextView[1] || child == titlesContainer && useContainerForTitles)) {
@@ -1977,7 +1998,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         int additionalTop = occupyStatusBar ? AndroidUtilities.statusBarHeight : 0;
         if (prevWidth != getMeasuredWidth()) {
             prevWidth = getMeasuredWidth();
-            checkAvatarContainerWidth(animatorAvatarContainerWidth.isAnimating());
+            checkAvatarContainerWidth((avatarWidthSpring != null && avatarWidthSpring.isRunning()) || animatorAvatarContainerWidth.isAnimating());
         }
 
         int textLeft;
@@ -2558,11 +2579,27 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (!crossfade) {
             titleTextView[0].setTranslationY(fromBottom ? dp(20) : -dp(20));
         }
-        ViewPropertyAnimator a1 = titleTextView[0].animate().alpha(1f).translationY(0).setDuration(duration);
-        if (interpolator != null) {
-            a1.setInterpolator(interpolator);
+        if (interpolator == null && !crossfade && canPlayJellySpring()) {
+            titleTextView[0].animate().alpha(1f).setDuration(duration).start();
+            SpringAnimation ty = new SpringAnimation(titleTextView[0], DynamicAnimation.TRANSLATION_Y, 0f);
+            ty.getSpring().setStiffness(340f).setDampingRatio(0.54f);
+            ty.start();
+            titleTextView[0].setScaleX(0.95f);
+            titleTextView[0].setScaleY(0.95f);
+            SpringAnimation sx = new SpringAnimation(titleTextView[0], DynamicAnimation.SCALE_X, 1f);
+            sx.getSpring().setStiffness(360f).setDampingRatio(0.52f);
+            sx.start();
+            SpringAnimation sy = new SpringAnimation(titleTextView[0], DynamicAnimation.SCALE_Y, 1f);
+            sy.getSpring().setStiffness(360f).setDampingRatio(0.52f);
+            sy.start();
+            kickTitlePillJelly(1f);
+        } else {
+            ViewPropertyAnimator a1 = titleTextView[0].animate().alpha(1f).translationY(0).setDuration(duration);
+            if (interpolator != null) {
+                a1.setInterpolator(interpolator);
+            }
+            a1.start();
         }
-        a1.start();
 
         titleAnimationRunning = true;
         ViewPropertyAnimator a = titleTextView[1].animate().alpha(0);
@@ -2610,7 +2647,23 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         setTitle(title, rightDrawable);
         titleTextView[0].setAlpha(0);
         titleTextView[0].setTranslationX(forward ? AndroidUtilities.dp(20) : -AndroidUtilities.dp(20));
-        titleTextView[0].animate().alpha(1f).translationX(0).setDuration(duration).start();
+        if (canPlayJellySpring()) {
+            titleTextView[0].animate().alpha(1f).setDuration(duration).start();
+            SpringAnimation tx = new SpringAnimation(titleTextView[0], DynamicAnimation.TRANSLATION_X, 0f);
+            tx.getSpring().setStiffness(340f).setDampingRatio(0.54f);
+            tx.start();
+            titleTextView[0].setScaleX(0.95f);
+            titleTextView[0].setScaleY(0.95f);
+            SpringAnimation sx = new SpringAnimation(titleTextView[0], DynamicAnimation.SCALE_X, 1f);
+            sx.getSpring().setStiffness(360f).setDampingRatio(0.52f);
+            sx.start();
+            SpringAnimation sy = new SpringAnimation(titleTextView[0], DynamicAnimation.SCALE_Y, 1f);
+            sy.getSpring().setStiffness(360f).setDampingRatio(0.52f);
+            sy.start();
+            kickTitlePillJelly(forward ? 1f : -1f);
+        } else {
+            titleTextView[0].animate().alpha(1f).translationX(0).setDuration(duration).start();
+        }
 
         titleAnimationRunning = true;
         ViewPropertyAnimator a = titleTextView[1].animate().alpha(0);
@@ -2792,6 +2845,58 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
     }
 
+    private static final float PILL_WIDTH_SPRING_STIFFNESS = 310f;
+    private static final float PILL_WIDTH_SPRING_DAMPING = 0.56f;
+    private final FloatValueHolder avatarWidthSpringHolder = new FloatValueHolder(0f);
+    private SpringAnimation avatarWidthSpring;
+    private boolean avatarWidthSpringInitialized;
+    private float lastAvatarWidthTarget = -1f;
+
+    private final FloatValueHolder compactPillWidthSpringHolder = new FloatValueHolder(0f);
+    private SpringAnimation compactPillWidthSpring;
+    private boolean compactPillWidthInitialized;
+    private float lastCompactPillTarget = -1f;
+
+    private final FloatValueHolder menuWidthSpringHolder = new FloatValueHolder(0f);
+    private SpringAnimation menuWidthSpring;
+    private boolean menuWidthSpringInitialized;
+    private float lastMenuWidthTarget = -1f;
+
+    private final FloatValueHolder titlePillJellyHolder = new FloatValueHolder(0f);
+    private SpringAnimation titlePillJellySpring;
+
+    private boolean canPlayJellySpring() {
+        return android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled();
+    }
+
+    private float getTitlePillJellyValue() {
+        return titlePillJellyHolder.getValue();
+    }
+
+    private void kickTitlePillJelly(float direction) {
+        if (!canPlayJellySpring() || !isAttachedToWindow()) {
+            return;
+        }
+        if (titlePillJellySpring == null) {
+            titlePillJellySpring = new SpringAnimation(titlePillJellyHolder, 0f);
+            titlePillJellySpring.setSpring(new SpringForce(0f)
+                    .setStiffness(260f)
+                    .setDampingRatio(0.44f));
+            titlePillJellySpring.addUpdateListener((animation, value, velocity) -> invalidate());
+        }
+        titlePillJellySpring.cancel();
+        titlePillJellySpring.setStartVelocity(direction * 5.2f);
+        titlePillJellySpring.animateToFinalPosition(0f);
+    }
+
+    private float getAvatarContainerWidthFactor() {
+        return avatarWidthSpringInitialized ? Math.max(0f, avatarWidthSpringHolder.getValue()) : animatorAvatarContainerWidth.getFactor();
+    }
+
+    private float getMenuItemsWidthFactor() {
+        return menuWidthSpringInitialized ? Math.max(0f, menuWidthSpringHolder.getValue()) : animatorMenuItemsWidth.getFactor();
+    }
+
     public void checkAvatarContainerWidth(boolean animated) {
         if (chatAvatarContainer == null) {
             return;
@@ -2799,16 +2904,31 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
         final boolean hasAvatar = chatAvatarContainer.hasVisibleAvatar() && !chatAvatarContainer.isAvatarCentered();
         int visualWidth = chatAvatarContainer.getVisualWidth();
-        if (hasAvatar) {
-            //visualWidth = Math.max(visualWidth, dp(168));
-        }
 
         final int width = Math.min(getMeasuredWidth() - dp(6 + 46 + 6 + 6 + 46 + 6), visualWidth);
-        if (animated) {
-            if (animatorAvatarContainerWidth.getToFactor() != width) {
-                animatorAvatarContainerWidth.animateTo(width);
+        if (avatarWidthSpring == null) {
+            avatarWidthSpring = new SpringAnimation(avatarWidthSpringHolder, width);
+            avatarWidthSpring.setSpring(new SpringForce(width)
+                    .setStiffness(PILL_WIDTH_SPRING_STIFFNESS)
+                    .setDampingRatio(PILL_WIDTH_SPRING_DAMPING));
+            avatarWidthSpring.addUpdateListener((animation, value, velocity) -> invalidate());
+        }
+        final boolean canAnimate = animated && avatarWidthSpringInitialized && canPlayJellySpring() && getMeasuredWidth() > 0;
+        if (canAnimate) {
+            if (lastAvatarWidthTarget != width) {
+                final float prevTarget = lastAvatarWidthTarget;
+                lastAvatarWidthTarget = width;
+                avatarWidthSpring.animateToFinalPosition(width);
+                if (prevTarget >= 0f && Math.abs(width - prevTarget) > dp(2)) {
+                    kickTitlePillJelly(width > prevTarget ? 1f : -1f);
+                }
             }
+            animatorAvatarContainerWidth.animateTo(width);
         } else {
+            avatarWidthSpring.cancel();
+            avatarWidthSpringHolder.setValue(width);
+            lastAvatarWidthTarget = width;
+            avatarWidthSpringInitialized = true;
             animatorAvatarContainerWidth.forceFactor(width);
         }
         animatorAvatarContainerHasAvatar.setValue(hasAvatar, animated);
@@ -2915,25 +3035,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final float tx = hostOffsetX + tv.getLeft() + tv.getTranslationX();
         final int hPad = dp(18);
 
-        int pillLeft;
-        int pillRight;
+        int rawTargetWidth;
         if (centered) {
-            final int pillWidth = Math.min(maxAllowedWidth, Math.max(minPillWidth, contentWidth + p * 2 + hPad * 2));
-            final float rightExtraShift = Math.max(0, contentWidth - tv.getTextWidth()) * 0.5f;
-            final float textCenterX = tx + tv.getWidth() / 2f + rightExtraShift;
-            pillLeft = Math.round(textCenterX - pillWidth / 2f);
-            if (pillLeft + pillWidth > safeRight) {
-                pillLeft = safeRight - pillWidth;
-            }
-            if (pillLeft < safeLeft) {
-                pillLeft = safeLeft;
-            }
-            pillRight = Math.min(safeRight, pillLeft + pillWidth);
+            rawTargetWidth = Math.min(maxAllowedWidth, Math.max(minPillWidth, contentWidth + p * 2 + hPad * 2));
         } else if (LocaleController.isRTL) {
-            final int textRightX = Math.round(hostOffsetX + tv.getRight() + tv.getTranslationX());
             final int desiredWidth = Math.max(minPillWidth, contentWidth + p * 2 + hPad * 2);
-            pillRight = Math.min(safeRight, textRightX + p + hPad);
-            pillLeft = Math.max(safeLeft, pillRight - Math.min(maxAllowedWidth, desiredWidth));
+            rawTargetWidth = Math.min(maxAllowedWidth, desiredWidth);
         } else {
             int textLeftX = Math.round(tx);
             for (int i = 0, n = getChildCount(); i < n; i++) {
@@ -2947,22 +3054,77 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     textLeftX = Math.min(textLeftX, Math.round(child.getLeft() + child.getTranslationX()) - dp(2));
                 }
             }
-            final int desiredLeft = textLeftX - p - hPad;
-            final int desiredRight = Math.round(tx) + contentWidth + p + hPad;
-            pillLeft = Math.max(safeLeft, desiredLeft);
-            pillRight = Math.min(safeRight, Math.max(pillLeft + minPillWidth, desiredRight));
-            if (pillRight - pillLeft > maxAllowedWidth) {
-                pillRight = Math.min(safeRight, pillLeft + maxAllowedWidth);
+            final int desiredLeft = Math.max(safeLeft, textLeftX - p - hPad);
+            final int desiredRight = Math.min(safeRight, Math.max(desiredLeft + minPillWidth, Math.round(tx) + contentWidth + p + hPad));
+            rawTargetWidth = Math.min(maxAllowedWidth, desiredRight - desiredLeft);
+        }
+
+        if (compactPillWidthSpring == null) {
+            compactPillWidthSpring = new SpringAnimation(compactPillWidthSpringHolder, rawTargetWidth);
+            compactPillWidthSpring.setSpring(new SpringForce(rawTargetWidth)
+                    .setStiffness(PILL_WIDTH_SPRING_STIFFNESS)
+                    .setDampingRatio(PILL_WIDTH_SPRING_DAMPING));
+            compactPillWidthSpring.addUpdateListener((animation, value, velocity) -> invalidate());
+        }
+        if (!compactPillWidthInitialized || !isAttachedToWindow() || !canPlayJellySpring()) {
+            compactPillWidthSpring.cancel();
+            compactPillWidthSpringHolder.setValue(rawTargetWidth);
+            lastCompactPillTarget = rawTargetWidth;
+            compactPillWidthInitialized = true;
+        } else if (Math.abs(rawTargetWidth - lastCompactPillTarget) > dp(1)) {
+            final float prevTarget = lastCompactPillTarget;
+            lastCompactPillTarget = rawTargetWidth;
+            compactPillWidthSpring.animateToFinalPosition(rawTargetWidth);
+            if (prevTarget > 0f && Math.abs(rawTargetWidth - prevTarget) > dp(2)) {
+                kickTitlePillJelly(rawTargetWidth > prevTarget ? 1f : -1f);
             }
+        }
+        final int animatedPillWidth = Math.max(minPillWidth, Math.min(maxAllowedWidth, Math.round(compactPillWidthSpringHolder.getValue())));
+
+        int pillLeft;
+        int pillRight;
+        if (centered) {
+            final float rightExtraShift = Math.max(0, contentWidth - tv.getTextWidth()) * 0.5f;
+            final float textCenterX = tx + tv.getWidth() / 2f + rightExtraShift;
+            pillLeft = Math.round(textCenterX - animatedPillWidth / 2f);
+            if (pillLeft + animatedPillWidth > safeRight) {
+                pillLeft = safeRight - animatedPillWidth;
+            }
+            if (pillLeft < safeLeft) {
+                pillLeft = safeLeft;
+            }
+            pillRight = Math.min(safeRight, pillLeft + animatedPillWidth);
+        } else if (LocaleController.isRTL) {
+            final int textRightX = Math.round(hostOffsetX + tv.getRight() + tv.getTranslationX());
+            pillRight = Math.min(safeRight, textRightX + p + hPad);
+            pillLeft = Math.max(safeLeft, pillRight - animatedPillWidth);
+        } else {
+            int textLeftX = Math.round(tx);
+            for (int i = 0, n = getChildCount(); i < n; i++) {
+                final View child = getChildAt(i);
+                if (child != null && child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f
+                        && child != backButtonImageView && child != menu && child != actionMode
+                        && child != avatarSearchImageView && child != titlesContainer
+                        && child != titleTextView[0] && child != titleTextView[1]
+                        && child != subtitleTextView && child != additionalSubtitleTextView
+                        && child.getLeft() >= safeLeft && child.getLeft() < textLeftX) {
+                    textLeftX = Math.min(textLeftX, Math.round(child.getLeft() + child.getTranslationX()) - dp(2));
+                }
+            }
+            pillLeft = Math.max(safeLeft, textLeftX - p - hPad);
+            pillRight = Math.min(safeRight, pillLeft + animatedPillWidth);
         }
 
         glassTitleRestRect.set(pillLeft, t, pillRight, b);
         final float titlePress = (headerGlassLens && LiquidGlassTuning.motionEnabled())
                 ? animatorTitleGlassPressed.getFloatValue()
                 : 0f;
+        final float titleJelly = getTitlePillJellyValue();
         final int swell = Math.round(dp(2.2f) * titlePress);
+        final int jellyX = Math.round(dp(3.0f) * titleJelly);
+        final int jellyY = Math.round(-dp(1.4f) * titleJelly);
         glassDrawable.setAlpha(alphaInt);
-        glassDrawable.setBounds(pillLeft - swell, t - swell, pillRight + swell, b + swell);
+        glassDrawable.setBounds(pillLeft - swell - jellyX, t - swell - jellyY, pillRight + swell + jellyX, b + swell + jellyY);
         if (headerGlassLens) {
             glassDrawable.setElasticPressProgress(titlePress * 0.85f);
         }
@@ -3011,6 +3173,24 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int width = /*isSearchFieldVisible ? searchMenuWidth :*/ (actionModeVisible ? actionMenuWidth : defaultMenuWidth);
 
         animatorHasMenuItems.setValue(width > 0, isAnimationsAllowed);
+        if (menuWidthSpring == null) {
+            menuWidthSpring = new SpringAnimation(menuWidthSpringHolder, width);
+            menuWidthSpring.setSpring(new SpringForce(width)
+                    .setStiffness(PILL_WIDTH_SPRING_STIFFNESS)
+                    .setDampingRatio(PILL_WIDTH_SPRING_DAMPING));
+            menuWidthSpring.addUpdateListener((animation, value, velocity) -> invalidate());
+        }
+        if (isAnimationsAllowed && menuWidthSpringInitialized && canPlayJellySpring()) {
+            if (lastMenuWidthTarget != width) {
+                lastMenuWidthTarget = width;
+                menuWidthSpring.animateToFinalPosition(width);
+            }
+        } else {
+            menuWidthSpring.cancel();
+            menuWidthSpringHolder.setValue(width);
+            lastMenuWidthTarget = width;
+            menuWidthSpringInitialized = true;
+        }
         if (animatorMenuItemsWidth.getToFactor() != width) {
             if (isAnimationsAllowed) {
                 animatorMenuItemsWidth.animateTo(width);
@@ -3086,7 +3266,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int s = dp(46);
 
         final float actionModeFactor = getActionModeFactor();
-        final int menuWidthA = hasForcedMenuWidth ? forcedMenuWidth : (int) animatorMenuItemsWidth.getFactor();
+        final int menuWidthA = hasForcedMenuWidth ? forcedMenuWidth : Math.round(getMenuItemsWidthFactor());
         final int menuWidth = hasForcedMenuMinWidth ? Math.max((int) (forcedMenuMinWidth * (1f - searchFactor)), menuWidthA) : menuWidthA;
 
         final boolean hasBackButton = backButtonImageView != null && backButtonImageView.getVisibility() == View.VISIBLE;
@@ -3180,8 +3360,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 int titleLeft = (getWidth() - titleWidth) / 2 + Math.round(titleTextView[0].getTranslationX());
                 glassTitleRestRect.set(titleLeft, t, titleLeft + titleWidth, b);
                 final float titlePress = (headerGlassLens && motionEnabled) ? animatorTitleGlassPressed.getFloatValue() : 0f;
+                final float titleJelly = getTitlePillJellyValue();
                 final int swell = Math.round(dp(2.2f) * titlePress);
-                glassDrawable.setBounds(titleLeft - swell, t - swell, titleLeft + titleWidth + swell, b + swell);
+                final int jellyX = Math.round(dp(3.0f) * titleJelly);
+                final int jellyY = Math.round(-dp(1.4f) * titleJelly);
+                glassDrawable.setBounds(titleLeft - swell - jellyX, t - swell - jellyY, titleLeft + titleWidth + swell + jellyX, b + swell + jellyY);
                 if (headerGlassLens) {
                     glassDrawable.setElasticPressProgress(titlePress * 0.85f);
                 }
@@ -3194,21 +3377,24 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 final int menuWidthWithPadding = menuWidth + ((hasForcedMenuWidth || hasForcedMenuMinWidth) ? (menuWidth > 0 ? p : 0) : (int) (p * animatorHasMenuItems.getFloatValue()));
                 final int rightOffset = lerp(menuWidthWithPadding, Math.max(menuWidthWithPadding, p + s), chatAvatarContainer == null ? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
 
-                final int leftDefault = lerp(hasBackButton ? s + p : 0, s + p, chatAvatarContainer == null? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
+                final float titleJelly = getTitlePillJellyValue();
+                final int jellyX = Math.round(dp(3.0f) * titleJelly);
+                final int jellyY = Math.round(-dp(1.4f) * titleJelly);
+                final int leftDefault = lerp(hasBackButton ? s + p : 0, s + p, chatAvatarContainer == null ? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
                 final int rightDefault = menuHugsAvatar
-                        ? Math.min(getWidth() - rightOffset, menuLeft - p)
+                        ? Math.min(getWidth() - rightOffset, menuLeft + p)
                         : getWidth() - rightOffset;
                 final int widthDefault = rightDefault - leftDefault;
                 final int left, right;
                 if (chatAvatarContainer != null && chatAvatarContainer.isAvatarCentered()) {
-                    final int width = lerp(Math.min(widthDefault, (int) animatorAvatarContainerWidth.getFactor() + p * 2 + Math.round(glassAvatarGap)), widthDefault, Math.max(searchFactor, actionModeFactor));
+                    final int width = lerp(Math.min(widthDefault, Math.round(getAvatarContainerWidthFactor()) + p * 2), widthDefault, Math.max(searchFactor, actionModeFactor));
                     final float titleCenter = chatAvatarContainer.getTitleCenterX();
                     left = Math.max(leftDefault, Math.min(rightDefault - width, Math.round(chatAvatarContainer.getLeft() + titleCenter - width / 2f)));
                     right = left + width;
                     chatAvatarContainer.setTranslationX(0);
                     chatAvatarContainer.setPivotX(titleCenter);
                 } else if (chatAvatarContainer != null) {
-                    final int width = lerp(Math.min(widthDefault, (int) animatorAvatarContainerWidth.getFactor() + p * 2 + Math.round(glassAvatarGap)), widthDefault, Math.max(searchFactor, actionModeFactor));
+                    final int width = lerp(Math.min(widthDefault, Math.round(getAvatarContainerWidthFactor()) + p * 2 + Math.round(glassAvatarGap)), widthDefault, Math.max(searchFactor, actionModeFactor));
                     left = (rightDefault + leftDefault - width) / 2;
                     right = left + width;
 
@@ -3226,7 +3412,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 glassTitleRestRect.set(left, t, right, b);
                 final float titlePress = (headerGlassLens && motionEnabled) ? animatorTitleGlassPressed.getFloatValue() : 0f;
                 final int swell = Math.round(dp(2.2f) * titlePress);
-                glassDrawable.setBounds(left - swell, t - swell, right + swell, b + swell);
+                glassDrawable.setBounds(left - swell - jellyX, t - swell - jellyY, right + swell + jellyX, b + swell + jellyY);
                 if (headerGlassLens) {
                     glassDrawable.setElasticPressProgress(titlePress * 0.85f);
                 }
