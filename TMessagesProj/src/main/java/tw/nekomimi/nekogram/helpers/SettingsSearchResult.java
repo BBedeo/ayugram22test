@@ -3,6 +3,7 @@ package tw.nekomimi.nekogram.helpers;
 public class SettingsSearchResult {
 
     public String searchTitle;
+    public String searchSubtitle;
     public Runnable openRunnable;
     public String path1;
     public String path2;
@@ -16,5 +17,10 @@ public class SettingsSearchResult {
         this.path2 = path2;
         this.iconResId = iconResId;
         this.openRunnable = open;
+    }
+
+    public SettingsSearchResult setSubtitle(String searchSubtitle) {
+        this.searchSubtitle = searchSubtitle;
+        return this;
     }
 }

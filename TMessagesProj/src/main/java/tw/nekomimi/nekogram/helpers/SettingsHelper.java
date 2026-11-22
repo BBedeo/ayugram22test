@@ -444,6 +444,34 @@ public class SettingsHelper {
         return resolved(capitalized);
     }
 
+    private static String rowSubtitle(BaseNekoSettingsActivity fragment, String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+        String capitalized = Character.toUpperCase(key.charAt(0)) + key.substring(1);
+        String prefix = fragment.getSearchPrefix();
+        if (prefix != null) {
+            String alias = SEARCH_TITLE_ALIASES.get(prefix + ":" + key);
+            if (alias != null) {
+                String s = firstResolved(alias + "Info", alias + "Desc");
+                if (s != null) return s;
+            }
+            String s = firstResolved(prefix + capitalized + "Info", prefix + capitalized + "Desc");
+            if (s != null) return s;
+        }
+        return firstResolved(key + "Info", key + "Desc", capitalized + "Info", capitalized + "Desc");
+    }
+
+    private static String firstResolved(String... names) {
+        for (String name : names) {
+            String v = resolved(name);
+            if (v != null) {
+                return v;
+            }
+        }
+        return null;
+    }
+
     private static String resolved(String name) {
         if (LocaleController.getStringResId(name) == 0) {
             return null;
@@ -499,7 +527,8 @@ public class SettingsHelper {
                     AndroidUtilities.runOnUIThread(() -> fragment.scrollToRow(key, null));
                 };
                 items.add(new SettingsSearchResult(
-                        uid + entry.getKey(), title, e_title, f_title, drawable, open));
+                        uid + entry.getKey(), title, e_title, f_title, drawable, open)
+                        .setSubtitle(rowSubtitle(fragment, key)));
             }
         }
 
@@ -532,7 +561,7 @@ public class SettingsHelper {
                 };
                 SettingsSearchResult result = new SettingsSearchResult(
                         guid, title, n_title, f_title, drawable, open
-                );
+                ).setSubtitle(firstResolved(key + "Info", key + "Desc"));
                 items.add(result);
             }
         }

@@ -2884,8 +2884,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             } else if (position == staticZoomRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsStaticZoom), ChatsConfig.staticZoom.Bool(), true);
             } else if (position == showFpsRow) {
-                cell.setTextAndCheck(getString(R.string.RoundVideoShowFps),
-                        org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get(), false);
+                cell.setTextAndValueAndCheck(getString(R.string.RoundVideoShowFps),
+                        getString(R.string.RoundVideoShowFpsInfo),
+                        org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get(), true, false);
             } else if (position == alwaysSendHdRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsAlwaysSendInHD), ChatsConfig.alwaysSendInHD.Bool(), true);
             } else if (position == hdrPhotosRow) {

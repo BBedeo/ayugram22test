@@ -811,9 +811,10 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
                         String[] parts = q.split("\\s+");
                         for (SettingsSearchResult item : results) {
                             String title = item.searchTitle == null ? "" : item.searchTitle.toLowerCase();
+                            String sub = item.searchSubtitle == null ? "" : item.searchSubtitle.toLowerCase();
                             boolean ok = true;
                             for (String p : parts) {
-                                if (!title.contains(p)) {
+                                if (!title.contains(p) && !sub.contains(p)) {
                                     ok = false;
                                     break;
                                 }
