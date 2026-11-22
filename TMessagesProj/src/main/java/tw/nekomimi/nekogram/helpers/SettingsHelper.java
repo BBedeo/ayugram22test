@@ -105,6 +105,25 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEChats:replaceEdited", "OEChatsReplaceEditedWithIcon");
         SEARCH_TITLE_ALIASES.put("OEChats:videoMessagesCamera", "CameraInVideoMessages");
         SEARCH_TITLE_ALIASES.put("OEChats:voskModels", "VoskModelsShort");
+        // Строки, у которых имя ресурса не совпадает со схемой «<prefix><Key>».
+        // Правило проекта: каждая настройка обязана находиться поиском,
+        // полноту проверяет scripts/check_settings_search.py.
+        SEARCH_TITLE_ALIASES.put("OEAppearance:typingBubbleAtBottom", "OEAppearanceTypingBubbleAtBottom");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:startupFolder", "OEStartupFolder");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:playerStyle", "OEPlayerStyleTitle");
+        SEARCH_TITLE_ALIASES.put("OEChats:inlineMathSettings", "OEChatsInlineMath");
+        SEARCH_TITLE_ALIASES.put("OEChats:forwardMultiSelect", "ExFullGramForwardMultiSelect");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudStatus", "OECloudStatus");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudActions", "OECloudActions");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudUpload", "OECloudUpload");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudRestore", "OECloudRestore");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudClear", "OECloudClear");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudOptions", "OECloudOptions");
+        SEARCH_TITLE_ALIASES.put("OECloud:cloudAutoSync", "OECloudAutoSync");
+        SEARCH_TITLE_ALIASES.put("OEGlyph:glyphPreview", "OEGlyphPreview");
+        SEARCH_TITLE_ALIASES.put("EFGAccounts:current", "EFGAccountsCurrent");
+        SEARCH_TITLE_ALIASES.put("EFGAccounts:separateSettings", "EFGAccountsSeparateSettings");
+        SEARCH_TITLE_ALIASES.put("EFGAccounts:compare", "EFGAccountsCompare");
         MOVED_ROWS.put("chats:translateInSheet", "general");
         MOVED_ROWS.put("other:unlimitedPinnedDialogs", "general");
         MOVED_ROWS.put("other:glyph", "general");
@@ -419,48 +438,95 @@ public class SettingsHelper {
         return moved != null ? moved : fallback;
     }
 
-    private static String rowTitle(BaseNekoSettingsActivity fragment, String key) {
-        String title = getString(key);
-        if (title != null && !title.isEmpty() && !title.equals(key)) {
-            return title;
-        }
-        if (key.isEmpty()) {
+    /**
+     * Имя строкового ресурса с заголовком строки настроек. Перебор идёт по всем известным схемам
+     * имён, чтобы ни одна настройка не выпадала из поиска: alias из {@link #SEARCH_TITLE_ALIASES},
+     * «<prefix><Key>», «<prefix><Key>Title», «<Key>», «<Key>Title» и сам ключ.
+     * Возвращает null, если ни одна схема не сработала.
+     */
+    private static String rowTitleResource(BaseNekoSettingsActivity fragment, String key) {
+        if (key == null || key.isEmpty()) {
             return null;
         }
         String capitalized = Character.toUpperCase(key.charAt(0)) + key.substring(1);
         String prefix = fragment.getSearchPrefix();
+        ArrayList<String> candidates = new ArrayList<>(8);
         if (prefix != null) {
             String alias = SEARCH_TITLE_ALIASES.get(prefix + ":" + key);
             if (alias != null) {
-                title = resolved(alias);
-                if (title != null) {
-                    return title;
-                }
+                candidates.add(alias);
             }
-            title = resolved(prefix + capitalized);
-            if (title != null) {
-                return title;
+            candidates.add(prefix + capitalized);
+            candidates.add(prefix + capitalized + "Title");
+        }
+        String alias = SEARCH_TITLE_ALIASES.get(key);
+        if (alias != null) {
+            candidates.add(alias);
+        }
+        candidates.add(capitalized);
+        candidates.add(capitalized + "Title");
+        candidates.add(key);
+        for (int i = 0; i < candidates.size(); i++) {
+            String name = candidates.get(i);
+            if (LocaleController.getStringResId(name) != 0) {
+                return name;
             }
         }
-        return resolved(capitalized);
+        return null;
+    }
+
+    private static String rowTitle(BaseNekoSettingsActivity fragment, String key) {
+        String direct = getString(key);
+        if (direct != null && !direct.isEmpty() && !direct.equals(key)) {
+            return direct;
+        }
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+        String name = rowTitleResource(fragment, key);
+        String title = name == null ? null : resolved(name);
+        if (title != null) {
+            return title;
+        }
+        // Последний рубеж: ключ всё равно попадает в поиск, пусть и в виде «Sticker Size».
+        return humanize(key);
     }
 
     private static String rowSubtitle(BaseNekoSettingsActivity fragment, String key) {
         if (key == null || key.isEmpty()) {
             return null;
         }
+        String name = rowTitleResource(fragment, key);
+        if (name != null) {
+            String s = firstResolved(name + "Info", name + "Sub", name + "Desc");
+            if (s != null) {
+                return s;
+            }
+        }
         String capitalized = Character.toUpperCase(key.charAt(0)) + key.substring(1);
         String prefix = fragment.getSearchPrefix();
         if (prefix != null) {
-            String alias = SEARCH_TITLE_ALIASES.get(prefix + ":" + key);
-            if (alias != null) {
-                String s = firstResolved(alias + "Info", alias + "Desc");
-                if (s != null) return s;
-            }
-            String s = firstResolved(prefix + capitalized + "Info", prefix + capitalized + "Desc");
+            String s = firstResolved(prefix + capitalized + "Info", prefix + capitalized + "Sub",
+                    prefix + capitalized + "Desc");
             if (s != null) return s;
         }
-        return firstResolved(key + "Info", key + "Desc", capitalized + "Info", capitalized + "Desc");
+        return firstResolved(key + "Info", key + "Sub", key + "Desc",
+                capitalized + "Info", capitalized + "Sub", capitalized + "Desc");
+    }
+
+    private static String humanize(String key) {
+        StringBuilder sb = new StringBuilder(key.length() + 6);
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+            if (i == 0) {
+                sb.append(Character.toUpperCase(c));
+            } else if (Character.isUpperCase(c) && !Character.isUpperCase(key.charAt(i - 1))) {
+                sb.append(' ').append(c);
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private static String firstResolved(String... names) {

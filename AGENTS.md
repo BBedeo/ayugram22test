@@ -63,6 +63,12 @@ Static checks alone do not prove visual parity or successful Android compilation
   settings home, included in `SettingsHelper.onCreateSearchArray()`, and
   provide stable searchable row keys plus localized `getSearchPrefix()`
   resources. Add its deep-link route to `SettingsHelper.processDeepLink()`.
+- Every `addRow("<key>")` row must be findable through settings search. The title
+  resolves by `SEARCH_TITLE_ALIASES` → `<prefix><Key>` → `<prefix><Key>Title` →
+  `<Key>` → `<Key>Title` → raw key, and `scripts/check_settings_search.py` fails
+  when a row resolves to nothing (headers and a short decorative list are exempt).
+  Add an alias instead of renaming a resource when the label does not follow the
+  naming scheme.
 - All settings belonging to the `nkmrcfg` family (NekoConfig, NaConfig and
   ExFullGram's ConfigItem-backed settings) are part of account-scoped mod
   profiles when the user enables **Separate settings for each account**.
