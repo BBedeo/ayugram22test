@@ -1707,11 +1707,14 @@ final class RoundVideoCameraController {
         commonStartRecorder = null;
     }
 
+    private boolean lastZoomWasUltrawide;
+
     private void applyZoomUpdate() {
         CameraCaptureSession session = captureSession;
         CaptureRequest.Builder builder = repeatingBuilder;
         if (!active || session == null || cameraDevice == null) return;
-        if (builder == null) {
+        final boolean isUltrawide = requestedZoomRatio < 0.99f;
+        if (builder == null || isUltrawide != lastZoomWasUltrawide) {
             applyRepeatingRequest();
             return;
         }
@@ -1819,8 +1822,14 @@ final class RoundVideoCameraController {
                         + ", active=" + activeControls);
             }
         }
-        if (app.exteraless.chats.ChatsConfig.cameraStabilization.Bool()) {
+        if (app.exteraless.chats.ChatsConfig.cameraStabilization.Bool()
+                && (!activeControls || (selection.facing != RoundVideoSession.CameraFacing.FRONT && requestedZoomRatio >= 0.99f))) {
             applyStabilization(builder, selection.characteristics, selection.highSpeed);
+        } else {
+            applyStabilization(builder, selection.characteristics, true);
+        }
+        if (activeControls) {
+            lastZoomWasUltrawide = requestedZoomRatio < 0.99f;
         }
         if (activeControls) {
             applyZoom(builder);
@@ -2238,9 +2247,17 @@ final class RoundVideoCameraController {
         recordingSize = pair.recording;
         sourceCropSize = pair.cropSize;
         activeCameraResolution = pair.cameraResolution;
-        maximumZoomRatio = readMaximumZoomRatio(selectedCharacteristics);
-        minimumZoomRatio = readMinimumZoomRatio(selectedCharacteristics);
-        if (facing == RoundVideoSession.CameraFacing.BACK && !separateUltrawide) {
+        if (frameRatePlan.highSpeed) {
+            maximumZoomRatio = Math.max(1f, readMaximumZoomRatio(selectedCharacteristics));
+            minimumZoomRatio = 1f;
+            usingSeparateUltrawide = false;
+            ultrawideAvailable = false;
+            backUltrawideCameraId = null;
+        } else {
+            maximumZoomRatio = readMaximumZoomRatio(selectedCharacteristics);
+            minimumZoomRatio = readMinimumZoomRatio(selectedCharacteristics);
+        }
+        if (!frameRatePlan.highSpeed && facing == RoundVideoSession.CameraFacing.BACK && !separateUltrawide) {
             backMainCameraId = selectedId;
             backMainMinZoomRatio = minimumZoomRatio;
             backMainMaxZoomRatio = maximumZoomRatio;
@@ -2452,6 +2469,10 @@ final class RoundVideoCameraController {
             selectCameraAndSizes(otherFacing);
             CameraSelection other = captureSelection();
             warmSwitchSupported = isConcurrentPair(initial.id, other.id);
+            if (warmSwitchSupported && (isMultiLensLogicalUltrawide(initial) || isMultiLensLogicalUltrawide(other))) {
+                warmSwitchSupported = false;
+                diagnostics.log("camera dual-active capability disabled: multi-lens back camera needs free ISP pipelines for 0.6x/tele lens switching");
+            }
             if (warmSwitchSupported && !isDualConfigurationCompatible(initial, other)) {
                 warmSwitchSupported = false;
                 diagnostics.log("camera dual-active capability rejected: incompatible frame rate, "
@@ -2479,6 +2500,22 @@ final class RoundVideoCameraController {
             @NonNull CameraSelection second
     ) {
         return first.frameRate == second.frameRate && !first.highSpeed && !second.highSpeed;
+    }
+
+    private static boolean isMultiLensLogicalUltrawide(@NonNull CameraSelection selection) {
+        return selection.facing == RoundVideoSession.CameraFacing.BACK
+                && isMultiLensLogicalUltrawide(selection.characteristics, selection.minimumZoomRatio);
+    }
+
+    private static boolean isMultiLensLogicalUltrawide(
+            @Nullable CameraCharacteristics characteristics,
+            float minZoom
+    ) {
+        if (characteristics == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return minZoom < 0.95f;
+        }
+        Set<String> physicalIds = characteristics.getPhysicalCameraIds();
+        return minZoom < 0.95f && physicalIds != null && physicalIds.size() >= 2;
     }
 
     private boolean isConcurrentPair(@NonNull String first, @NonNull String second)
@@ -2712,9 +2749,14 @@ final class RoundVideoCameraController {
         Range<Integer>[] ranges = cameraCharacteristics.get(
                 CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
         );
+        final float sensorAspectRatio = readSensorAspectRatio(cameraCharacteristics);
+        final boolean preferVariableHighFps = isMultiLensLogicalUltrawide(
+                cameraCharacteristics,
+                readMinimumZoomRatio(cameraCharacteristics)
+        );
         RoundVideoSession.FrameRate effectiveRequest = effectiveRequestedFrameRate();
         if (effectiveRequest == RoundVideoSession.FrameRate.FPS_30) {
-            Range<Integer> range = findBestFpsRange(ranges, 30);
+            Range<Integer> range = findBestFpsRange(ranges, 30, false);
             diagnostics.log("fps selection: id=" + id
                     + ", requested=" + requestedFrameRate.getValue()
                     + ", mode=REGULAR, range=" + range
@@ -2727,21 +2769,23 @@ final class RoundVideoCameraController {
         }
         if (effectiveRequest.isMaxAuto()) {
             FrameRatePlan regular120 = tryRegularFrameRatePlan(
-                    id, ranges, map, sizes, 120, RoundVideoSession.FrameRate.FPS_120
+                    id, ranges, map, sizes, 120, RoundVideoSession.FrameRate.FPS_120,
+                    sensorAspectRatio, preferVariableHighFps
             );
             if (regular120 != null) return regular120;
             FrameRatePlan regular60 = tryRegularFrameRatePlan(
-                    id, ranges, map, sizes, 60, RoundVideoSession.FrameRate.FPS_60
+                    id, ranges, map, sizes, 60, RoundVideoSession.FrameRate.FPS_60,
+                    sensorAspectRatio, preferVariableHighFps
             );
             if (regular60 != null) return regular60;
-            FrameRatePlan unadvertised60 = tryUnadvertised60FpsPlan(id, map, sizes);
+            FrameRatePlan unadvertised60 = tryUnadvertised60FpsPlan(id, map, sizes, sensorAspectRatio);
             if (unadvertised60 != null) return unadvertised60;
             FrameRatePlan highSpeed60 = resolveHighSpeedFrameRatePlan(
-                    id, map, 60, RoundVideoSession.FrameRate.FPS_60
+                    id, map, 60, RoundVideoSession.FrameRate.FPS_60, sensorAspectRatio
             );
             if (highSpeed60 != null) return highSpeed60;
             FrameRatePlan highSpeed120 = resolveHighSpeedFrameRatePlan(
-                    id, map, 120, RoundVideoSession.FrameRate.FPS_120
+                    id, map, 120, RoundVideoSession.FrameRate.FPS_120, sensorAspectRatio
             );
             if (highSpeed120 != null) return highSpeed120;
         } else {
@@ -2760,24 +2804,25 @@ final class RoundVideoCameraController {
                         ? RoundVideoSession.FrameRate.FPS_120
                         : RoundVideoSession.FrameRate.FPS_60;
                 FrameRatePlan regularPlan = tryRegularFrameRatePlan(
-                        id, ranges, map, sizes, targetFps, rateEnum
+                        id, ranges, map, sizes, targetFps, rateEnum,
+                        sensorAspectRatio, preferVariableHighFps
                 );
                 if (regularPlan != null) {
                     return regularPlan;
                 }
                 if (targetFps == 60) {
-                    FrameRatePlan unadvertised60 = tryUnadvertised60FpsPlan(id, map, sizes);
+                    FrameRatePlan unadvertised60 = tryUnadvertised60FpsPlan(id, map, sizes, sensorAspectRatio);
                     if (unadvertised60 != null) {
                         return unadvertised60;
                     }
                 }
-                FrameRatePlan highSpeedPlan = resolveHighSpeedFrameRatePlan(id, map, targetFps, rateEnum);
+                FrameRatePlan highSpeedPlan = resolveHighSpeedFrameRatePlan(id, map, targetFps, rateEnum, sensorAspectRatio);
                 if (highSpeedPlan != null) {
                     return highSpeedPlan;
                 }
             }
         }
-        Range<Integer> fallbackRange = findBestFpsRange(ranges, 30);
+        Range<Integer> fallbackRange = findBestFpsRange(ranges, 30, false);
         diagnostics.log("fps selection: id=" + id
                 + ", requested=" + effectiveRequest.getValue()
                 + ", fallback=30, range=" + fallbackRange);
@@ -2795,16 +2840,19 @@ final class RoundVideoCameraController {
             @NonNull StreamConfigurationMap map,
             @NonNull Size[] sizes,
             int targetFps,
-            @NonNull RoundVideoSession.FrameRate rateEnum
+            @NonNull RoundVideoSession.FrameRate rateEnum,
+            float sensorAspectRatio,
+            boolean preferVariableHighFps
     ) {
-        Range<Integer> normalRange = findBestFpsRange(ranges, targetFps);
+        Range<Integer> normalRange = findBestFpsRange(ranges, targetFps, preferVariableHighFps);
         if (normalRange != null) {
             Size[] fastSizes = filterSizesForFrameRate(map, sizes, targetFps);
             try {
                 OutputPair pair = chooseOutputPair(
                         fastSizes,
                         outputResolution,
-                        requestedCameraResolution
+                        requestedCameraResolution,
+                        sensorAspectRatio
                 );
                 diagnostics.log("fps selection: id=" + id
                         + ", requested=" + targetFps
@@ -2828,7 +2876,8 @@ final class RoundVideoCameraController {
     private FrameRatePlan tryUnadvertised60FpsPlan(
             @NonNull String id,
             @NonNull StreamConfigurationMap map,
-            @NonNull Size[] sizes
+            @NonNull Size[] sizes,
+            float sensorAspectRatio
     ) {
         Size[] fastSizes = filterSizesForFrameRate(map, sizes, 60);
         if (fastSizes.length == 0) {
@@ -2838,7 +2887,8 @@ final class RoundVideoCameraController {
             OutputPair pair = chooseOutputPair(
                     fastSizes,
                     outputResolution,
-                    requestedCameraResolution
+                    requestedCameraResolution,
+                    sensorAspectRatio
             );
             Range<Integer> unadvertisedRange = Range.create(60, 60);
             diagnostics.log("fps selection: id=" + id
@@ -2957,7 +3007,7 @@ final class RoundVideoCameraController {
         Range<Integer>[] ranges = characteristics == null
                 ? null
                 : characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
-        activeFpsRange = findBestFpsRange(ranges, 30);
+        activeFpsRange = findBestFpsRange(ranges, 30, false);
         previewSize = pair.preview;
         recordingSize = pair.recording;
         sourceCropSize = pair.cropSize;
@@ -3010,7 +3060,8 @@ final class RoundVideoCameraController {
             @NonNull String id,
             @NonNull StreamConfigurationMap map,
             int targetFps,
-            @NonNull RoundVideoSession.FrameRate rateEnum
+            @NonNull RoundVideoSession.FrameRate rateEnum,
+            float sensorAspectRatio
     ) {
         try {
             Range<Integer>[] highSpeedRanges = map.getHighSpeedVideoFpsRanges();
@@ -3045,7 +3096,8 @@ final class RoundVideoCameraController {
             OutputPair pair = chooseOutputPair(
                     highSpeedSizes,
                     outputResolution,
-                    requestedCameraResolution
+                    requestedCameraResolution,
+                    sensorAspectRatio
             );
             int divisor = bestRange.getUpper() / targetFps;
             diagnostics.log("fps selection: id=" + id
@@ -3071,7 +3123,8 @@ final class RoundVideoCameraController {
 
     private static Range<Integer> findBestFpsRange(
             @Nullable Range<Integer>[] ranges,
-            int targetFps
+            int targetFps,
+            boolean preferVariable
     ) {
         if (ranges == null) return null;
         int minHighLower = targetFps / 2;
@@ -3104,6 +3157,9 @@ final class RoundVideoCameraController {
         }
         if (targetFps == 30) {
             return preferred30 != null ? preferred30 : (locked != null ? locked : narrowest);
+        }
+        if (preferVariable && variableHigh != null) {
+            return variableHigh;
         }
         if (locked != null) {
             return locked;

@@ -383,10 +383,13 @@ public class Camera2Session {
         }
     }
 
+    private boolean lastZoomWasUltrawide;
+
     private void applyZoomOnCameraThread() {
         if (isClosed || !isInitiated()) return;
         if (cameraDevice == null || captureSession == null || sensorSize == null) return;
-        if (captureRequestBuilder == null) {
+        final boolean isUltrawide = currentZoom < 0.99f;
+        if (captureRequestBuilder == null || (recordingVideo && isUltrawide != lastZoomWasUltrawide)) {
             updateCaptureRequest();
             return;
         }
@@ -566,9 +569,12 @@ public class Camera2Session {
                     captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(30, 30));
                     captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
                 }
-                if (app.exteraless.chats.ChatsConfig.cameraStabilization.Bool()) {
+                if (app.exteraless.chats.ChatsConfig.cameraStabilization.Bool() && !isFront && currentZoom >= 0.99f) {
                     chooseStabilizationMode(captureRequestBuilder);
+                } else {
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
                 }
+                lastZoomWasUltrawide = currentZoom < 0.99f;
                 chooseFocusMode(captureRequestBuilder);   // без настройки, как в exteraGram
             }
 
@@ -606,18 +612,24 @@ public class Camera2Session {
     private Range<Integer> selectExtendedFpsRange() {
         final Range<Integer>[] ranges = getAvailableFpsRanges();
         if (ranges == null) return null;
+        final boolean preferVariable = zoomRatioRange != null && minZoom < 0.95f;
+        Range<Integer> locked = null;
         Range<Integer> variable = null;
         for (Range<Integer> r : ranges) {
             if (r == null) continue;
             if (r.getUpper() != 60) continue;
             if (r.getLower() == 60) {
-                return r;
+                locked = r;
+                if (!preferVariable) {
+                    return r;
+                }
+                continue;
             }
             if (variable == null || r.getLower() > variable.getLower()) {
                 variable = r;
             }
         }
-        return variable;
+        return preferVariable ? (variable != null ? variable : locked) : variable;
     }
 
     /** Оптическая стабилизация в приоритете над электронной, они взаимоисключающие. */

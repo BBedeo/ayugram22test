@@ -120,9 +120,10 @@ checks = {
         and "private void drawPacedFrame()" in gl_proc
         and "pacedFrameRunnable" in gl_proc
     ),
-    "RoundVideoSession & SharedSettings expose 60/120/Max FPS and ultrawide zoom capabilities": (
+    "RoundVideoSession & SharedSettings expose 60/120/240/Max FPS and ultrawide zoom capabilities": (
         "FPS_120(120)" in session
-        and "FPS_MAX(120)" in session
+        and "FPS_240(240)" in session
+        and "FPS_MAX(240)" in session
         and "public boolean isMaxAuto()" in session
         and "public float getMinimumZoomRatio()" in session
         and "public boolean isUltrawideAvailable()" in session
@@ -153,9 +154,9 @@ checks = {
         and "UI_FRAME_FALLBACK_DELAY_NS = 33_000_000L" in camera_view
         and "addFrameCallback(\n                    recordingUiFallback,\n                    60" in camera_view
     ),
-    "RoundVideoSettingsActivity supports 30/60/120/Max FPS, safe bitrate labels array, and extended diagnostics": (
-        'new CharSequence[]{"30 FPS", "60 FPS", "120 FPS", "Max (Auto)"}' in settings_ui
-        and "CharSequence[] labels = new CharSequence[count];" in settings_ui
+    "RoundVideoSettingsActivity supports 30/60/120/240/Max FPS, safe bitrate labels array, and extended diagnostics": (
+        'new CharSequence[]{"30 FPS", "60 FPS", "120 FPS", "240 FPS", "Max (Auto)"}' in settings_ui
+        and "CharSequence[] labels = new CharSequence[BITRATES.length];" in settings_ui
         and "private static String frameRateLabel(" in settings_ui
         and "CONTROL_ZOOM_RATIO_RANGE" in settings_ui
         and "getConcurrentCameraIds()" in settings_ui

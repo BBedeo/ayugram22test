@@ -321,6 +321,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int rememberLastUsedCameraRow = -1;
     private int zoomSliderRow = -1;
     private int staticZoomRow = -1;
+    private int showFpsRow = -1;
     private int roundVideoQualityRow = -1;
     private int cameraDividerRow = -1;
 
@@ -682,6 +683,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         }
         zoomSliderRow = addRow("zoomSlider");
         staticZoomRow = addRow("staticZoom");
+        showFpsRow = addRow("roundVideoShowFps");
         roundVideoQualityRow = addRow("roundVideoQuality");
         cameraDividerRow = addRow();
 
@@ -1821,6 +1823,13 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         } else if (position == roundVideoQualityRow) {
             presentFragment(new org.telegram.ui.RoundVideoSettingsActivity());
             return;
+        } else if (position == showFpsRow) {
+            boolean showFps = !org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get();
+            org.telegram.utils.settings.SharedSettings.roundVideoShowFps.set(showFps);
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(showFps);
+            }
+            return;
         } else if (position == doubleTapSeekDurationRow) {
             showOptions(view, position, seekDurationOptions(), ChatsConfig.doubleTapSeekDuration);
             return;
@@ -2873,7 +2882,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                         getString(R.string.OEChatsZoomSliderInfo),
                         ChatsConfig.zoomSlider.Bool(), true, true);
             } else if (position == staticZoomRow) {
-                cell.setTextAndCheck(getString(R.string.OEChatsStaticZoom), ChatsConfig.staticZoom.Bool(), false);
+                cell.setTextAndCheck(getString(R.string.OEChatsStaticZoom), ChatsConfig.staticZoom.Bool(), true);
+            } else if (position == showFpsRow) {
+                cell.setTextAndCheck(getString(R.string.RoundVideoShowFps),
+                        org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get(), false);
             } else if (position == alwaysSendHdRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsAlwaysSendInHD), ChatsConfig.alwaysSendInHD.Bool(), true);
             } else if (position == hdrPhotosRow) {

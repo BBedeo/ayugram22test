@@ -888,7 +888,28 @@ public abstract class CameraZoomSliderView extends View {
             return;
         }
         performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
-        animateZoomTo(toggleStops[index], true, index);
+        final float target = clamp(toggleStops[index], minZoom, maxZoom);
+        if (isCrossLensJump(zoom, target)) {
+            stopZoomAnimator();
+            selectedToggleIndex = index;
+            selectedShowsStopValue = true;
+            animateSelectorTo(index, true);
+            setZoomInternal(target, true, false);
+            return;
+        }
+        animateZoomTo(target, true, index);
+    }
+
+    private boolean isCrossLensJump(float fromZoom, float toZoom) {
+        if (fromZoom <= 0f || toZoom <= 0f) {
+            return false;
+        }
+        final float boundary = Math.max(0.5f, displayNormalizationFactor - 0.01f);
+        if ((fromZoom < boundary && toZoom >= boundary)
+                || (fromZoom >= boundary && toZoom < boundary)) {
+            return true;
+        }
+        return Math.max(fromZoom, toZoom) / Math.min(fromZoom, toZoom) >= 1.5f;
     }
 
     private void updateAccessibilityDescription() {

@@ -384,8 +384,12 @@ public class CameraXSession {
     private Camera tryBindSingleAtExtendedFrameRate() {
         try {
             SessionConfig.Builder builder = new SessionConfig.Builder(previewUseCase);
+            CameraInfo cameraInfo = provider.getCameraInfo(cameraSelector);
+            ZoomState z = cameraInfo.getZoomState().getValue();
+            boolean multiLens = z != null && z.getMinZoomRatio() < 0.95f;
             Range<Integer> range = selectExtendedFpsRange(
-                    provider.getCameraInfo(cameraSelector).getSupportedFrameRateRanges(builder.build()));
+                    cameraInfo.getSupportedFrameRateRanges(builder.build()),
+                    multiLens);
             if (range == null) {
                 return null;
             }
@@ -447,8 +451,8 @@ public class CameraXSession {
         if (range != null) {
             builder.setTargetFrameRate(range);
         }
-        // При двух привязанных линзах стабилизация превью не даётся вовсе.
-        builder.setPreviewStabilizationEnabled(!isDualMode && stabilization);
+        // При двух привязанных линзах и на фронталке стабилизация превью не ставится (чтобы не кропать угол обзора).
+        builder.setPreviewStabilizationEnabled(!isDualMode && stabilization && selector != CameraSelector.DEFAULT_FRONT_CAMERA);
         if (!ChatsConfig.cameraMirrorMode.Bool()) {
             builder.setMirrorMode(MirrorMode.MIRROR_MODE_OFF);
         }
@@ -568,22 +572,31 @@ public class CameraXSession {
     }
 
     private static Range<Integer> selectExtendedFpsRange(Collection<Range<Integer>> ranges) {
+        return selectExtendedFpsRange(ranges, false);
+    }
+
+    private static Range<Integer> selectExtendedFpsRange(Collection<Range<Integer>> ranges, boolean preferVariable) {
         if (ranges == null) {
             return null;
         }
         Range<Integer> best = null;
+        Range<Integer> locked = null;
         for (Range<Integer> range : ranges) {
             if (range == null || !range.getUpper().equals(FPS_60_RANGE.getUpper())) {
                 continue;
             }
             if (FPS_60_RANGE.equals(range)) {
-                return range;  // строго 60 — лучше плавающего диапазона
+                locked = range;
+                if (!preferVariable) {
+                    return range;  // строго 60 — лучше плавающего диапазона на обычной линзе
+                }
+                continue;
             }
             if (best == null || range.getLower() > best.getLower()) {
                 best = range;
             }
         }
-        return best;
+        return preferVariable ? (best != null ? best : locked) : best;
     }
 
     private boolean isPreviewStabilizationSupported(CameraSelector selector) {
@@ -612,7 +625,36 @@ public class CameraXSession {
 
     /** Доступно ли бесшовное переключение: нужна и поддержка кружка, и пара линз. */
     public static boolean isRoundDualAvailable(Context context) {
-        return DualCameraView.roundDualAvailableStatic(context) && isSeamlessSwitchingAvailable(context);
+        return DualCameraView.roundDualAvailableStatic(context)
+                && isSeamlessSwitchingAvailable(context)
+                && !hasBackMultiLensUltrawide(context);
+    }
+
+    /** Multi-lens logical back cameras (e.g. 0.6x/1x/3.2x) need free ISP pipes to switch lenses reliably. */
+    public static boolean hasBackMultiLensUltrawide(@androidx.annotation.Nullable Context context) {
+        if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return false;
+        }
+        try {
+            CameraManager manager = context.getSystemService(CameraManager.class);
+            if (manager == null) return false;
+            for (String id : manager.getCameraIdList()) {
+                CameraCharacteristics c = manager.getCameraCharacteristics(id);
+                Integer facing = c.get(CameraCharacteristics.LENS_FACING);
+                if (facing == null || facing != CameraCharacteristics.LENS_FACING_BACK) {
+                    continue;
+                }
+                Range<Float> zoomRange = c.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE);
+                Set<String> physicalIds = c.getPhysicalCameraIds();
+                if (zoomRange != null && zoomRange.getLower() < 0.95f
+                        && physicalIds != null && physicalIds.size() >= 2) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        return false;
     }
 
     public static boolean isSeamlessSwitchingAvailable(Context context) {
@@ -793,7 +835,22 @@ public class CameraXSession {
         if (cameraControl == null) {
             return;
         }
-        cameraControl.setZoomRatio(ratio);
+        ZoomState state = zoomState();
+        float clamped = ratio;
+        if (state != null) {
+            clamped = Math.max(state.getMinZoomRatio(), Math.min(state.getMaxZoomRatio(), ratio));
+        }
+        final float target = clamped;
+        ListenableFuture<Void> future = cameraControl.setZoomRatio(target);
+        future.addListener(() -> {
+            try {
+                future.get();
+            } catch (Exception e) {
+                if (!(e.getCause() instanceof CameraControl.OperationCanceledException)) {
+                    FileLog.e("CameraX setZoomRatio(" + target + ") failed", e);
+                }
+            }
+        }, ContextCompat.getMainExecutor(ApplicationLoader.applicationContext));
     }
 
     public float getZoomRatio() {

@@ -277,6 +277,16 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
      */
     private void applyZoom(float value) {
         pendingZoom = value;
+        if (!Float.isNaN(lastAppliedZoom)
+                && ((lastAppliedZoom < 0.99f && value >= 0.99f)
+                || (lastAppliedZoom >= 0.99f && value < 0.99f))) {
+            removeCallbacks(zoomFlushRunnable);
+            zoomFlushScheduled = false;
+            lastAppliedZoom = value;
+            lastZoomAppliedAt = SystemClock.uptimeMillis();
+            sendZoomToCamera(value);
+            return;
+        }
         scheduleZoomFlush();
     }
 

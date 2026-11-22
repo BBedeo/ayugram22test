@@ -130,6 +130,11 @@ public class RoundVideoSettingsActivity extends BaseFragment {
             showCameraDiagnostics();
             return;
         }
+        if (position == ROW_SHOW_FPS) {
+            SharedSettings.roundVideoShowFps.set(!SharedSettings.roundVideoShowFps.get());
+            adapter.notifyItemChanged(position);
+            return;
+        }
         if (!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount)) {
             return;
         }
@@ -384,7 +389,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
             int position = holder.getAdapterPosition();
-            if (position == ROW_ENABLED || position == ROW_DIAGNOSTICS) {
+            if (position == ROW_ENABLED || position == ROW_DIAGNOSTICS || position == ROW_SHOW_FPS) {
                 return true;
             }
             if (!InstantCameraViewBase.isRoundVideoRecorderV2(currentAccount)) {
@@ -430,7 +435,7 @@ public class RoundVideoSettingsActivity extends BaseFragment {
                         : LocaleController.getString(R.string.RoundVideoComposition));
             } else if (holder.getItemViewType() == TYPE_CHECK) {
                 TextCheckCell cell = (TextCheckCell) holder.itemView;
-                cell.setEnabled(position == ROW_ENABLED || enabled);
+                cell.setEnabled(position == ROW_ENABLED || position == ROW_SHOW_FPS || enabled);
                 if (position == ROW_ENABLED) {
                     cell.setTextAndCheck(
                             LocaleController.getString(R.string.RoundVideoUseNewRecorder),

@@ -295,6 +295,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
     private boolean allowSendingWhileRecording;
 
     private final LinearLayout buttonsLayout;
+    private final android.widget.TextView fpsPillView;
     private final int buttonsSizePx;
     private final ZoomControlView zoomControlView;
     private final app.exteraless.camera.InstantCameraZoomSlider zoomSlider;
@@ -378,6 +379,18 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
 
         buttonsLayout.setOrientation(LinearLayout.HORIZONTAL);
         addView(buttonsLayout, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 56, Gravity.LEFT | Gravity.BOTTOM, 1, 0, 0, 0));
+
+        fpsPillView = new android.widget.TextView(context);
+        fpsPillView.setGravity(Gravity.CENTER);
+        fpsPillView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 13);
+        fpsPillView.setTypeface(AndroidUtilities.bold());
+        fpsPillView.setFontFeatureSettings("tnum");
+        fpsPillView.setTextColor(isNewDesign && resourcesProvider != null && !resourcesProvider.isDark() ? 0xFF1F1F1F : Color.WHITE);
+        fpsPillView.setPadding(dp(14), 0, dp(14), 0);
+        fpsPillView.setText("-- FPS");
+        fpsPillView.setAlpha(0f);
+        fpsPillView.setVisibility(GONE);
+        addView(fpsPillView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 56, Gravity.LEFT | Gravity.BOTTOM, 104, 0, 0, 0));
 
         switchCameraButton = new FlashViews.ImageViewInvertable(context);
         switchCameraButton.setScaleType(ImageView.ScaleType.CENTER);
@@ -537,6 +550,10 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         drawable.setPadding(dp(6));
         drawable.setRadius(dp(21));
         buttonsLayout.setBackground(drawable);
+        BlurredBackgroundDrawable fpsDrawable = factory.create(fpsPillView, colorProvider);
+        fpsDrawable.setPadding(dp(6));
+        fpsDrawable.setRadius(dp(21));
+        fpsPillView.setBackground(fpsDrawable);
         zoomSlider.setBlurBackground(factory.create(zoomSlider, colorProvider));
     }
 
@@ -757,6 +774,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         super.setVisibility(visibility);
 
         buttonsLayout.setAlpha(0.0f);
+        fpsPillView.setAlpha(0.0f);
         zoomControlView.setAlpha(0.0f);
         zoomSlider.setOpenAlpha(0f);
         cameraContainer.setAlpha(0.0f);
@@ -876,6 +894,12 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         key = null;
         iv = null;
         needDrawFlickerStub = true;
+        if (org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get()) {
+            fpsPillView.setText("-- FPS");
+            fpsPillView.setVisibility(VISIBLE);
+        } else {
+            fpsPillView.setVisibility(GONE);
+        }
 
         if (!initCamera()) {
             return;
@@ -921,7 +945,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
                 previewSize[1] = previewSize[0];
             }
         } else if (useCamera2) {
-            bothCameras = DualCameraView.roundDualAvailableStatic(getContext());
+            bothCameras = DualCameraView.roundDualAvailableStatic(getContext())
+                    && !app.exteraless.camera.CameraXSession.hasBackMultiLensUltrawide(getContext());
             if (bothCameras) {
                 for (int a = 0; a < 2; ++a) {
                     if (camera2Sessions[a] == null) {
@@ -1055,6 +1080,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         });
         animatorSet.playTogether(
                 ObjectAnimator.ofFloat(buttonsLayout, View.ALPHA, open ? 1.0f : 0.0f),
+                ObjectAnimator.ofFloat(fpsPillView, View.ALPHA, open && org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get() ? 1.0f : 0.0f),
                 ObjectAnimator.ofFloat(zoomControlView, View.ALPHA, open ? 1.0f : 0.0f),
                 ObjectAnimator.ofFloat(zoomSlider, app.exteraless.camera.InstantCameraZoomSlider.OPEN_ALPHA, open ? 1.0f : 0.0f),
                 ObjectAnimator.ofFloat(muteImageView, View.ALPHA, 0.0f),
@@ -1816,6 +1842,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
 
         private int surfaceWidth;
         private int surfaceHeight;
+        private long liveFpsWindowStartNs;
+        private int liveFpsWindowFrames;
 
         public CameraGLThread(SurfaceTexture surface, int surfaceWidth, int surfaceHeight) {
             super("CameraGLThread");
@@ -2195,6 +2223,27 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
 
             if (recorder != null && (surfaceIndex == 0 && updateTexImage1 || surfaceIndex == 1 && updateTexImage2)) {
                 recorder.frameAvailable(cameraSurface[surfaceIndex], bothCameras ? surfaceIndex : cameraId, System.nanoTime());
+            }
+            if ((surfaceIndex == 0 && updateTexImage1 || surfaceIndex == 1 && updateTexImage2)
+                    && org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get()) {
+                long nowNs = System.nanoTime();
+                if (liveFpsWindowStartNs == 0L) {
+                    liveFpsWindowStartNs = nowNs;
+                    liveFpsWindowFrames = 1;
+                } else {
+                    liveFpsWindowFrames++;
+                    long elapsedNs = nowNs - liveFpsWindowStartNs;
+                    if (elapsedNs >= 400_000_000L) {
+                        final int measuredFps = Math.max(1, Math.round(liveFpsWindowFrames * 1_000_000_000f / elapsedNs));
+                        liveFpsWindowStartNs = nowNs;
+                        liveFpsWindowFrames = 0;
+                        AndroidUtilities.runOnUIThread(() -> {
+                            if (fpsPillView.getVisibility() == VISIBLE) {
+                                fpsPillView.setText(measuredFps + " FPS");
+                            }
+                        });
+                    }
+                }
             }
 
             cameraSurface[surfaceIndex].getTransformMatrix(mSTMatrix);
