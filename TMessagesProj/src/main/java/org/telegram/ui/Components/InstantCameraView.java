@@ -295,7 +295,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
     private boolean allowSendingWhileRecording;
 
     private final LinearLayout buttonsLayout;
-    private final android.widget.TextView fpsPillView;
+    private final AnimatedTextView fpsPillView;
+    private int lastMeasuredFps = -1;
     private final int buttonsSizePx;
     private final ZoomControlView zoomControlView;
     private final app.exteraless.camera.InstantCameraZoomSlider zoomSlider;
@@ -380,14 +381,15 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         buttonsLayout.setOrientation(LinearLayout.HORIZONTAL);
         addView(buttonsLayout, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 56, Gravity.LEFT | Gravity.BOTTOM, 1, 0, 0, 0));
 
-        fpsPillView = new android.widget.TextView(context);
+        fpsPillView = new AnimatedTextView(context, true, true, true);
         fpsPillView.setGravity(Gravity.CENTER);
-        fpsPillView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 13);
+        fpsPillView.setTextSize(dp(13));
         fpsPillView.setTypeface(AndroidUtilities.bold());
-        fpsPillView.setFontFeatureSettings("tnum");
+        fpsPillView.getPaint().setFontFeatureSettings("tnum");
         fpsPillView.setTextColor(isNewDesign && resourcesProvider != null && !resourcesProvider.isDark() ? 0xFF1F1F1F : Color.WHITE);
         fpsPillView.setPadding(dp(14), 0, dp(14), 0);
-        fpsPillView.setText("-- FPS");
+        fpsPillView.setAnimationProperties(0.32f, 0, 220, CubicBezierInterpolator.EASE_OUT_QUINT);
+        fpsPillView.setText("-- FPS", false);
         fpsPillView.setAlpha(0f);
         fpsPillView.setVisibility(GONE);
         addView(fpsPillView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 56, Gravity.LEFT | Gravity.BOTTOM, 104, 0, 0, 0));
@@ -895,7 +897,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         iv = null;
         needDrawFlickerStub = true;
         if (org.telegram.utils.settings.SharedSettings.roundVideoShowFps.get()) {
-            fpsPillView.setText("-- FPS");
+            lastMeasuredFps = -1;
+            fpsPillView.setText("-- FPS", false);
             fpsPillView.setVisibility(VISIBLE);
         } else {
             fpsPillView.setVisibility(GONE);
@@ -2239,7 +2242,10 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
                         liveFpsWindowFrames = 0;
                         AndroidUtilities.runOnUIThread(() -> {
                             if (fpsPillView.getVisibility() == VISIBLE) {
-                                fpsPillView.setText(measuredFps + " FPS");
+                                final boolean animate = app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers() && lastMeasuredFps >= 0 && lastMeasuredFps != measuredFps;
+                                final boolean moveDown = measuredFps < lastMeasuredFps;
+                                lastMeasuredFps = measuredFps;
+                                fpsPillView.setText(measuredFps + " FPS", animate, moveDown);
                             }
                         });
                     }

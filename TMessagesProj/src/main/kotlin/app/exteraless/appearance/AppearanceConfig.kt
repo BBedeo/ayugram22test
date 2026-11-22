@@ -769,6 +769,17 @@ object AppearanceConfig {
         return jellyAnimations.Bool()
     }
 
+    /** Анимация изменения чисел: плавное перелистывание цифр (FPS, счётчики, таймеры) по всему приложению. */
+    @JvmField
+    val animatedNumbers =
+        addConfig("OEAppearanceAnimatedNumbers", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isAnimatedNumbers(): Boolean {
+        ensureLoaded()
+        return animatedNumbers.Bool()
+    }
+
     /** Показывать заголовки групп («Закреплённые» / «Чаты») над кластерами карточек в списке чатов. */
     @JvmField
     val segmentedGroupHeaders =

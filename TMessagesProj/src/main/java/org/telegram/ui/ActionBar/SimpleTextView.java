@@ -738,13 +738,52 @@ public class SimpleTextView extends View implements Drawable.Callback {
         return setText(value, false);
     }
 
+    private android.animation.ValueAnimator numberRollAnimator;
+    private Layout prevNumberLayout;
+    private float numberRollProgress = 1f;
+    private boolean numberRollMoveDown;
+
     public boolean setText(CharSequence value, boolean force) {
         if (text == null && value == null || !force && text != null && text.equals(value)) {
             return false;
         }
+        final boolean shouldAnimateDigits = app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers()
+                && isAttachedToWindow() && getWidth() > 0 && getVisibility() == VISIBLE
+                && layout != null && scrollingOffset == 0
+                && org.telegram.ui.Components.AnimatedTextView.differsOnlyInDigits(text, value);
+        final Layout oldLayout = shouldAnimateDigits ? layout : null;
+        final boolean moveDown = shouldAnimateDigits && org.telegram.ui.Components.AnimatedTextView.compareNumericChange(text, value) < 0;
         text = value;
         currentScrollDelay = SCROLL_DELAY_MS;
         recreateLayoutMaybe();
+        if (shouldAnimateDigits && oldLayout != null && layout != null && layout != oldLayout) {
+            if (numberRollAnimator != null) {
+                numberRollAnimator.cancel();
+            }
+            prevNumberLayout = oldLayout;
+            numberRollMoveDown = moveDown;
+            numberRollProgress = 0f;
+            numberRollAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
+            numberRollAnimator.setDuration(210);
+            numberRollAnimator.setInterpolator(org.telegram.ui.Components.CubicBezierInterpolator.EASE_OUT_QUINT);
+            numberRollAnimator.addUpdateListener(anim -> {
+                numberRollProgress = (float) anim.getAnimatedValue();
+                invalidate();
+            });
+            numberRollAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    prevNumberLayout = null;
+                    numberRollProgress = 1f;
+                    invalidate();
+                }
+            });
+            numberRollAnimator.start();
+        } else if (numberRollAnimator != null) {
+            numberRollAnimator.cancel();
+            prevNumberLayout = null;
+            numberRollProgress = 1f;
+        }
         return true;
     }
 
@@ -1047,7 +1086,24 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 layoutX += offsetX + textOffsetX - scrollingOffset;
                 layoutY += offsetY;
             }
-            drawLayout(canvas);
+            if (prevNumberLayout != null && numberRollProgress < 1f) {
+                final int savedAlpha = textPaint.getAlpha();
+                final float dir = numberRollMoveDown ? 1f : -1f;
+                final float dy = dp(9);
+                textPaint.setAlpha((int) (savedAlpha * (1f - numberRollProgress)));
+                canvas.save();
+                canvas.translate(0, dir * dy * numberRollProgress);
+                prevNumberLayout.draw(canvas);
+                canvas.restore();
+                textPaint.setAlpha((int) (savedAlpha * numberRollProgress));
+                canvas.save();
+                canvas.translate(0, -dir * dy * (1f - numberRollProgress));
+                drawLayout(canvas);
+                canvas.restore();
+                textPaint.setAlpha(savedAlpha);
+            } else {
+                drawLayout(canvas);
+            }
             if (partLayout != null && fullAlpha < 1.0f) {
                 int prevAlpha = textPaint.getAlpha();
                 textPaint.setAlpha((int) (255 * (1.0f - fullAlpha)));
@@ -1076,7 +1132,24 @@ public class SimpleTextView extends View implements Drawable.Callback {
             }
             if (scrollingOffset != 0) {
                 canvas.translate(nextScrollX, 0);
+                if (prevNumberLayout != null && numberRollProgress < 1f) {
+                final int savedAlpha = textPaint.getAlpha();
+                final float dir = numberRollMoveDown ? 1f : -1f;
+                final float dy = dp(9);
+                textPaint.setAlpha((int) (savedAlpha * (1f - numberRollProgress)));
+                canvas.save();
+                canvas.translate(0, dir * dy * numberRollProgress);
+                prevNumberLayout.draw(canvas);
+                canvas.restore();
+                textPaint.setAlpha((int) (savedAlpha * numberRollProgress));
+                canvas.save();
+                canvas.translate(0, -dir * dy * (1f - numberRollProgress));
                 drawLayout(canvas);
+                canvas.restore();
+                textPaint.setAlpha(savedAlpha);
+            } else {
+                drawLayout(canvas);
+            }
             }
             if (offsetX + textOffsetX != 0 || offsetY != 0 || scrollingOffset != 0) {
                 canvas.restore();

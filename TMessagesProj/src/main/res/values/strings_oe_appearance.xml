@@ -124,6 +124,8 @@
     <string name="OEAppearanceDetailedSettingsSub">Show all fine-tuning controls for sections, blur, and Liquid Glass</string>
     <string name="OEAppearanceJellyAnimations">Jelly press animations</string>
     <string name="OEAppearanceJellyAnimationsSub">Elastic overshoot and spring bounce when tapping glass buttons and pills</string>
+    <string name="OEAppearanceAnimatedNumbers">Animated number changes</string>
+    <string name="OEAppearanceAnimatedNumbersSub">Smooth vertical digit roll animation when counters, FPS, timers, and numbers update across the app</string>
     <string name="OEAppearanceIosMiniPlayer">iOS Liquid Glass mini-player</string>
     <string name="OEAppearanceIosMiniPlayerSub">Use a translucent Liquid Glass capsule instead of a solid Material You card</string>
     <string name="OEAppearanceSegmentedGroupHeaders">Group headers in chats</string>

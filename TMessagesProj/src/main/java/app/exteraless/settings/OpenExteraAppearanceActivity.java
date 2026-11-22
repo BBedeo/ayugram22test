@@ -110,6 +110,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int segmentGapRow;
     private int segmentedGroupHeadersRow;
     private int jellyRow;
+    private int animatedNumbersRow;
     private int detailedSettingsRow;
     private int sectionsDividerRow;
 
@@ -292,6 +293,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         gooeyAvatarRow = addRow("gooeyAvatar");
         elasticDragPillsRow = addRow("elasticDragPills");
         jellyRow = addRow("jellyAnimations");
+        animatedNumbersRow = addRow("animatedNumbers");
         customThemesRow = addRow("customThemes");
         appearanceDividerRow = addRow();
 
@@ -1201,6 +1203,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             rebuild = true;
         } else if (position == jellyRow) {
             item = AppearanceConfig.jellyAnimations;
+        } else if (position == animatedNumbersRow) {
+            item = AppearanceConfig.animatedNumbers;
         } else if (position == detailedSettingsRow) {
             item = AppearanceConfig.detailedSettings;
         } else if (position == disableAvatarBlurRow) {
@@ -1411,6 +1415,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceJellyAnimations),
                                 getString(R.string.OEAppearanceJellyAnimationsSub),
                                 AppearanceConfig.jellyAnimations.Bool(), true, true);
+                    } else if (position == animatedNumbersRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceAnimatedNumbers),
+                                getString(R.string.OEAppearanceAnimatedNumbersSub),
+                                AppearanceConfig.animatedNumbers.Bool(), true, true);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == detailedSettingsRow) {

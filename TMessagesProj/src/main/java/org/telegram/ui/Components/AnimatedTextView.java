@@ -1344,12 +1344,77 @@ public class AnimatedTextView extends View {
         drawable.ignoreRTL = value;
     }
 
+    public static boolean differsOnlyInDigits(CharSequence a, CharSequence b) {
+        if (a == null || b == null || TextUtils.equals(a, b)) {
+            return false;
+        }
+        final int lenA = a.length();
+        final int lenB = b.length();
+        if (lenA == 0 || lenB == 0) {
+            return false;
+        }
+        boolean hasDigit = false;
+        int i = 0, j = 0;
+        while (i < lenA || j < lenB) {
+            final boolean digA = i < lenA && Character.isDigit(a.charAt(i));
+            final boolean digB = j < lenB && Character.isDigit(b.charAt(j));
+            if (digA || digB) {
+                hasDigit = true;
+                while (i < lenA && Character.isDigit(a.charAt(i))) i++;
+                while (j < lenB && Character.isDigit(b.charAt(j))) j++;
+                continue;
+            }
+            if (i >= lenA || j >= lenB || a.charAt(i) != b.charAt(j)) {
+                return false;
+            }
+            i++;
+            j++;
+        }
+        return hasDigit;
+    }
+
+    public static int compareNumericChange(CharSequence oldText, CharSequence newText) {
+        if (oldText == null || newText == null) {
+            return 0;
+        }
+        long oldNum = 0, newNum = 0;
+        boolean foundOld = false, foundNew = false;
+        for (int i = 0; i < oldText.length(); i++) {
+            char c = oldText.charAt(i);
+            if (Character.isDigit(c)) {
+                foundOld = true;
+                oldNum = oldNum * 10 + (c - '0');
+            } else if (foundOld) {
+                break;
+            }
+        }
+        for (int i = 0; i < newText.length(); i++) {
+            char c = newText.charAt(i);
+            if (Character.isDigit(c)) {
+                foundNew = true;
+                newNum = newNum * 10 + (c - '0');
+            } else if (foundNew) {
+                break;
+            }
+        }
+        if (!foundOld || !foundNew || oldNum == newNum) {
+            return 0;
+        }
+        return newNum > oldNum ? 1 : -1;
+    }
+
     private boolean first = true;
     public void setText(CharSequence text, boolean animated, boolean moveDown) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             boolean finalAnimated = animated;
             AndroidUtilities.runOnUIThread(() -> setText(text, finalAnimated, moveDown));
             return;
+        }
+        if (!animated && !first && isAttachedToWindow()
+                && app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers()
+                && differsOnlyInDigits(drawable.getText(), text)) {
+            animated = true;
+            moveDown = compareNumericChange(drawable.getText(), text) < 0;
         }
         animated = !first && animated;
         first = false;

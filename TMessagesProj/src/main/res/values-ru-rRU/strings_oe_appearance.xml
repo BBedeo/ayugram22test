@@ -69,6 +69,8 @@
     <string name="OEAppearanceDetailedSettingsSub">Показывать все тонкие настройки секций, размытия и жидкого стекла</string>
     <string name="OEAppearanceJellyAnimations">Желейные анимации нажатий</string>
     <string name="OEAppearanceJellyAnimationsSub">Упругий перелёт и пружинный возврат при нажатии на стеклянные кнопки и пилюли</string>
+    <string name="OEAppearanceAnimatedNumbers">Анимация изменения чисел</string>
+    <string name="OEAppearanceAnimatedNumbersSub">Плавное перелистывание цифр при изменении счётчиков, FPS, таймеров и чисел по всему приложению</string>
     <string name="OEAppearanceIosMiniPlayer">Мини-плеер iOS Liquid Glass</string>
     <string name="OEAppearanceIosMiniPlayerSub">Прозрачная капсула жидкого стекла вместо сплошной карточки Material You</string>
     <string name="OEAppearanceSegmentedGroupHeaders">Заголовки групп в чатах</string>
