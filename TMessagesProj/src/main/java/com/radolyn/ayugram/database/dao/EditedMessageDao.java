@@ -44,4 +44,13 @@ public interface EditedMessageDao {
 
     @Insert
     void insert(EditedMessage revision);
+
+    @Query("SELECT * FROM editedmessage WHERE userId = :userId ORDER BY entityCreateDate DESC LIMIT :limit")
+    List<EditedMessage> getAllLatest(long userId, int limit);
+
+    @Query("SELECT * FROM editedmessage WHERE userId = :userId AND dialogId = :dialogId ORDER BY entityCreateDate DESC LIMIT :limit")
+    List<EditedMessage> getLatestByDialog(long userId, long dialogId, int limit);
+
+    @Query("SELECT DISTINCT dialogId FROM editedmessage WHERE userId = :userId ORDER BY entityCreateDate DESC")
+    List<Long> getSavedDialogIds(long userId);
 }

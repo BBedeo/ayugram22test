@@ -81,6 +81,8 @@
     <string name="OEGeneralAyuMoments">Message History</string>
     <string name="OEGeneralAyuMomentsInfo">Saving deleted and edited messages, ghost mode and regex filters. The features keep working while they are on, whether or not you open this screen.</string>
     <string name="OEGeneralAyuMomentsDisableAll">Turn off message history</string>
+    <string name="OEHistoryAllChats">All chats</string>
+    <string name="OEHistoryEmpty">No saved deleted or edited messages yet</string>
     <string name="OELastActivityFormatted">last activity %1$s</string>
     <string name="OELastActivityDateFormatted">last activity %1$s</string>
     <string name="OEGeneralNotificationsHeader">Notifications</string>

@@ -447,6 +447,35 @@ public class AyuMessagesController {
         return deletedMessageDao.getOlderMessagesBefore(userId, dialogId, before, limit);
     }
 
+    public List<DeletedMessageFull> getAllDeletedLatest(long userId, int limit) {
+        return deletedMessageDao.getAllLatest(userId, limit);
+    }
+
+    public List<DeletedMessageFull> getDeletedByDialog(long userId, long dialogId, int limit) {
+        return deletedMessageDao.getLatestByDialog(userId, dialogId, limit);
+    }
+
+    public List<EditedMessage> getAllEditedLatest(long userId, int limit) {
+        return editedMessageDao.getAllLatest(userId, limit);
+    }
+
+    public List<EditedMessage> getEditedByDialog(long userId, long dialogId, int limit) {
+        return editedMessageDao.getLatestByDialog(userId, dialogId, limit);
+    }
+
+    public List<Long> getHistoryDialogIds(long userId) {
+        java.util.LinkedHashSet<Long> set = new java.util.LinkedHashSet<>();
+        List<Long> deleted = deletedMessageDao.getSavedDialogIds(userId);
+        if (deleted != null) {
+            set.addAll(deleted);
+        }
+        List<Long> edited = editedMessageDao.getSavedDialogIds(userId);
+        if (edited != null) {
+            set.addAll(edited);
+        }
+        return new java.util.ArrayList<>(set);
+    }
+
     public void updateMediaPath(long userId, long dialogId, int messageId, String newPath) {
         deletedMessageDao.updateMediaPathIfEmpty(userId, dialogId, messageId, newPath);
     }

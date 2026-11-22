@@ -1955,9 +1955,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     }
 
     private void addChatsMenuItems(ItemOptions o, View button) {
-        o.add(R.drawable.menu_recent, getString(R.string.RecentChats), () -> {
+        o.add(R.drawable.msg_log, getString(R.string.OEGeneralAyuMoments), () -> {
             o.dismiss();
-            BackButtonMenuRecent.show(currentAccount, this, button);
+            presentFragment(new com.radolyn.ayugram.ui.AyuAllHistoryActivity());
         });
         o.addGap();
         o.add(R.drawable.msg_archive, getString(R.string.ArchivedChats), () -> {

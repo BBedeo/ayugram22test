@@ -91,4 +91,15 @@ public interface DeletedMessageDao {
 
     @Query("UPDATE deletedmessage SET mediaPath = :newPath WHERE userId = :userId AND dialogId = :dialogId AND messageId = :messageId AND (mediaPath IS NULL OR mediaPath = '')")
     void updateMediaPathIfEmpty(long userId, long dialogId, int messageId, String newPath);
+
+    @Transaction
+    @Query("SELECT * FROM deletedmessage WHERE userId = :userId ORDER BY entityCreateDate DESC LIMIT :limit")
+    List<DeletedMessageFull> getAllLatest(long userId, int limit);
+
+    @Transaction
+    @Query("SELECT * FROM deletedmessage WHERE userId = :userId AND dialogId = :dialogId ORDER BY entityCreateDate DESC LIMIT :limit")
+    List<DeletedMessageFull> getLatestByDialog(long userId, long dialogId, int limit);
+
+    @Query("SELECT DISTINCT dialogId FROM deletedmessage WHERE userId = :userId ORDER BY entityCreateDate DESC")
+    List<Long> getSavedDialogIds(long userId);
 }

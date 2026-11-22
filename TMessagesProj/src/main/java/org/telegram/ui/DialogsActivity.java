@@ -14504,9 +14504,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             io.addGapIf(hideBottomNavigationBar);
             if (hideBottomNavigationBar) {
-                io.add(R.drawable.menu_recent, getString(R.string.RecentChats), () -> {
+                io.add(R.drawable.msg_log, getString(R.string.OEGeneralAyuMoments), () -> {
                     io.dismiss();
-                    BackButtonMenuRecent.show(currentAccount, this, optionsItem);
+                    presentFragment(new com.radolyn.ayugram.ui.AyuAllHistoryActivity());
                 });
             }
             if (hideBottomNavigationBar && NaConfig.INSTANCE.getHideArchive().Bool()) {
