@@ -1,5 +1,22 @@
 # ExFullGram development rules
 
+## Delivery: delegate first, verify with independent agents
+
+The owner asked for subagent-heavy execution: time and budget are not constraints,
+result quality is.
+
+- Split non-trivial work into independent parts (research, implementation, review,
+  device/build verification) and spawn a child per part with a **fully self-contained,
+  detailed brief**: goal, exact paths, constraints from this file, what "done" means,
+  and which commands to run. Children do not inherit this conversation's context.
+- Give children permission to spawn their own children when a part is still broad
+  ("you may delegate further"). Fan out as wide as the task really needs; do not
+  serialise work that can run in parallel.
+- Keep judgement, risky edits, and the final build/commit in the main agent, and
+  always add an independent child whose only job is to try to prove the change wrong.
+- Aggregate child results before answering; never report a child's claim as verified
+  without checking the artefact (build log, APK, `scripts/check_*.py` output).
+
 ## Delivery: commit and push every change
 
 GitHub is the delivery channel: the owner pulls this repository from GitHub into Android Studio.
