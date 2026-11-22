@@ -51,6 +51,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int generalRow;
     private int appearanceRow;
     private int chatsRow;
+    private int messageHistoryRow;
     private int accountRow;
     private int pluginsRow;
     private int otherRow;
@@ -83,6 +84,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         generalRow = addRow("general");
         appearanceRow = addRow("appearance");
         chatsRow = addRow("chats");
+        messageHistoryRow = addRow("messageHistory", "ayuMoments");
         accountRow = addRow("accounts");
         pluginsRow = addRow("plugins");
         otherRow = addRow("other");
@@ -223,6 +225,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new OpenExteraAppearanceActivity());
         } else if (position == chatsRow) {
             presentFragment(new OpenExteraChatsActivity());
+        } else if (position == messageHistoryRow) {
+            presentFragment(new OpenExteraAyuMomentsActivity());
         } else if (position == accountRow) {
             presentFragment(new AccountSettingsActivity());
         } else if (position == pluginsRow) {
@@ -432,6 +436,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndIcon(getString(R.string.OpenExteraAppearance), R.drawable.msg_theme, true);
                     } else if (position == chatsRow) {
                         cell.setTextAndIcon(getString(R.string.OpenExteraChats), R.drawable.msg_discussion, true);
+                    } else if (position == messageHistoryRow) {
+                        cell.setTextAndIcon(getString(R.string.OEGeneralAyuMoments), R.drawable.msg_log, true);
                     } else if (position == accountRow) {
                         cell.setTextAndIcon(getString(R.string.OpenExteraAccounts), R.drawable.msg_settings_old, true);
                     } else if (position == pluginsRow) {
