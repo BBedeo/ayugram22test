@@ -111,6 +111,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int segmentedGroupHeadersRow;
     private int jellyRow;
     private int animatedNumbersRow;
+    private int typingBubbleRow;
     private int detailedSettingsRow;
     private int sectionsDividerRow;
 
@@ -294,6 +295,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         elasticDragPillsRow = addRow("elasticDragPills");
         jellyRow = addRow("jellyAnimations");
         animatedNumbersRow = addRow("animatedNumbers");
+        typingBubbleRow = addRow("typingBubbleAtBottom");
         customThemesRow = addRow("customThemes");
         appearanceDividerRow = addRow();
 
@@ -1205,6 +1207,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             item = AppearanceConfig.jellyAnimations;
         } else if (position == animatedNumbersRow) {
             item = AppearanceConfig.animatedNumbers;
+        } else if (position == typingBubbleRow) {
+            item = AppearanceConfig.typingBubbleAtBottom;
         } else if (position == detailedSettingsRow) {
             item = AppearanceConfig.detailedSettings;
         } else if (position == disableAvatarBlurRow) {
@@ -1419,6 +1423,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceAnimatedNumbers),
                                 getString(R.string.OEAppearanceAnimatedNumbersSub),
                                 AppearanceConfig.animatedNumbers.Bool(), true, true);
+                    } else if (position == typingBubbleRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceTypingBubbleAtBottom),
+                                getString(R.string.OEAppearanceTypingBubbleAtBottomSub),
+                                AppearanceConfig.typingBubbleAtBottom.Bool(), true, true);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == detailedSettingsRow) {

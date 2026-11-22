@@ -673,6 +673,7 @@ public class ChatActivity extends BaseFragment implements
     private app.exteraless.plugins.menus.MenuInjector.SwipeBackMenu pluginsMenu;
     // private ChatActivitySideControlsButtonsLayout topButtonsLayout;
     private ChatActivitySideControlsButtonsLayout sideControlsButtonsLayout;
+    private TypingBubbleView typingBubbleView;
     private boolean pagedownButtonShowedByScroll;
     private int reactionsMentionCount;
     private int pollVotesMentionCount;
@@ -7931,6 +7932,8 @@ public class ChatActivity extends BaseFragment implements
         {
             final int indexToAdd = chatActivityFadeView != null ? contentView.indexOfChild(chatActivityFadeView) : -1;
             contentView.addView(sideControlsButtonsLayout, indexToAdd, LayoutHelper.createFrame(57, 300, Gravity.RIGHT | Gravity.BOTTOM));
+            typingBubbleView = new TypingBubbleView(context, resourceProvider, blurredBackgroundButtonsColorProvider, glassBackgroundDrawableFactory);
+            contentView.addView(typingBubbleView, indexToAdd, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 12, 0, 72, 0));
         }
 
         updateMessageListAccessibilityVisibility();
@@ -12429,17 +12432,45 @@ public class ChatActivity extends BaseFragment implements
 
     private void updatePagedownButtonsPosition() {
         if (sideControlsButtonsLayout != null) {
-            float baseTranslationY2 = -windowInsetsStateHolder.getAnimatedMaxBottomInset()
-                - chatInputViewsContainer.getInputBubbleHeight()
-                - getTopicTabsSideSize(TopicsTabsView.Position.BOTTOM)
-                - dp(ChatInputViewsContainer.INPUT_BUBBLE_BOTTOM + 4);
+            float baseTranslationY2 = getTypingBubbleBaseY();
             sideControlsButtonsLayout.setTranslationY(baseTranslationY2);
+        }
+        if (typingBubbleView != null) {
+            typingBubbleView.setBaseTranslationY(getTypingBubbleBaseY());
         }
 
         if (suggestEmojiPanel != null) {
             float baseTranslationY2 = -windowInsetsStateHolder.getAnimatedMaxBottomInset()
                 - dp(ChatInputViewsContainer.INPUT_BUBBLE_BOTTOM + 7);
             suggestEmojiPanel.setTranslationY(baseTranslationY2);
+        }
+    }
+
+    private float getTypingBubbleBaseY() {
+        return -windowInsetsStateHolder.getAnimatedMaxBottomInset()
+                - chatInputViewsContainer.getInputBubbleHeight()
+                - getTopicTabsSideSize(TopicsTabsView.Position.BOTTOM)
+                - dp(ChatInputViewsContainer.INPUT_BUBBLE_BOTTOM + 4);
+    }
+
+    private void updateTypingBubbleView() {
+        if (typingBubbleView == null) {
+            return;
+        }
+        if (!app.exteraless.appearance.AppearanceConfig.isTypingBubbleAtBottom()
+                || chatMode != MODE_DEFAULT
+                || (ChatObject.isChannel(currentChat) && !currentChat.megagroup)
+                || UserObject.isUserSelf(currentUser)
+                || isInPreviewMode()) {
+            typingBubbleView.hideTyping();
+            return;
+        }
+        final CharSequence printString = getMessagesController().getPrintingString(dialog_id, getThreadId(), false);
+        if (printString != null && printString.length() > 0) {
+            final int type = getMessagesController().getPrintingStringType(dialog_id, getThreadId());
+            typingBubbleView.showTyping(printString, type, getTypingBubbleBaseY());
+        } else {
+            typingBubbleView.hideTyping();
         }
     }
 
@@ -24419,6 +24450,7 @@ public class ChatActivity extends BaseFragment implements
             }
             if ((updateMask & MessagesController.UPDATE_MASK_USER_PRINT) != 0) {
                 updateSubtitle = true;
+                updateTypingBubbleView();
             }
             if ((updateMask & MessagesController.UPDATE_MASK_CHAT) != 0 && currentChat != null) {
                 boolean fwdBefore = isPeerNoForwards();
@@ -24483,6 +24515,15 @@ public class ChatActivity extends BaseFragment implements
                 }
                 if (!scheduled) {
                     invalidatePaidMessagesPriceOnIncoming(arr);
+                }
+                if (typingBubbleView != null && typingBubbleView.isShowingOrMorphing() && arr != null) {
+                    for (int a = 0, N = arr.size(); a < N; a++) {
+                        final MessageObject msg = arr.get(a);
+                        if (msg != null && !msg.isOutOwner()) {
+                            typingBubbleView.morphIntoMessage();
+                            break;
+                        }
+                    }
                 }
                 processNewMessages(arr);
             } else if (ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && did == -chatInfo.linked_chat_id) {

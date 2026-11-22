@@ -1385,6 +1385,11 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             //}
         }
 
+        if (printString != null && app.exteraless.appearance.AppearanceConfig.isTypingBubbleAtBottom()
+                && (!ChatObject.isChannel(chat) || chat.megagroup)
+                && parentFragment.getChatMode() == ChatActivity.MODE_DEFAULT) {
+            printString = null;
+        }
         if (printString != null) {
             printString = TextUtils.replace(printString, new String[]{"..."}, new String[]{""});
         }

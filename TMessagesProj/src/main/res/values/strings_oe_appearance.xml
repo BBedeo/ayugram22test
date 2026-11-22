@@ -126,6 +126,8 @@
     <string name="OEAppearanceJellyAnimationsSub">Elastic overshoot and spring bounce when tapping glass buttons and pills</string>
     <string name="OEAppearanceAnimatedNumbers">Animated number changes</string>
     <string name="OEAppearanceAnimatedNumbersSub">Smooth vertical digit roll animation when counters, FPS, timers, and numbers update across the app</string>
+    <string name="OEAppearanceTypingBubbleAtBottom">Typing bubble above keyboard</string>
+    <string name="OEAppearanceTypingBubbleAtBottomSub">Show typing status as a compact incoming bubble above the input bar and morph it into the sent message</string>
     <string name="OEAppearanceIosMiniPlayer">iOS Liquid Glass mini-player</string>
     <string name="OEAppearanceIosMiniPlayerSub">Use a translucent Liquid Glass capsule instead of a solid Material You card</string>
     <string name="OEAppearanceSegmentedGroupHeaders">Group headers in chats</string>

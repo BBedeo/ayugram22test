@@ -780,6 +780,17 @@ object AppearanceConfig {
         return animatedNumbers.Bool()
     }
 
+    /** Показывать индикатор «печатает…» как компактный пузырь над клавиатурой вместо верхней шапки и превращать его в сообщение. */
+    @JvmField
+    val typingBubbleAtBottom =
+        addConfig("OEAppearanceTypingBubbleAtBottom", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isTypingBubbleAtBottom(): Boolean {
+        ensureLoaded()
+        return typingBubbleAtBottom.Bool()
+    }
+
     /** Показывать заголовки групп («Закреплённые» / «Чаты») над кластерами карточек в списке чатов. */
     @JvmField
     val segmentedGroupHeaders =
