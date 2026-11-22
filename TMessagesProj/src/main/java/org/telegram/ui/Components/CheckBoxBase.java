@@ -304,6 +304,21 @@ public class CheckBoxBase {
         invalidate();
     }
 
+    private int background2ColorOverride;
+
+    public void setBackground2ColorOverride(int color) {
+        if (background2ColorOverride != color) {
+            background2ColorOverride = color;
+            invalidate();
+        }
+    }
+
+    private int resolveBackground2Color() {
+        return background2ColorOverride != 0
+                ? background2ColorOverride
+                : getThemedColor(background2ColorKey >= 0 ? background2ColorKey : checkColorKey);
+    }
+
     public void setStrokeBackgroundColor(int key) {
         if (strokeBackgroundKey == key) {
             return;
@@ -431,20 +446,20 @@ public class CheckBoxBase {
                     backgroundPaint.setColor(getThemedColor(checkColorKey));
                 }
             } else {
-                backgroundPaint.setColor(AndroidUtilities.getOffsetColor(0x00ffffff, getThemedColor(background2ColorKey >= 0 ? background2ColorKey : checkColorKey), progress, backgroundAlpha));
+                backgroundPaint.setColor(AndroidUtilities.getOffsetColor(0x00ffffff, resolveBackground2Color(), progress, backgroundAlpha));
             }
         } else {
             if (drawUnchecked) {
                 paint.setColor(Color.argb((int) (25 * backgroundAlpha), 0, 0, 0));
                 if (backgroundType == 8) {
-                    backgroundPaint.setColor(getThemedColor(background2ColorKey));
+                    backgroundPaint.setColor(resolveBackground2Color());
                 } else {
                     backgroundPaint.setColor(AndroidUtilities.getOffsetColor(0xffffffff, getThemedColor(checkColorKey), progress, backgroundAlpha));
                 }
             } else if (backgroundColor != 0) {
                 backgroundPaint.setColor(0);
             } else {
-                backgroundPaint.setColor(AndroidUtilities.getOffsetColor(0x00ffffff, getThemedColor(background2ColorKey >= 0 ? background2ColorKey : checkColorKey), progress, backgroundAlpha));
+                backgroundPaint.setColor(AndroidUtilities.getOffsetColor(0x00ffffff, resolveBackground2Color(), progress, backgroundAlpha));
             }
         }
 

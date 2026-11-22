@@ -4483,6 +4483,13 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     top -= dp(isForumCell() ? 10 : 11);
                 }
                 if (updateHelper.typingProgres != 1f) {
+                    final boolean fadeReorderMsg = segmented && !LocaleController.isRTL && reorderIconProgress > 0.01f;
+                    final float fadeRight = pinLeft - messageLeft - dp(4);
+                    final float msgH = Math.max(dp(24), messageLayout.getHeight());
+                    int msgLayerSave = -1;
+                    if (fadeReorderMsg && fadeRight > dp(16)) {
+                        msgLayerSave = canvas.saveLayer(0, 0, getMeasuredWidth(), getMeasuredHeight(), null);
+                    }
                     canvas.save();
                     canvas.translate(messageLeft, top);
                     int oldAlpha = messageLayout.getPaint().getAlpha();
@@ -4507,8 +4514,16 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                         SpoilerEffect.layoutDrawMaybe(messageLayout, canvas);
                         AnimatedEmojiSpan.drawAnimatedEmojis(canvas, messageLayout, animatedEmojiStack, -.075f, null, 0, 0, 0, 1f, getAdaptiveEmojiColorFilter(2, messageLayout.getPaint().getColor()));
                     }
+                    if (msgLayerSave != -1) {
+                        final Paint fadeMask = getPaintReorderTextFade(fadeRight);
+                        fadeMask.setAlpha((int) (reorderIconProgress * 255));
+                        canvas.drawRect(Math.max(0f, fadeRight - dp(24)), -dp(4), getMeasuredWidth(), msgH + dp(4), fadeMask);
+                    }
                     messageLayout.getPaint().setAlpha(oldAlpha);
                     canvas.restore();
+                    if (msgLayerSave != -1) {
+                        canvas.restoreToCount(msgLayerSave);
+                    }
                 }
 
                 canvas.save();
@@ -4780,7 +4795,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             }
 
             if (drawReorder || reorderIconProgress != 0) {
-                if (!LocaleController.isRTL) {
+                if (!LocaleController.isRTL && !segmented) {
                     final Paint reorderGradientPaint = getPaintReorderGradient();
                     reorderGradientPaint.setAlpha((int) (reorderIconProgress * 255));
                     canvas.save();
@@ -5032,6 +5047,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             canvas.restore();
         }
 
+        if (checkBox != null) {
+            checkBox.getCheckBoxBase().setBackground2ColorOverride(segmented ? getEffectiveCardBackgroundColor() : 0);
+        }
         if (avatarImage.getVisible()) {
             if (drawAvatarOverlays(canvas)) {
                 needInvalidate = true;
@@ -5222,11 +5240,34 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
     private int getEffectiveCardBackgroundColor() {
         if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
-            return (getIsPinned() && !isFolderCell())
+            int base = (getIsPinned() && !isFolderCell())
                     ? app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(resourcesProvider)
                     : app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourcesProvider);
+            if (checkBox != null && checkBox.getProgress() > 0f && !isSelected) {
+                int overlay = Theme.multAlpha(
+                        app.exteraless.appearance.M3SurfaceHelper.getSelectedCardOverlayColor(resourcesProvider),
+                        checkBox.getProgress());
+                return ColorUtils.compositeColors(overlay, base);
+            }
+            return base;
         }
         return Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+    }
+
+    private float reorderTextFadeLastEnd = -1f;
+    private Paint reorderTextFadePaint;
+    private Paint getPaintReorderTextFade(float fadeEnd) {
+        if (reorderTextFadePaint == null || Math.abs(reorderTextFadeLastEnd - fadeEnd) > 0.5f) {
+            reorderTextFadeLastEnd = fadeEnd;
+            if (reorderTextFadePaint == null) {
+                reorderTextFadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                reorderTextFadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+            }
+            final float fadeStart = Math.max(0f, fadeEnd - dp(24));
+            reorderTextFadePaint.setShader(new LinearGradient(fadeStart, 0, fadeEnd, 0,
+                    new int[]{0x00000000, 0xFF000000}, new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+        }
+        return reorderTextFadePaint;
     }
 
     private int reorderGradientLastColor;
