@@ -1406,8 +1406,9 @@ public class AnimatedTextView extends View {
     private boolean first = true;
     public void setText(CharSequence text, boolean animated, boolean moveDown) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
-            boolean finalAnimated = animated;
-            AndroidUtilities.runOnUIThread(() -> setText(text, finalAnimated, moveDown));
+            final boolean finalAnimated = animated;
+            final boolean finalMoveDown = moveDown;
+            AndroidUtilities.runOnUIThread(() -> setText(text, finalAnimated, finalMoveDown));
             return;
         }
         if (!animated && !first && isAttachedToWindow()

@@ -170,3 +170,16 @@ changes so accepted visuals match on the first attempt:
 - **Regression suite:** After editing Liquid Glass or header/navigation code,
   run all static checks in `scripts/check_*.py` (all must exit `0`).
 
+
+## Live typing preview (live drafts)
+
+- Настройка: `ChatsConfig.liveTypingPreview` (`OEChatsLiveTypingPreview`, по умолчанию OFF), экран **Чаты → Поле ввода**,
+  поисковый алиас `OEChats:liveTypingPreview` в `SettingsHelper`.
+- Транспорт: `messages.setTyping` + `sendMessageTextDraftAction`; менеджер — `app.exteraless.chats.LiveTypingDraftManager`.
+  Не отправлять чаще 1 раза в 1.2 с на диалог (сервер: 20/5 с и 40/30 с на peer).
+- Рендер: `TypingBubbleView.showDraft()` — многострочный пузырь над композером, новые символы дорисовываются.
+  Пузырь показывается и при выключенном `OEAppearanceTypingBubbleAtBottom`, если есть черновик.
+- Только личные чаты с пользователями; группы, каналы и секретные чаты — вне области.
+- Test Mode: `DemoBackend.sendLocalDraft()` гоняет тот же TL-апдейт через `processUpdateArray`, отдельного Test-UI нет.
+  Test-«собеседник» повторяет ваш текст — это демонстрация рендера, а не чужой черновик.
+- Подробности: `docs/live-typing-preview.md`.

@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import app.exteraless.appearance.LiquidGlassTuning
 import app.exteraless.appearance.M3SurfaceHelper
 import org.telegram.messenger.AndroidUtilities
@@ -16,7 +18,7 @@ class PopupBuilder @JvmOverloads constructor(anchor: View, dialog: Boolean = fal
     private val useFullWidthGlassDropdown = LiquidGlassTuning.isActive() &&
         !M3SurfaceHelper.isMaterial3OpaqueChrome() &&
         !dialog &&
-        anchor.measuredWidth >= AndroidUtilities.dp(200)
+        anchor.measuredWidth >= AndroidUtilities.dp(200f)
 
     init {
 
@@ -32,14 +34,14 @@ class PopupBuilder @JvmOverloads constructor(anchor: View, dialog: Boolean = fal
 
     }
 
-    private fun styleSubItem(subItem: org.telegram.ui.ActionBar.ActionBarMenuSubItem) {
+    private fun styleSubItem(subItem: TextView) {
         if (!useFullWidthGlassDropdown) return
-        val lp = subItem.textView.layoutParams as? FrameLayout.LayoutParams
+        val lp = subItem.layoutParams as? LinearLayout.LayoutParams
         if (lp != null) {
             lp.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            subItem.textView.layoutParams = lp
+            subItem.layoutParams = lp
         }
-        subItem.textView.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+        subItem.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
     }
 
     fun setItems(items: Array<CharSequence?>, listener: (Int, CharSequence) -> Unit) {

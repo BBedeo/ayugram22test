@@ -14152,9 +14152,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private boolean showActionModePinOverlay(ArrayList<Long> selectedDialogs, int actionId) {
-        final ActionBarMenuItem anchor = (pinItem != null && pinItem.getVisibility() == View.VISIBLE)
-                ? pinItem
-                : (pin2Item != null && pin2Item.getVisibility() == View.VISIBLE ? pin2Item : null);
+        final View anchor;
+        if (pinItem != null && pinItem.getVisibility() == View.VISIBLE) {
+            anchor = pinItem;
+        } else if (pin2Item != null && pin2Item.getVisibility() == View.VISIBLE) {
+            anchor = pin2Item;
+        } else {
+            anchor = null;
+        }
         final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
         if (anchor == null || overlay == null) {
             return false;
@@ -14169,7 +14174,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.add(pinning ? R.drawable.msg_pin : R.drawable.msg_unpin, actionTitle,
                 () -> performSelectedDialogsAction(didsCopy, actionId, true, false));
         io.add(R.drawable.msg_close, LocaleController.getString(R.string.Cancel), null);
-        if (io.openInOverlay(actionBar, anchor, overlay, () -> invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS))) {
+        final ActionBarMenuItem overlayAnchor = anchor instanceof ActionBarMenuItem ? (ActionBarMenuItem) anchor : null;
+        if (overlayAnchor != null && io.openInOverlay(actionBar, overlayAnchor, overlay, () -> invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS))) {
             invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS);
             return true;
         }

@@ -24,7 +24,7 @@ import com.radolyn.ayugram.database.entities.DeletedMessageFull;
 import com.radolyn.ayugram.database.entities.EditedMessage;
 import com.radolyn.ayugram.messages.AyuMessagesController;
 import com.radolyn.ayugram.proprietary.AyuHistoryHook;
-import com.radolyn.ayugram.utils.AyuMessageUtils;
+import com.radolyn.ayugram.proprietary.AyuMessageUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
@@ -35,17 +35,19 @@ import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.SimpleActionBarMenuOverlay;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.HeaderCell;
+import tw.nekomimi.nekogram.ui.cells.NekoMessageCell;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
-import org.telegram.ui.Components.blur3.BlurredRecyclerView;
+import org.telegram.ui.Components.BlurredRecyclerView;
 import org.telegram.utils.glass.BaseFragmentSimpleGlass;
 
 import java.util.ArrayList;
@@ -60,7 +62,7 @@ import app.exteraless.settings.OpenExteraAyuMomentsActivity;
  * Filterable Message History screen showing saved deleted & edited messages across all chats,
  * opened by long-pressing the Chats tab or from menus.
  */
-public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
+public class AyuAllHistoryActivity extends BaseFragment {
 
     private static final int MENU_FILTER = 1;
     private static final int MENU_SEARCH = 2;
@@ -110,7 +112,7 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
         actionBar.setSubtitle(getString(R.string.OEHistoryAllChats));
 
         ActionBarMenu menu = actionBar.createMenu();
-        ActionBarMenuItem searchItem = menu.addItem(MENU_SEARCH, R.drawable.ic_ab_search)
+        ActionBarMenuItem searchItem = menu.addItem(MENU_SEARCH, R.drawable.outline_header_search)
                 .setIsSearchField(true)
                 .setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
                     @Override
@@ -358,8 +360,8 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
                 TextView pill = new TextView(context);
                 pill.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12.5f);
                 pill.setTypeface(AndroidUtilities.bold());
-                pill.setTextColor(getThemedColor(Theme.key_chat_serviceText));
-                pill.setBackground(Theme.createRoundRectDrawable(dp(12), getThemedColor(Theme.key_chat_serviceBackground)));
+                pill.setTextColor(AyuAllHistoryActivity.this.getThemedColor(Theme.key_chat_serviceText));
+                pill.setBackground(Theme.createRoundRectDrawable(dp(12), AyuAllHistoryActivity.this.getThemedColor(Theme.key_chat_serviceBackground)));
                 pill.setPadding(dp(11), dp(4), dp(11), dp(4));
                 pill.setSingleLine(true);
                 pill.setEllipsize(TextUtils.TruncateAt.END);
@@ -367,7 +369,7 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
                 pillContainer.setTag(pill);
                 view = pillContainer;
             } else {
-                AyuMessageHistory.NekoMessageCell cell = new AyuMessageHistory.NekoMessageCell(context, currentAccount);
+                NekoMessageCell cell = new NekoMessageCell(context, currentAccount);
                 cell.setShowAyuDeletedMark(false);
                 view = cell;
             }
@@ -384,7 +386,7 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
                 String tag = getString(entry.isEdited ? R.string.OEHistoryEdited : R.string.OEHistoryDeleted);
                 pill.setText(resolveDialogName(entry.dialogId) + " • " + tag);
             } else {
-                AyuMessageHistory.NekoMessageCell cell = (AyuMessageHistory.NekoMessageCell) holder.itemView;
+                NekoMessageCell cell = (NekoMessageCell) holder.itemView;
                 cell.setMessageObject(entry.messageObject, null, false, false, false);
                 cell.setId(idx);
             }
