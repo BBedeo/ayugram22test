@@ -446,6 +446,21 @@ public class AnimatedTextView extends View {
                 animated = true;
                 moveDown = compareNumericChange(this.currentText, text) < 0;
             }
+            if (animated && app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers()
+                    && containsChangingNumbers(this.currentText, text)) {
+                if (scaleAmplitude <= 0f) {
+                    scaleAmplitude = 0.35f;
+                }
+                if (moveAmplitude < 0.95f) {
+                    moveAmplitude = 0.95f;
+                }
+                if (animateDuration < 240) {
+                    animateDuration = 260;
+                }
+                if (animateInterpolator == null || animateInterpolator == CubicBezierInterpolator.EASE_OUT_QUINT) {
+                    animateInterpolator = new android.view.animation.OvershootInterpolator(1.25f);
+                }
+            }
             if (text == null) {
                 text = "";
             }
@@ -1303,7 +1318,9 @@ public class AnimatedTextView extends View {
         }
         if (lastMaxWidth != width && getLayoutParams().width != 0) {
             drawable.setBounds(getPaddingLeft(), getPaddingTop(), width - getPaddingRight(), height - getPaddingBottom());
-            drawable.setText(drawable.getText(), false, true);
+            if (!drawable.isAnimating()) {
+                drawable.setText(drawable.getText(), false, true);
+            }
         }
         lastMaxWidth = width;
         if (adaptWidth && MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.AT_MOST) {
@@ -1547,6 +1564,10 @@ public class AnimatedTextView extends View {
 
     public void setAnimationProperties(float moveAmplitude, long startDelay, long duration, TimeInterpolator interpolator) {
         drawable.setAnimationProperties(moveAmplitude, startDelay, duration, interpolator);
+    }
+
+    public void setScaleAmplitude(float scale) {
+        drawable.setScaleAmplitude(scale);
     }
     public void setAnimationProperties(float moveAmplitude, long startDelay, long duration, float wave, TimeInterpolator interpolator) {
         drawable.setAnimationProperties(moveAmplitude, startDelay, duration, wave, interpolator);

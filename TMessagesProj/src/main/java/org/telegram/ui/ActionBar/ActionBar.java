@@ -703,6 +703,26 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (child == menu && openMenuItem != null && isMenuPillInOverlay()) {
             return true;
         }
+        if (child == menu && menuWidthSpring != null && menuWidthSpring.isRunning()
+                && !glassMenuRestRect.isEmpty() && hasSearchItemInMenu()) {
+            // Поле поиска разложено на всю ширину сразу, а стеклянная пилюля дорастает до неё
+            // пружиной. Подрезаем меню по пилюле и подтягиваем его так, чтобы левый край поля
+            // шёл за левым краем стекла: поле раскрывается вместе с пилюлей, а не вылезает
+            // за неё на кадр раньше (как SimpleActionBar#drawChild для searchLayout).
+            final int fieldLeft = Math.round(child.getX() + menu.getSearchItemLeft());
+            final int shift = Math.max(0, glassMenuRestRect.left - fieldLeft);
+            canvas.save();
+            if (shouldClipChild(child)) {
+                canvas.clipRect(0, -getTranslationY() + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0), getMeasuredWidth(), getMeasuredHeight());
+            }
+            canvas.clipRect(glassMenuRestRect);
+            if (shift > 0) {
+                canvas.translate(shift, 0);
+            }
+            final boolean drawn = super.drawChild(canvas, child, drawingTime);
+            canvas.restore();
+            return drawn;
+        }
 
         boolean clip = shouldClipChild(child);
         if (clip) {
@@ -3346,6 +3366,25 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     private boolean isAnimationsAllowed;
 
+    /**
+     * Пилюля меню отдана полю поиска: стеклянная шапка без аватара (настройки ExFullGram и
+     * другие экраны BaseFragmentSimpleGlass). В чатах пилюля принадлежит аватару и заголовку,
+     * поэтому поиск её не трогает.
+     */
+    private boolean isSearchPill() {
+        return glassMode && isSearchFieldVisible && chatAvatarContainer == null
+                && compactGlassTitlePill && glassDrawableMenu != null;
+    }
+
+    /**
+     * Поле поиска лежит в меню — в том числе кадры, пока пилюля дорастает пружиной или
+     * сжимается назад. По этой ширине видно, что меню сейчас рисует именно поле.
+     */
+    private boolean hasSearchItemInMenu() {
+        return glassMode && chatAvatarContainer == null && menu != null
+                && menu.getSearchItemWidth() > 0;
+    }
+
     public void checkMenuItemsWidth() {
         int defaultMenuWidth = Math.max(0, (!isSearchFieldVisible && menu != null) ? (int) menu.getItemsWidth() - dp(1) - dp(1) : 0);
         if (!isSearchFieldVisible && (chatAvatarContainer == null || chatAvatarContainer.isAvatarCentered() && chatAvatarContainer.hasVisibleAvatar()) && menu != null && menu.isCenteredTitle()) {
@@ -3355,16 +3394,23 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int searchMenuWidth = dp(46);
         // С открытым поиском меню-иконки скрыты, поэтому getItemsWidth() = 0 и стеклянная
         // пилюля схлопывалась в ничто — поле поиска висело без фона. Пилюля должна обнимать
-        // сам контейнер поиска, а до его первого layout — стартовать с ширины иконки,
+        // сам контейнер поиска, а до его первого layout — оставаться на текущей ширине,
         // чтобы раскрытие шло пружиной, а не скачком.
         // Только для экранов без аватара в шапке: в чатах поиск раскрывается поверх своего
         // заголовка, и там пилюлю трогать нельзя — иначе она наезжает на аватар.
         final int searchFieldWidth = isSearchFieldVisible && menu != null && chatAvatarContainer == null
                 ? menu.getSearchItemWidth() : 0;
+        // Первый кадр после тапа: контейнер поиска ещё не измерен и getSearchItemWidth() == 0.
+        // Целью пружины в этот момент должна остаться текущая ширина пилюли (иконок поиска и
+        // соседей) — иначе пилюля сначала сжимается до одной иконки, а на следующем layout
+        // прыгает в ширину поля: раскрытие выглядит как рывок, а не как желе.
+        final int searchPillWidth = searchFieldWidth > 0
+                ? Math.max(searchFieldWidth, searchMenuWidth)
+                : Math.max(Math.round(getMenuItemsWidthFactor()), searchMenuWidth);
         final int width = actionModeVisible
                 ? actionMenuWidth
                 : (isSearchFieldVisible
-                        ? (chatAvatarContainer == null ? Math.max(searchFieldWidth, searchMenuWidth) : 0)
+                        ? (chatAvatarContainer == null ? searchPillWidth : 0)
                         : defaultMenuWidth);
 
         animatorHasMenuItems.setValue(width > 0, isAnimationsAllowed);
@@ -3534,7 +3580,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     menuAlphaInt = 255;
                 } else {
                     float menuItemFade = 1f;
-                    if (compactGlassTitlePill && menu != null && menu.getVisibility() == VISIBLE) {
+                    // С раскрытым полем поиска в меню остаётся один видимый ребёнок — контейнер
+                    // поиска, и его alpha идёт 0→1 (ActionBarMenuItem#toggleSearch). Если умножать
+                    // на неё альфу пилюли, та гаснет на весь морф: поле висит без стекла, а потом
+                    // стекло выскакивает уже растянутым. Пока в меню лежит поле, его поверхностью
+                    // служит сама пилюля, и альфой управляет только ширина-пружина.
+                    if (compactGlassTitlePill && !hasSearchItemInMenu() && menu != null && menu.getVisibility() == VISIBLE) {
                         float maxChildAlpha = 0f;
                         boolean hasVisibleChild = false;
                         for (int i = 0, n = menu.getChildCount(); i < n; i++) {
@@ -3676,8 +3727,14 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             final float menuPress = (headerGlassLens && motionEnabled) ? animatorMenuGlassPressed.getFloatValue() : 0f;
             final float menuJelly = motionEnabled ? menuPillJellyHolder.getValue() : 0f;
             final int swell = Math.round(dp(2.4f) * menuPress);
-            final int jellyX = Math.round(dp(2.8f) * menuJelly);
-            final int jellyY = Math.round(-dp(1.8f) * menuJelly);
+            // Пилюля поля поиска в разы шире кнопки: абсолютные dp(2.8) на ней не читаются,
+            // поэтому толчок считается в долях её собственного размера (как в SimpleActionBar).
+            final int jellyX = isSearchPill()
+                    ? Math.round((menuRight - menuLeft) * 0.045f * menuJelly)
+                    : Math.round(dp(2.8f) * menuJelly);
+            final int jellyY = isSearchPill()
+                    ? Math.round(-(menuBottom - menuTop) * 0.055f * menuJelly)
+                    : Math.round(-dp(1.8f) * menuJelly);
             glassDrawableMenu.setBounds(menuLeft - swell - jellyX, menuTop - swell - jellyY, menuRight + swell + jellyX, menuBottom + swell + jellyY);
             if (headerGlassLens) {
                 glassDrawableMenu.setElasticPressProgress(menuPress * 0.88f);

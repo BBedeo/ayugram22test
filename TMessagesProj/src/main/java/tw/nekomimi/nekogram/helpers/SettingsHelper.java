@@ -81,6 +81,9 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEGeneral:translateInSheet", "OEChatsTranslateInSheet");
         SEARCH_TITLE_ALIASES.put("OEGeneral:glyph", "OEGlyphTitle");
         SEARCH_TITLE_ALIASES.put("OpenExtera:channel", "ProfileChannel");
+        // Строка списка называется «История сообщений» (R.string.OEGeneralAyuMoments), а ключ
+        // messageHistory — не имя ресурса, поэтому без алиаса поиск показывал «Message History».
+        SEARCH_TITLE_ALIASES.put("OpenExtera:messageHistory", "OEGeneralAyuMoments");
         SEARCH_TITLE_ALIASES.put("OEGeneral:downloadSpeed", "OEGeneralSpeedHeader");
         SEARCH_TITLE_ALIASES.put("OEAppearance:md3Styles", "OEAppearanceMaterialDesign3");
         SEARCH_TITLE_ALIASES.put("OEAppearance:md3Loading", "OEAppearanceNewLoadingStyle");
@@ -514,6 +517,18 @@ public class SettingsHelper {
                 capitalized + "Info", capitalized + "Sub", capitalized + "Desc");
     }
 
+    /**
+     * Второй сегмент подписи «раздел > экран». У корневого экрана раздела заголовок совпадает
+     * с названием раздела (ExFullGram → ExFullGram), и подпись выходила эхом «ExFullGram > ExFullGram»:
+     * такие пункты называют раздел один раз, как в поиске Telegram.
+     */
+    private static String parentPath(String section, String fragmentTitle) {
+        if (fragmentTitle == null || TextUtils.equals(section, fragmentTitle)) {
+            return null;
+        }
+        return fragmentTitle;
+    }
+
     private static String humanize(String key) {
         StringBuilder sb = new StringBuilder(key.length() + 6);
         for (int i = 0; i < key.length(); i++) {
@@ -594,7 +609,7 @@ public class SettingsHelper {
                     AndroidUtilities.runOnUIThread(() -> fragment.scrollToRow(key, null));
                 };
                 items.add(new SettingsSearchResult(
-                        uid + entry.getKey(), title, e_title, f_title, drawable, open)
+                        uid + entry.getKey(), title, e_title, parentPath(e_title, f_title), drawable, open)
                         .setSubtitle(rowSubtitle(fragment, key)));
             }
         }

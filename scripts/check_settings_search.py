@@ -41,7 +41,6 @@ DECORATIVE = {
     "glassPrecision",
     "roundVideoQuality",
     "cloudApiKeys",
-    "messageHistory",
     "activeProfile",
     "profiles",
 }
@@ -148,6 +147,19 @@ def main() -> int:
         failures.append("ActionBar no longer wraps the search field in its glass pill")
     if "isSearchFieldVisible" not in action_bar:
         failures.append("ActionBar lost its search field visibility state")
+
+    # The pill has to stay visible for the whole unfold: its alpha used to be multiplied by the
+    # fading search container, so the glass vanished and the field hung without a background.
+    if "!hasSearchItemInMenu()" not in action_bar:
+        failures.append("ActionBar must keep the glass pill alive while the search field is laid out")
+    # The field is laid out at full width at once, so the pill has to clip it while it springs.
+    if "menu.getSearchItemLeft()" not in action_bar or "getSearchItemLeft" not in action_bar_menu:
+        failures.append("ActionBar must clip the search field to the growing pill")
+    # A row of the section root has the same title as the section: "ExFullGram > ExFullGram".
+    if "parentPath(" not in helper_text:
+        failures.append("SettingsHelper must not repeat the section name in the result path")
+    if "OpenExtera:messageHistory" not in alias_map:
+        failures.append("OpenExtera:messageHistory must resolve to its localized title")
 
     total = len(all_rows)
     if failures:

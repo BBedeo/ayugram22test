@@ -764,8 +764,8 @@ public class SimpleTextView extends View implements Drawable.Callback {
             numberRollMoveDown = moveDown;
             numberRollProgress = 0f;
             numberRollAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
-            numberRollAnimator.setDuration(210);
-            numberRollAnimator.setInterpolator(org.telegram.ui.Components.CubicBezierInterpolator.EASE_OUT_QUINT);
+            numberRollAnimator.setDuration(250);
+            numberRollAnimator.setInterpolator(new android.view.animation.OvershootInterpolator(1.2f));
             numberRollAnimator.addUpdateListener(anim -> {
                 numberRollProgress = (float) anim.getAnimatedValue();
                 invalidate();
@@ -1088,16 +1088,23 @@ public class SimpleTextView extends View implements Drawable.Callback {
             }
             if (prevNumberLayout != null && numberRollProgress < 1f) {
                 final int savedAlpha = textPaint.getAlpha();
+                final float p = Math.max(0f, Math.min(1f, numberRollProgress));
                 final float dir = numberRollMoveDown ? 1f : -1f;
-                final float dy = dp(9);
-                textPaint.setAlpha((int) (savedAlpha * (1f - numberRollProgress)));
+                final float dy = dp(13);
+                final float cx = textWidth * 0.5f;
+                final float cy = textHeight * 0.5f;
+                final float outScale = AndroidUtilities.lerp(1f, 0.68f, p);
+                final float inScale = AndroidUtilities.lerp(0.68f, 1f, Math.min(1.06f, numberRollProgress));
+                textPaint.setAlpha((int) (savedAlpha * (1f - p)));
                 canvas.save();
                 canvas.translate(0, dir * dy * numberRollProgress);
+                canvas.scale(outScale, outScale, cx, cy);
                 prevNumberLayout.draw(canvas);
                 canvas.restore();
-                textPaint.setAlpha((int) (savedAlpha * numberRollProgress));
+                textPaint.setAlpha((int) (savedAlpha * p));
                 canvas.save();
                 canvas.translate(0, -dir * dy * (1f - numberRollProgress));
+                canvas.scale(inScale, inScale, cx, cy);
                 drawLayout(canvas);
                 canvas.restore();
                 textPaint.setAlpha(savedAlpha);
@@ -1134,16 +1141,23 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 canvas.translate(nextScrollX, 0);
                 if (prevNumberLayout != null && numberRollProgress < 1f) {
                 final int savedAlpha = textPaint.getAlpha();
+                final float p = Math.max(0f, Math.min(1f, numberRollProgress));
                 final float dir = numberRollMoveDown ? 1f : -1f;
-                final float dy = dp(9);
-                textPaint.setAlpha((int) (savedAlpha * (1f - numberRollProgress)));
+                final float dy = dp(13);
+                final float cx = textWidth * 0.5f;
+                final float cy = textHeight * 0.5f;
+                final float outScale = AndroidUtilities.lerp(1f, 0.68f, p);
+                final float inScale = AndroidUtilities.lerp(0.68f, 1f, Math.min(1.06f, numberRollProgress));
+                textPaint.setAlpha((int) (savedAlpha * (1f - p)));
                 canvas.save();
                 canvas.translate(0, dir * dy * numberRollProgress);
+                canvas.scale(outScale, outScale, cx, cy);
                 prevNumberLayout.draw(canvas);
                 canvas.restore();
-                textPaint.setAlpha((int) (savedAlpha * numberRollProgress));
+                textPaint.setAlpha((int) (savedAlpha * p));
                 canvas.save();
                 canvas.translate(0, -dir * dy * (1f - numberRollProgress));
+                canvas.scale(inScale, inScale, cx, cy);
                 drawLayout(canvas);
                 canvas.restore();
                 textPaint.setAlpha(savedAlpha);

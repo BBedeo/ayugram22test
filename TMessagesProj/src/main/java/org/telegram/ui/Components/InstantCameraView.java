@@ -389,7 +389,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         fpsPillView.setTextColor(isNewDesign && resourcesProvider != null && !resourcesProvider.isDark() ? 0xFF1F1F1F : Color.WHITE);
         fpsPillView.setPadding(dp(14), 0, dp(14), 0);
         fpsPillView.setAllowCancel(true);
-        fpsPillView.setAnimationProperties(0.85f, 0, 260, CubicBezierInterpolator.EASE_OUT_QUINT);
+        fpsPillView.setScaleAmplitude(0.36f);
+        fpsPillView.setAnimationProperties(1.0f, 0, 280, new android.view.animation.OvershootInterpolator(1.3f));
         fpsPillView.setText("-- FPS", false);
         fpsPillView.setAlpha(0f);
         fpsPillView.setVisibility(GONE);
