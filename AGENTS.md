@@ -16,6 +16,10 @@ result quality is.
   always add an independent child whose only job is to try to prove the change wrong.
 - Aggregate child results before answering; never report a child's claim as verified
   without checking the artefact (build log, APK, `scripts/check_*.py` output).
+- Visual QA is the owner's job. Do not drive the device UI (taps, swipes, screenshots,
+  `uiautomator`) to "confirm how it looks": the phone may hold several Telegram forks
+  and system dialogs, so blind automation only wastes time. Use `adb` exclusively for
+  install, `versionName`/`lastUpdateTime`, and crash logcat; then ask the owner to look.
 
 ## Delivery: commit and push every change
 
