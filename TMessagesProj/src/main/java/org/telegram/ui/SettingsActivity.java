@@ -1521,10 +1521,15 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         ) {
             final boolean dark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
             final boolean m3 = app.exteraless.appearance.M3ListItems.enabled();
+            final boolean ios = !m3 && app.exteraless.appearance.IosListItems.enabled();
             iconBackground.setCircle(m3);
+            iconBackground.setIosBadge(ios);
             if (m3) {
                 iconBackground.setMonetColor(app.exteraless.appearance.M3ListItems.tonalBackground(iconColorTop, iconColorBottom));
                 iconView.setColorFilter(app.exteraless.appearance.M3ListItems.tonalForeground(iconColorTop, iconColorBottom), PorterDuff.Mode.SRC_IN);
+            } else if (ios) {
+                iconBackground.setMonetColor(app.exteraless.appearance.IosListItems.iconBadgeColor(iconColorTop, iconColorBottom));
+                iconView.setColorFilter(app.exteraless.appearance.IosListItems.iconForeground(), PorterDuff.Mode.SRC_IN);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet()) {
                 iconBackground.setMonetColor(MonetHelper.getColor(dark ? "a1_200" : "a1_600"));
                 iconView.setColorFilter(MonetHelper.getColor(dark ? "a1_800" : "a1_100"), PorterDuff.Mode.SRC_IN);
@@ -1532,7 +1537,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 iconBackground.setColor(iconColorTop, iconColorBottom);
                 iconView.clearColorFilter();
             }
-            iconBackground.setDrawBorder(dark);
+            iconBackground.setDrawBorder(dark && !ios);
         }
 
         public void setValue(CharSequence value) {
@@ -1588,6 +1593,14 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 }
             }
 
+            private boolean iosBadge;
+            public void setIosBadge(boolean iosBadge) {
+                if (this.iosBadge != iosBadge) {
+                    this.iosBadge = iosBadge;
+                    invalidateSelf();
+                }
+            }
+
             public boolean isCircle() {
                 return circle;
             }
@@ -1599,7 +1612,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     canvas.drawCircle(bounds.exactCenterX(), bounds.exactCenterY(), Math.min(bounds.width(), bounds.height()) / 2f, paint);
                     return;
                 }
-                final float r = dp(10);
+                final float r = dp(iosBadge ? 8 : 10);
                 AndroidUtilities.rectTmp.set(getBounds());
                 matrix.reset();
                 matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);

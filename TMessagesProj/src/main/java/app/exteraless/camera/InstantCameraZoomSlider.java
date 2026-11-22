@@ -526,6 +526,19 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
             float currentZoom,
             int frameRate
     ) {
+        if (!switchingCamera
+                && backend == Backend.ROUND_VIDEO
+                && !frontFace
+                && !roundVideoFront
+                && getVisibility() == VISIBLE
+                && cameraId != null
+                && !cameraId.equals(roundVideoCameraId)) {
+            roundVideoCameraId = cameraId;
+            roundVideoMinZoom = Math.min(roundVideoMinZoom, minRatio);
+            roundVideoMaxZoom = Math.max(roundVideoMaxZoom, maxRatio);
+            roundVideoFrameRate = frameRate > 0 ? frameRate : 60;
+            return;
+        }
         final boolean morph = switchingCamera
                 || (backend == Backend.ROUND_VIDEO && getVisibility() == VISIBLE && isLaidOut()
                 && ((cameraId != null && !cameraId.equals(roundVideoCameraId)) || frontFace != roundVideoFront));

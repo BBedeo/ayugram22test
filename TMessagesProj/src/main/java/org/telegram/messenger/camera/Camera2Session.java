@@ -73,8 +73,9 @@ public class Camera2Session {
     private Rect sensorSize;
     private float minZoom = 1f;
     private float maxZoom = 1f;
-    private float currentZoom = 1f;
+    private volatile float currentZoom = 1f;
     private Range<Float> zoomRatioRange;
+    private final Runnable applyZoomRunnable = this::applyZoomOnCameraThread;
 
     private final Size previewSize;
 
@@ -106,7 +107,10 @@ public class Camera2Session {
                 }
                 if (bestAspectRatio <= 0 || Math.abs((float) viewWidth / viewHeight - bestAspectRatio) > Math.abs((float) viewWidth / viewHeight - cameraAspectRatio)) {
                     if (confMap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        Size size = chooseOptimalSize(confMap.getOutputSizes(SurfaceTexture.class), viewWidth, viewHeight, false);
+                        Size[] outputSizes = confMap.getOutputSizes(SurfaceTexture.class);
+                        Size size = (viewWidth == viewHeight && cameraAspectRatio > 0f)
+                                ? chooseOptimalSquareAspectSize(outputSizes, viewWidth, cameraAspectRatio)
+                                : chooseOptimalSize(outputSizes, viewWidth, viewHeight, false);
                         if (size != null) {
                             bestAspectRatio = cameraAspectRatio;
                             cameraId = id;
@@ -352,18 +356,57 @@ public class Camera2Session {
     }
 
     private final Rect cropRegion = new Rect();
-    public void setZoom(float value) {
-        // Запоминаем и до открытия: стартовый запрос возьмёт это значение сам.
-        currentZoom = Utilities.clamp(value, maxZoom, minZoom);
-        if (!isInitiated()) return;
-        if (captureRequestBuilder == null || cameraDevice == null || sensorSize == null) return;
 
-        updateCaptureRequest();
+    private void applyZoomToBuilder(CaptureRequest.Builder builder) {
+        if (builder == null) {
+            return;
+        }
+        final float zoom = Utilities.clamp(currentZoom, maxZoom, minZoom);
+        if (zoomRatioRange != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            builder.set(CaptureRequest.CONTROL_ZOOM_RATIO, zoom);
+        } else if (sensorSize != null) {
+            if (Math.abs(zoom - 1f) < 0.01f) {
+                cropRegion.set(0, 0, sensorSize.width(), sensorSize.height());
+            } else {
+                final int centerX = sensorSize.width() / 2;
+                final int centerY = sensorSize.height() / 2;
+                final int deltaX = (int) ((0.5f * sensorSize.width()) / zoom);
+                final int deltaY = (int) ((0.5f * sensorSize.height()) / zoom);
+                cropRegion.set(
+                        centerX - deltaX,
+                        centerY - deltaY,
+                        centerX + deltaX,
+                        centerY + deltaY
+                );
+            }
+            builder.set(CaptureRequest.SCALER_CROP_REGION, cropRegion);
+        }
+    }
 
+    private void applyZoomOnCameraThread() {
+        if (isClosed || !isInitiated()) return;
+        if (cameraDevice == null || captureSession == null || sensorSize == null) return;
+        if (captureRequestBuilder == null) {
+            updateCaptureRequest();
+            return;
+        }
         try {
+            applyZoomToBuilder(captureRequestBuilder);
             captureSession.setRepeatingRequest(captureRequestBuilder.build(), null, handler);
         } catch (Exception e) {
             FileLog.e(e);
+        }
+    }
+
+    public void setZoom(float value) {
+        // Store before open so the initial repeating request picks up the target zoom.
+        currentZoom = Utilities.clamp(value, maxZoom, minZoom);
+        if (isClosed || !isInitiated() || handler == null) return;
+        if (android.os.Looper.myLooper() == handler.getLooper()) {
+            applyZoomOnCameraThread();
+        } else {
+            handler.removeCallbacks(applyZoomRunnable);
+            handler.post(applyZoomRunnable);
         }
     }
 
@@ -371,7 +414,11 @@ public class Camera2Session {
     public void setFlash(boolean flash) {
         if (flashing != flash) {
             flashing = flash;
-            updateCaptureRequest();
+            if (handler != null && android.os.Looper.myLooper() != handler.getLooper()) {
+                handler.post(this::updateCaptureRequest);
+            } else {
+                updateCaptureRequest();
+            }
         }
     }
     public boolean getFlash() {
@@ -525,21 +572,7 @@ public class Camera2Session {
                 chooseFocusMode(captureRequestBuilder);   // без настройки, как в exteraGram
             }
 
-            if (zoomRatioRange != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                captureRequestBuilder.set(CaptureRequest.CONTROL_ZOOM_RATIO, currentZoom);
-            } else if (sensorSize != null && Math.abs(currentZoom - 1f) >= 0.01f) {
-                final int centerX = sensorSize.width() / 2;
-                final int centerY = sensorSize.height() / 2;
-                final int deltaX = (int) ((0.5f * sensorSize.width()) / currentZoom);
-                final int deltaY = (int) ((0.5f * sensorSize.height()) / currentZoom);
-                cropRegion.set(
-                        centerX - deltaX,
-                        centerY - deltaY,
-                        centerX + deltaX,
-                        centerY + deltaY
-                );
-                captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, cropRegion);
-            }
+            applyZoomToBuilder(captureRequestBuilder);
 
             captureRequestBuilder.addTarget(surface);
             captureSession.setRepeatingRequest(captureRequestBuilder.build(), null, handler);
@@ -679,6 +712,29 @@ public class Camera2Session {
         }
     }
 
+
+    private static Size chooseOptimalSquareAspectSize(Size[] choices, int minSide, float sensorAspectRatio) {
+        if (choices == null || choices.length == 0) {
+            return null;
+        }
+        final float targetAspect = sensorAspectRatio >= 1f ? sensorAspectRatio : (1f / sensorAspectRatio);
+        List<Size> sensorAspectSizes = new ArrayList<>(choices.length);
+        for (Size option : choices) {
+            int shortSide = Math.min(option.getWidth(), option.getHeight());
+            int longSide = Math.max(option.getWidth(), option.getHeight());
+            if (shortSide < minSide || longSide * shortSide > minSide * minSide * 5) {
+                continue;
+            }
+            float aspect = (float) longSide / Math.max(1, shortSide);
+            if (Math.abs(aspect - targetAspect) <= 0.08f) {
+                sensorAspectSizes.add(option);
+            }
+        }
+        if (!sensorAspectSizes.isEmpty()) {
+            return Collections.min(sensorAspectSizes, new CompareSizesByArea());
+        }
+        return chooseOptimalSize(choices, minSide, minSide, false);
+    }
 
     public static Size chooseOptimalSize(Size[] choices, int width, int height, boolean notBigger) {
         List<Size> bigEnoughWithAspectRatio = new ArrayList<>(choices.length);

@@ -1394,11 +1394,15 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         controls.play.setContentDescription(getString(playing ? R.string.AccActionPause : R.string.AccActionPlay));
         seekBar.setPlaying(playing);
         updateSpin();
+        boolean ios = Md3Player.isIosPlayer();
         boolean framed = coverStyle == PlayerStyle.COVER_CARD || coverStyle == PlayerStyle.COVER_DISC;
-        float scale = playing || !framed || previewMode ? 1f : 0.92f;
+        float scale = playing || !framed || previewMode ? 1f : (ios ? 0.83f : 0.92f);
+        if (ios && coverStyle == PlayerStyle.COVER_CARD) {
+            cover.setElevation(playing ? dp(18) : dp(6));
+        }
         if (cover.getScaleX() != scale) {
             if (animated) {
-                cover.animate().scaleX(scale).scaleY(scale).setDuration(450).setInterpolator(EMPHASIZED).start();
+                cover.animate().scaleX(scale).scaleY(scale).setDuration(ios ? 480 : 450).setInterpolator(EMPHASIZED).start();
             } else {
                 cover.setScaleX(scale);
                 cover.setScaleY(scale);
@@ -2137,7 +2141,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             updateLike(false);
         }
         headerCenter.setVisibility(PlayerStyle.showSource() ? View.VISIBLE : View.INVISIBLE);
-        seekBar.setMaxAmplitude(PlayerStyle.wavy() ? dp(4) : 0);
+        seekBar.setMaxAmplitude(PlayerStyle.wavy() && !Md3Player.isIosPlayer() ? dp(4) : 0);
         controls.setStyle(PlayerStyle.controlsScale(), PlayerStyle.showModes());
         group.setVisibility(PlayerStyle.showActions() ? View.VISIBLE : View.GONE);
         applyActionsStyle();
@@ -2230,7 +2234,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     }
 
     private void updateBackdrop() {
-        boolean need = coverStyle != PlayerStyle.COVER_FULL && PlayerStyle.background() == PlayerStyle.BACKGROUND_BLUR;
+        boolean need = coverStyle != PlayerStyle.COVER_FULL
+                && (PlayerStyle.background() == PlayerStyle.BACKGROUND_BLUR || Md3Player.isIosPlayer());
         if (!need) {
             backdrop = null;
             backdropKey = null;

@@ -96,17 +96,18 @@ public class ControlsRow extends ViewGroup implements MorphButton.PressListener 
     }
 
     private void updateTargets(boolean animated) {
-        float prevW = pressed == prev ? 76 : pressed == play ? 58 : 64;
-        float nextW = pressed == next ? 76 : pressed == play ? 58 : 64;
-        float playW = pressed == play ? 100 : (pressed == prev || pressed == next) ? 80 : 88;
+        boolean ios = Md3Player.isIosPlayer();
+        float prevW = ios ? (pressed == prev ? 72 : 64) : (pressed == prev ? 76 : pressed == play ? 58 : 64);
+        float nextW = ios ? (pressed == next ? 72 : 64) : (pressed == next ? 76 : pressed == play ? 58 : 64);
+        float playW = ios ? (pressed == play ? 96 : 84) : (pressed == play ? 100 : (pressed == prev || pressed == next) ? 80 : 88);
         setWidth(prev, dp(prevW), animated);
         setWidth(next, dp(nextW), animated);
         setWidth(play, dp(playW), animated);
-        prev.setRadius(dp(pressed == prev ? 18 : 32), animated);
-        next.setRadius(dp(pressed == next ? 18 : 32), animated);
-        play.setRadius(dp(pressed == play ? 20 : playing ? 28 : 44), animated);
-        shuffle.setRadius(dp(shuffleOn ? 14 : 24), animated);
-        repeat.setRadius(dp(repeatOn ? 14 : 24), animated);
+        prev.setRadius(dp(ios ? 36 : (pressed == prev ? 18 : 32)), animated);
+        next.setRadius(dp(ios ? 36 : (pressed == next ? 18 : 32)), animated);
+        play.setRadius(dp(ios ? 48 : (pressed == play ? 20 : playing ? 28 : 44)), animated);
+        shuffle.setRadius(dp(ios ? 24 : (shuffleOn ? 14 : 24)), animated);
+        repeat.setRadius(dp(ios ? 24 : (repeatOn ? 14 : 24)), animated);
         if (animated) {
             startTick();
         } else if (getWidth() > 0) {

@@ -482,6 +482,39 @@ object AppearanceConfig {
         return iosChatHeader.Bool()
     }
 
+    /** Индикаторы загрузки в стиле iOS (12-лучевой Cupertino spinner и тонкая капсула). */
+    @JvmField
+    val iosLoadingStyle =
+        addConfig("OEAppearanceIosLoadingStyle", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun iosLoadingStyle(): Boolean {
+        ensureLoaded()
+        return iosLoadingStyle.Bool()
+    }
+
+    /** Списки настроек в стиле iOS: цветные скруглённые бейджи иконок, разделители и компактная высота. */
+    @JvmField
+    val iosListItems =
+        addConfig("OEAppearanceIosListItems", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isIosListItems(): Boolean {
+        ensureLoaded()
+        return iosListItems.Bool()
+    }
+
+    /** Полноэкранный плеер в стиле Apple Music / iOS 26. */
+    @JvmField
+    val iosPlayer =
+        addConfig("OEAppearanceIosPlayer", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isIosPlayer(): Boolean {
+        ensureLoaded()
+        return iosPlayer.Bool()
+    }
+
     // ---- AI-функции Telegram ----
 
     /** Прячет кнопку AI-редактора в поле ввода, вложениях и подписи к медиа. */

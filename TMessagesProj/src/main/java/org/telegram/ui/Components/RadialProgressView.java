@@ -416,6 +416,11 @@ public class RadialProgressView extends View implements Drawable.Callback, Theme
     private void drawArc(Canvas canvas) {
         applyConfiguredStyle();
         drawingCircleLenght = currentCircleLength;
+        if (!manualStyle && !app.exteraless.appearance.AppearanceConfig.newLoadingStyle()
+                && app.exteraless.appearance.AppearanceConfig.iosLoadingStyle()) {
+            drawIosIndicator(canvas);
+            return;
+        }
         if (currentStyle == M3CircularProgress.STYLE_LOADING_INDICATOR && m3Drawable != null) {
             m3Drawable.setBounds((int) cicleRect.left, (int) cicleRect.top,
                     (int) cicleRect.right, (int) cicleRect.bottom);
@@ -427,6 +432,47 @@ public class RadialProgressView extends View implements Drawable.Callback, Theme
             return;
         }
         canvas.drawArc(cicleRect, radOffset, drawingCircleLenght, false, progressPaint);
+    }
+
+    private void drawIosIndicator(Canvas canvas) {
+        final float cx = cicleRect.centerX();
+        final float cy = cicleRect.centerY();
+        final float radius = Math.min(cicleRect.width(), cicleRect.height()) * 0.5f;
+        final float oldStroke = progressPaint.getStrokeWidth();
+        final int oldColor = progressPaint.getColor();
+        final int oldAlpha = progressPaint.getAlpha();
+
+        if (noProgress) {
+            final int spokes = 12;
+            final float phase = (android.os.SystemClock.uptimeMillis() % 840L) / 840f * spokes;
+            final float rInner = radius * 0.44f;
+            final float rOuter = radius * 0.94f;
+            progressPaint.setStrokeWidth(Math.max(AndroidUtilities.dpf2(1.4f), radius * 0.16f));
+            for (int i = 0; i < spokes; i++) {
+                float dist = (i - phase + spokes) % spokes;
+                // Spoke behind active head fades smoothly from full opacity down to resting gray alpha.
+                float trail = 1f - Math.min(1f, (spokes - dist) % spokes / (float) (spokes - 2));
+                int a = (int) (oldAlpha * (0.20f + 0.80f * trail * trail));
+                progressPaint.setColor(progressColor);
+                progressPaint.setAlpha(a);
+                double rad = (i * 360.0 / spokes) * Math.PI / 180.0;
+                float cos = (float) Math.cos(rad);
+                float sin = (float) Math.sin(rad);
+                canvas.drawLine(cx + rInner * cos, cy + rInner * sin,
+                        cx + rOuter * cos, cy + rOuter * sin, progressPaint);
+            }
+        } else {
+            progressPaint.setStrokeWidth(AndroidUtilities.dpf2(2.2f));
+            progressPaint.setColor(Theme.multAlpha(progressColor, 0.22f));
+            canvas.drawCircle(cx, cy, radius - AndroidUtilities.dpf2(1.1f), progressPaint);
+            progressPaint.setColor(progressColor);
+            progressPaint.setAlpha(oldAlpha);
+            canvas.drawArc(cicleRect, -90f, 360f * Math.max(0.04f, animatedProgress), false, progressPaint);
+        }
+
+        progressPaint.setStrokeWidth(oldStroke);
+        progressPaint.setColor(oldColor);
+        progressPaint.setAlpha(oldAlpha);
     }
 
     public boolean isCircle() {

@@ -64,6 +64,7 @@ public class Switch extends View implements Theme.Colorable {
     public static final int SWITCH_STYLE_MODERN = 1;
     public static final int SWITCH_STYLE_MD3 = 2;
     public static final int SWITCH_STYLE_M3 = 3;
+    public static final int SWITCH_STYLE_IOS = 4;
     private final BoolAnimator animatorPressed = new BoolAnimator(this, new CubicBezierInterpolator(0.2, 0, 0, 1), 100L);
     private final float[] iconLines = new float[8];
     private Paint outlinePaint;
@@ -210,12 +211,16 @@ public class Switch extends View implements Theme.Colorable {
         return NaConfig.INSTANCE.getSwitchStyle().Int() == SWITCH_STYLE_M3;
     }
 
+    private static boolean isIosSwitchStyle() {
+        return NaConfig.INSTANCE.getSwitchStyle().Int() == SWITCH_STYLE_IOS;
+    }
+
     /**
      * Запас вокруг тумблера для overlay-битмапов: капсула нового стиля вылезает
      * за measuredWidth/Height (exteraGram: {@code Switch.getOverlayPadding()} = dp(5)).
      */
     private int getOverlayPadding() {
-        return isExteraSwitchStyle() ? dp(5) : 0;
+        return (isExteraSwitchStyle() || isIosSwitchStyle()) ? dp(6) : 0;
     }
 
     private void cancelIconAnimator() {
@@ -311,6 +316,16 @@ public class Switch extends View implements Theme.Colorable {
 
     private void animateToCheckedState(boolean newCheckedState) {
         cancelCheckAnimator();
+        if (isIosSwitchStyle()) {
+            checkSpringAnimator = new SpringAnimation(this, PROGRESS_PROPERTY)
+                    .setSpring(new SpringForce(newCheckedState ? 1f : 0f)
+                            .setDampingRatio(0.74f)
+                            .setStiffness(640f))
+                    .setMinimumVisibleChange(0.001f)
+                    .setStartValue(progress);
+            checkSpringAnimator.start();
+            return;
+        }
         if (isMaterial3SwitchStyle()) {
             checkSpringAnimator = new SpringAnimation(this, PROGRESS_PROPERTY)
                     .setSpring(new SpringForce(newCheckedState ? 1f : 0f)
@@ -708,6 +723,24 @@ public class Switch extends View implements Theme.Colorable {
         }
         if (switchStyle == SWITCH_STYLE_M3) {
             drawMaterial3Switch(canvas);
+            return;
+        }
+        if (switchStyle == SWITCH_STYLE_IOS) {
+            int trackOff = processColor(Theme.getColor(trackColorKey, resourcesProvider));
+            int trackOn = processColor(Theme.getColor(trackCheckedColorKey, resourcesProvider));
+            app.exteraless.appearance.IosSwitchHelper.draw(
+                    canvas,
+                    getMeasuredWidth(),
+                    getMeasuredHeight(),
+                    progress,
+                    overrideAlpha,
+                    trackColorKey,
+                    trackCheckedColorKey,
+                    trackOff,
+                    trackOn,
+                    rectF,
+                    paint,
+                    rippleDrawable);
             return;
         }
         int width = dp(36);

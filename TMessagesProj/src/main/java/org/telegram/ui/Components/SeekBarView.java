@@ -80,6 +80,7 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
     public static final int SLIDER_STYLE_DEFAULT = 0;
     public static final int SLIDER_STYLE_MODERN = 1;
     public static final int SLIDER_STYLE_MD3 = 2;
+    public static final int SLIDER_STYLE_IOS = 3;
 
     private final SeekBarAccessibilityDelegate seekBarAccessibilityDelegate;
 
@@ -99,6 +100,8 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
     private Drawable hoverDrawable;
     private long lastUpdateTime;
     private float currentRadius;
+    private float iosTrackScale;
+    private Paint iosThumbPaint;
     private int[] pressedState = new int[]{android.R.attr.state_enabled, android.R.attr.state_pressed};
     private float transitionProgress = 1f;
     private int transitionThumbX;
@@ -578,7 +581,7 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         isModern &= (timestamps == null || timestamps.isEmpty());
 
         if (!hasCustomLineWidthValue || style != SLIDER_STYLE_DEFAULT) {
-            lineWidthDp = style == SLIDER_STYLE_MODERN ? 17 : (style == SLIDER_STYLE_MD3 ? MD3_TRACK_HEIGHT_DP : 3);
+            lineWidthDp = style == SLIDER_STYLE_MODERN ? 17 : (style == SLIDER_STYLE_MD3 ? MD3_TRACK_HEIGHT_DP : (style == SLIDER_STYLE_IOS ? 4 : 3));
         }
 
         if (isModern && style == SLIDER_STYLE_MD3) {
@@ -594,6 +597,9 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         if (isModern && effectiveStyle == SLIDER_STYLE_MD3) {
             return SLIDER_STYLE_MD3;
         }
+        if (effectiveStyle == SLIDER_STYLE_IOS && (timestamps == null || timestamps.isEmpty())) {
+            return SLIDER_STYLE_IOS;
+        }
 
         return -1;
     }
@@ -602,7 +608,7 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
     protected void onDraw(Canvas canvas) {
         int thumbX = this.thumbX;
 
-        updateModernState();
+        final int customDraw = needCustomDraw();
 
         if (!twoSided && separatorsCount > 1) {
             //float step = (getMeasuredWidth() - selectorWidth) / ((float) separatorsCount - 1f);
@@ -614,9 +620,31 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         int y = (getMeasuredHeight() - thumbSize) / 2;
         innerPaint1.setColor(getInnerTrackColor());
 
+        boolean needInvalidate = false;
+        long newUpdateTime = SystemClock.elapsedRealtime();
+        long dt = newUpdateTime - lastUpdateTime;
+        if (dt > 18) {
+            dt = 16;
+        }
+        if (customDraw == SLIDER_STYLE_IOS) {
+            float targetScale = pressed ? 1f : 0f;
+            if (iosTrackScale != targetScale) {
+                float step = dt / 150f;
+                iosTrackScale = iosTrackScale < targetScale
+                        ? Math.min(targetScale, iosTrackScale + step)
+                        : Math.max(targetScale, iosTrackScale - step);
+                needInvalidate = true;
+            }
+        } else {
+            iosTrackScale = 0f;
+        }
+
         float centerY = getMeasuredHeight() / 2f;
+        float halfTrack = customDraw == SLIDER_STYLE_IOS
+                ? (AndroidUtilities.dp(4) + AndroidUtilities.dp(3) * iosTrackScale) * 0.5f
+                : AndroidUtilities.dp(lineWidthDp) / 2f;
         float left = selectorWidth / 2f, right = getMeasuredWidth() - selectorWidth / 2;
-        float top = centerY - AndroidUtilities.dp(lineWidthDp) / 2f, bottom = centerY + AndroidUtilities.dp(lineWidthDp) / 2f;
+        float top = centerY - halfTrack, bottom = centerY + halfTrack;
 
         rect.set(left, top, right, bottom);
         drawProgressBar(canvas, rect, innerPaint1);
@@ -647,19 +675,13 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
             }
         }
 
-        if (hoverDrawable != null && !isModern) {
+        if (hoverDrawable != null && !isModern && customDraw != SLIDER_STYLE_IOS) {
             int dx = thumbX + selectorWidth / 2 - AndroidUtilities.dp(16);
             int dy = y + thumbSize / 2 - AndroidUtilities.dp(16);
             hoverDrawable.setBounds(dx, dy, dx + AndroidUtilities.dp(32), dy + AndroidUtilities.dp(32));
             hoverDrawable.draw(canvas);
         }
-        boolean needInvalidate = false;
         int newRad = AndroidUtilities.dp(pressed ? 8 : 6);
-        long newUpdateTime = SystemClock.elapsedRealtime();
-        long dt = newUpdateTime - lastUpdateTime;
-        if (dt > 18) {
-            dt = 16;
-        }
         if (currentRadius != newRad) {
             if (currentRadius < newRad) {
                 currentRadius += AndroidUtilities.dp(1) * (dt / 60.0f);
@@ -683,7 +705,9 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
             }
         }
 
-        if (!isModern) {
+        if (customDraw == SLIDER_STYLE_IOS) {
+            drawIosThumb(canvas, thumbX + selectorWidth / 2f, centerY);
+        } else if (!isModern) {
             if (ElasticPillGesture.enabled() && (pressed || Math.abs(elasticThumbStretch) > .2f)) {
                 final float cx = thumbX + selectorWidth / 2f;
                 final float cy = y + thumbSize / 2f;
@@ -762,6 +786,28 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         if (needInvalidate) {
             postInvalidateOnAnimation();
         }
+    }
+
+    private void drawIosThumb(Canvas canvas, float cx, float cy) {
+        if (iosThumbPaint == null) {
+            iosThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        }
+        final float thumbR = AndroidUtilities.dpf2(9.2f) + AndroidUtilities.dpf2(2.2f) * iosTrackScale;
+        final float stretch = ElasticPillGesture.enabled() ? Math.abs(elasticThumbStretch) * 0.7f : 0f;
+        iosThumbPaint.setStyle(Paint.Style.FILL);
+        iosThumbPaint.setColor(0x28000000);
+        rect.set(cx - thumbR - stretch, cy - thumbR + AndroidUtilities.dpf2(1.4f),
+                cx + thumbR + stretch, cy + thumbR + AndroidUtilities.dpf2(1.4f));
+        canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
+
+        iosThumbPaint.setColor(0xFFFFFFFF);
+        rect.set(cx - thumbR - stretch, cy - thumbR, cx + thumbR + stretch, cy + thumbR);
+        canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
+
+        iosThumbPaint.setStyle(Paint.Style.STROKE);
+        iosThumbPaint.setStrokeWidth(AndroidUtilities.dpf2(0.75f));
+        iosThumbPaint.setColor(0x1E000000);
+        canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
     }
 
     private void updatePath(Path path, RectF rect, float radius, float radius2) {

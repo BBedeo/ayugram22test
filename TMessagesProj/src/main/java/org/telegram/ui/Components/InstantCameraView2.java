@@ -132,6 +132,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
     private float zoomProgress;
     private float currentZoomRatio = 1f;
     private float pinchStartZoomRatio = 1f;
+    private boolean userModifiedZoom;
     private int zoomPointerId1 = -1;
     private int zoomPointerId2 = -1;
 
@@ -438,6 +439,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         showInitialPlaceholder();
         currentZoomRatio = 1f;
         zoomProgress = 0f;
+        userModifiedZoom = false;
         updateZoomButton();
         if (SharedSettings.roundVideoShowFps.get()) {
             fpsPillView.setText("-- FPS");
@@ -820,9 +822,21 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         public void onCameraCapabilitiesChanged(
                 @NonNull RoundVideoSession.CameraCapabilities cameraCapabilities
         ) {
+            RoundVideoSession.CameraFacing prevFacing = capabilities == null ? null : capabilities.getActiveFacing();
             capabilities = cameraCapabilities;
             if (cameraCapabilities.getActiveFacing() != null) {
                 SharedSettings.roundVideoLastCamera.set(cameraCapabilities.getActiveFacing());
+            }
+            if (!userModifiedZoom && cameraCapabilities.getActiveFacing() != null && prevFacing != cameraCapabilities.getActiveFacing()) {
+                float initialZoom = 1f;
+                if (cameraCapabilities.getActiveFacing() == RoundVideoSession.CameraFacing.FRONT
+                        || app.exteraless.chats.ChatsConfig.startWithWideAngleCamera.Bool()) {
+                    initialZoom = cameraCapabilities.getMinimumZoomRatio();
+                }
+                if (Math.abs(initialZoom - currentZoomRatio) > 1.0E-3f && session != null) {
+                    currentZoomRatio = initialZoom;
+                    session.setZoomRatio(initialZoom);
+                }
             }
             bindZoomSlider();
             updateButtons();
@@ -1048,6 +1062,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
             zoomSlider.beginCameraSwitch();
             currentZoomRatio = 1f;
             zoomProgress = 0f;
+            userModifiedZoom = false;
             updateZoomButton();
             switchCameraDrawable.setCurrentFrame(0);
             switchCameraDrawable.start();
@@ -1152,6 +1167,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
         if (!fromUser || session == null || stateInfo == null || !stateInfo.canControlCamera()) {
             return;
         }
+        userModifiedZoom = true;
         float minimumZoomRatio = getEffectiveMinimumZoomRatio();
         float maximumZoomRatio = capabilities == null ? 1f : capabilities.getMaximumZoomRatio();
         currentZoomRatio = clamp(zoom, minimumZoomRatio, maximumZoomRatio);
@@ -1253,6 +1269,7 @@ public final class InstantCameraView2 extends InstantCameraViewBase {
                     : capabilities.getMaximumZoomRatio();
             float scaleDelta = (scale - 1f) / ZOOM_GESTURE_EFFORT;
             float requestedRatio = pinchStartZoomRatio * (1f + scaleDelta);
+            userModifiedZoom = true;
             currentZoomRatio = clamp(requestedRatio, minimumZoomRatio, maximumZoomRatio);
             zoomProgress = maximumZoomRatio <= 1f
                     ? 0f

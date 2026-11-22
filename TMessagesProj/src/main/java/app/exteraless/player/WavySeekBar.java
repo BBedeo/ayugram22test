@@ -44,6 +44,7 @@ public class WavySeekBar extends View {
     private long lastFrame;
     private boolean frozen;
     private float maxAmplitude = dp(4);
+    private float iosExpand;
 
     public WavySeekBar(Context context) {
         super(context);
@@ -179,6 +180,41 @@ public class WavySeekBar extends View {
         long now = SystemClock.elapsedRealtime();
         float dt = frozen ? 0f : lastFrame == 0 ? 0.016f : Math.min(0.05f, (now - lastFrame) / 1000f);
         lastFrame = frozen ? 0 : now;
+
+        float cy = getHeight() / 2f;
+        float left = left();
+        float right = right();
+        float p = dragging ? dragProgress : progress;
+        float x = left + p * (right - left);
+
+        if (Md3Player.isIosPlayer()) {
+            float targetExpand = dragging ? 1f : 0f;
+            if (iosExpand != targetExpand) {
+                float step = dt / 0.14f;
+                iosExpand = iosExpand < targetExpand
+                        ? Math.min(targetExpand, iosExpand + step)
+                        : Math.max(targetExpand, iosExpand - step);
+            }
+            float h = dpf2(5f) + dpf2(4f) * iosExpand;
+            float r = h / 2f;
+            rect.set(left, cy - r, right, cy + r);
+            fillPaint.setColor(trackPaint.getColor());
+            canvas.drawRoundRect(rect, r, r, fillPaint);
+
+            fillPaint.setColor(wavePaint.getColor());
+            float activeRight = Math.max(left + h, Math.min(right, x));
+            if (p > 0.001f) {
+                rect.set(left, cy - r, activeRight, cy + r);
+                canvas.drawRoundRect(rect, r, r, fillPaint);
+            }
+            if (iosExpand != targetExpand && !frozen) {
+                postInvalidateOnAnimation();
+            } else {
+                lastFrame = 0;
+            }
+            return;
+        }
+
         float targetAmp = playing ? maxAmplitude : 0f;
         amplitude += (targetAmp - amplitude) * (1f - (float) Math.pow(0.85, dt / 0.04f));
         if (Math.abs(amplitude - targetAmp) < dpf2(0.05f)) {
@@ -188,12 +224,7 @@ public class WavySeekBar extends View {
             phase = (phase + 6f * dt) % TAU;
         }
 
-        float cy = getHeight() / 2f;
-        float left = left();
-        float right = right();
-        float p = dragging ? dragProgress : progress;
         float thumbW = dragging ? dp(3) : dp(5);
-        float x = left + p * (right - left);
         float gap = dp(6);
         float waveEnd = x - gap - thumbW / 2f;
         float lambda = dp(34);

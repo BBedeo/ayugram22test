@@ -149,11 +149,23 @@ public class SlideChooseView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         float x = event.getX();
         float y = event.getY();
-        float indexTouch = MathUtils.clamp((x - sideSide + circleSize / 2f) / (lineSize + gapSize * 2 + circleSize), 0, optionsStr.length - 1);
-        boolean isClose = Math.abs(indexTouch - Math.round(indexTouch)) < .35f;
-        if (isClose) {
-            indexTouch = Math.round(indexTouch);
+        float indexTouch;
+        if (canUseIosSegmentedControl()) {
+            float segLeft = AndroidUtilities.dp(16);
+            float segWidth = Math.max(1f, getMeasuredWidth() - segLeft * 2f);
+            float cellW = segWidth / optionsStr.length;
+            indexTouch = MathUtils.clamp((x - segLeft) / cellW - 0.5f, 0, optionsStr.length - 1);
+            if (event.getAction() == MotionEvent.ACTION_UP || Math.abs(indexTouch - Math.round(indexTouch)) < .45f) {
+                indexTouch = Math.round(MathUtils.clamp((x - segLeft) / segWidth * optionsStr.length - 0.5f, 0, optionsStr.length - 1));
+            }
+        } else {
+            indexTouch = MathUtils.clamp((x - sideSide + circleSize / 2f) / (lineSize + gapSize * 2 + circleSize), 0, optionsStr.length - 1);
+            boolean isClose = Math.abs(indexTouch - Math.round(indexTouch)) < .35f;
+            if (isClose) {
+                indexTouch = Math.round(indexTouch);
+            }
         }
+        boolean isClose = Math.abs(indexTouch - Math.round(indexTouch)) < .35f;
         if (minIndex != Integer.MIN_VALUE) {
             indexTouch = Math.max(indexTouch, minIndex);
         }
@@ -247,9 +259,27 @@ public class SlideChooseView extends View {
                 && dashedFrom < 0 && minIndex <= 0;
     }
 
+    private boolean canUseIosSegmentedControl() {
+        return NaConfig.INSTANCE.getSliderStyle().Int() == SeekBarView.SLIDER_STYLE_IOS
+                && optionsStr != null && optionsStr.length > 1 && optionsStr.length <= 5
+                && dashedFrom < 0 && minIndex <= 0 && leftDrawables == null;
+    }
+
+    private boolean canUseIosSlider() {
+        return NaConfig.INSTANCE.getSliderStyle().Int() == SeekBarView.SLIDER_STYLE_IOS
+                && !canUseIosSegmentedControl()
+                && optionsStr != null && optionsStr.length > 1
+                && dashedFrom < 0 && minIndex <= 0;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (canUseIosSegmentedControl()) {
+            drawIosSegmentedControl(canvas, selectedIndexAnimatedHolder.set(selectedIndex));
+            return;
+        }
         final boolean material = canUseMaterialSlider();
+        final boolean iosSlider = canUseIosSlider();
         float selectedIndexAnimated = selectedIndexAnimatedHolder.set(selectedIndex);
         float movingAnimated = movingAnimatedHolder.set(moving ? 1 : 0);
         int cy = getMeasuredHeight() / 2 + AndroidUtilities.dp(11);
@@ -261,7 +291,7 @@ public class SlideChooseView extends View {
             int color = ColorUtils.blendARGB(getThemedColor(Theme.key_switchTrack), Theme.multAlpha(getThemedColor(Theme.key_switchTrackChecked), minIndex != Integer.MIN_VALUE && a <= minIndex ? .50f : 1.0f), ut);
             paint.setColor(color);
             linePaint.setColor(color);
-            if (!material) {
+            if (!material && !iosSlider) {
                 canvas.drawCircle(cx, cy, AndroidUtilities.lerp(circleSize / 2, AndroidUtilities.dp(6), t), paint);
                 if (a != 0) {
                     int x = cx - circleSize / 2 - gapSize - lineSize;
@@ -321,6 +351,10 @@ public class SlideChooseView extends View {
         float cx = sideSide + (lineSize + gapSize * 2 + circleSize) * selectedIndexAnimated + circleSize / 2;
         if (material) {
             drawMaterialSlider(canvas, cx, cy);
+            return;
+        }
+        if (iosSlider) {
+            drawIosSteppedSlider(canvas, cx, cy);
             return;
         }
         paint.setColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_switchTrackChecked), 80));
@@ -396,6 +430,93 @@ public class SlideChooseView extends View {
         paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
         materialRect.set(thumbCx - thumbWidth / 2f, cy - thumbHeight / 2f, thumbCx + thumbWidth / 2f, cy + thumbHeight / 2f);
         canvas.drawRoundRect(materialRect, thumbWidth / 2f, thumbWidth / 2f, paint);
+    }
+
+    private void drawIosSteppedSlider(Canvas canvas, float thumbCx, int cy) {
+        if (materialRect == null) {
+            materialRect = new RectF();
+        }
+        final float left = sideSide + circleSize / 2f;
+        final float right = getMeasuredWidth() - sideSide - circleSize / 2f;
+        final float halfTrack = AndroidUtilities.dp(2.5f);
+        final float r = halfTrack;
+
+        paint.setColor(getThemedColor(Theme.key_switchTrack));
+        materialRect.set(left, cy - halfTrack, right, cy + halfTrack);
+        canvas.drawRoundRect(materialRect, r, r, paint);
+
+        paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
+        materialRect.set(left, cy - halfTrack, Math.max(left, thumbCx), cy + halfTrack);
+        canvas.drawRoundRect(materialRect, r, r, paint);
+
+        for (int a = 0; a < optionsStr.length; a++) {
+            float tickCx = left + (right - left) * a / (float) (optionsStr.length - 1);
+            paint.setColor(tickCx <= thumbCx ? 0x99FFFFFF : 0x55FFFFFF);
+            canvas.drawCircle(tickCx, cy, AndroidUtilities.dpf2(1.5f), paint);
+        }
+
+        final float thumbR = AndroidUtilities.dp(10);
+        paint.setColor(0x28000000);
+        canvas.drawCircle(thumbCx, cy + AndroidUtilities.dpf2(1.4f), thumbR, paint);
+        paint.setColor(0xFFFFFFFF);
+        canvas.drawCircle(thumbCx, cy, thumbR, paint);
+    }
+
+    private void drawIosSegmentedControl(Canvas canvas, float selectedIndexAnimated) {
+        if (materialRect == null) {
+            materialRect = new RectF();
+        }
+        final boolean dark = Theme.isCurrentThemeDark();
+        final float outerLeft = AndroidUtilities.dp(16);
+        final float outerRight = getMeasuredWidth() - AndroidUtilities.dp(16);
+        final float midY = getMeasuredHeight() / 2f;
+        final float halfH = AndroidUtilities.dp(19);
+        final float top = midY - halfH;
+        final float bottom = midY + halfH;
+        final float pillR = halfH;
+
+        paint.setColor(dark ? 0x24FFFFFF : 0x16000000);
+        materialRect.set(outerLeft, top, outerRight, bottom);
+        canvas.drawRoundRect(materialRect, pillR, pillR, paint);
+
+        final int count = optionsStr.length;
+        final float inset = AndroidUtilities.dp(3);
+        final float innerW = Math.max(1f, (outerRight - outerLeft) - inset * 2f);
+        final float segW = innerW / count;
+        final float thumbLeft = outerLeft + inset + segW * selectedIndexAnimated;
+        final float thumbR = halfH - inset;
+
+        // Subtle separator hairlines between adjacent unselected segments.
+        paint.setColor(dark ? 0x28FFFFFF : 0x22000000);
+        for (int i = 1; i < count; i++) {
+            float distToThumb = Math.min(Math.abs(i - selectedIndexAnimated), Math.abs((i - 1) - selectedIndexAnimated));
+            if (distToThumb < 0.7f) {
+                continue;
+            }
+            float lx = outerLeft + inset + segW * i;
+            canvas.drawRect(lx - AndroidUtilities.dpf2(0.5f), midY - AndroidUtilities.dp(8),
+                    lx + AndroidUtilities.dpf2(0.5f), midY + AndroidUtilities.dp(8), paint);
+        }
+
+        // Elevated sliding iOS pill thumb.
+        paint.setColor(dark ? 0x36000000 : 0x20000000);
+        materialRect.set(thumbLeft, top + inset + AndroidUtilities.dpf2(1f),
+                thumbLeft + segW, bottom - inset + AndroidUtilities.dpf2(1f));
+        canvas.drawRoundRect(materialRect, thumbR, thumbR, paint);
+
+        paint.setColor(dark ? 0xFF3A3A3C : 0xFFFFFFFF);
+        materialRect.set(thumbLeft, top + inset, thumbLeft + segW, bottom - inset);
+        canvas.drawRoundRect(materialRect, thumbR, thumbR, paint);
+
+        final int activeColor = dark ? 0xFFFFFFFF : 0xFF000000;
+        final int inactiveColor = getThemedColor(Theme.key_windowBackgroundWhiteBlackText);
+        final float textBaseline = midY - (textPaint.descent() + textPaint.ascent()) / 2f;
+        for (int a = 0; a < count; a++) {
+            float t = Math.max(0f, 1f - Math.abs(a - selectedIndexAnimated));
+            textPaint.setColor(ColorUtils.blendARGB(Theme.multAlpha(inactiveColor, 0.72f), activeColor, t));
+            float centerX = outerLeft + inset + segW * (a + 0.5f);
+            canvas.drawText(optionsStr[a], centerX - optionsSizes[a] / 2f, textBaseline, textPaint);
+        }
     }
 
     private void updateMaterialPath(RectF rect, float radiusLeft, float radiusRight) {

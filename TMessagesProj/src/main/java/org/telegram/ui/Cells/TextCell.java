@@ -962,7 +962,9 @@ public class TextCell extends FrameLayout implements Theme.Colorable {
             if (paint == null) {
                 paint = Theme.dividerPaint;
             }
-            final int dividerLeft = dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 68) : leftPadding);
+            final int dividerLeft = dp(imageView.getVisibility() == VISIBLE
+                    ? (inDialogs ? 72 : (app.exteraless.appearance.IosListItems.enabled() && !app.exteraless.appearance.M3ListItems.enabled() ? 58 : 68))
+                    : (app.exteraless.appearance.IosListItems.enabled() && !app.exteraless.appearance.M3ListItems.enabled() ? 16 : leftPadding));
             canvas.drawLine(LocaleController.isRTL ? 0 : dividerLeft, getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? dividerLeft : 0), getMeasuredHeight() - 1, paint);
         }
     }

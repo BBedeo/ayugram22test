@@ -216,6 +216,23 @@ public class LineProgressView extends FrameLayout {
         if (m3Indicator != null) {
             m3Indicator.setVisibility(GONE);
         }
+        if (AppearanceConfig.iosLoadingStyle()) {
+            float barH = Math.min(getHeight(), AndroidUtilities.dpf2(2.5f));
+            float cy = getHeight() / 2f;
+            float r = barH / 2f;
+            int track = backColor != 0 ? backColor : Theme.multAlpha(progressColor, 0.20f);
+            progressPaint.setColor(track);
+            progressPaint.setAlpha((int) (Color.alpha(track) * animatedAlphaValue));
+            rect.set(0, cy - r, getWidth(), cy + r);
+            canvas.drawRoundRect(rect, r, r, progressPaint);
+
+            progressPaint.setColor(progressColor);
+            progressPaint.setAlpha((int) (255 * animatedAlphaValue));
+            rect.set(0, cy - r, getWidth() * animatedProgressValue, cy + r);
+            canvas.drawRoundRect(rect, r, r, progressPaint);
+            updateAnimation();
+            return;
+        }
         if (backColor != 0 && animatedProgressValue != 1) {
             progressPaint.setColor(backColor);
             progressPaint.setAlpha((int) (255 * animatedAlphaValue));

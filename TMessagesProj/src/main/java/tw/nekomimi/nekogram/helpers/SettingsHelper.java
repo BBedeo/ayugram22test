@@ -88,7 +88,14 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEAppearance:md3NavBar", "OEAppearanceNewNavigationBarStyle");
         SEARCH_TITLE_ALIASES.put("OEAppearance:md3ListItems", "OEAppearanceM3ListItems");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosStyles", "OEAppearanceIosDesign");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosLoading", "OEAppearanceNewLoadingStyle");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosSlider", "OEAppearanceSliderStyle");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosSwitch", "OEAppearanceSwitchStyle");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosChatHeader", "OEAppearanceIosChatHeader");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosNavBar", "OEAppearanceIosNavigationBarStyle");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosListItems", "OEAppearanceM3ListItems");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosPlayer", "OEAppearanceMd3Player");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:iosMiniPlayer", "OEAppearanceIosMiniPlayer");
         SEARCH_TITLE_ALIASES.put("OEChats:doubleTapReaction", "DoubleTapSetting");
         SEARCH_TITLE_ALIASES.put("OEChats:quickTransition", "OEChatsQuickTransitions");
         SEARCH_TITLE_ALIASES.put("OEChats:inlineMathResult", "OEChatsInlineMath");

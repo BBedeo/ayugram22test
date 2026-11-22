@@ -882,6 +882,11 @@ final class RoundVideoGlProcessor {
                 }
             } else if (switchState == SWITCH_WAIT_NEW) {
                 switchOldBlurRadiusPx = getSwitchOldBlurRadiusPx(now);
+                if (now - switchStageStartNs >= 1_800_000_000L) {
+                    diagnostics.log("switch wait timed out; resuming camera frames");
+                    overlayRenderer.finishCameraSwitch(now);
+                    switchState = SWITCH_NONE;
+                }
             } else if (switchState == SWITCH_CROSSFADE
                     || switchState == SWITCH_UNBLUR_NEW) {
                 if (elapsed < switchCrossfadeDurationNs) {

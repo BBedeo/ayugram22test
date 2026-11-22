@@ -45,6 +45,7 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
 
     private final static int deleteDuration = 180;
     private final static int changeDuration = 180;
+    private static final CubicBezierInterpolator REORDER_INTERPOLATOR = new CubicBezierInterpolator(0.22f, 1f, 0.36f, 1f);
 
     private static class MoveInfo {
         public ViewHolder holder;
@@ -389,7 +390,22 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
         // need listener functionality in VPACompat for this. Ick.
         final ViewPropertyAnimator animation = view.animate();
         mMoveAnimations.add(holder);
-        animation.setDuration(deleteDuration).setListener(new AnimatorListenerAdapter() {
+        final boolean movingUpPromoted = deltaY < -org.telegram.messenger.AndroidUtilities.dp(12) && holder.itemView instanceof DialogCell;
+        final long duration = movingUpPromoted
+                ? Math.min(380L, 280L + Math.abs(deltaY) / 14)
+                : (Math.abs(deltaY) > org.telegram.messenger.AndroidUtilities.dp(4) ? 280L : deleteDuration);
+        animation.setInterpolator(Math.abs(deltaY) > org.telegram.messenger.AndroidUtilities.dp(4) ? REORDER_INTERPOLATOR : sDefaultInterpolator);
+        if (movingUpPromoted) {
+            animation.setUpdateListener(a -> {
+                final float f = a.getAnimatedFraction();
+                final float lift = 1f + 0.018f * (float) Math.sin(Math.PI * f);
+                view.setScaleX(lift);
+                view.setScaleY(lift);
+            });
+        } else {
+            animation.setUpdateListener(null);
+        }
+        animation.setDuration(duration).setListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationStart(Animator animator) {
                 dispatchMoveStarting(holder);
@@ -403,6 +419,9 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
                 if (deltaY != 0) {
                     view.setTranslationY(0);
                 }
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+                animation.setUpdateListener(null);
 
                 if (holder.itemView instanceof DialogCell) {
                     ((DialogCell) holder.itemView).setMoving(false);
@@ -413,6 +432,7 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
 
             @Override
             public void onAnimationEnd(Animator animator) {
+                animation.setUpdateListener(null);
                 animation.setListener(null);
                 dispatchMoveFinished(holder);
                 mMoveAnimations.remove(holder);
@@ -425,6 +445,8 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
 
                 view.setTranslationX(0);
                 view.setTranslationY(0);
+                view.setScaleX(1f);
+                view.setScaleY(1f);
             }
         }).start();
     }
@@ -531,6 +553,8 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
             if (moveInfo.holder == item) {
                 view.setTranslationY(0);
                 view.setTranslationX(0);
+                view.setScaleX(1f);
+                view.setScaleY(1f);
                 dispatchMoveFinished(item);
                 mPendingMoves.remove(i);
             }
@@ -694,6 +718,8 @@ public class DialogsItemAnimator extends SimpleItemAnimator {
                 View view = item.itemView;
                 view.setTranslationY(0);
                 view.setTranslationX(0);
+                view.setScaleX(1f);
+                view.setScaleY(1f);
                 dispatchMoveFinished(moveInfo.holder);
                 moves.remove(j);
                 if (moves.isEmpty()) {

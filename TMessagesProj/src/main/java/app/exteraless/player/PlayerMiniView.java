@@ -390,10 +390,13 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
             drawProgressBorder(canvas, w, h, progress);
             return;
         }
+        boolean ios = Md3Player.isIosMiniPlayer();
+        float strokeW = ios ? dpf2(1.8f) : dp(3);
+        linePaint.setStrokeWidth(strokeW);
         float inset = Math.max(dp(16), cardRadius);
-        float y = h - dp(4);
+        float y = h - (ios ? dpf2(3f) : dp(4));
         float right = w - inset;
-        linePaint.setColor(ColorUtils.setAlphaComponent(colors.onPrimaryContainer, 46));
+        linePaint.setColor(ColorUtils.setAlphaComponent(colors.onPrimaryContainer, ios ? 36 : 46));
         canvas.drawLine(inset, y, right, y, linePaint);
         if (progress > 0f) {
             linePaint.setColor(colors.onPrimaryContainer);
@@ -886,7 +889,11 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
 
     private void applyColors(PlayerColors c) {
         colors = c;
-        cardBg.setColor(c.primaryContainer);
+        if (Md3Player.isIosMiniPlayer() && glassBg == null) {
+            cardBg.setColor(ColorUtils.setAlphaComponent(dark ? 0xFF2C2C2E : 0xFFF2F2F7, 232));
+        } else {
+            cardBg.setColor(c.primaryContainer);
+        }
         if (Build.VERSION.SDK_INT >= 28) {
             card.setOutlineSpotShadowColor(c.shadow());
             card.setOutlineAmbientShadowColor(c.shadow());

@@ -29,8 +29,10 @@ object AppearancePresets {
     private const val SWITCH_STYLE_DEFAULT = 0
     private const val SWITCH_STYLE_MD3 = 2
     private const val SWITCH_STYLE_M3 = 3
+    private const val SWITCH_STYLE_IOS = 4
     private const val SLIDER_STYLE_DEFAULT = 0
     private const val SLIDER_STYLE_MD3 = 2
+    private const val SLIDER_STYLE_IOS = 3
     private const val BACK_ANIMATION_SPRING = 1
 
     private data class PresetSpec(
@@ -68,6 +70,10 @@ object AppearancePresets {
         val m3ListItems: Boolean,
         val md3Player: Boolean,
         val md3MiniPlayer: Boolean,
+        val iosLoadingStyle: Boolean,
+        val iosListItems: Boolean,
+        val iosPlayer: Boolean,
+        val iosMiniPlayer: Boolean,
         val sliderStyle: Int,
         val switchStyle: Int
     )
@@ -110,8 +116,12 @@ object AppearancePresets {
             m3ListItems = false,
             md3Player = false,
             md3MiniPlayer = false,
-            sliderStyle = SLIDER_STYLE_DEFAULT,
-            switchStyle = SWITCH_STYLE_DEFAULT
+            iosLoadingStyle = true,
+            iosListItems = true,
+            iosPlayer = true,
+            iosMiniPlayer = true,
+            sliderStyle = SLIDER_STYLE_IOS,
+            switchStyle = SWITCH_STYLE_IOS
         ),
         // Everyday iOS Liquid Glass: balanced lens optics with the floating dock and elastic controls.
         PresetSpec(
@@ -148,8 +158,12 @@ object AppearancePresets {
             m3ListItems = false,
             md3Player = false,
             md3MiniPlayer = false,
-            sliderStyle = SLIDER_STYLE_DEFAULT,
-            switchStyle = SWITCH_STYLE_DEFAULT
+            iosLoadingStyle = true,
+            iosListItems = true,
+            iosPlayer = true,
+            iosMiniPlayer = true,
+            sliderStyle = SLIDER_STYLE_IOS,
+            switchStyle = SWITCH_STYLE_IOS
         ),
         // Material Design 3: tonal M3 navigation, sliders, switches, player, and segmented lists.
         PresetSpec(
@@ -186,6 +200,10 @@ object AppearancePresets {
             m3ListItems = true,
             md3Player = true,
             md3MiniPlayer = true,
+            iosLoadingStyle = false,
+            iosListItems = false,
+            iosPlayer = false,
+            iosMiniPlayer = false,
             sliderStyle = SLIDER_STYLE_MD3,
             switchStyle = SWITCH_STYLE_M3
         ),
@@ -224,6 +242,10 @@ object AppearancePresets {
             m3ListItems = false,
             md3Player = true,
             md3MiniPlayer = true,
+            iosLoadingStyle = false,
+            iosListItems = false,
+            iosPlayer = false,
+            iosMiniPlayer = false,
             sliderStyle = SLIDER_STYLE_MD3,
             switchStyle = SWITCH_STYLE_MD3
         )
@@ -270,6 +292,9 @@ object AppearancePresets {
 
         AppearanceConfig.iosNavigationBarStyle.setConfigBool(spec.iosNavigationBarStyle)
         AppearanceConfig.iosChatHeader.setConfigBool(spec.iosChatHeader)
+        AppearanceConfig.iosLoadingStyle.setConfigBool(spec.iosLoadingStyle)
+        AppearanceConfig.iosListItems.setConfigBool(spec.iosListItems)
+        AppearanceConfig.iosPlayer.setConfigBool(spec.iosPlayer)
         MainTabsLayout.setBottomNavigationMode(spec.bottomNavigationMode)
         if (spec.navigationDrawer != null) {
             AppearanceConfig.navigationDrawer.setConfigBool(spec.navigationDrawer)
@@ -299,7 +324,7 @@ object AppearancePresets {
         AppearanceConfig.dividerStyle.setConfigInt(spec.dividerStyle)
         AppearanceConfig.segmentedDialogs.setConfigBool(spec.dividerStyle == AppearanceConfig.DIVIDER_SEGMENTS)
         AppearanceConfig.segmentGap.setConfigInt(if (spec.id == PRESET_MATERIAL3) 0 else 1)
-        AppearanceConfig.iosMiniPlayer.setConfigBool(spec.universalLiquidGlass)
+        AppearanceConfig.iosMiniPlayer.setConfigBool(spec.iosMiniPlayer)
         AppearanceConfig.jellyAnimations.setConfigBool(spec.universalLiquidGlass)
         NaConfig.hideDividers.setConfigBool(spec.dividerStyle == AppearanceConfig.DIVIDER_HIDDEN)
         AppearanceConfig.invalidateDividerStyle()
@@ -353,6 +378,10 @@ object AppearancePresets {
             AppearanceConfig.m3ListItems.Bool() == spec.m3ListItems &&
             AppearanceConfig.md3Player.Bool() == spec.md3Player &&
             AppearanceConfig.md3MiniPlayer.Bool() == spec.md3MiniPlayer &&
+            AppearanceConfig.iosLoadingStyle.Bool() == spec.iosLoadingStyle &&
+            AppearanceConfig.iosListItems.Bool() == spec.iosListItems &&
+            AppearanceConfig.iosPlayer.Bool() == spec.iosPlayer &&
+            AppearanceConfig.iosMiniPlayer.Bool() == spec.iosMiniPlayer &&
             NaConfig.sliderStyle.Int() == spec.sliderStyle &&
             NaConfig.switchStyle.Int() == spec.switchStyle &&
             (spec.id != PRESET_MATERIAL3 ||

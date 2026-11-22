@@ -408,23 +408,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     canvas.drawRect(getWidth() - insetRight, 0, getWidth(), getHeight(), Theme.fillingPaint(color));
                 }
 
-                if (iBlur3SourceTabLens != null
-                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                        && fragmentView != null
-                        && tabLensCapturedVersion != tabLensContentVersion) {
-                    final int w = fragmentView.getMeasuredWidth();
-                    final int h = fragmentView.getMeasuredHeight();
-                    if (w > 0 && h > 0) {
-                        blur3_updateFragmentsGlass();
-                        iBlur3SourceTabLens.setSize(w, h);
-                        iBlur3SourceTabLens.updateDisplayListIfNeeded();
-                        tabLensCapturedVersion = tabLensContentVersion;
-                    }
-                }
-
-                super.dispatchDraw(canvas);
                 blur3_invalidateBlur();
                 blur3_updateFadeColors();
+
+                super.dispatchDraw(canvas);
             }
         };
     }
@@ -1773,10 +1760,13 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private void blur3_onFragmentGlassCaptured() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && iBlur3SourceTabGlass != null) {
             iBlur3SourceTabGlass.invalidateRenderer();
+            iBlur3SourceTabGlass.invalidateDisplayListForDrawables();
             iBlur3SourceTabFrosted.invalidateRenderer();
+            iBlur3SourceTabFrosted.invalidateDisplayListForDrawables();
             tabLensContentVersion++;
             if (iBlur3SourceTabLens != null) {
                 iBlur3SourceTabLens.invalidateRenderer();
+                iBlur3SourceTabLens.invalidateDisplayListForDrawables();
             }
             blur3_invalidateBlur();
         }
@@ -1839,7 +1829,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 && iBlur3SourceTabLens != null) {
             iBlur3SourceTabLens.setSize(width, height);
             iBlur3SourceTabLens.updateDisplayListIfNeeded();
-            tabLensCapturedVersion = tabLensContentVersion;
+            if (tabLensCapturedVersion != tabLensContentVersion) {
+                iBlur3SourceTabLens.invalidateDisplayListForDrawables();
+                tabLensCapturedVersion = tabLensContentVersion;
+            }
         }
     }
 

@@ -2094,21 +2094,28 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
 
             if (drawMovingViewsOverlayed()) {
-                paint.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                for (int i = 0; i < getChildCount(); i++) {
-                    View view = getChildAt(i);
-
-                    if ((view instanceof DialogCell && ((DialogCell) view).isMoving()) || (view instanceof DialogsAdapter.LastEmptyView && ((DialogsAdapter.LastEmptyView) view).moving)) {
-                        if (view.getAlpha() != 1f) {
-                            rectF.set(view.getX(), view.getY(), view.getX() + view.getMeasuredWidth(), view.getY() + view.getMeasuredHeight());
-                            canvas.saveLayerAlpha(rectF, (int) (255 * view.getAlpha()), Canvas.ALL_SAVE_FLAG);
-                        } else {
-                            canvas.save();
+                paint.setColor(getThemedColor(app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()
+                        ? Theme.key_windowBackgroundGray
+                        : Theme.key_windowBackgroundWhite));
+                for (int pass = 0; pass < 2; pass++) {
+                    for (int i = 0; i < getChildCount(); i++) {
+                        View view = getChildAt(i);
+                        if ((view instanceof DialogCell && ((DialogCell) view).isMoving()) || (view instanceof DialogsAdapter.LastEmptyView && ((DialogsAdapter.LastEmptyView) view).moving)) {
+                            final boolean upward = view.getTranslationY() >= 0f;
+                            if ((pass == 0) == upward) {
+                                continue;
+                            }
+                            if (view.getAlpha() != 1f) {
+                                rectF.set(view.getX(), view.getY(), view.getX() + view.getMeasuredWidth(), view.getY() + view.getMeasuredHeight());
+                                canvas.saveLayerAlpha(rectF, (int) (255 * view.getAlpha()), Canvas.ALL_SAVE_FLAG);
+                            } else {
+                                canvas.save();
+                            }
+                            canvas.translate(view.getX(), view.getY());
+                            canvas.drawRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), paint);
+                            view.draw(canvas);
+                            canvas.restore();
                         }
-                        canvas.translate(view.getX(), view.getY());
-                        canvas.drawRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), paint);
-                        view.draw(canvas);
-                        canvas.restore();
                     }
                 }
                 invalidate();
@@ -11009,6 +11016,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    private boolean shouldAnimateDialogReorder(ViewPage viewPage) {
+        if (viewPage == null || viewPage.isPaused || isPaused || dialogsListFrozen
+                || viewPage.getVisibility() != View.VISIBLE) {
+            return false;
+        }
+        if (viewPage.dialogsAdapter == null || viewPage.dialogsAdapter.getCurrentCount() <= 0) {
+            return false;
+        }
+        if (viewPage.listView == null || viewPage.listView.getChildCount() <= 0 || !viewPage.listView.isAttachedToWindow()) {
+            return false;
+        }
+        if (viewPage.listView.isFastScrollPressed() || viewPage.listView.getScrollState() == RecyclerView.SCROLL_STATE_DRAGGING) {
+            return false;
+        }
+        return initialDialogsType != 11 && initialDialogsType != 12 && initialDialogsType != 13;
+    }
+
     private void reloadViewPageDialogs(ViewPage viewPage, boolean newMessage) {
         if (viewPage.getVisibility() != View.VISIBLE) {
             return;
@@ -11026,7 +11050,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (newItemCount == 1 && oldItemCount == 1 && viewPage.dialogsAdapter.getItemViewType(0) == 5) {
                 viewPage.updateList(true);
             } else {
-                viewPage.updateList(false);
+                final boolean animateReorder = shouldAnimateDialogReorder(viewPage);
+                if (animateReorder) {
+                    viewPage.dialogsItemAnimator.prepareForRemove();
+                }
+                viewPage.updateList(animateReorder);
                 if (newItemCount > oldItemCount && initialDialogsType != 11 && initialDialogsType != 12 && initialDialogsType != 13) {
                     viewPage.recyclerItemsEnterAnimator.showItemsAnimated(oldItemCount);
                 }
@@ -11835,7 +11863,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             if ((mask & MessagesController.UPDATE_MASK_NEW_MESSAGE) != 0 || mask == 0) {
                 if (viewPage != null) {
-                    viewPage.updateList(false);
+                    final boolean animateReorder = animated && shouldAnimateDialogReorder(viewPage);
+                    if (animateReorder) {
+                        viewPage.dialogsItemAnimator.prepareForRemove();
+                    }
+                    viewPage.updateList(animateReorder);
                     continue;
                 }
             }
@@ -11860,7 +11892,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                 }
                             } else {
                                 if (cell.update(mask, animated)) {
-                                    viewPage.updateList(false);
+                                    final boolean animateReorder = animated && shouldAnimateDialogReorder(viewPage);
+                                    if (animateReorder) {
+                                        viewPage.dialogsItemAnimator.prepareForRemove();
+                                    }
+                                    viewPage.updateList(animateReorder);
                                     break;
                                 }
                             }

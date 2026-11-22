@@ -206,7 +206,10 @@ final class RoundVideoCameraController {
     private boolean ultrawideAvailable;
     private String backMainCameraId;
     private String backUltrawideCameraId;
+    private float backMainMinZoomRatio = 1f;
+    private float backMainMaxZoomRatio = 1f;
     private boolean usingSeparateUltrawide;
+    private Boolean pendingBackUltrawideTarget;
     private boolean overrideCameraSelection;
     private boolean torchEnabled;
     private boolean torchVerificationPending;
@@ -369,26 +372,31 @@ final class RoundVideoCameraController {
     }
 
     boolean setZoomRatio(float ratio) {
-        float minZoom = ultrawideAvailable && minimumZoomRatio >= 0.95f ? 0.5f : minimumZoomRatio;
-        requestedZoomRatio = clamp(ratio, minZoom, maximumZoomRatio);
-        zoomProgress = maximumZoomRatio <= 1f
+        float minZoom = ultrawideAvailable && backMainMinZoomRatio >= 0.95f ? 0.5f : minimumZoomRatio;
+        float maxZoom = Math.max(maximumZoomRatio, usingSeparateUltrawide ? backMainMaxZoomRatio : 1f);
+        requestedZoomRatio = clamp(ratio, minZoom, maxZoom);
+        zoomProgress = maxZoom <= 1f
                 ? 0f
-                : clamp((requestedZoomRatio - 1f) / (maximumZoomRatio - 1f), 0f, 1f);
+                : clamp((requestedZoomRatio - 1f) / (maxZoom - 1f), 0f, 1f);
         Handler handler = cameraHandler;
         if (!active || handler == null) return false;
+        handler.removeCallbacks(applyZoomRunnable);
+        handler.post(() -> handleBackUltrawideOrZoom(requestedZoomRatio));
+        return true;
+    }
+
+    private void handleBackUltrawideOrZoom(float ratio) {
+        if (!active || stopping) return;
         if (activeFacing == RoundVideoSession.CameraFacing.BACK
                 && backUltrawideCameraId != null
-                && readMinimumZoomRatio(characteristics) >= 0.95f) {
-            boolean wantUltrawide = requestedZoomRatio < 0.95f;
+                && backMainMinZoomRatio >= 0.95f) {
+            boolean wantUltrawide = ratio < 0.95f;
             if (wantUltrawide != usingSeparateUltrawide) {
-                handler.removeCallbacks(applyZoomRunnable);
-                handler.post(() -> switchBackUltrawideCamera(wantUltrawide));
-                return true;
+                switchBackUltrawideCamera(wantUltrawide);
+                return;
             }
         }
-        handler.removeCallbacks(applyZoomRunnable);
-        handler.post(applyZoomRunnable);
-        return true;
+        applyZoomUpdate();
     }
 
     boolean setTorchEnabled(boolean enabled) {
@@ -731,6 +739,7 @@ final class RoundVideoCameraController {
         zoomProgress = 0f;
         requestedZoomRatio = 1f;
         usingSeparateUltrawide = false;
+        pendingBackUltrawideTarget = null;
         overrideCameraSelection = false;
         callback.onCameraSwitchStarted(facing);
         cameraSwitchStartedNs = SystemClock.elapsedRealtimeNanos();
@@ -1087,6 +1096,10 @@ final class RoundVideoCameraController {
                     if (device == warmCameraDevice) {
                         warmCameraDevice = null;
                         diagnostics.log("standby camera closed: id=" + device.getId());
+                    }
+                    if (reopenAfterCameraClose) {
+                        reopenAfterCameraClose = false;
+                        if (active) openCameraIfReady();
                     }
                 }
             };
@@ -1552,6 +1565,10 @@ final class RoundVideoCameraController {
                             completePendingDualSwitchIfReady();
                         } else if (requestedFacing != activeFacing) {
                             switchCameraIfNeeded(requestedFacing);
+                        } else if (pendingBackUltrawideTarget != null && activeFacing == RoundVideoSession.CameraFacing.BACK) {
+                            boolean pendingUltrawide = pendingBackUltrawideTarget;
+                            pendingBackUltrawideTarget = null;
+                            switchBackUltrawideCamera(pendingUltrawide);
                         }
                     } catch (Exception e) {
                         if (dualActiveMode) {
@@ -2137,10 +2154,12 @@ final class RoundVideoCameraController {
                 continue;
             }
             try {
+                float sensorAspect = readSensorAspectRatio(candidate);
                 OutputPair regularPair = chooseOutputPair(
                         candidateSizes,
                         outputResolution,
-                        requestedCameraResolution
+                        requestedCameraResolution,
+                        sensorAspect
                 );
                 FrameRatePlan frameRatePlan = resolveFrameRate(
                         id,
@@ -2223,6 +2242,8 @@ final class RoundVideoCameraController {
         minimumZoomRatio = readMinimumZoomRatio(selectedCharacteristics);
         if (facing == RoundVideoSession.CameraFacing.BACK && !separateUltrawide) {
             backMainCameraId = selectedId;
+            backMainMinZoomRatio = minimumZoomRatio;
+            backMainMaxZoomRatio = maximumZoomRatio;
             backUltrawideCameraId = null;
             usingSeparateUltrawide = false;
             if (minimumZoomRatio < 0.95f) {
@@ -2238,6 +2259,7 @@ final class RoundVideoCameraController {
             usingSeparateUltrawide = true;
             ultrawideAvailable = true;
             minimumZoomRatio = 0.5f;
+            maximumZoomRatio = Math.max(maximumZoomRatio, backMainMaxZoomRatio);
         } else {
             usingSeparateUltrawide = false;
             ultrawideAvailable = minimumZoomRatio < 0.95f;
@@ -2298,8 +2320,14 @@ final class RoundVideoCameraController {
 
     private void switchBackUltrawideCamera(boolean wantUltrawide) {
         if (!active || stopping || switchingCamera
-                || activeFacing != RoundVideoSession.CameraFacing.BACK
-                || usingSeparateUltrawide == wantUltrawide) {
+                || activeFacing != RoundVideoSession.CameraFacing.BACK) {
+            return;
+        }
+        if (opening || reopenAfterCameraClose) {
+            pendingBackUltrawideTarget = wantUltrawide;
+            return;
+        }
+        if (usingSeparateUltrawide == wantUltrawide) {
             return;
         }
         String targetId = wantUltrawide ? backUltrawideCameraId : backMainCameraId;
@@ -2309,13 +2337,26 @@ final class RoundVideoCameraController {
             StreamConfigurationMap map = candidate.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             Size[] sizes = map == null ? null : map.getOutputSizes(SurfaceTexture.class);
             if (sizes == null || sizes.length == 0) return;
-            OutputPair regularPair = chooseOutputPair(sizes, outputResolution, requestedCameraResolution);
+            OutputPair regularPair = chooseOutputPair(
+                    sizes,
+                    outputResolution,
+                    requestedCameraResolution,
+                    readSensorAspectRatio(candidate)
+            );
             FrameRatePlan plan = resolveFrameRate(targetId, candidate, map, sizes, regularPair);
             CameraCandidate targetCandidate = new CameraCandidate(targetId, candidate, sizes, regularPair, plan);
             if (glProcessor != null) {
                 glProcessor.beginCameraSwitch(RoundVideoSession.CameraFacing.BACK, RoundVideoSession.CameraFacing.BACK);
             }
             applyCandidateSelection(targetCandidate, RoundVideoSession.CameraFacing.BACK, wantUltrawide);
+            if (glProcessor != null) {
+                glProcessor.updateInputConfiguration(
+                        recordingSize,
+                        sourceCropSize,
+                        isCameraTimestampRealtime()
+                );
+                recordingSurface = glProcessor.getCameraSurface();
+            }
             overrideCameraSelection = true;
             disableWarmSwitch("switching back ultrawide module", null);
             closeCaptureSession();
@@ -2512,7 +2553,8 @@ final class RoundVideoCameraController {
                 OutputPair regularPair = chooseOutputPair(
                         sizes,
                         outputResolution,
-                        requestedCameraResolution
+                        requestedCameraResolution,
+                        readSensorAspectRatio(candidate)
                 );
                 int achieved = resolveFrameRate(id, candidate, map, sizes, regularPair)
                         .frameRate.getValue();
@@ -2610,6 +2652,15 @@ final class RoundVideoCameraController {
         if (highSpeed) {
             if (hasOis) {
                 builder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON);
+                builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+            }
+            return;
+        }
+        if (!app.exteraless.chats.ChatsConfig.cameraStabilization.Bool()) {
+            if (hasOis) {
+                builder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON);
+                builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+            } else {
                 builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
             }
             return;
@@ -3186,6 +3237,7 @@ final class RoundVideoCameraController {
         warmDualSessionConfigured = false;
         activeInputSecondary = false;
         usingSeparateUltrawide = false;
+        pendingBackUltrawideTarget = null;
         overrideCameraSelection = false;
         force30Fps = false;
         forceMax60Fps = false;
@@ -3307,17 +3359,43 @@ final class RoundVideoCameraController {
                 : (SystemClock.elapsedRealtimeNanos() - startedNs) / 1_000_000L;
     }
 
+    private static float readSensorAspectRatio(@Nullable CameraCharacteristics characteristics) {
+        if (characteristics == null) return 0f;
+        Rect active = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+        if (active == null || active.width() <= 0 || active.height() <= 0) return 0f;
+        int w = active.width();
+        int h = active.height();
+        return Math.max(w, h) / (float) Math.min(w, h);
+    }
+
+    private static float landscapeAspect(@NonNull Size size) {
+        int shortSide = Math.min(size.getWidth(), size.getHeight());
+        int longSide = Math.max(size.getWidth(), size.getHeight());
+        return shortSide <= 0 ? 1f : (longSide / (float) shortSide);
+    }
+
     @NonNull
     private static OutputPair chooseOutputPair(
             @NonNull Size[] sizes,
             @NonNull RoundVideoSession.OutputResolution outputResolution,
             @NonNull RoundVideoSession.CameraResolution requestedResolution
     ) {
+        return chooseOutputPair(sizes, outputResolution, requestedResolution, 0f);
+    }
+
+    @NonNull
+    private static OutputPair chooseOutputPair(
+            @NonNull Size[] sizes,
+            @NonNull RoundVideoSession.OutputResolution outputResolution,
+            @NonNull RoundVideoSession.CameraResolution requestedResolution,
+            float sensorAspectRatio
+    ) {
         int preferredCrop = getSourceCropSize(outputResolution, requestedResolution);
         OutputPair preferred = chooseTierPair(
                 sizes,
                 preferredCrop,
-                requestedResolution
+                requestedResolution,
+                sensorAspectRatio
         );
         if (preferred != null) return preferred;
 
@@ -3326,7 +3404,8 @@ final class RoundVideoCameraController {
             OutputPair mediumFallback = chooseTierPair(
                     sizes,
                     480,
-                    RoundVideoSession.CameraResolution.MEDIUM
+                    RoundVideoSession.CameraResolution.MEDIUM,
+                    sensorAspectRatio
             );
             if (mediumFallback != null) return mediumFallback;
         }
@@ -3336,12 +3415,13 @@ final class RoundVideoCameraController {
             OutputPair low = chooseTierPair(
                     sizes,
                     lowCrop,
-                    RoundVideoSession.CameraResolution.LOW
+                    RoundVideoSession.CameraResolution.LOW,
+                    sensorAspectRatio
             );
             if (low != null) return low;
         }
 
-        Size recording = chooseFallbackRecordingSize(sizes, outputResolution.getSize());
+        Size recording = chooseFallbackRecordingSize(sizes, outputResolution.getSize(), sensorAspectRatio);
         int cropSize = Math.min(shortSide(recording), MAXIMUM_SOURCE_SHORT_SIDE);
         return new OutputPair(
                 choosePreviewSize(sizes, recording),
@@ -3355,24 +3435,26 @@ final class RoundVideoCameraController {
     private static OutputPair chooseTierPair(
             @NonNull Size[] sizes,
             int cropSize,
-            @NonNull RoundVideoSession.CameraResolution resolution
+            @NonNull RoundVideoSession.CameraResolution resolution,
+            float sensorAspectRatio
     ) {
         OutputPair best = null;
         for (Size recording : sizes) {
             if (!isValidTierSize(recording, cropSize)) continue;
             Size preview = choosePreviewSize(sizes, recording);
-            OutputPair candidate = new OutputPair(preview, recording, resolution, cropSize);
-            if (best == null || compareOutputPairs(candidate, best) < 0) best = candidate;
+            int effectiveCrop = Math.min(shortSide(recording), MAXIMUM_SOURCE_SHORT_SIDE);
+            OutputPair candidate = new OutputPair(preview, recording, resolution, effectiveCrop);
+            if (best == null || compareOutputPairs(candidate, best, sensorAspectRatio) < 0) best = candidate;
         }
         return best;
     }
 
     @NonNull
-    private static Size chooseFallbackRecordingSize(@NonNull Size[] sizes, int outputSize) {
+    private static Size chooseFallbackRecordingSize(@NonNull Size[] sizes, int outputSize, float sensorAspectRatio) {
         Size best = null;
         for (Size size : sizes) {
             if (!isWithinAbsoluteLimit(size) || shortSide(size) < outputSize) continue;
-            if (best == null || area(size) < area(best)) best = size;
+            if (best == null || compareRecordingFallback(size, best, sensorAspectRatio) < 0) best = size;
         }
         if (best != null) return best;
         for (Size size : sizes) {
@@ -3385,6 +3467,15 @@ final class RoundVideoCameraController {
         }
         if (best != null) return best;
         throw new IllegalStateException("Camera has no output at or below the bandwidth cap");
+    }
+
+    private static int compareRecordingFallback(@NonNull Size left, @NonNull Size right, float sensorAspectRatio) {
+        if (sensorAspectRatio > 0f) {
+            boolean leftMatch = Math.abs(landscapeAspect(left) - sensorAspectRatio) <= 0.08f;
+            boolean rightMatch = Math.abs(landscapeAspect(right) - sensorAspectRatio) <= 0.08f;
+            if (leftMatch != rightMatch) return leftMatch ? -1 : 1;
+        }
+        return Long.compare(area(left), area(right));
     }
 
     private static int getSourceCropSize(
@@ -3423,7 +3514,12 @@ final class RoundVideoCameraController {
                 : Long.compare(area(left), area(right));
     }
 
-    private static int compareOutputPairs(OutputPair left, OutputPair right) {
+    private static int compareOutputPairs(OutputPair left, OutputPair right, float sensorAspectRatio) {
+        if (sensorAspectRatio > 0f) {
+            boolean leftMatch = Math.abs(landscapeAspect(left.recording) - sensorAspectRatio) <= 0.08f;
+            boolean rightMatch = Math.abs(landscapeAspect(right.recording) - sensorAspectRatio) <= 0.08f;
+            if (leftMatch != rightMatch) return leftMatch ? -1 : 1;
+        }
         int leftError = Math.abs(shortSide(left.preview) - PREVIEW_SHORT_SIDE);
         int rightError = Math.abs(shortSide(right.preview) - PREVIEW_SHORT_SIDE);
         if (leftError != rightError) return Integer.compare(leftError, rightError);
