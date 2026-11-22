@@ -3837,7 +3837,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 if (end > rightTextEnd) rightTextEnd = end;
             } else if (child instanceof org.telegram.ui.Components.AnimatedTextView) {
                 final org.telegram.ui.Components.AnimatedTextView atv = (org.telegram.ui.Components.AnimatedTextView) child;
-                final float tw = atv.getCurrentWidth();
+                final float tw = atv.getDrawable() != null ? atv.getDrawable().getCurrentWidth() : atv.width();
                 final int cl = Math.round(offsetX + child.getLeft());
                 if (cl < leftEdge) leftEdge = Math.max(0, cl - dp(12));
                 final int end = Math.round(cl + Math.max(dp(16), tw) + dp(18));

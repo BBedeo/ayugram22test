@@ -2121,7 +2121,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                 final DialogCell cell = (DialogCell) view;
                                 cardClipRect.set(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
                                 cardClipPath.reset();
-                                cardClipPath.addRoundRect(cardClipRect, cardClipRadii, Path.Direction.CW);
+                                cardClipPath.addRoundRect(cardClipRect, cardClipRadii, android.graphics.Path.Direction.CW);
                                 canvas.clipPath(cardClipPath);
                                 paint.setColor((cell.getIsPinned() && !cell.isFolderCell())
                                         ? app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(resourceProvider)
