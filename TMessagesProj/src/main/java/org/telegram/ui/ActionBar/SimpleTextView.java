@@ -750,7 +750,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
         final boolean shouldAnimateDigits = app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers()
                 && isAttachedToWindow() && getWidth() > 0 && getVisibility() == VISIBLE
                 && layout != null && scrollingOffset == 0
-                && org.telegram.ui.Components.AnimatedTextView.differsOnlyInDigits(text, value);
+                && org.telegram.ui.Components.AnimatedTextView.containsChangingNumbers(text, value);
         final Layout oldLayout = shouldAnimateDigits ? layout : null;
         final boolean moveDown = shouldAnimateDigits && org.telegram.ui.Components.AnimatedTextView.compareNumericChange(text, value) < 0;
         text = value;

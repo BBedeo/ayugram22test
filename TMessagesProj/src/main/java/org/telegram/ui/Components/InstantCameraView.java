@@ -381,14 +381,15 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         buttonsLayout.setOrientation(LinearLayout.HORIZONTAL);
         addView(buttonsLayout, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 56, Gravity.LEFT | Gravity.BOTTOM, 1, 0, 0, 0));
 
-        fpsPillView = new AnimatedTextView(context, true, true, true);
+        fpsPillView = new AnimatedTextView(context, false, true, true);
         fpsPillView.setGravity(Gravity.CENTER);
         fpsPillView.setTextSize(dp(13));
         fpsPillView.setTypeface(AndroidUtilities.bold());
         fpsPillView.getPaint().setFontFeatureSettings("tnum");
         fpsPillView.setTextColor(isNewDesign && resourcesProvider != null && !resourcesProvider.isDark() ? 0xFF1F1F1F : Color.WHITE);
         fpsPillView.setPadding(dp(14), 0, dp(14), 0);
-        fpsPillView.setAnimationProperties(0.32f, 0, 220, CubicBezierInterpolator.EASE_OUT_QUINT);
+        fpsPillView.setAllowCancel(true);
+        fpsPillView.setAnimationProperties(0.85f, 0, 260, CubicBezierInterpolator.EASE_OUT_QUINT);
         fpsPillView.setText("-- FPS", false);
         fpsPillView.setAlpha(0f);
         fpsPillView.setVisibility(GONE);
@@ -2242,8 +2243,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
                         liveFpsWindowFrames = 0;
                         AndroidUtilities.runOnUIThread(() -> {
                             if (fpsPillView.getVisibility() == VISIBLE) {
-                                final boolean animate = app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers() && lastMeasuredFps >= 0 && lastMeasuredFps != measuredFps;
-                                final boolean moveDown = measuredFps < lastMeasuredFps;
+                                final boolean animate = app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers() && lastMeasuredFps != measuredFps;
+                                final boolean moveDown = lastMeasuredFps >= 0 && measuredFps < lastMeasuredFps;
                                 lastMeasuredFps = measuredFps;
                                 fpsPillView.setText(measuredFps + " FPS", animate, moveDown);
                             }

@@ -440,6 +440,11 @@ public class AnimatedTextView extends View {
         public void setText(CharSequence text, boolean animated, boolean moveDown) {
             if (this.currentText == null || text == null) {
                 animated = false;
+            } else if (!animated && !TextUtils.equals(text, currentText)
+                    && app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers()
+                    && containsChangingNumbers(this.currentText, text)) {
+                animated = true;
+                moveDown = compareNumericChange(this.currentText, text) < 0;
             }
             if (text == null) {
                 text = "";
@@ -1344,6 +1349,35 @@ public class AnimatedTextView extends View {
         drawable.ignoreRTL = value;
     }
 
+    public static boolean containsChangingNumbers(CharSequence a, CharSequence b) {
+        if (differsOnlyInDigits(a, b)) {
+            return true;
+        }
+        if (a == null || b == null || TextUtils.equals(a, b)) {
+            return false;
+        }
+        if (a.length() == 0 || b.length() == 0 || a.length() > 64 || b.length() > 64) {
+            return false;
+        }
+        int numA = 0, numB = 0;
+        boolean hasA = false, hasB = false;
+        for (int i = 0; i < a.length(); i++) {
+            char c = a.charAt(i);
+            if (Character.isDigit(c)) {
+                hasA = true;
+                numA = numA * 10 + (c - '0');
+            }
+        }
+        for (int i = 0; i < b.length(); i++) {
+            char c = b.charAt(i);
+            if (Character.isDigit(c)) {
+                hasB = true;
+                numB = numB * 10 + (c - '0');
+            }
+        }
+        return hasA && hasB && numA != numB;
+    }
+
     public static boolean differsOnlyInDigits(CharSequence a, CharSequence b) {
         if (a == null || b == null || TextUtils.equals(a, b)) {
             return false;
@@ -1413,7 +1447,7 @@ public class AnimatedTextView extends View {
         }
         if (!animated && !first && isAttachedToWindow()
                 && app.exteraless.appearance.AppearanceConfig.isAnimatedNumbers()
-                && differsOnlyInDigits(drawable.getText(), text)) {
+                && containsChangingNumbers(drawable.getText(), text)) {
             animated = true;
             moveDown = compareNumericChange(drawable.getText(), text) < 0;
         }
