@@ -10921,7 +10921,7 @@ public class ChatActivity extends BaseFragment implements
 
     private void updateTopicsPanelItem() {
         if (topicsPanelItem == null) return;
-        final boolean visible = isTopicsSidebarEnabled() && !searchItemVisible && (actionBar == null || !actionBar.isActionModeShowed());
+        final boolean visible = !isTitleCentered() && isTopicsSidebarEnabled() && !searchItemVisible && (actionBar == null || !actionBar.isActionModeShowed());
         topicsPanelItem.setVisibility(visible ? View.VISIBLE : View.GONE);
         updateHeaderItemCollapsed(visible);
         updateSideButtonsForAttach();

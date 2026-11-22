@@ -3277,14 +3277,16 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int t = getHeight() - extraHeight - (getCurrentActionBarHeight() + s) / 2 - p;
         final int b = t + s + p * 2;
 
-        final boolean hasMenuPill = glassDrawableMenu != null && menuWidth > 0 && !glassOnlyBack && !doNotDrawGlassMenu && !isMenuPillInOverlay();
+        final boolean menuPillInOverlay = isMenuPillInOverlay();
+        final boolean hasMenuBounds = glassDrawableMenu != null && menuWidth > 0 && !glassOnlyBack && !doNotDrawGlassMenu;
+        final boolean hasMenuPill = hasMenuBounds && !menuPillInOverlay;
         int menuLeft = 0;
         int menuTop = t;
         int menuRight = getWidth();
         int menuBottom = b;
         int menuAlphaInt = 0;
         boolean menuHugsAvatar = false;
-        if (hasMenuPill) {
+        if (hasMenuBounds) {
             menuLeft = getWidth() - Math.max(s, menuWidth) - p * 2;
             final ChatAvatarContainer avatarContainer = findGlassAvatarContainer();
             final View avatarView = getCenteredPillAvatarView();
@@ -3317,36 +3319,38 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     menuLeft = Math.min(menuLeft, Math.round(cx) - half);
                 }
             }
-            if (avatarContainer != null && avatarContainer.isAvatarCentered()) {
-                final float outer = glassAvatarRadius;
-                final float inner = menuRight - menuLeft <= menuBottom - menuTop ? glassAvatarRadius : dp(23);
-                if (outer != glassMenuAppliedOuterRadius || inner != glassMenuAppliedInnerRadius) {
-                    glassMenuAppliedOuterRadius = outer;
-                    glassMenuAppliedInnerRadius = inner;
-                    glassDrawableMenu.setRadius(inner, outer, outer, inner);
+            if (!menuPillInOverlay) {
+                if (avatarContainer != null && avatarContainer.isAvatarCentered()) {
+                    final float outer = glassAvatarRadius;
+                    final float inner = menuRight - menuLeft <= menuBottom - menuTop ? glassAvatarRadius : dp(23);
+                    if (outer != glassMenuAppliedOuterRadius || inner != glassMenuAppliedInnerRadius) {
+                        glassMenuAppliedOuterRadius = outer;
+                        glassMenuAppliedInnerRadius = inner;
+                        glassDrawableMenu.setRadius(inner, outer, outer, inner);
+                    }
                 }
-            }
-            if (hasForcedMenuWidth) {
-                menuAlphaInt = 255;
-            } else {
-                float menuItemFade = 1f;
-                if (compactGlassTitlePill && menu != null && menu.getVisibility() == VISIBLE) {
-                    float maxChildAlpha = 0f;
-                    boolean hasVisibleChild = false;
-                    for (int i = 0, n = menu.getChildCount(); i < n; i++) {
-                        final View child = menu.getChildAt(i);
-                        if (child != null && child.getVisibility() == VISIBLE) {
-                            hasVisibleChild = true;
-                            if (child.getAlpha() > maxChildAlpha) {
-                                maxChildAlpha = child.getAlpha();
+                if (hasForcedMenuWidth) {
+                    menuAlphaInt = 255;
+                } else {
+                    float menuItemFade = 1f;
+                    if (compactGlassTitlePill && menu != null && menu.getVisibility() == VISIBLE) {
+                        float maxChildAlpha = 0f;
+                        boolean hasVisibleChild = false;
+                        for (int i = 0, n = menu.getChildCount(); i < n; i++) {
+                            final View child = menu.getChildAt(i);
+                            if (child != null && child.getVisibility() == VISIBLE) {
+                                hasVisibleChild = true;
+                                if (child.getAlpha() > maxChildAlpha) {
+                                    maxChildAlpha = child.getAlpha();
+                                }
                             }
                         }
+                        if (hasVisibleChild) {
+                            menuItemFade = maxChildAlpha;
+                        }
                     }
-                    if (hasVisibleChild) {
-                        menuItemFade = maxChildAlpha;
-                    }
+                    menuAlphaInt = Math.round(255 * animatorHasMenuItems.getFloatValue() * menuItemFade);
                 }
-                menuAlphaInt = Math.round(255 * animatorHasMenuItems.getFloatValue() * menuItemFade);
             }
         }
 
