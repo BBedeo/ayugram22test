@@ -73,6 +73,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private ArrayList<SettingsSearchResult> allSearchResults;
     private final ArrayList<SettingsSearchResult> filteredSearchResults = new ArrayList<>();
     private InlineSearchAdapter inlineSearchAdapter;
+    private Runnable pendingSearchIndexBuild;
 
     @Override
     protected void updateRows() {
@@ -166,7 +167,18 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 }
             });
         }
+        // Прогреваем индекс заранее, чтобы открытие поиска было мгновенным.
+        scheduleSearchIndexBuild(600);
         return view;
+    }
+
+    @Override
+    public void onFragmentDestroy() {
+        if (listView != null && pendingSearchIndexBuild != null) {
+            listView.removeCallbacks(pendingSearchIndexBuild);
+            pendingSearchIndexBuild = null;
+        }
+        super.onFragmentDestroy();
     }
 
     @Override
@@ -261,20 +273,46 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             return;
         }
         inSearchMode = true;
-        if (allSearchResults == null) {
-            allSearchResults = SettingsHelper.onCreateSearchArray(fragment -> AndroidUtilities.runOnUIThread(() -> {
-                try {
-                    presentFragment(fragment);
-                } catch (Exception ignore) {
-                }
-            }));
-        }
         if (inlineSearchAdapter == null) {
             inlineSearchAdapter = new InlineSearchAdapter(getParentActivity());
         }
-        filterInlineSearch("");
         listView.setAdapter(inlineSearchAdapter);
         listView.scrollToPosition(0);
+        // Индекс обычно уже собран заранее (scheduleSearchIndexBuild из createView).
+        // Если нет — показываем то, что есть, и досоздаём его, не задерживая анимацию
+        // раскрытия поля: сборка идёт после первого кадра.
+        filterInlineSearch(searchQuery);
+        scheduleSearchIndexBuild(0);
+    }
+
+    /**
+     * Индекс настроек — тяжёлая штука: десятки фрагментов проходят buildRowsForSearch().
+     * Собираем его заранее, ещё до того как пользователь потянулся к поиску, и никогда
+     * не держим на этом поток UI во время анимации. Повторный вызов переиспользует кэш.
+     */
+    private void scheduleSearchIndexBuild(long delayMs) {
+        if (allSearchResults != null || listView == null) {
+            return;
+        }
+        if (pendingSearchIndexBuild == null) {
+            pendingSearchIndexBuild = () -> {
+                pendingSearchIndexBuild = null;
+                if (allSearchResults != null || getParentActivity() == null) {
+                    return;
+                }
+                allSearchResults = SettingsHelper.onCreateSearchArray(fragment -> AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        presentFragment(fragment);
+                    } catch (Exception ignore) {
+                    }
+                }));
+                if (inSearchMode) {
+                    filterInlineSearch(searchQuery);
+                }
+            };
+        }
+        listView.removeCallbacks(pendingSearchIndexBuild);
+        listView.postDelayed(pendingSearchIndexBuild, delayMs);
     }
 
     private void exitInlineSearch() {
@@ -290,11 +328,17 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
 
     @SuppressLint("NotifyDataSetChanged")
     private void filterInlineSearch(String query) {
+        final String q = query == null ? "" : query.toLowerCase().trim();
+        // Запрос запоминаем всегда: индекс может ещё собираться, и после его готовности
+        // фильтр должен примениться к уже введённому тексту, а не к пустой строке.
+        searchQuery = q;
         if (allSearchResults == null) {
+            filteredSearchResults.clear();
+            if (inlineSearchAdapter != null) {
+                inlineSearchAdapter.notifyDataSetChanged();
+            }
             return;
         }
-        String q = query == null ? "" : query.toLowerCase().trim();
-        searchQuery = q;
         filteredSearchResults.clear();
         if (q.isEmpty()) {
             filteredSearchResults.addAll(allSearchResults);
@@ -350,7 +394,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             if (viewType == VIEW_TYPE_TOP_SPACE) {
                 View space = new View(mContext);
                 space.setTag(RecyclerListView.TAG_NOT_SECTION);
-                int topH = AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(8);
+                // Верхний отступ под glass-хедер уже задаёт BaseFragmentSimpleGlass.setListViewParams()
+                // (для этого экрана getListViewForSimpleGlassTopPadding() == 0), но контент там
+                // начинается выше нижней кромки шапки, поэтому первая строка уезжала под пилюлю.
+                // Компенсируем ровно этот нахлёст, а не полную высоту шапки.
+                int topH = dp(40);
                 space.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, topH));
                 return new RecyclerListView.Holder(space);
             }

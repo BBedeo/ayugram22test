@@ -25,6 +25,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "TMessagesProj/src/main"
 JAVA = MAIN / "java"
 HELPER = JAVA / "tw/nekomimi/nekogram/helpers/SettingsHelper.java"
+SETTINGS_HOME = JAVA / "app/exteraless/settings/OpenExteraSettingsActivity.java"
+ACTION_BAR = JAVA / "org/telegram/ui/ActionBar/ActionBar.java"
+ACTION_BAR_MENU = JAVA / "org/telegram/ui/ActionBar/ActionBarMenu.java"
 
 # Rows rendered by custom preview/hero cells: they have no dedicated label string,
 # search falls back to a humanized key ("Chat List Preview"). Keep this list empty
@@ -127,6 +130,24 @@ def main() -> int:
     for marker in ("rowTitleResource(", "humanize(key)"):
         if marker not in helper_text:
             failures.append(f"SettingsHelper lost `{marker}`")
+
+    # Search UI must stay reachable and animated: the ExFullGram settings home keeps an
+    # inline search field, the glass pill has to wrap that field (not collapse to zero
+    # while the field is open), and the index must be warmed before the animation runs.
+    settings_home = read(SETTINGS_HOME)
+    action_bar = read(ACTION_BAR)
+    action_bar_menu = read(ACTION_BAR_MENU)
+
+    if ".setIsSearchField(true)" not in settings_home or "onSearchExpand" not in settings_home:
+        failures.append("OpenExteraSettingsActivity lost its inline search field wiring")
+    if "scheduleSearchIndexBuild" not in settings_home or "enterInlineSearch" not in settings_home:
+        failures.append("OpenExteraSettingsActivity must prebuild the search index off the animation frame")
+    if "getSearchItemWidth" not in action_bar_menu:
+        failures.append("ActionBarMenu lost getSearchItemWidth()")
+    if "menu.getSearchItemWidth()" not in action_bar:
+        failures.append("ActionBar no longer wraps the search field in its glass pill")
+    if "isSearchFieldVisible" not in action_bar:
+        failures.append("ActionBar lost its search field visibility state")
 
     total = len(all_rows)
     if failures:

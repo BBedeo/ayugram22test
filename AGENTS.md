@@ -80,6 +80,11 @@ Static checks alone do not prove visual parity or successful Android compilation
   settings home, included in `SettingsHelper.onCreateSearchArray()`, and
   provide stable searchable row keys plus localized `getSearchPrefix()`
   resources. Add its deep-link route to `SettingsHelper.processDeepLink()`.
+- The ExFullGram settings home renders its search field inside the `ActionBar` glass
+  pill: keep `ActionBarMenu.getSearchItemWidth()` wired into
+  `ActionBar.checkMenuItemsWidth()` (otherwise the pill collapses to zero and the field
+  floats without a background), and keep the row index prebuilt through
+  `scheduleSearchIndexBuild()` so opening search never blocks its own animation.
 - Every `addRow("<key>")` row must be findable through settings search. The title
   resolves by `SEARCH_TITLE_ALIASES` → `<prefix><Key>` → `<prefix><Key>Title` →
   `<Key>` → `<Key>Title` → raw key, and `scripts/check_settings_search.py` fails

@@ -3353,7 +3353,19 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
         final int actionMenuWidth = Math.max(0, actionMode != null ? actionMode.getItemsWidth() - dp(1) - dp(1) : 0);
         final int searchMenuWidth = dp(46);
-        final int width = /*isSearchFieldVisible ? searchMenuWidth :*/ (actionModeVisible ? actionMenuWidth : defaultMenuWidth);
+        // С открытым поиском меню-иконки скрыты, поэтому getItemsWidth() = 0 и стеклянная
+        // пилюля схлопывалась в ничто — поле поиска висело без фона. Пилюля должна обнимать
+        // сам контейнер поиска, а до его первого layout — стартовать с ширины иконки,
+        // чтобы раскрытие шло пружиной, а не скачком.
+        // Только для экранов без аватара в шапке: в чатах поиск раскрывается поверх своего
+        // заголовка, и там пилюлю трогать нельзя — иначе она наезжает на аватар.
+        final int searchFieldWidth = isSearchFieldVisible && menu != null && chatAvatarContainer == null
+                ? menu.getSearchItemWidth() : 0;
+        final int width = actionModeVisible
+                ? actionMenuWidth
+                : (isSearchFieldVisible
+                        ? (chatAvatarContainer == null ? Math.max(searchFieldWidth, searchMenuWidth) : 0)
+                        : defaultMenuWidth);
 
         animatorHasMenuItems.setValue(width > 0, isAnimationsAllowed);
         if (menuWidthSpring == null) {

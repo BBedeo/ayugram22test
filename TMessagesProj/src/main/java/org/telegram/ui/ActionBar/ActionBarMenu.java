@@ -746,6 +746,23 @@ public class ActionBarMenu extends LinearLayout {
         return width;
     }
 
+    /**
+     * Ширина раскрытого поля поиска: контейнер поиска добавляется в меню с weight = 1,
+     * поэтому его ширина и есть та ширина, которую должен обнимать glass-пилюля.
+     */
+    public int getSearchItemWidth() {
+        for (int a = 0, N = getChildCount(); a < N; a++) {
+            final View child = getChildAt(a);
+            if (child instanceof ActionBarMenuItem) {
+                final View searchContainer = ((ActionBarMenuItem) child).getSearchContainer();
+                if (searchContainer != null && searchContainer.getVisibility() == View.VISIBLE && searchContainer.getWidth() > 0) {
+                    return searchContainer.getWidth();
+                }
+            }
+        }
+        return 0;
+    }
+
     public int getItemsWidth() {
         float mLeft = Float.POSITIVE_INFINITY;
         float mRight = Float.NEGATIVE_INFINITY;
