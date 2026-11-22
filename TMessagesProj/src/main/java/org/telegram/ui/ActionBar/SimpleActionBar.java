@@ -3,6 +3,7 @@ package org.telegram.ui.ActionBar;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -29,6 +30,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -118,6 +122,15 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     private final BoolAnimator menuPressAnimator = new BoolAnimator(ANIMATOR_MENU_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
     private final BoolAnimator donePressAnimator = new BoolAnimator(ANIMATOR_DONE_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
     private final BoolAnimator titlePressAnimator = new BoolAnimator(ANIMATOR_TITLE_PRESSED, this, CubicBezierInterpolator.EASE_OUT_QUINT, 220, false);
+
+    private final FloatValueHolder titleRevealHolder = new FloatValueHolder(1f);
+    private SpringAnimation titleRevealSpring;
+    private float titleRevealTarget = 1f;
+
+    private final FloatValueHolder simpleTitleWidthHolder = new FloatValueHolder(0f);
+    private SpringAnimation simpleTitleWidthSpring;
+    private boolean simpleTitleWidthInitialized;
+    private float lastSimpleTitleWidthTarget = -1f;
 
     private ActionBar.ActionBarMenuOnItemClick actionBarMenuOnItemClick;
 
@@ -472,14 +485,78 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         super.dispatchDraw(canvas);
     }
 
+    private boolean canPlayJellySpring() {
+        return isAnimationsAllowed() && (android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled());
+    }
+
+    private float getStagedSearchProgress() {
+        final float s = getSearchFactor();
+        if (searchFieldVisible) {
+            // Let the title pill vanish out of the way before expanding the search pill.
+            return Utilities.clamp01((s - 0.30f) / 0.70f);
+        }
+        // Finish collapsing the search pill cleanly to the right (EASE_OUT_QUINT hits ~0.06 around halfway)
+        // before revealing the centered title pill out of nowhere.
+        return Utilities.clamp01((s - 0.06f) / 0.94f);
+    }
+
+    private float getStagedActionModeProgress() {
+        final float a = getActionModeFactor();
+        if (actionModeVisible) {
+            return Utilities.clamp01((a - 0.30f) / 0.70f);
+        }
+        return Utilities.clamp01((a - 0.06f) / 0.94f);
+    }
+
+    private void syncTitleRevealSpring(boolean animated) {
+        final float s = getSearchFactor();
+        final float a = getActionModeFactor();
+        final boolean closingSettled = !searchFieldVisible && !actionModeVisible && s <= 0.06f && a <= 0.06f;
+        final float desired = closingSettled ? 1f : 0f;
+        if (titleRevealSpring == null) {
+            titleRevealSpring = new SpringAnimation(titleRevealHolder, desired);
+            titleRevealSpring.setSpring(new SpringForce(desired)
+                    .setStiffness(280f)
+                    .setDampingRatio(0.46f));
+            titleRevealSpring.addUpdateListener((animation, value, velocity) -> applyFactors());
+        }
+        if (!animated || !canPlayJellySpring()) {
+            if (titleRevealTarget != desired || titleRevealSpring.isRunning()) {
+                titleRevealSpring.cancel();
+                titleRevealHolder.setValue(desired);
+                titleRevealTarget = desired;
+            }
+            return;
+        }
+        if (titleRevealTarget != desired) {
+            titleRevealTarget = desired;
+            if (desired > 0.5f) {
+                titleRevealSpring.getSpring().setStiffness(280f).setDampingRatio(0.46f);
+                titleRevealSpring.animateToFinalPosition(1f);
+            } else {
+                // Fast clean disappearance in place before search/action pill covers center.
+                titleRevealSpring.getSpring().setStiffness(480f).setDampingRatio(0.92f);
+                titleRevealSpring.animateToFinalPosition(0f);
+            }
+        }
+    }
+
+    private float getRestMenuPillLeft() {
+        final float menuWidth = menu != null && menu.getVisibility() != GONE ? menu.getPillWidth() : 0f;
+        if (menuWidth <= 0f) {
+            return getWidth() - dp(6);
+        }
+        final float right = getWidth() - dp(6) - getDoneButtonSpace(false);
+        return right - Math.max(menuWidth, dp(46));
+    }
+
     private float computeTitlePill(RectF rect) {
         if (!drawGlassTitle) {
             rect.setEmpty();
             return 0f;
         }
-        final float s = getSearchFactor();
-        final float a = getActionModeFactor();
-        final float baseAlpha = (1f - s) * (1f - a) * titlesAlpha;
+        final float reveal = titleRevealHolder.getValue();
+        final float baseAlpha = Utilities.clamp01(reveal / 0.42f) * titlesAlpha;
         if (baseAlpha <= 0.01f || titleLayout.getVisibility() != VISIBLE || titleLayout.getAlpha() <= 0.01f) {
             rect.setEmpty();
             return 0f;
@@ -527,8 +604,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         if (doneButton != null && doneButton.getVisibility() == VISIBLE && doneButton.getAlpha() > 0.05f) {
             safeRight = Math.min(safeRight, doneButton.getX() - gap);
         }
-        if (glassMenu != null && computeMenuPill(menuPillRect) > 0.05f && menuPillRect.width() > 0f) {
-            safeRight = Math.min(safeRight, menuPillRect.left - gap);
+        final float menuWidth = menu != null && menu.getVisibility() != GONE ? menu.getPillWidth() : 0f;
+        if (glassMenu != null && menuWidth > 0f) {
+            safeRight = Math.min(safeRight, getRestMenuPillLeft() - gap);
         }
         for (int i = 0, N = getChildCount(); i < N; i++) {
             final View child = getChildAt(i);
@@ -550,7 +628,24 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         final float minPillWidth = dp(46);
         final float hPad = dp(18);
         final float maxAllowed = Math.max(minPillWidth, safeRight - safeLeft);
-        final float pillWidth = Math.min(maxAllowed, Math.max(minPillWidth, contentWidth + hPad * 2f));
+        final float rawPillWidth = Math.min(maxAllowed, Math.max(minPillWidth, contentWidth + hPad * 2f));
+        if (simpleTitleWidthSpring == null) {
+            simpleTitleWidthSpring = new SpringAnimation(simpleTitleWidthHolder, rawPillWidth);
+            simpleTitleWidthSpring.setSpring(new SpringForce(rawPillWidth)
+                    .setStiffness(310f)
+                    .setDampingRatio(0.56f));
+            simpleTitleWidthSpring.addUpdateListener((animation, value, velocity) -> invalidate());
+        }
+        if (!simpleTitleWidthInitialized || !canPlayJellySpring() || reveal < 0.85f) {
+            simpleTitleWidthSpring.cancel();
+            simpleTitleWidthHolder.setValue(rawPillWidth);
+            lastSimpleTitleWidthTarget = rawPillWidth;
+            simpleTitleWidthInitialized = true;
+        } else if (Math.abs(rawPillWidth - lastSimpleTitleWidthTarget) > dp(1)) {
+            lastSimpleTitleWidthTarget = rawPillWidth;
+            simpleTitleWidthSpring.animateToFinalPosition(rawPillWidth);
+        }
+        final float pillWidth = Math.min(maxAllowed, Math.max(minPillWidth, simpleTitleWidthHolder.getValue()));
         final float centerX = titleLayout.getLeft() + titleLayout.getTranslationX()
                 + primaryTv.getLeft() + primaryTv.getWidth() * 0.5f + primaryTv.getTranslationX();
         float pillLeft = Math.round(centerX - pillWidth * 0.5f);
@@ -564,10 +659,11 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
 
         final float cy = getRowTop() + ActionBar.getCurrentActionBarHeight() * 0.5f;
         final float half = dp(23);
-        final float scale = Math.max(0.5f, titleLayout.getScaleX());
+        final float revealScaleX = lerp(0.32f, 1.0f, reveal);
+        final float revealScaleY = lerp(0.52f, 1.0f, reveal * 0.97f);
         final float cx = (pillLeft + pillRight) * 0.5f;
-        final float hw = (pillRight - pillLeft) * 0.5f * scale;
-        final float hh = half * scale;
+        final float hw = (pillRight - pillLeft) * 0.5f * revealScaleX;
+        final float hh = half * revealScaleY;
         rect.set(cx - hw, cy - hh, cx + hw, cy + hh);
         return Math.min(1f, baseAlpha * Math.min(1f, titleAlphaSum));
     }
@@ -588,8 +684,8 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         final int p = dp(6);
         final float half = dp(23);
         final float cy = getRowTop() + ActionBar.getCurrentActionBarHeight() / 2f;
-        final float s = getSearchFactor();
-        final float a = getActionModeFactor();
+        final float s = getStagedSearchProgress();
+        final float a = getStagedActionModeProgress();
         final float menuWidth = menu != null && menu.getVisibility() != GONE ? menu.getPillWidth() : 0;
         final float modeWidth = actionMode != null ? actionMode.getPillWidth() : 0;
         final float width;
@@ -668,7 +764,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
                 }
             }
         }
-        if (child == searchLayout && getSearchFactor() < 1f) {
+        if (child == searchLayout && getStagedSearchProgress() < 1f) {
             computeMenuPill(menuPillRect);
             canvas.save();
             canvas.clipRect(menuPillRect);
@@ -1280,7 +1376,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             AndroidUtilities.hideKeyboard(searchField);
         }
         actionModeAnimator.setValue(true, animated && isAnimationsAllowed());
-        applyFactors();
+        applyFactors(animated);
         backButton.setActionMode(true, animated && isAnimationsAllowed());
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors);
     }
@@ -1382,7 +1478,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             AndroidUtilities.showKeyboard(searchField);
         }
         searchAnimator.setValue(true, animated && isAnimationsAllowed());
-        applyFactors();
+        applyFactors(animated);
         if (listener != null) {
             listener.onSearchExpand();
         }
@@ -1596,15 +1692,26 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     }
 
     private void applyFactors() {
-        final float s = getSearchFactor();
-        final float a = getActionModeFactor();
+        applyFactors(true);
+    }
+
+    private void applyFactors(boolean animateTitleReveal) {
+        final float s = getStagedSearchProgress();
+        final float a = getStagedActionModeProgress();
         final float sk = s * (1f - a);
 
-        final float titleAlpha = (1f - s) * (1f - a) * titlesAlpha;
-        final float titleScale = lerp(1f, 0.94f, Math.max(s, a));
+        syncTitleRevealSpring(animateTitleReveal);
+        final float reveal = titleRevealHolder.getValue();
+        final float titleAlpha = Utilities.clamp01(reveal / 0.42f) * titlesAlpha;
+        final float titleScaleX = lerp(0.32f, 1f, reveal);
+        final float titleScaleY = lerp(0.52f, 1f, reveal * 0.97f);
+        if (titleLayout.getWidth() > 0 && titleLayout.getHeight() > 0) {
+            titleLayout.setPivotX(titleLayout.getWidth() * 0.5f);
+            titleLayout.setPivotY(titleLayout.getHeight() * 0.5f);
+        }
         setAlphaAndVisibility(titleLayout, titleAlpha);
-        titleLayout.setScaleX(titleScale);
-        titleLayout.setScaleY(titleScale);
+        titleLayout.setScaleX(titleScaleX);
+        titleLayout.setScaleY(titleScaleY);
 
         if (doneButton != null) {
             final float hide = (1f - s) * (1f - a);
@@ -1625,7 +1732,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             menu.setScaleY(scale);
         }
         // custom children (screen buttons, avatars) behave like the menu
-        final float customAlpha = (1f - s) * (1f - a);
+        final float customAlpha = Utilities.clamp01(reveal / 0.42f);
         for (int i = 0, N = getChildCount(); i < N; i++) {
             final View child = getChildAt(i);
             if (!isOwnChild(child) && child.getVisibility() != GONE) {
@@ -1649,7 +1756,8 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             actionModeSubtitle.setTranslationX(-dp(16) * (1f - a));
         }
         if (searchLayout != null) {
-            setAlphaAndVisibility(searchLayout, sk);
+            final float searchTextAlpha = searchFieldVisible ? Utilities.clamp01((sk - 0.16f) / 0.62f) : Utilities.clamp01(sk / 0.72f);
+            setAlphaAndVisibility(searchLayout, searchTextAlpha);
             computeMenuPill(menuPillRect);
             searchLayout.setTranslationX(Math.max(0, menuPillRect.left - getSearchPillLeft()));
         }

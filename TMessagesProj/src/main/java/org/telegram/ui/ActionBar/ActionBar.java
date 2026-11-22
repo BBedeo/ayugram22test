@@ -1596,6 +1596,42 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     Runnable backgroundUpdateListener;
     AnimatorSet searchVisibleAnimator;
+    private final ArrayList<SpringAnimation> searchRevealSprings = new ArrayList<>();
+    private Runnable searchRevealRunnable;
+
+    private void cancelSearchRevealAnimations() {
+        if (searchRevealRunnable != null) {
+            removeCallbacks(searchRevealRunnable);
+            searchRevealRunnable = null;
+        }
+        for (int i = 0; i < searchRevealSprings.size(); i++) {
+            searchRevealSprings.get(i).cancel();
+        }
+        searchRevealSprings.clear();
+    }
+
+    private void updateSearchTitlePivot(View view) {
+        final int w = view.getWidth();
+        final int h = view.getHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        if (view instanceof SimpleTextView) {
+            final SimpleTextView stv = (SimpleTextView) view;
+            final int textWidth = stv.getTextWidth();
+            final int hGravity = stv.getGravity() & Gravity.HORIZONTAL_GRAVITY_MASK;
+            final boolean isCentered = hGravity == Gravity.CENTER_HORIZONTAL || hGravity == Gravity.CENTER;
+            if (!isCentered && textWidth > 0 && textWidth < w) {
+                final float half = Math.min(w, textWidth) * 0.5f;
+                view.setPivotX(LocaleController.isRTL ? (w - half) : half);
+            } else {
+                view.setPivotX(w * 0.5f);
+            }
+        } else {
+            view.setPivotX(w * 0.5f);
+        }
+        view.setPivotY(h * 0.5f);
+    }
 
     public void listenToBackgroundUpdate(Runnable invalidate) {
         backgroundUpdateListener = invalidate;
@@ -1608,6 +1644,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     public void onSearchFieldVisibilityChanged(boolean visible) {
         isSearchFieldVisible = visible;
         checkMenuItemsWidth();
+        cancelSearchRevealAnimations();
         if (searchVisibleAnimator != null) {
             searchVisibleAnimator.cancel();
         }
@@ -1626,7 +1663,10 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
 
+        final boolean playJellyReveal = canPlayJellySpring() && isAttachedToWindow();
+
         ValueAnimator alphaUpdate = ValueAnimator.ofFloat(searchFieldVisibleAlpha, visible ? 1f : 0f);
+        alphaUpdate.setDuration(150);
         alphaUpdate.addUpdateListener(anm -> {
             searchFieldVisibleAlpha = (float) anm.getAnimatedValue();
 
@@ -1648,19 +1688,39 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
         for (int i = 0; i < viewsToHide.size(); i++) {
             View view = viewsToHide.get(i);
+            view.animate().cancel();
+            updateSearchTitlePivot(view);
             if (!visible) {
                 view.setVisibility(View.VISIBLE);
-                view.setAlpha(0);
-                view.setScaleX(0.95f);
-                view.setScaleY(0.95f);
+                view.setAlpha(0f);
+                if (playJellyReveal) {
+                    view.setScaleX(0.35f);
+                    view.setScaleY(0.52f);
+                } else {
+                    view.setScaleX(0.95f);
+                    view.setScaleY(0.95f);
+                    searchVisibleAnimator.playTogether(
+                        ObjectAnimator.ofFloat(view, View.ALPHA, 1f).setDuration(150),
+                        ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f).setDuration(150),
+                        ObjectAnimator.ofFloat(view, View.SCALE_X, 1f).setDuration(150)
+                    );
+                }
+            } else {
+                final long hideDur = playJellyReveal ? 95L : 150L;
+                final float endScaleX = playJellyReveal ? 0.62f : 0.95f;
+                final float endScaleY = playJellyReveal ? 0.72f : 0.95f;
+                ObjectAnimator scaleAnim = ObjectAnimator.ofFloat(view, View.SCALE_X, endScaleX).setDuration(hideDur);
+                scaleAnim.addUpdateListener(anm -> invalidate());
+                searchVisibleAnimator.playTogether(
+                    ObjectAnimator.ofFloat(view, View.ALPHA, 0f).setDuration(hideDur),
+                    ObjectAnimator.ofFloat(view, View.SCALE_Y, endScaleY).setDuration(hideDur),
+                    scaleAnim
+                );
             }
-            searchVisibleAnimator.playTogether(ObjectAnimator.ofFloat(view, View.ALPHA, visible ? 0f : 1f));
-            searchVisibleAnimator.playTogether(ObjectAnimator.ofFloat(view, View.SCALE_Y, visible ? 0.95f : 1f));
-            searchVisibleAnimator.playTogether(ObjectAnimator.ofFloat(view, View.SCALE_X, visible ? 0.95f : 1f));
         }
         if (avatarSearchImageView != null) {
             avatarSearchImageView.setVisibility(View.VISIBLE);
-            searchVisibleAnimator.playTogether(ObjectAnimator.ofFloat(avatarSearchImageView, View.ALPHA, visible ? 1f : 0f));
+            searchVisibleAnimator.playTogether(ObjectAnimator.ofFloat(avatarSearchImageView, View.ALPHA, visible ? 1f : 0f).setDuration(150));
         }
         centerScale = true;
         requestLayout();
@@ -1672,8 +1732,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     if (visible) {
                         view.setVisibility(View.INVISIBLE);
                         view.setAlpha(0);
-                    } else {
+                        view.setScaleX(1f);
+                        view.setScaleY(1f);
+                    } else if (!playJellyReveal) {
                         view.setAlpha(1f);
+                        view.setScaleX(1f);
+                        view.setScaleY(1f);
                     }
                 }
 
@@ -1694,7 +1758,36 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         });
 
-        searchVisibleAnimator.setDuration(150).start();
+        searchVisibleAnimator.start();
+
+        if (!visible && playJellyReveal && !viewsToHide.isEmpty()) {
+            searchRevealRunnable = () -> {
+                searchRevealRunnable = null;
+                if (isSearchFieldVisible || !isAttachedToWindow()) {
+                    return;
+                }
+                for (int i = 0; i < viewsToHide.size(); i++) {
+                    final View view = viewsToHide.get(i);
+                    view.setVisibility(View.VISIBLE);
+                    updateSearchTitlePivot(view);
+                    view.animate().alpha(1f).setDuration(120).start();
+                    final FloatValueHolder revealHolder = new FloatValueHolder(0.35f);
+                    final SpringAnimation revealSpring = new SpringAnimation(revealHolder, 1f);
+                    revealSpring.setSpring(new SpringForce(1f)
+                            .setStiffness(285f)
+                            .setDampingRatio(0.47f));
+                    revealSpring.addUpdateListener((animation, value, velocity) -> {
+                        view.setScaleX(value);
+                        view.setScaleY(lerp(0.52f, 1f, (value - 0.35f) / 0.65f));
+                        invalidate();
+                    });
+                    searchRevealSprings.add(revealSpring);
+                    revealSpring.start();
+                }
+                kickTitlePillJelly(1f);
+            };
+            postDelayed(searchRevealRunnable, 110);
+        }
 
         if (backButtonImageView != null) {
             Drawable drawable = backButtonImageView.getDrawable();
@@ -2712,6 +2805,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        cancelSearchRevealAnimations();
         attached = false;
         updateAttachState();
         if (actionModeVisible) {
@@ -3066,7 +3160,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     .setDampingRatio(PILL_WIDTH_SPRING_DAMPING));
             compactPillWidthSpring.addUpdateListener((animation, value, velocity) -> invalidate());
         }
-        if (!compactPillWidthInitialized || !isAttachedToWindow() || !canPlayJellySpring()) {
+        if (!compactPillWidthInitialized || !isAttachedToWindow() || !canPlayJellySpring() || tv.getScaleX() < 0.85f) {
             compactPillWidthSpring.cancel();
             compactPillWidthSpringHolder.setValue(rawTargetWidth);
             lastCompactPillTarget = rawTargetWidth;
@@ -3116,6 +3210,27 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
 
         glassTitleRestRect.set(pillLeft, t, pillRight, b);
+        final float revealScaleX = Math.max(0.25f, tv.getScaleX());
+        final float revealScaleY = Math.max(0.40f, tv.getScaleY());
+        final int drawLeft;
+        final int drawTop;
+        final int drawRight;
+        final int drawBottom;
+        if (Math.abs(revealScaleX - 1f) > 0.002f || Math.abs(revealScaleY - 1f) > 0.002f) {
+            final float cx = (pillLeft + pillRight) * 0.5f;
+            final float cy = (t + b) * 0.5f;
+            final float hw = (pillRight - pillLeft) * 0.5f * revealScaleX;
+            final float hh = (b - t) * 0.5f * revealScaleY;
+            drawLeft = Math.round(cx - hw);
+            drawTop = Math.round(cy - hh);
+            drawRight = Math.round(cx + hw);
+            drawBottom = Math.round(cy + hh);
+        } else {
+            drawLeft = pillLeft;
+            drawTop = t;
+            drawRight = pillRight;
+            drawBottom = b;
+        }
         final float titlePress = (headerGlassLens && LiquidGlassTuning.motionEnabled())
                 ? animatorTitleGlassPressed.getFloatValue()
                 : 0f;
@@ -3124,7 +3239,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int jellyX = Math.round(dp(3.0f) * titleJelly);
         final int jellyY = Math.round(-dp(1.4f) * titleJelly);
         glassDrawable.setAlpha(alphaInt);
-        glassDrawable.setBounds(pillLeft - swell - jellyX, t - swell - jellyY, pillRight + swell + jellyX, b + swell + jellyY);
+        glassDrawable.setBounds(drawLeft - swell - jellyX, drawTop - swell - jellyY, drawRight + swell + jellyX, drawBottom + swell + jellyY);
         if (headerGlassLens) {
             glassDrawable.setElasticPressProgress(titlePress * 0.85f);
         }
@@ -3363,12 +3478,34 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 int titleWidth = (int) Math.ceil(titleTextView[0].getTextWidth()) + p * 2 + dp(48);
                 int titleLeft = (getWidth() - titleWidth) / 2 + Math.round(titleTextView[0].getTranslationX());
                 glassTitleRestRect.set(titleLeft, t, titleLeft + titleWidth, b);
+                final float revealScaleX = Math.max(0.25f, titleTextView[0].getScaleX());
+                final float revealScaleY = Math.max(0.40f, titleTextView[0].getScaleY());
+                final int drawLeft;
+                final int drawTop;
+                final int drawRight;
+                final int drawBottom;
+                if (Math.abs(revealScaleX - 1f) > 0.002f || Math.abs(revealScaleY - 1f) > 0.002f) {
+                    final float cx = titleLeft + titleWidth * 0.5f;
+                    final float cy = (t + b) * 0.5f;
+                    final float hw = titleWidth * 0.5f * revealScaleX;
+                    final float hh = (b - t) * 0.5f * revealScaleY;
+                    drawLeft = Math.round(cx - hw);
+                    drawTop = Math.round(cy - hh);
+                    drawRight = Math.round(cx + hw);
+                    drawBottom = Math.round(cy + hh);
+                } else {
+                    drawLeft = titleLeft;
+                    drawTop = t;
+                    drawRight = titleLeft + titleWidth;
+                    drawBottom = b;
+                }
                 final float titlePress = (headerGlassLens && motionEnabled) ? animatorTitleGlassPressed.getFloatValue() : 0f;
                 final float titleJelly = getTitlePillJellyValue();
                 final int swell = Math.round(dp(2.2f) * titlePress);
                 final int jellyX = Math.round(dp(3.0f) * titleJelly);
                 final int jellyY = Math.round(-dp(1.4f) * titleJelly);
-                glassDrawable.setBounds(titleLeft - swell - jellyX, t - swell - jellyY, titleLeft + titleWidth + swell + jellyX, b + swell + jellyY);
+                glassDrawable.setAlpha(Math.round(255 * Math.max(0f, Math.min(1f, titleTextView[0].getAlpha()))));
+                glassDrawable.setBounds(drawLeft - swell - jellyX, drawTop - swell - jellyY, drawRight + swell + jellyX, drawBottom + swell + jellyY);
                 if (headerGlassLens) {
                     glassDrawable.setElasticPressProgress(titlePress * 0.85f);
                 }
