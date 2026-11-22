@@ -1187,7 +1187,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 }
             }
             super.dispatchDraw(canvas);
-            if (!shouldUseDialogsHeaderGlass() || progressToActionMode > 0f) {
+            if (!shouldUseDialogsHeaderGlass() && !isMaterial3OpaqueHeader()) {
                 drawHeaderShadow(canvas, top + actionBarHeight);
             }
 
@@ -1823,6 +1823,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         Paint paint = new Paint();
         RectF rectF = new RectF();
+        private final RectF cardClipRect = new RectF();
+        private final Path cardClipPath = new Path();
+        private final float[] cardClipRadii = new float[8];
         private RecyclerListView animationSupportListView;
         LongSparseArray<View> animationSupportViewsByDialogId;
         private Paint selectorPaint;
@@ -2094,6 +2097,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
 
             if (drawMovingViewsOverlayed()) {
+                final boolean segmented = app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled();
                 paint.setColor(getThemedColor(app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()
                         ? Theme.key_windowBackgroundGray
                         : Theme.key_windowBackgroundWhite));
@@ -2112,7 +2116,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                 canvas.save();
                             }
                             canvas.translate(view.getX(), view.getY());
-                            canvas.drawRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), paint);
+                            if (segmented && view instanceof DialogCell
+                                    && app.exteraless.appearance.SegmentedDialogsDecoration.getCardRadiiForChild(this, view, cardClipRadii)) {
+                                final DialogCell cell = (DialogCell) view;
+                                cardClipRect.set(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+                                cardClipPath.reset();
+                                cardClipPath.addRoundRect(cardClipRect, cardClipRadii, Path.Direction.CW);
+                                canvas.clipPath(cardClipPath);
+                                paint.setColor((cell.getIsPinned() && !cell.isFolderCell())
+                                        ? app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(resourceProvider)
+                                        : app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourceProvider));
+                                canvas.drawPath(cardClipPath, paint);
+                            } else {
+                                canvas.drawRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), paint);
+                            }
                             view.draw(canvas);
                             canvas.restore();
                         }
@@ -2140,6 +2157,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         private boolean drawMovingViewsOverlayed() {
             return getItemAnimator() != null && getItemAnimator().isRunning();
+        }
+
+        @Override
+        protected boolean hasCustomChildClip() {
+            return app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled();
+        }
+
+        @Override
+        protected void clipCustomChild(Canvas canvas, View child) {
+            app.exteraless.appearance.SegmentedDialogsDecoration.clipChildToCard(
+                    canvas, this, child, cardClipRect, cardClipPath, cardClipRadii);
         }
 
         @Override
@@ -2562,7 +2590,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         return 0;
                     }
                     movingView = (DialogCell) viewHolder.itemView;
-                    ThemeBind.backgroundColor(movingView, Theme.key_windowBackgroundWhite, DialogsActivity.this.getResourceProvider());
+                    if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+                        ThemeBind.clear(movingView);
+                        final GradientDrawable dragBg = new GradientDrawable();
+                        dragBg.setColor(app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(DialogsActivity.this.getResourceProvider()));
+                        dragBg.setCornerRadius(app.exteraless.appearance.SegmentedDialogsDecoration.getOuterRadiusPx());
+                        final int strokeColor = app.exteraless.appearance.M3SurfaceHelper.getOutlineVariantColor(DialogsActivity.this.getResourceProvider());
+                        dragBg.setStroke(dp(0.8f), Theme.multAlpha(strokeColor, 0.7f));
+                        movingView.setBackgroundDrawable(dragBg);
+                        movingView.setElevation(dp(8));
+                    } else {
+                        ThemeBind.backgroundColor(movingView, Theme.key_windowBackgroundWhite, DialogsActivity.this.getResourceProvider());
+                    }
                     swipeFolderBack = false;
                     return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
                 } else {
@@ -2803,11 +2842,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else if (animationType == ItemTouchHelper.ANIMATION_TYPE_DRAG) {
                 if (movingView != null) {
                     View view = movingView;
-                    AndroidUtilities.runOnUIThread(() -> view.setBackgroundDrawable(null), parentPage.dialogsItemAnimator.getMoveDuration());
+                    AndroidUtilities.runOnUIThread(() -> {
+                        view.setBackgroundDrawable(null);
+                        view.setElevation(0f);
+                    }, parentPage.dialogsItemAnimator.getMoveDuration());
                     movingView = null;
                 }
             }
             return super.getAnimationDuration(recyclerView, animationType, animateDx, animateDy);
+        }
+
+        @Override
+        public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+            super.clearView(recyclerView, viewHolder);
+            viewHolder.itemView.setElevation(0f);
+            if (viewHolder.itemView != movingView) {
+                viewHolder.itemView.setBackgroundDrawable(null);
+            }
         }
 
         @Override
@@ -7058,8 +7109,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             return;
         }
         final ActionBarMenu actionMode = actionBar.createActionMode(false, tag);
-        // actionMode.setBackgroundColor(Color.TRANSPARENT);
-        // actionMode.drawBlur = false;
+        final boolean styledHeaderMode = shouldUseDialogsHeaderGlass() || isMaterial3OpaqueHeader();
+        final int actionIconColorKey = styledHeaderMode
+                ? Theme.key_windowBackgroundWhiteBlackText
+                : Theme.key_actionBarActionModeDefaultIcon;
 
         // При своей шторке слева уже есть бургер/стрелка.
         actionModeCloseView = null;
@@ -7067,19 +7120,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             actionModeCloseView = new ImageView(getContext());
             actionModeCloseView.setScaleType(ImageView.ScaleType.CENTER);
             actionModeCloseView.setImageDrawable(new BackDrawable(true));
-            ThemeBind.colorFilter(actionModeCloseView, Theme.key_actionBarActionModeDefaultIcon, getResourceProvider(), PorterDuff.Mode.MULTIPLY);
+            ThemeBind.colorFilter(actionModeCloseView, actionIconColorKey, getResourceProvider(), PorterDuff.Mode.MULTIPLY);
             ThemeBind.selectorBackground(actionModeCloseView, Theme.createSelectorDrawable(getThemedColor(Theme.key_actionBarActionModeDefaultSelector)), null, ThemeBind.of(Theme.key_actionBarActionModeDefaultSelector), getResourceProvider());
             actionModeCloseView.setOnClickListener(v -> hideActionMode(true));
-            actionMode.addView(actionModeCloseView, LayoutHelper.createLinear(54, 54, Gravity.CENTER_VERTICAL));
+            actionMode.addView(actionModeCloseView, LayoutHelper.createLinear(54, 54, Gravity.CENTER_VERTICAL, styledHeaderMode ? 2 : 0, 0, 0, 0));
             actionModeViews.add(actionModeCloseView);
         }
 
         selectedDialogsCountTextView = new NumberTextView(actionMode.getContext());
         selectedDialogsCountTextView.setTextSize(18);
         selectedDialogsCountTextView.setTypeface(AndroidUtilities.bold());
-        selectedDialogsCountTextView.setTextColor(getThemedColor(Theme.key_actionBarActionModeDefaultIcon));
-        actionMode.addView(selectedDialogsCountTextView, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1.0f, actionModeCloseView != null ? 18 : 72, 0, 0, 0));
+        selectedDialogsCountTextView.setTextColor(getThemedColor(actionIconColorKey));
+        actionMode.addView(selectedDialogsCountTextView, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1.0f, actionModeCloseView != null ? 14 : 72, 0, 0, 0));
         selectedDialogsCountTextView.setOnTouchListener((v, event) -> true);
+
+        if (styledHeaderMode) {
+            actionBar.setItemsColor(getThemedColor(actionIconColorKey), true);
+        }
 
         pinItem = actionMode.addItemWithWidth(pin, R.drawable.msg_pin, dp(48));
         muteItem = actionMode.addItemWithWidth(mute, R.drawable.msg_mute, dp(48));
@@ -10556,7 +10613,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 createActionMode(null);
             }
             AndroidUtilities.hideKeyboard(fragmentView.findFocus());
-            actionBar.setActionModeOverrideColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            if (!shouldUseDialogsHeaderGlass() && !isMaterial3OpaqueHeader()) {
+                actionBar.setActionModeOverrideColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            } else {
+                actionBar.setItemsColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), true);
+            }
             actionBar.showActionMode();
             if (getPinnedCount() > 1) {
                 if (viewPages != null) {
@@ -10634,7 +10695,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             actionBarColorAnimator.start();
 
             if (filterTabsView != null) {
-                filterTabsView.animateColorsTo(Theme.key_profile_tabSelectedLine, Theme.key_profile_tabSelectedText, Theme.key_profile_tabText, Theme.key_profile_tabSelector, Theme.key_actionBarActionModeDefault);
+                filterTabsView.animateColorsTo(
+                        Theme.key_profile_tabSelectedLine,
+                        Theme.key_profile_tabSelectedText,
+                        Theme.key_profile_tabText,
+                        Theme.key_profile_tabSelector,
+                        (shouldUseDialogsHeaderGlass() || isMaterial3OpaqueHeader())
+                                ? Theme.key_windowBackgroundWhite
+                                : Theme.key_actionBarActionModeDefault);
             }
             if (backDrawable != null) {
                 backDrawable.setRotation(1, true);
@@ -15126,7 +15194,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 commentView.getEditField().setCursorColor(getThemedColor(Theme.key_chat_messagePanelCursor));
             }
             if (selectedDialogsCountTextView != null) {
-                selectedDialogsCountTextView.setTextColor(getThemedColor(Theme.key_actionBarActionModeDefaultIcon));
+                selectedDialogsCountTextView.setTextColor(getThemedColor((shouldUseDialogsHeaderGlass() || isMaterial3OpaqueHeader())
+                        ? Theme.key_windowBackgroundWhiteBlackText
+                        : Theme.key_actionBarActionModeDefaultIcon));
             }
             if (filterTabsView != null && filterTabsView.getSelectorDrawable() instanceof GradientDrawable) {
                 final boolean actionMode = actionBar != null && actionBar.isActionModeShowed();
@@ -15139,7 +15209,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     actionBar.setSearchTextColor(getThemedColor(Theme.key_actionBarDefaultArchivedSearchPlaceholder), true);
                 }
                 if (actionBar.isActionModeShowed()) {
-                    actionBar.setActionModeOverrideColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    if (!shouldUseDialogsHeaderGlass() && !isMaterial3OpaqueHeader()) {
+                actionBar.setActionModeOverrideColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            } else {
+                actionBar.setItemsColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), true);
+            }
                 }
                 // items colors are lerped by the search progress: re-apply them over the plain key bindings
                 updateSearchActionBarItemsColors();

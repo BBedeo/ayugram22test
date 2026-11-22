@@ -4247,7 +4247,17 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             gtx += translationX;
         }
 
-        float cornersRadius = dp(8) * cornerProgress;
+        final boolean segmented = app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled();
+        if (segmented && checkBox != null && checkBox.getProgress() > 0f && !isSelected) {
+            rect.set(0, 0, getMeasuredWidth(), getMeasuredHeight());
+            Theme.dialogs_pinnedPaint.setColor(Theme.multAlpha(
+                    app.exteraless.appearance.M3SurfaceHelper.getSelectedCardOverlayColor(resourcesProvider),
+                    checkBox.getProgress()));
+            canvas.drawRect(rect, Theme.dialogs_pinnedPaint);
+        }
+        float cornersRadius = segmented
+                ? app.exteraless.appearance.SegmentedDialogsDecoration.getOuterRadiusPx()
+                : dp(8) * cornerProgress;
         if (isSelected) {
             rect.set(0, 0, getMeasuredWidth(), AndroidUtilities.lerp(getMeasuredHeight(), getCollapsedHeight(), rightFragmentOpenedProgress));
             rect.offset(0, -translateY + collapseOffset);
@@ -4292,7 +4302,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             if (translationX != 0 || cornerProgress != 0.0f) {
                 canvas.save();
 
-                Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+                Theme.dialogs_pinnedPaint.setColor(getEffectiveCardBackgroundColor());
                 rect.set(getMeasuredWidth() - dp(64), 0, getMeasuredWidth(), getMeasuredHeight());
                 rect.offset(0, -translateY);
                 canvas.drawRoundRect(rect, cornersRadius, cornersRadius, Theme.dialogs_pinnedPaint);
@@ -4775,7 +4785,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     reorderGradientPaint.setAlpha((int) (reorderIconProgress * 255));
                     canvas.save();
                     canvas.translate(pinLeft - dp(24), pinTop);
-                    canvas.drawRect(0, 0, getMeasuredWidth() - (pinLeft - dp(24)), dp(24), reorderGradientPaint);
+                    final float gradEnd = Math.min(getMeasuredWidth() - (pinLeft - dp(24)),
+                            Theme.dialogs_reorderDrawable.getIntrinsicWidth() + dp(28));
+                    canvas.drawRect(0, 0, gradEnd, dp(24), reorderGradientPaint);
                     canvas.restore();
                 }
 
@@ -5010,7 +5022,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 canvas.drawCircle(
                     communityArrowDrawable.getBounds().exactCenterX(),
                     communityArrowDrawable.getBounds().exactCenterY(),
-                    dp(8), Theme.fillingPaint(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider)));
+                    dp(8), Theme.fillingPaint(getEffectiveCardBackgroundColor()));
 
                 communityArrowDrawable.draw(canvas);
             }
@@ -5078,7 +5090,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             if (Build.VERSION.SDK_INT != 24) {
                 canvas.restore();
             } else {
-                Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+                Theme.dialogs_pinnedPaint.setColor(getEffectiveCardBackgroundColor());
                 canvas.drawRect(0, 0, getMeasuredWidth(), topClip * clipProgress, Theme.dialogs_pinnedPaint);
                 canvas.drawRect(0, getMeasuredHeight() - (int) (bottomClip * clipProgress), getMeasuredWidth(), getMeasuredHeight(), Theme.dialogs_pinnedPaint);
             }
@@ -5086,7 +5098,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
         if (clipArchive) {
             final int cy = (int) (getMeasuredHeight() * (1f - archivePullProgress));
-            final int color = Theme.getColor(Theme.key_windowBackgroundWhite);
+            final int color = getEffectiveCardBackgroundColor();
             if (archiveFadeGradientDrawable == null) {
                 archiveFadeGradientDrawable = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, null);
             }
@@ -5208,10 +5220,19 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     }
 
 
+    private int getEffectiveCardBackgroundColor() {
+        if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+            return (getIsPinned() && !isFolderCell())
+                    ? app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(resourcesProvider)
+                    : app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourcesProvider);
+        }
+        return Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+    }
+
     private int reorderGradientLastColor;
     private Paint reorderGradientPaint;
     private Paint getPaintReorderGradient() {
-        final int color = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+        final int color = getEffectiveCardBackgroundColor();
         if (reorderGradientLastColor != color || reorderGradientPaint == null) {
             reorderGradientLastColor = color;
 
@@ -5242,7 +5263,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             if (starBg == null) {
                 starBg = getContext().getResources().getDrawable(R.drawable.star_small_outline).mutate();
             }
-            final int bg = Theme.getColor(Theme.key_windowBackgroundWhite);
+            final int bg = getEffectiveCardBackgroundColor();
             if (starBgColor != bg) {
                 starBg.setColorFilter(new PorterDuffColorFilter(starBgColor = bg, PorterDuff.Mode.SRC_IN));
             }
@@ -5267,7 +5288,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             float left = avatarImage.getCenterX() + dp(18);
 
             canvas.save();
-            Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+            Theme.dialogs_onlineCirclePaint.setColor(getEffectiveCardBackgroundColor());
             canvas.drawCircle(left, top, dp(10 + 1.33f) * lockT, Theme.dialogs_onlineCirclePaint);
             if (premiumGradient == null) {
                 premiumGradient = new PremiumGradient.PremiumGradientTools(Theme.key_premiumGradient1, Theme.key_premiumGradient2, -1, -1, -1, resourcesProvider);
@@ -5364,7 +5385,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                         left = (int) (storyParams.originalAvatarRect.right - dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 10 : 6));
                     }
 
-                    Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+                    Theme.dialogs_onlineCirclePaint.setColor(getEffectiveCardBackgroundColor());
                     canvas.drawCircle(left, top, dp(7) * onlineProgress, Theme.dialogs_onlineCirclePaint);
                     Theme.dialogs_onlineCirclePaint.setColor(onlineColor);
                     canvas.drawCircle(left, top, dp(5) * onlineProgress, Theme.dialogs_onlineCirclePaint);
@@ -5403,11 +5424,11 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                         float scale = 1f - rightFragmentOpenedProgress;
                         canvas.scale(scale, scale, left, top);
                     }
-                    Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+                    Theme.dialogs_onlineCirclePaint.setColor(getEffectiveCardBackgroundColor());
                     canvas.drawCircle(left, top, dp(11) * chatCallProgress * checkProgress, Theme.dialogs_onlineCirclePaint);
                     Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_chats_onlineCircle, resourcesProvider));
                     canvas.drawCircle(left, top, dp(9) * chatCallProgress * checkProgress, Theme.dialogs_onlineCirclePaint);
-                    Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+                    Theme.dialogs_onlineCirclePaint.setColor(getEffectiveCardBackgroundColor());
 
                     float size1;
                     float size2;
@@ -5524,7 +5545,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 int color = Theme.getColor(Theme.key_chats_pinnedOverlay);
                 counterPaintOutline.setColor(ColorUtils.blendARGB(
-                        Theme.getColor(Theme.key_windowBackgroundWhite),
+                        getEffectiveCardBackgroundColor(),
                         ColorUtils.setAlphaComponent(color, 255),
                         Color.alpha(color) / 255f
                 ));

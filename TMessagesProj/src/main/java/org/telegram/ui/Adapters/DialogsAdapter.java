@@ -799,11 +799,15 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
                 break;
             case VIEW_TYPE_SHADOW: {
                 view = new ShadowSectionCell(mContext);
-                Drawable drawable = Theme.getThemedDrawableByKey(mContext, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow);
-                CombinedDrawable combinedDrawable = new CombinedDrawable(new ColorDrawable(Theme.getColor(Theme.key_windowBackgroundGray)), drawable);
-                combinedDrawable.setFullsize(true);
-                view.setBackgroundDrawable(combinedDrawable);
-                bindShadowBackground(view, drawable);
+                if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+                    view.setBackgroundColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(null));
+                } else {
+                    Drawable drawable = Theme.getThemedDrawableByKey(mContext, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow);
+                    CombinedDrawable combinedDrawable = new CombinedDrawable(new ColorDrawable(Theme.getColor(Theme.key_windowBackgroundGray)), drawable);
+                    combinedDrawable.setFullsize(true);
+                    view.setBackgroundDrawable(combinedDrawable);
+                    bindShadowBackground(view, drawable);
+                }
                 break;
             }
             case VIEW_TYPE_ARCHIVE_FULLSCREEN:

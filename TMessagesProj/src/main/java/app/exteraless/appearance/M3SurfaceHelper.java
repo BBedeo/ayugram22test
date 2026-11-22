@@ -144,6 +144,23 @@ public final class M3SurfaceHelper {
                 255);
     }
 
+    /** Opaque Material 3 Contextual Action Bar ({@code ActionMode}) tonal surface. */
+    public static int getActionModeBarColor(@Nullable Theme.ResourcesProvider resourcesProvider) {
+        final int top = getTopBarColor(resourcesProvider, true);
+        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+        final boolean dark = isDark(resourcesProvider);
+        return ColorUtils.setAlphaComponent(
+                ColorUtils.blendARGB(top, accent, dark ? 0.14f : 0.09f),
+                255);
+    }
+
+    /** Subtle tonal highlight overlay for selected cards in segmented/ActionMode lists. */
+    public static int getSelectedCardOverlayColor(@Nullable Theme.ResourcesProvider resourcesProvider) {
+        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+        final boolean dark = isDark(resourcesProvider);
+        return ColorUtils.setAlphaComponent(accent, dark ? 34 : 22);
+    }
+
     private static boolean isNearBlack(int color) {
         return Color.red(color) < 16 && Color.green(color) < 16 && Color.blue(color) < 16;
     }

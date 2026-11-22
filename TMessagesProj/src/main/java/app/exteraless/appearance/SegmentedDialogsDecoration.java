@@ -182,7 +182,7 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
             borderPaint.setColor(isDark ? 0x10FFFFFF : 0x0C000000);
         }
 
-        final float outerR = dp(Math.max(4, AppearanceConfig.sectionRadius()));
+        final float outerR = getOuterRadiusPx();
         final float innerR = Math.min(outerR, dp(4));
 
         final int count = parent.getChildCount();
@@ -204,23 +204,30 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
                     ? ((DialogsAdapter) adapter).isDialogPinnedAt(pos)
                     : cell.getIsPinned());
 
-            final boolean isFirst = !isSameCluster(parent, adapter, pos, pos - 1, currType, currPinned, currFolder);
-            final boolean isLast = !isSameCluster(parent, adapter, pos, pos + 1, currType, currPinned, currFolder);
+            final boolean isDragged = child.getTranslationZ() > 0f && child.getBackground() != null;
+            if (!isDragged) {
+                final boolean isFirst = !isSameCluster(parent, adapter, pos, pos - 1, currType, currPinned, currFolder);
+                final boolean isLast = !isSameCluster(parent, adapter, pos, pos + 1, currType, currPinned, currFolder);
 
-            final float topR = isFirst ? outerR : innerR;
-            final float botR = isLast ? outerR : innerR;
-            radii[0] = radii[1] = radii[2] = radii[3] = topR;
-            radii[4] = radii[5] = radii[6] = radii[7] = botR;
+                final float topR = isFirst ? outerR : innerR;
+                final float botR = isLast ? outerR : innerR;
+                radii[0] = radii[1] = radii[2] = radii[3] = topR;
+                radii[4] = radii[5] = radii[6] = radii[7] = botR;
 
-            final float tx = child.getTranslationX();
-            final float ty = child.getTranslationY();
-            cardRect.set(child.getLeft() + tx, child.getTop() + ty, child.getRight() + tx, child.getBottom() + ty);
+                final float tx = child.getTranslationX();
+                final float ty = child.getTranslationY();
+                cardRect.set(child.getLeft() + tx, child.getTop() + ty, child.getRight() + tx, child.getBottom() + ty);
 
-            cardPath.reset();
-            cardPath.addRoundRect(cardRect, radii, Path.Direction.CW);
-            c.drawPath(cardPath, currPinned ? pinnedPaint : cardPaint);
-            if (borderPaint.getColor() != 0) {
-                c.drawPath(cardPath, borderPaint);
+                cardPath.reset();
+                cardPath.addRoundRect(cardRect, radii, Path.Direction.CW);
+                c.drawPath(cardPath, currPinned ? pinnedPaint : cardPaint);
+                if (borderPaint.getColor() != 0) {
+                    c.drawPath(cardPath, borderPaint);
+                }
+            } else {
+                final float tx = child.getTranslationX();
+                final float ty = child.getTranslationY();
+                cardRect.set(child.getLeft() + tx, child.getTop() + ty, child.getRight() + tx, child.getBottom() + ty);
             }
             if (!currFolder && hasClusterHeader(parent, adapter, pos, currType, currPinned)) {
                 headerPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader, resourcesProvider));
@@ -230,5 +237,52 @@ public class SegmentedDialogsDecoration extends RecyclerView.ItemDecoration {
                 c.drawText(title, cardRect.left + dp(14), cardRect.top - dp(7), headerPaint);
             }
         }
+    }
+
+    public static float getOuterRadiusPx() {
+        return dp(Math.max(4, AppearanceConfig.sectionRadius()));
+    }
+
+    public static boolean getCardRadiiForChild(RecyclerView parent, View child, float[] outRadii) {
+        if (!AppearanceConfig.isSegmentedDialogsEnabled() || !(child instanceof DialogCell) || outRadii == null || outRadii.length < 8) {
+            return false;
+        }
+        final float outerR = getOuterRadiusPx();
+        final float innerR = Math.min(outerR, dp(4));
+        float topR = outerR;
+        float botR = outerR;
+
+        final RecyclerView.Adapter<?> adapter = parent != null ? parent.getAdapter() : null;
+        final int pos = parent != null ? parent.getChildAdapterPosition(child) : RecyclerView.NO_POSITION;
+        if (adapter != null && pos != RecyclerView.NO_POSITION && child.getTranslationZ() <= 0f) {
+            final DialogCell cell = (DialogCell) child;
+            final int currType = adapter.getItemViewType(pos);
+            final boolean currFolder = adapter instanceof DialogsAdapter
+                    ? ((DialogsAdapter) adapter).isDialogFolderAt(pos)
+                    : cell.isFolderCell();
+            final boolean currPinned = !currFolder && (adapter instanceof DialogsAdapter
+                    ? ((DialogsAdapter) adapter).isDialogPinnedAt(pos)
+                    : cell.getIsPinned());
+            final boolean isFirst = !isSameCluster(parent, adapter, pos, pos - 1, currType, currPinned, currFolder);
+            final boolean isLast = !isSameCluster(parent, adapter, pos, pos + 1, currType, currPinned, currFolder);
+            topR = isFirst ? outerR : innerR;
+            botR = isLast ? outerR : innerR;
+        }
+        outRadii[0] = outRadii[1] = outRadii[2] = outRadii[3] = topR;
+        outRadii[4] = outRadii[5] = outRadii[6] = outRadii[7] = botR;
+        return true;
+    }
+
+    public static boolean clipChildToCard(Canvas canvas, RecyclerView parent, View child, RectF tmpRect, Path tmpPath, float[] tmpRadii) {
+        if (!getCardRadiiForChild(parent, child, tmpRadii)) {
+            return false;
+        }
+        final float tx = child.getTranslationX();
+        final float ty = child.getTranslationY();
+        tmpRect.set(child.getLeft() + tx, child.getTop() + ty, child.getRight() + tx, child.getBottom() + ty);
+        tmpPath.reset();
+        tmpPath.addRoundRect(tmpRect, tmpRadii, Path.Direction.CW);
+        canvas.clipPath(tmpPath);
+        return true;
     }
 }

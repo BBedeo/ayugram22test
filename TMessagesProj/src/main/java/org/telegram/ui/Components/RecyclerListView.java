@@ -2730,10 +2730,22 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         canvas.restore();
     }
 
+    protected boolean hasCustomChildClip() {
+        return false;
+    }
+
+    protected void clipCustomChild(Canvas canvas, View child) {
+    }
+
     private void drawSelector(Canvas canvas) {
         if (sectionsItemDecoration != null) {
             canvas.save();
             clipChild(canvas, selectorView);
+            selectorDrawable.draw(canvas);
+            canvas.restore();
+        } else if (hasCustomChildClip() && selectorView != null) {
+            canvas.save();
+            clipCustomChild(canvas, selectorView);
             selectorDrawable.draw(canvas);
             canvas.restore();
         } else {
@@ -2748,6 +2760,12 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         if (sectionsItemDecoration != null && !ignoreClipChild) {
             canvas.save();
             clipChild(canvas, child);
+            boolean r = super.drawChild(canvas, child, drawingTime);
+            canvas.restore();
+            return r;
+        } else if (hasCustomChildClip() && !ignoreClipChild) {
+            canvas.save();
+            clipCustomChild(canvas, child);
             boolean r = super.drawChild(canvas, child, drawingTime);
             canvas.restore();
             return r;

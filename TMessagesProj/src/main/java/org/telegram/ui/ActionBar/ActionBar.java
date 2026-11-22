@@ -114,6 +114,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private boolean drawGlassMiddlePill = true;
     private BlurredBackgroundDrawable glassDrawableBack;
     private BlurredBackgroundDrawable glassDrawableMenu;
+    private BlurredBackgroundDrawable glassDrawableActionLeft;
+    private BlurredBackgroundDrawable glassDrawableActionRight;
     private INavigationLayout.BackButtonState backButtonState = INavigationLayout.BackButtonState.BACK;
     public UnreadImageView backButtonImageView;
     private BackupImageView avatarSearchImageView;
@@ -281,13 +283,31 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 .setPadding(dp(6));
         glassDrawableMenu.setHeaderGlassLens(headerGlassLens);
 
+        glassDrawableActionLeft = factory.create(this)
+                .setColorProvider(colorProvider)
+                .setRadius(dp(23))
+                .setPadding(dp(6));
+        glassDrawableActionLeft.setHeaderGlassLens(headerGlassLens);
+
+        glassDrawableActionRight = factory.create(this)
+                .setColorProvider(colorProvider)
+                .setRadius(dp(23))
+                .setPadding(dp(6));
+        glassDrawableActionRight.setHeaderGlassLens(headerGlassLens);
+
         if (menu != null) {
             menu.setTranslationX(-dp(10));
             menu.setGlassMode(true);
         }
         if (actionMode != null) {
-            actionMode.setTranslationX(-dp(10));
+            actionMode.setTranslationX(0);
+            actionMode.setPadding(0, occupyStatusBar ? AndroidUtilities.statusBarHeight : 0, dp(10), 0);
             actionMode.setGlassMode(true);
+            actionMode.drawBlur = false;
+            if (!isMaterial3OpaqueBar()) {
+                actionModeColor = Color.TRANSPARENT;
+                actionMode.setBackgroundColor(Color.TRANSPARENT);
+            }
         }
         if (backButtonImageView != null) {
             backButtonImageView.setTranslationX(dp(2));
@@ -352,6 +372,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
         if (glassDrawableMenu != null) {
             glassDrawableMenu.setHeaderGlassLens(enabled);
+        }
+        if (glassDrawableActionLeft != null) {
+            glassDrawableActionLeft.setHeaderGlassLens(enabled);
+        }
+        if (glassDrawableActionRight != null) {
+            glassDrawableActionRight.setHeaderGlassLens(enabled);
         }
     }
 
@@ -1178,18 +1204,19 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 }
             }
         };
-        actionMode.setTranslationX(glassMode ? -dp(10) : 0);
+        actionMode.setTranslationX(0);
         actionMode.setGlassMode(glassMode);
         actionMode.isActionMode = true;
         actionMode.setClickable(true);
-        if (!glassMode) {
-            ThemeBind.backgroundColor(actionMode, Theme.key_actionBarActionModeDefault, resourcesProvider);
+        if (glassMode) {
+            actionMode.drawBlur = false;
+            actionModeColor = Color.TRANSPARENT;
+            actionMode.setBackgroundColor(Color.TRANSPARENT);
         } else {
-            int actionModeBg = Theme.getColor(Theme.key_actionBarActionModeDefault, resourcesProvider);
-            actionMode.setBackgroundColor(androidx.core.graphics.ColorUtils.setAlphaComponent(actionModeBg, (int) (0.95f * 255)));
+            ThemeBind.backgroundColor(actionMode, Theme.key_actionBarActionModeDefault, resourcesProvider);
         }
         addView(actionMode, indexOfChild(backButtonImageView));
-        actionMode.setPadding(0, occupyStatusBar ? AndroidUtilities.statusBarHeight : 0, 0, 0);
+        actionMode.setPadding(0, occupyStatusBar ? AndroidUtilities.statusBarHeight : 0, glassMode ? dp(10) : 0, 0);
         FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) actionMode.getLayoutParams();
         layoutParams.height = LayoutHelper.MATCH_PARENT;
         layoutParams.width = LayoutHelper.MATCH_PARENT;
@@ -1556,6 +1583,10 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     }
 
     public void setActionModeOverrideColor(int color) {
+        if (glassMode) {
+            actionModeColor = Color.TRANSPARENT;
+            return;
+        }
         actionModeColor = color;
     }
 
@@ -3337,12 +3368,18 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     @Override
     protected void dispatchDraw(Canvas canvas) {
         final boolean m3OpaqueBar = isMaterial3OpaqueBar();
+        final float actionModeAlpha = (actionMode != null && actionMode.getVisibility() == View.VISIBLE)
+                ? actionMode.getAlpha() : 0f;
         if (m3OpaqueBar) {
-            final int barBottom = drawGlassTitle
+            final int barBottom = (drawGlassTitle || actionModeAlpha > 0f)
                     ? Math.max(0, getHeight() - extraHeight)
                     : (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
             if (barBottom > 0) {
-                final int barColor = app.exteraless.appearance.M3SurfaceHelper.getTopBarColor(resourcesProvider, drawGlassTitle);
+                int barColor = app.exteraless.appearance.M3SurfaceHelper.getTopBarColor(resourcesProvider, drawGlassTitle);
+                if (actionModeAlpha > 0f) {
+                    int amColor = app.exteraless.appearance.M3SurfaceHelper.getActionModeBarColor(resourcesProvider);
+                    barColor = ColorUtils.blendARGB(barColor, amColor, actionModeAlpha);
+                }
                 canvas.drawRect(0, 0, getWidth(), barBottom, Theme.fillingPaint(barColor));
             }
         }
@@ -3470,8 +3507,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
 
         final boolean motionEnabled = LiquidGlassTuning.motionEnabled();
+        final float normalPillFade = 1f - actionModeAlpha;
         glassTitleRestRect.setEmpty();
-        if (glassDrawable != null && drawGlassMiddlePill && !glassOnlyBack && drawGlassTitle && !actionModeVisible) {
+        if (glassDrawable != null && drawGlassMiddlePill && !glassOnlyBack && drawGlassTitle && normalPillFade > 0.01f) {
             if (compactGlassTitlePill) {
                 drawCompactTitleGlassPill(canvas, t, b, p, s, hasBackButton, backAlphaFactor, hasMenuPill && menuAlphaInt > 12, menuLeft);
             } else if (centerTitleAndGlass && titleTextView[0] != null && titleTextView[0].getVisibility() == View.VISIBLE) {
@@ -3565,8 +3603,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
         glassBackRestRect.setEmpty();
-        if (glassDrawableBack != null && hasBackButton && !actionModeVisible) {
-            final int backAlphaInt = compactGlassTitlePill ? Math.round(255 * backAlphaFactor) : 255;
+        if (glassDrawableBack != null && hasBackButton && normalPillFade > 0.01f) {
+            final int backAlphaInt = Math.round((compactGlassTitlePill ? 255 * backAlphaFactor : 255) * normalPillFade);
             if (backAlphaInt > 0) {
                 glassBackRestRect.set(0, t, s + p * 2, b);
                 final float backPress = (headerGlassLens && motionEnabled) ? animatorBackGlassPressed.getFloatValue() : 0f;
@@ -3584,7 +3622,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
         glassMenuRestRect.setEmpty();
-        if (hasMenuPill && menuAlphaInt > 0 && !actionModeVisible) {
+        if (hasMenuPill && menuAlphaInt > 0 && normalPillFade > 0.01f) {
             glassMenuRestRect.set(menuLeft, menuTop, menuRight, menuBottom);
             final float menuPress = (headerGlassLens && motionEnabled) ? animatorMenuGlassPressed.getFloatValue() : 0f;
             final int swell = Math.round(dp(2.4f) * menuPress);
@@ -3592,12 +3630,15 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             if (headerGlassLens) {
                 glassDrawableMenu.setElasticPressProgress(menuPress * 0.88f);
             }
-            glassDrawableMenu.setAlpha(menuAlphaInt);
+            glassDrawableMenu.setAlpha(Math.round(menuAlphaInt * normalPillFade));
             if (!m3OpaqueBar) {
                 glassDrawableMenu.draw(canvas);
             } else {
                 glassMenuRestRect.setEmpty();
             }
+        }
+        if (glassMode && !m3OpaqueBar && actionModeAlpha > 0.01f && actionMode != null) {
+            drawActionModeGlassPills(canvas, actionModeAlpha, p, s, t, b);
         }
 
         if (blurredBackground && actionBarColor != Color.TRANSPARENT) {
@@ -3750,8 +3791,83 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (glassDrawableBack != null) {
             glassDrawableBack.updateColors();
         }
+        if (glassDrawableActionLeft != null) {
+            glassDrawableActionLeft.updateColors();
+        }
+        if (glassDrawableActionRight != null) {
+            glassDrawableActionRight.updateColors();
+        }
         if (additionalSubTitleOverlayContainer != null) {
             additionalSubTitleOverlayContainer.updateColors();
+        }
+    }
+
+    private void drawActionModeGlassPills(Canvas canvas, float amAlpha, int p, int s, int t, int b) {
+        final int alphaInt = Math.round(255 * Math.max(0f, Math.min(1f, amAlpha)));
+        if (alphaInt <= 0) {
+            return;
+        }
+        final float offsetX = actionMode.getX();
+        int leftEdge = Integer.MAX_VALUE;
+        int rightTextEnd = 0;
+        int itemsLeft = Integer.MAX_VALUE;
+        int itemsRight = Integer.MIN_VALUE;
+
+        if (backButtonImageView != null && backButtonImageView.getVisibility() == VISIBLE) {
+            leftEdge = 0;
+            rightTextEnd = Math.max(rightTextEnd, s + p * 2);
+        }
+
+        for (int i = 0, n = actionMode.getChildCount(); i < n; i++) {
+            final View child = actionMode.getChildAt(i);
+            if (child == null || child.getVisibility() != VISIBLE || child.getAlpha() <= 0.05f || child.getWidth() <= 0) {
+                continue;
+            }
+            if (child instanceof ActionBarMenuItem) {
+                final int cl = Math.round(offsetX + child.getLeft());
+                final int cr = Math.round(offsetX + child.getRight());
+                if (cl < itemsLeft) itemsLeft = cl;
+                if (cr > itemsRight) itemsRight = cr;
+            } else if (child instanceof org.telegram.ui.Components.NumberTextView) {
+                final org.telegram.ui.Components.NumberTextView ntv = (org.telegram.ui.Components.NumberTextView) child;
+                final float tw = ntv.getTextWidth();
+                final int cl = Math.round(offsetX + child.getLeft());
+                if (cl < leftEdge) leftEdge = Math.max(0, cl - dp(12));
+                final int end = Math.round(cl + Math.max(dp(12), tw) + dp(18));
+                if (end > rightTextEnd) rightTextEnd = end;
+            } else if (child instanceof org.telegram.ui.Components.AnimatedTextView) {
+                final org.telegram.ui.Components.AnimatedTextView atv = (org.telegram.ui.Components.AnimatedTextView) child;
+                final float tw = atv.getCurrentWidth();
+                final int cl = Math.round(offsetX + child.getLeft());
+                if (cl < leftEdge) leftEdge = Math.max(0, cl - dp(12));
+                final int end = Math.round(cl + Math.max(dp(16), tw) + dp(18));
+                if (end > rightTextEnd) rightTextEnd = end;
+            } else if (child instanceof ImageView) {
+                final int cl = Math.round(offsetX + child.getLeft());
+                if (cl < leftEdge) leftEdge = cl;
+                final int cr = Math.round(offsetX + child.getRight());
+                if (cr > rightTextEnd) rightTextEnd = cr;
+            }
+        }
+
+        int leftPillRight = 0;
+        if (glassDrawableActionLeft != null && leftEdge != Integer.MAX_VALUE && rightTextEnd > leftEdge) {
+            final int pillLeft = Math.max(0, leftEdge - dp(2));
+            final int pillRight = Math.max(pillLeft + s + p * 2, rightTextEnd);
+            leftPillRight = pillRight;
+            glassDrawableActionLeft.setBounds(pillLeft, t, pillRight, b);
+            glassDrawableActionLeft.setAlpha(alphaInt);
+            glassDrawableActionLeft.draw(canvas);
+        }
+
+        if (glassDrawableActionRight != null && itemsLeft < itemsRight) {
+            final int pillLeft = Math.max(leftPillRight > 0 ? leftPillRight + dp(8) : 0, itemsLeft - p);
+            final int pillRight = Math.min(getWidth(), itemsRight + p);
+            if (pillRight > pillLeft) {
+                glassDrawableActionRight.setBounds(pillLeft, t, pillRight, b);
+                glassDrawableActionRight.setAlpha(alphaInt);
+                glassDrawableActionRight.draw(canvas);
+            }
         }
     }
     @Override
