@@ -704,7 +704,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             return true;
         }
         if (child == menu && menuWidthSpring != null && menuWidthSpring.isRunning()
-                && !glassMenuRestRect.isEmpty() && hasSearchItemInMenu()) {
+                && isSearchPill() && !glassMenuRestRect.isEmpty() && hasSearchItemInMenu()) {
             // Поле поиска разложено на всю ширину сразу, а стеклянная пилюля дорастает до неё
             // пружиной. Подрезаем меню по пилюле и подтягиваем его так, чтобы левый край поля
             // шёл за левым краем стекла: поле раскрывается вместе с пилюлей, а не вылезает

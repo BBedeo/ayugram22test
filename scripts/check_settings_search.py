@@ -58,7 +58,8 @@ def string_names() -> set[str]:
 
 
 def aliases() -> dict[str, str]:
-    text = read(HELPER)
+    # A commented-out alias must not count as a live one: drop full-line comments first.
+    text = re.sub(r"(?m)^\s*//[^\n]*", "", read(HELPER))
     return dict(
         re.findall(r'SEARCH_TITLE_ALIASES\.put\("([^"]+)",\s*"([^"]+)"\)', text)
     )
@@ -156,9 +157,9 @@ def main() -> int:
     if "menu.getSearchItemLeft()" not in action_bar or "getSearchItemLeft" not in action_bar_menu:
         failures.append("ActionBar must clip the search field to the growing pill")
     # A row of the section root has the same title as the section: "ExFullGram > ExFullGram".
-    if "parentPath(" not in helper_text:
+    if "parentPath(fragment, e_title, f_title)" not in helper_text:
         failures.append("SettingsHelper must not repeat the section name in the result path")
-    if "OpenExtera:messageHistory" not in alias_map:
+    if alias_map.get("OpenExtera:messageHistory") != "OEGeneralAyuMoments":
         failures.append("OpenExtera:messageHistory must resolve to its localized title")
 
     total = len(all_rows)

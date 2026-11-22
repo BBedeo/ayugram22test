@@ -1567,7 +1567,7 @@ public class AnimatedTextView extends View {
     }
 
     public void setScaleAmplitude(float scale) {
-        drawable.setScaleAmplitude(scale);
+        drawable.setScaleProperty(scale);
     }
     public void setAnimationProperties(float moveAmplitude, long startDelay, long duration, float wave, TimeInterpolator interpolator) {
         drawable.setAnimationProperties(moveAmplitude, startDelay, duration, wave, interpolator);

@@ -59,7 +59,7 @@
     <string name="DeepLFormalityFormal">Tono: formal</string>
     <string name="OEGeneralNagramHeader">Extras</string>
     <string name="OEGeneralNagramSettings">Ajustes de NagramX</string>
-    <string name="OEGeneralAyuMoments">AyuMoments</string>
+    <string name="OEGeneralAyuMoments">Historial de mensajes</string>
     <string name="OEGeneralAyuMomentsInfo">Guardado de mensajes eliminados y editados, modo fantasma y filtros regex. Las funciones siguen activas aunque no abras esta pantalla.</string>
     <string name="OEGeneralAyuMomentsDisableAll">Desactivar todas las funciones de AyuMoments</string>
     <string name="OELastActivityFormatted">última actividad %1$s</string>

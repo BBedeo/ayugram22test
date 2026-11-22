@@ -772,7 +772,8 @@ public class ActionBarMenu extends LinearLayout {
             final View child = getChildAt(a);
             if (child instanceof ActionBarMenuItem) {
                 final View searchContainer = ((ActionBarMenuItem) child).getSearchContainer();
-                if (searchContainer != null && searchContainer.getVisibility() == View.VISIBLE) {
+                if (searchContainer != null && searchContainer.getVisibility() == View.VISIBLE
+                        && searchContainer.getWidth() > 0) {
                     return searchContainer.getLeft();
                 }
             }

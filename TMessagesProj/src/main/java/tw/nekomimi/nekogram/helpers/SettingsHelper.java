@@ -522,8 +522,9 @@ public class SettingsHelper {
      * с названием раздела (ExFullGram → ExFullGram), и подпись выходила эхом «ExFullGram > ExFullGram»:
      * такие пункты называют раздел один раз, как в поиске Telegram.
      */
-    private static String parentPath(String section, String fragmentTitle) {
-        if (fragmentTitle == null || TextUtils.equals(section, fragmentTitle)) {
+    private static String parentPath(BaseNekoSettingsActivity fragment, String section, String fragmentTitle) {
+        if (fragmentTitle == null || fragment instanceof OpenExteraSettingsActivity
+                || TextUtils.equals(section, fragmentTitle)) {
             return null;
         }
         return fragmentTitle;
@@ -609,7 +610,7 @@ public class SettingsHelper {
                     AndroidUtilities.runOnUIThread(() -> fragment.scrollToRow(key, null));
                 };
                 items.add(new SettingsSearchResult(
-                        uid + entry.getKey(), title, e_title, parentPath(e_title, f_title), drawable, open)
+                        uid + entry.getKey(), title, e_title, parentPath(fragment, e_title, f_title), drawable, open)
                         .setSubtitle(rowSubtitle(fragment, key)));
             }
         }

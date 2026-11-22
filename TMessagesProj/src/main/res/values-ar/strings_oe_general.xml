@@ -59,7 +59,7 @@
     <string name="DeepLFormalityFormal">النبرة: رسمية</string>
     <string name="OEGeneralNagramHeader">إضافات</string>
     <string name="OEGeneralNagramSettings">إعدادات NagramX</string>
-    <string name="OEGeneralAyuMoments">AyuMoments</string>
+    <string name="OEGeneralAyuMoments">سجل الرسائل</string>
     <string name="OEGeneralAyuMomentsInfo">حفظ الرسائل المحذوفة والمعدّلة، ووضع الشبح، وفلاتر التعابير النمطية. تستمر الميزات في العمل ما دامت مفعّلة، سواء فتحت هذه الشاشة أم لا.</string>
     <string name="OEGeneralAyuMomentsDisableAll">إيقاف جميع ميزات AyuMoments</string>
     <string name="OELastActivityFormatted">آخر نشاط %1$s</string>
