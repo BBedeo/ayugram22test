@@ -66,3 +66,15 @@ Test-«собеседник» повторяет текст, который вы
 Пузырь перекрашивается под текущую тему: Liquid Glass (нативная рефракция), Material 3
 (`M3SurfaceHelper.getCardColor` + `getOutlineVariantColor`) или классическая тема
 (`chat_inBubble` / `chat_messageTextIn` / `chat_inTimeText`).
+
+## Анимация и место пузыря
+
+- Появление: 200 мс, `OvershootInterpolator(0.85f)`, scale 0.86 → 1, сдвиг 9dp → 0.
+- Приход сообщения: `morphIntoMessage()` — 140 мс `EASE_IN`: пузырь «стекает» вниз
+  (translateY +6dp, scale 0.55/0.72) и схлопывается до того, как нарисуется новый бабл.
+  Обычное скрытие (сменился статус на «онлайн», ушёл из чата) — `hideTyping()`, 160 мс `EASE_OUT`.
+- `ChatActivity.updateTypingBubblePadding()` добавляет `typingBubbleExtraPadding` к нижнему
+  паддингу `chatListView` (180 мс, `CubicBezierInterpolator.EASE_OUT`), поэтому последнее
+  сообщение не перекрывается: список плавно поднимается на высоту пузыря и опускается,
+  когда `onHiddenListener` сообщает о завершении схлопывания. Если список уже прижат к низу,
+  скролл компенсируется, чтобы контент не дёргался.

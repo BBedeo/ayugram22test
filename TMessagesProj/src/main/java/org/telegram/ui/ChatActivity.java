@@ -618,6 +618,9 @@ public class ChatActivity extends BaseFragment implements
     private ClippingImageView animatingImageView;
     private ThanosEffect chatListThanosEffect;
     private ChatListViewPaddingsAnimator chatListViewPaddingsAnimator;
+    /** Дополнительный нижний отступ списка, пока над композером висит пузырь «печатает»/черновик. */
+    private float typingBubbleExtraPadding;
+    private ValueAnimator typingBubblePaddingAnimator;
     public ChatListRecyclerView chatListView;
     private ChatListItemAnimator chatListItemAnimator;
     private GridLayoutManagerFixed chatLayoutManager;
@@ -7940,6 +7943,12 @@ public class ChatActivity extends BaseFragment implements
             contentView.addView(sideControlsButtonsLayout, indexToAdd, LayoutHelper.createFrame(57, 300, Gravity.RIGHT | Gravity.BOTTOM));
             typingBubbleView = new TypingBubbleView(context, resourceProvider, blurredBackgroundButtonsColorProvider, glassBackgroundDrawableFactory);
             contentView.addView(typingBubbleView, indexToAdd, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 12, 0, 72, 0));
+            typingBubbleView.setOnHiddenListener(() -> updateTypingBubblePadding(true));
+            typingBubbleView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                if (bottom - top != oldBottom - oldTop) {
+                    updateTypingBubblePadding(false);
+                }
+            });
         }
 
         updateMessageListAccessibilityVisibility();
@@ -12479,6 +12488,7 @@ public class ChatActivity extends BaseFragment implements
         }
         if (hasDraft) {
             typingBubbleView.showDraft(liveDraft, getTypingBubbleBaseY());
+            updateTypingBubblePadding(true);
             return;
         }
         final CharSequence printString = getMessagesController().getPrintingString(dialog_id, getThreadId(), false);
@@ -12488,6 +12498,7 @@ public class ChatActivity extends BaseFragment implements
         } else {
             typingBubbleView.hideTyping();
         }
+        updateTypingBubblePadding(true);
     }
 
     private void updateReactionsMentionButton(boolean animated) {
@@ -13688,12 +13699,56 @@ public class ChatActivity extends BaseFragment implements
         checkUi_chatListViewPaddings();
     }
 
+    /**
+     * Пузырь «печатает»/черновик висит над композером и раньше перекрывал последнее сообщение.
+     * Пока он виден, поднимаем чат на его высоту (нижний отступ списка), плавно, и только если
+     * пользователь и так внизу — историю выше не дёргаем.
+     */
+    private void updateTypingBubblePadding(boolean animated) {
+        if (chatListView == null || typingBubbleView == null) {
+            return;
+        }
+        final boolean visible = typingBubbleView.isShowingOrMorphing();
+        final int bubbleHeight = typingBubbleView.getMeasuredHeight() > 0
+                ? typingBubbleView.getMeasuredHeight() : dp(38);
+        final float target = visible ? bubbleHeight + dp(6) : 0f;
+        if (Math.abs(target - typingBubbleExtraPadding) < 0.5f) {
+            return;
+        }
+        final boolean atBottom = !chatListView.canScrollVertically(1);
+        if (typingBubblePaddingAnimator != null) {
+            typingBubblePaddingAnimator.cancel();
+            typingBubblePaddingAnimator = null;
+        }
+        if (!animated) {
+            typingBubbleExtraPadding = target;
+            checkUi_chatListViewPaddings();
+            return;
+        }
+        final float start = typingBubbleExtraPadding;
+        final float delta = target - start;
+        typingBubblePaddingAnimator = ValueAnimator.ofFloat(0f, 1f);
+        typingBubblePaddingAnimator.setDuration(180);
+        typingBubblePaddingAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
+        typingBubblePaddingAnimator.addUpdateListener(a -> {
+            final float p = (float) a.getAnimatedValue();
+            final float previous = typingBubbleExtraPadding;
+            typingBubbleExtraPadding = start + delta * p;
+            checkUi_chatListViewPaddings();
+            final int scrollDelta = Math.round(typingBubbleExtraPadding - previous);
+            if (atBottom && scrollDelta != 0 && chatListView != null) {
+                chatListView.scrollBy(0, scrollDelta);
+            }
+        });
+        typingBubblePaddingAnimator.start();
+    }
+
     private void checkUi_chatListViewPaddings() {
         if (chatListView == null) {
             return;
         }
 
-        final float paddingBottom;
+        float paddingBottom;
         if (isInsideContainer && parentChatActivity == null) {
             paddingBottom = AndroidUtilities.navigationBarHeight;
         } else {
@@ -13702,6 +13757,7 @@ public class ChatActivity extends BaseFragment implements
                 + getTopicTabsSideSize(TopicsTabsView.Position.BOTTOM)
                 + windowInsetsStateHolder.getAnimatedMaxBottomInset();
         }
+        paddingBottom += typingBubbleExtraPadding;
 
         final int paddingTop = (int) chatListViewPaddingTop;
         if (topicsTabs != null) {

@@ -53,6 +53,7 @@ public class TypingBubbleView extends LinearLayout {
     private float baseTranslationY;
     private float animOffsetY;
     private ValueAnimator visibilityAnimator;
+    private Runnable onHiddenListener;
 
     /** Кэш последнего применённого стиля: пересобирать фон на каждый кадр незачем. */
     private int lastBubbleColor;
@@ -170,6 +171,11 @@ public class TypingBubbleView extends LinearLayout {
             setBackground(bg);
             setElevation(dp(2));
         }
+    }
+
+    /** Вызывается, когда пузырь полностью погас — чтобы вернуть чату нижний отступ. */
+    public void setOnHiddenListener(Runnable listener) {
+        onHiddenListener = listener;
     }
 
     public void setBaseTranslationY(float y) {
@@ -310,12 +316,12 @@ public class TypingBubbleView extends LinearLayout {
         setPivotY(getMeasuredHeight() > 0 ? getMeasuredHeight() : dp(30));
 
         final float startAlpha = getAlpha();
-        final float startScale = getScaleX() > 0.1f && startAlpha > 0.05f ? getScaleX() : 0.68f;
-        final float startOffsetY = startAlpha > 0.05f ? animOffsetY : dp(14);
+        final float startScale = getScaleX() > 0.1f && startAlpha > 0.05f ? getScaleX() : 0.86f;
+        final float startOffsetY = startAlpha > 0.05f ? animOffsetY : dp(9);
 
         visibilityAnimator = ValueAnimator.ofFloat(0f, 1f);
-        visibilityAnimator.setDuration(240);
-        visibilityAnimator.setInterpolator(new OvershootInterpolator(1.2f));
+        visibilityAnimator.setDuration(200);
+        visibilityAnimator.setInterpolator(new OvershootInterpolator(0.85f));
         visibilityAnimator.addUpdateListener(anim -> {
             final float p = (float) anim.getAnimatedValue();
             final float s = AndroidUtilities.lerp(startScale, 1f, p);
@@ -333,20 +339,28 @@ public class TypingBubbleView extends LinearLayout {
             return;
         }
         showing = false;
-        animateOut(false);
+        animateOut(CollapseKind.OUT);
     }
 
+    /**
+     * Сообщение пришло: пузырь не «улетает» вверх на него, а быстро стекает вниз и схлопывается,
+     * освобождая место — сообщение появляется уже на чистом месте, со своей нативной анимацией.
+     */
     public void morphIntoMessage() {
         if (!showing && getVisibility() != VISIBLE) {
             return;
         }
         showing = false;
         morphingOut = true;
-        animateOut(true);
+        cancelDraftReveal();
+        animateOut(CollapseKind.INTO_MESSAGE);
     }
 
-    private void animateOut(boolean intoMessage) {
+    private enum CollapseKind { OUT, INTO_MESSAGE }
+
+    private void animateOut(CollapseKind kind) {
         cancelVisibilityAnimator();
+        final boolean intoMessage = kind == CollapseKind.INTO_MESSAGE;
         setPivotX(0f);
         setPivotY(getMeasuredHeight() > 0 ? getMeasuredHeight() : dp(30));
 
@@ -355,13 +369,17 @@ public class TypingBubbleView extends LinearLayout {
         final float startScaleY = getScaleY();
         final float startOffsetY = animOffsetY;
 
-        final float targetScaleX = intoMessage ? 1.18f : 0.72f;
-        final float targetScaleY = intoMessage ? 1.12f : 0.72f;
-        final float targetOffsetY = intoMessage ? -dp(34) : dp(10);
+        // В сообщение: короткое «стекание» вниз, чтобы не перекрывать пришедший бабл.
+        // Обычное скрытие: мягкий уход вниз.
+        final float targetScaleX = intoMessage ? 0.55f : 0.78f;
+        final float targetScaleY = intoMessage ? 0.72f : 0.86f;
+        final float targetOffsetY = intoMessage ? dp(6) : dp(8);
 
         visibilityAnimator = ValueAnimator.ofFloat(0f, 1f);
-        visibilityAnimator.setDuration(intoMessage ? 260 : 180);
-        visibilityAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+        visibilityAnimator.setDuration(intoMessage ? 140 : 160);
+        visibilityAnimator.setInterpolator(intoMessage
+                ? CubicBezierInterpolator.EASE_IN
+                : CubicBezierInterpolator.EASE_OUT);
         visibilityAnimator.addUpdateListener(anim -> {
             final float p = (float) anim.getAnimatedValue();
             setAlpha(AndroidUtilities.lerp(startAlpha, 0f, p));
@@ -386,6 +404,9 @@ public class TypingBubbleView extends LinearLayout {
                     displayedDraft = null;
                     cancelDraftReveal();
                     applyTypingLabelStyle();
+                    if (onHiddenListener != null) {
+                        onHiddenListener.run();
+                    }
                 }
             }
         });
