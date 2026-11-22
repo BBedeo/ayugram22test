@@ -162,4 +162,6 @@
     <string name="OESendAfterSlowMode">إرسال بعد انتهاء الوضع البطيء</string>
     <string name="OEChatsDismissMenuOnDragOut">إغلاق القائمة عند الإفلات خارجها</string>
     <string name="OEChatsDismissMenuOnDragOutInfo">يغلق القوائم المفتوحة بالضغط المطوّل عند سحب الإصبع وإفلاته خارج أي عنصر.</string>
+    <string name="OEChatsLiveTypingPreview">معاينة الكتابة الحية</string>
+    <string name="OEChatsLiveTypingPreviewInfo">يعرض النص الذي يكتبه الطرف الآخر الآن، ويشارك مسودتك معه في المحادثات الفردية.</string>
 </resources>

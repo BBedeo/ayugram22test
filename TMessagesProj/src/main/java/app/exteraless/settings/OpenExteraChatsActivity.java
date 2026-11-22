@@ -181,6 +181,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int hideKeyboardOnScrollRow = -1;
     private int forwardMultiSelectRow = -1;
     private int dismissMenuOnDragOutRow = -1;
+    private int liveTypingPreviewRow = -1;
     private int disableGlobalSearchRow = -1;
     private int searchHashtagChatRow = -1;
     private int searchHashtagChannelRow = -1;
@@ -495,6 +496,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         inlineMathSettingsRow = addRow("inlineMathSettings");
         tapToSwitchRecordRow = addRow("tapToSwitchRecord", "UseChatAttachEnterMenu");
         keepAttachButtonRow = addRow("keepAttachButton");
+        liveTypingPreviewRow = addRow("liveTypingPreview");
         inputDividerRow = addRow();
 
         searchHeaderRow = addRow("searchHeader");
@@ -2104,6 +2106,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == hideKeyboardOnScrollRow) return NekoConfig.hideKeyboardOnChatScroll;
         if (position == forwardMultiSelectRow) return NekoConfig.forwardMultiSelectByTap;
         if (position == dismissMenuOnDragOutRow) return ChatsConfig.dismissMenuOnDragOut;
+        if (position == liveTypingPreviewRow) return ChatsConfig.liveTypingPreview;
         if (position == disableGlobalSearchRow) return NaConfig.INSTANCE.getDisableGlobalSearch();
         if (position == addCommaRow) return OpenExteraConfig.addCommaAfterMention;
         if (position == inlineMathRow) return ChatsConfig.inlineMathResult;
@@ -2816,6 +2819,11 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                         getString(R.string.ExFullGramForwardMultiSelect),
                         getString(R.string.ExFullGramForwardMultiSelectInfo),
                         NekoConfig.forwardMultiSelectByTap.Bool(), false, true);
+            } else if (position == liveTypingPreviewRow) {
+                cell.setTextAndValueAndCheck(
+                        getString(R.string.OEChatsLiveTypingPreview),
+                        getString(R.string.OEChatsLiveTypingPreviewInfo),
+                        ChatsConfig.liveTypingPreview.Bool(), false, false);
             } else if (position == dismissMenuOnDragOutRow) {
                 cell.setTextAndValueAndCheck(
                         getString(R.string.OEChatsDismissMenuOnDragOut),

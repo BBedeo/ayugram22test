@@ -158,4 +158,6 @@
     <string name="OESendAfterSlowMode">Enviar al terminar el modo lento</string>
     <string name="OEChatsDismissMenuOnDragOut">Cerrar menú al soltar fuera</string>
     <string name="OEChatsDismissMenuOnDragOutInfo">Cierra los menús abiertos al mantener pulsado si deslizas y sueltas fuera de cualquier opción.</string>
+    <string name="OEChatsLiveTypingPreview">Vista previa de escritura</string>
+    <string name="OEChatsLiveTypingPreviewInfo">Muestra el texto que tu contacto está escribiendo ahora y comparte tu borrador con él en chats individuales.</string>
 </resources>

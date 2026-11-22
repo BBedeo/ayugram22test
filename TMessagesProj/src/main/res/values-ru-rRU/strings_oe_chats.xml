@@ -191,4 +191,6 @@
     <string name="OESendAfterSlowMode">Отправить после слоумода</string>
     <string name="OEChatsDismissMenuOnDragOut">Закрывать меню при отпускании вне</string>
     <string name="OEChatsDismissMenuOnDragOutInfo">Если зажать меню и отпустить палец за его пределами без выбранного пункта, меню закроется.</string>
+    <string name="OEChatsLiveTypingPreview">Живое превью печати</string>
+    <string name="OEChatsLiveTypingPreviewInfo">Показывает текст, который собеседник печатает прямо сейчас, и делится вашим черновиком с ним в личных чатах.</string>
 </resources>

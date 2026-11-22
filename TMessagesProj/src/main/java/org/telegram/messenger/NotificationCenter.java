@@ -379,6 +379,7 @@ public class NotificationCenter {
     public static final int translationModelDownloaded = totalEvents++;
     public static final int botForumTopicDidCreate = totalEvents++;
     public static final int botForumDraftUpdate = totalEvents++;
+    public static final int liveTypingDraftUpdate = totalEvents++;
     public static final int botForumDraftDelete = totalEvents++;
     public static final int tlSchemeParseException = totalEvents++;
     public static final int memoryLeakFoundException = totalEvents++;

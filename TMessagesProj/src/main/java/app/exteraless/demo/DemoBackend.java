@@ -1308,6 +1308,41 @@ public final class DemoBackend {
         });
     }
 
+    /**
+     * Test Mode parity для живого превью печати: серверного транспорта здесь нет, поэтому черновик
+     * «собеседника» заворачивается в тот же {@code sendMessageTextDraftAction} и уходит в тот же
+     * {@code MessagesController.processUpdateArray}, что и настоящий апдейт.
+     *
+     * <p>Чтобы фичу было видно на одном устройстве, текст повторяет то, что набирает пользователь:
+     * это демонстрация рендера, а не реальный черновик собеседника.
+     */
+    public static boolean sendLocalDraft(int sourceAccount, long dialogId, long threadMsgId, String text) {
+        if (!isTestAccount(sourceAccount) || dialogId == 0 || text == null || text.isEmpty()) return false;
+
+        TLRPC.User self = UserConfig.getInstance(sourceAccount).getCurrentUser();
+        if (self == null) return true;
+
+        TLRPC.TL_sendMessageTextDraftAction action = new TLRPC.TL_sendMessageTextDraftAction();
+        action.random_id = dialogId;
+        action.text = new TLRPC.TL_textWithEntities();
+        action.text.text = text;
+        action.text.entities = new ArrayList<>();
+
+        TL_update.TL_updateUserTyping update = new TL_update.TL_updateUserTyping();
+        update.user_id = dialogId;
+        update.action = action;
+        if (threadMsgId != 0) {
+            update.flags |= 1;
+            update.top_msg_id = (int) threadMsgId;
+        }
+
+        ArrayList<TLRPC.Update> updates = new ArrayList<>();
+        updates.add(update);
+        MessagesController.getInstance(sourceAccount).processUpdateArray(
+                updates, null, null, false, (int) (System.currentTimeMillis() / 1000L));
+        return true;
+    }
+
     public static boolean sendLocalTyping(int sourceAccount, long dialogId, long threadMsgId, int action) {
         if (!isTestAccount(sourceAccount) || dialogId == 0) return false;
 

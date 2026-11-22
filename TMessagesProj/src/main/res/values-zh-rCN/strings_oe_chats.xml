@@ -158,4 +158,6 @@
     <string name="OESendAfterSlowMode">慢速模式结束后发送</string>
     <string name="OEChatsDismissMenuOnDragOut">在菜单外松手时关闭</string>
     <string name="OEChatsDismissMenuOnDragOutInfo">长按打开菜单后，若滑出菜单并在未选中任何选项时松开手指，则关闭菜单。</string>
+    <string name="OEChatsLiveTypingPreview">实时输入预览</string>
+    <string name="OEChatsLiveTypingPreviewInfo">显示对方正在输入的文字，并在私聊中把你的草稿分享给对方。</string>
 </resources>

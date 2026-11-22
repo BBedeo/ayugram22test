@@ -160,6 +160,19 @@ object ChatsConfig {
         return dismissMenuOnDragOut.Bool()
     }
 
+    /**
+     * Живое превью печати (live drafts): собеседник видит, что именно вы печатаете в личном чате,
+     * а вы видите его черновик над полем ввода.
+     */
+    @JvmField
+    val liveTypingPreview = addConfig("OEChatsLiveTypingPreview", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun liveTypingPreview(): Boolean {
+        ensureLoaded()
+        return liveTypingPreview.Bool()
+    }
+
     /** Скрыть плитку камеры в шторке вложений. */
     @JvmField
     val hideCameraTile = addConfig("OEChatsHideCameraTile", ConfigItem.configTypeBool, false)

@@ -2595,6 +2595,10 @@ public class ChatActivity extends BaseFragment implements
         @Override
         public void onTextChanged(final CharSequence text, boolean bigChange, boolean fromDraft) {
             MediaController.getInstance().setInputFieldHasText(!TextUtils.isEmpty(text) || chatActivityEnterView.isEditingMessage());
+            if (chatMode == MODE_DEFAULT && chatActivityEnterView != null) {
+                app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).onComposerTextChanged(
+                        dialog_id, getThreadId(), text, chatActivityEnterView.isEditingMessage());
+            }
             if (mentionContainer != null && mentionContainer.getAdapter() != null) {
                 mentionContainer.getAdapter().searchUsernameOrHashtag(text, chatActivityEnterView.getCursorPosition(), messages, false, false);
             }
@@ -3389,6 +3393,7 @@ public class ChatActivity extends BaseFragment implements
             .add(NotificationCenter.botForumTopicDidCreate)
             .add(NotificationCenter.botForumDraftUpdate)
             .add(NotificationCenter.botForumDraftDelete)
+            .add(NotificationCenter.liveTypingDraftUpdate)
             .add(NotificationCenter.joinedGroup)
             .add(AyuConstants.MESSAGES_DELETED_NOTIFICATION)
             .add(AyuConstants.DELETED_MEDIA_LOADED_NOTIFICATION)
@@ -3764,6 +3769,7 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public void onFragmentDestroy() {
+        app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).onChatClosed(dialog_id);
         app.exteraless.plugins.menus.MenuInjector.releaseMessageMenu(this);
         app.exteraless.plugins.PluginViewProxies.release(fragmentView);
         super.onFragmentDestroy();
@@ -12457,12 +12463,20 @@ public class ChatActivity extends BaseFragment implements
         if (typingBubbleView == null) {
             return;
         }
-        if (!app.exteraless.appearance.AppearanceConfig.isTypingBubbleAtBottom()
+        final CharSequence liveDraft = app.exteraless.chats.ChatsConfig.liveTypingPreview()
+                ? app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).getDraftText(dialog_id)
+                : null;
+        final boolean hasDraft = liveDraft != null && liveDraft.length() > 0;
+        if ((!app.exteraless.appearance.AppearanceConfig.isTypingBubbleAtBottom() && !hasDraft)
                 || chatMode != MODE_DEFAULT
                 || (ChatObject.isChannel(currentChat) && !currentChat.megagroup)
                 || UserObject.isUserSelf(currentUser)
                 || isInPreviewMode()) {
             typingBubbleView.hideTyping();
+            return;
+        }
+        if (hasDraft) {
+            typingBubbleView.showDraft(liveDraft, getTypingBubbleBaseY());
             return;
         }
         final CharSequence printString = getMessagesController().getPrintingString(dialog_id, getThreadId(), false);
@@ -27183,6 +27197,9 @@ public class ChatActivity extends BaseFragment implements
                 avatarContainer.updateSubtitle(true);
             }
             checkSendButtonBlockedByTyping(true);
+        } else if (id == NotificationCenter.liveTypingDraftUpdate) {
+            if (args.length < 1 || !(args[0] instanceof Long) || (Long) args[0] != dialog_id) return;
+            updateTypingBubbleView();
         } else if (id == NotificationCenter.joinedGroup) {
             final long chatId = (long) args[0];
             if (getDialogId() != -chatId || currentChat == null) return;
@@ -28003,6 +28020,9 @@ public class ChatActivity extends BaseFragment implements
     }
     private void processNewMessages(ArrayList<MessageObject> arr, final boolean animatedFromBottom) {
         FileLog.d("processNewMessages " + arr.size() + " messages");
+        if (app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).hasDraft(dialog_id)) {
+            app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).clearDraft(dialog_id);
+        }
         layOutWidgetsForSideMenu(arr);
 
         final boolean isBot = UserObject.isBot(currentUser);

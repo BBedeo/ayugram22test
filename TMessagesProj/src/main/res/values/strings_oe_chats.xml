@@ -194,4 +194,6 @@
     <string name="OESendAfterSlowMode">Send when slow mode ends</string>
     <string name="OEChatsDismissMenuOnDragOut">Close menu on release outside</string>
     <string name="OEChatsDismissMenuOnDragOutInfo">Closes held or drag-opened popup menus when you slide off and release outside any item.</string>
+    <string name="OEChatsLiveTypingPreview">Live typing preview</string>
+    <string name="OEChatsLiveTypingPreviewInfo">Shows the text your contact is typing right now, and shares your own draft with them in one-to-one chats.</string>
 </resources>

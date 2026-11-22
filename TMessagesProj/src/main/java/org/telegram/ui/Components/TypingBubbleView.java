@@ -30,8 +30,14 @@ import app.exteraless.appearance.M3SurfaceHelper;
 /**
  * Compact incoming-style bubble shown above the composer/keyboard when the peer is typing,
  * with style-adaptive Liquid Glass / Material / Classic background and morph-into-message exit.
+ *
+ * <p>Also renders the live typing draft (ExFullGram «живое превью печати»): {@link #showDraft}
+ * shows the actual text the peer is typing, growing letter by letter as new characters arrive.
  */
 public class TypingBubbleView extends LinearLayout {
+
+    private static final int DRAFT_MAX_WIDTH_DP = 252;
+    private static final int DRAFT_MAX_LINES = 2;
 
     private final Theme.ResourcesProvider resourcesProvider;
     private final BlurredBackgroundDrawableViewFactory glassFactory;
@@ -47,6 +53,12 @@ public class TypingBubbleView extends LinearLayout {
     private float baseTranslationY;
     private float animOffsetY;
     private ValueAnimator visibilityAnimator;
+
+    /** Режим живого черновика: многострочный текст вместо короткой строки «печатает…». */
+    private boolean draftMode;
+    /** Сколько символов черновика уже показано — дорисовываем только новый хвост. */
+    private CharSequence displayedDraft;
+    private ValueAnimator draftRevealAnimator;
 
     public TypingBubbleView(
             Context context,
@@ -136,14 +148,110 @@ public class TypingBubbleView extends LinearLayout {
         return showing || morphingOut;
     }
 
+    /**
+     * Живой черновик собеседника: многострочный пузырь с реальным текстом.
+     * Новые символы дорисовываются «печатной машинкой», поэтому пузырь растёт на глазах.
+     */
+    public void showDraft(CharSequence text, float baseY) {
+        final String next = text == null ? "" : text.toString();
+        if (next.isEmpty()) {
+            hideTyping();
+            return;
+        }
+        draftMode = true;
+        applyDraftLabelStyle();
+        ensureShown(0, baseY);
+
+        final String previous = displayedDraft == null ? "" : displayedDraft.toString();
+        cancelDraftReveal();
+        if (next.equals(previous)) {
+            return;
+        }
+        if (next.startsWith(previous) && next.length() > previous.length()) {
+            startDraftTypewriter(previous, next);
+        } else {
+            displayedDraft = next;
+            labelView.setText(next);
+            labelView.setAlpha(0.35f);
+            labelView.animate().alpha(1f).setDuration(150).setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
+        }
+    }
+
     public void showTyping(CharSequence text, int type, float baseY) {
-        setBaseTranslationY(baseY);
+        draftMode = false;
+        displayedDraft = null;
+        cancelDraftReveal();
+        applyTypingLabelStyle();
         final CharSequence clean = text != null
                 ? TextUtils.replace(text, new String[]{"..."}, new String[]{""}).toString().trim()
                 : "";
         if (!TextUtils.isEmpty(clean)) {
             labelView.setText(clean);
         }
+        ensureShown(type, baseY);
+    }
+
+    private void applyTypingLabelStyle() {
+        labelView.setSingleLine(true);
+        labelView.setMaxLines(1);
+        labelView.setEllipsize(TextUtils.TruncateAt.END);
+        labelView.setMaxWidth(dp(220));
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        labelView.setAlpha(1f);
+        labelView.setLineSpacing(0f, 1f);
+    }
+
+    private void applyDraftLabelStyle() {
+        labelView.setSingleLine(false);
+        labelView.setMaxLines(DRAFT_MAX_LINES);
+        labelView.setEllipsize(TextUtils.TruncateAt.END);
+        labelView.setMaxWidth(dp(DRAFT_MAX_WIDTH_DP));
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        labelView.setLineSpacing(dp(1), 1f);
+    }
+
+    private void startDraftTypewriter(String previous, String next) {
+        final int added = Math.max(1, next.length() - previous.length());
+        final long duration = Math.min(340L, Math.max(90L, added * 16L));
+        final ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(duration);
+        animator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
+        animator.addUpdateListener(animation -> {
+            final float p = (float) animation.getAnimatedValue();
+            int shown = previous.length() + (int) (added * p);
+            if (shown < previous.length()) {
+                shown = previous.length();
+            }
+            if (shown > next.length()) {
+                shown = next.length();
+            }
+            if (shown > 0 && shown < next.length() && Character.isLowSurrogate(next.charAt(shown))) {
+                shown++;
+            }
+            displayedDraft = next.substring(0, Math.min(shown, next.length()));
+            labelView.setText(displayedDraft);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                displayedDraft = next;
+                labelView.setText(next);
+            }
+        });
+        draftRevealAnimator = animator;
+        animator.start();
+    }
+
+    private void cancelDraftReveal() {
+        if (draftRevealAnimator != null) {
+            draftRevealAnimator.removeAllListeners();
+            draftRevealAnimator.cancel();
+            draftRevealAnimator = null;
+        }
+    }
+
+    private void ensureShown(int type, float baseY) {
+        setBaseTranslationY(baseY);
 
         final int safeType = (type >= 0 && type < statusDrawables.length && statusDrawables[type] != null) ? type : 0;
         if (activeType != safeType) {
@@ -239,6 +347,10 @@ public class TypingBubbleView extends LinearLayout {
                     animOffsetY = 0f;
                     setTranslationY(baseTranslationY);
                     stopStatusDrawables();
+                    draftMode = false;
+                    displayedDraft = null;
+                    cancelDraftReveal();
+                    applyTypingLabelStyle();
                 }
             }
         });
@@ -265,6 +377,7 @@ public class TypingBubbleView extends LinearLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         cancelVisibilityAnimator();
+        cancelDraftReveal();
         stopStatusDrawables();
     }
 }

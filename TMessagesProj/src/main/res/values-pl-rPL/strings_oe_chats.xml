@@ -158,4 +158,6 @@
     <string name="OESendAfterSlowMode">Wyślij po trybie powolnym</string>
     <string name="OEChatsDismissMenuOnDragOut">Zamknij menu po puszczeniu poza nim</string>
     <string name="OEChatsDismissMenuOnDragOutInfo">Zamyka przytrzymane lub wysunięte menu, gdy przesuniesz palec i puścisz go poza pozycjami.</string>
+    <string name="OEChatsLiveTypingPreview">Podgląd pisania na żywo</string>
+    <string name="OEChatsLiveTypingPreviewInfo">Pokazuje tekst, który rozmówca właśnie pisze, i udostępnia mu Twój szkic w czatach prywatnych.</string>
 </resources>

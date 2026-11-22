@@ -19468,8 +19468,17 @@ public class MessagesController extends BaseController implements NotificationCe
                     uid = userId;
                 }
                 if (action instanceof TLRPC.TL_sendMessageTextDraftAction) {
-                    AndroidUtilities.runOnUIThread(() -> BotForumHelper.getInstance(currentAccount)
-                        .onBotForumDraftUpdate(userId, threadId, (TLRPC.TL_sendMessageTextDraftAction) action));
+                    final long liveDraftDialogId = uid;
+                    final long liveDraftUserId = userId;
+                    final int liveDraftThreadId = threadId;
+                    final TLRPC.TL_sendMessageTextDraftAction liveDraftAction = (TLRPC.TL_sendMessageTextDraftAction) action;
+                    AndroidUtilities.runOnUIThread(() -> {
+                        if (!app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount)
+                                .onIncomingDraft(liveDraftDialogId, liveDraftUserId, liveDraftAction)) {
+                            BotForumHelper.getInstance(currentAccount)
+                                .onBotForumDraftUpdate(liveDraftUserId, liveDraftThreadId, liveDraftAction);
+                        }
+                    });
                 } else if (action instanceof TLRPC.TL_sendMessageRichMessageDraftAction) {
                     AndroidUtilities.runOnUIThread(() -> BotForumHelper.getInstance(currentAccount)
                         .onBotForumDraftUpdate(userId, threadId, (TLRPC.TL_sendMessageRichMessageDraftAction) action));
@@ -19480,6 +19489,9 @@ public class MessagesController extends BaseController implements NotificationCe
                     TLRPC.TL_sendMessageHistoryImportAction importAction = (TLRPC.TL_sendMessageHistoryImportAction) action;
                     importingActions.put(uid, importAction.progress);
                 } else if (userId != getUserConfig().getClientUserId()) {
+                    if (action instanceof TLRPC.TL_sendMessageCancelAction) {
+                        app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).onPeerTypingStopped(uid);
+                    }
                     if (action instanceof TLRPC.TL_speakingInGroupCallAction) {
                         if (chatId != 0) {
                             if (groupSpeakingActions == null) {
