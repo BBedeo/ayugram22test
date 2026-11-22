@@ -391,10 +391,10 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
             return;
         }
         boolean ios = Md3Player.isIosMiniPlayer();
-        float strokeW = ios ? dpf2(1.8f) : dp(3);
+        float strokeW = ios ? AndroidUtilities.dpf2(1.8f) : dp(3);
         linePaint.setStrokeWidth(strokeW);
         float inset = Math.max(dp(16), cardRadius);
-        float y = h - (ios ? dpf2(3f) : dp(4));
+        float y = h - (ios ? AndroidUtilities.dpf2(3f) : dp(4));
         float right = w - inset;
         linePaint.setColor(ColorUtils.setAlphaComponent(colors.onPrimaryContainer, ios ? 36 : 46));
         canvas.drawLine(inset, y, right, y, linePaint);

@@ -11017,7 +11017,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private boolean shouldAnimateDialogReorder(ViewPage viewPage) {
-        if (viewPage == null || viewPage.isPaused || isPaused || dialogsListFrozen
+        if (viewPage == null || isPaused || dialogsListFrozen
                 || viewPage.getVisibility() != View.VISIBLE) {
             return false;
         }
@@ -11027,7 +11027,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (viewPage.listView == null || viewPage.listView.getChildCount() <= 0 || !viewPage.listView.isAttachedToWindow()) {
             return false;
         }
-        if (viewPage.listView.isFastScrollPressed() || viewPage.listView.getScrollState() == RecyclerView.SCROLL_STATE_DRAGGING) {
+        if (viewPage.listView.isFastScrollAnimationRunning() || viewPage.listView.getScrollState() == RecyclerView.SCROLL_STATE_DRAGGING) {
             return false;
         }
         return initialDialogsType != 11 && initialDialogsType != 12 && initialDialogsType != 13;

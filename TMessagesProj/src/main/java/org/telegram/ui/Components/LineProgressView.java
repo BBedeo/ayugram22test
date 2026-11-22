@@ -220,7 +220,7 @@ public class LineProgressView extends FrameLayout {
             float barH = Math.min(getHeight(), AndroidUtilities.dpf2(2.5f));
             float cy = getHeight() / 2f;
             float r = barH / 2f;
-            int track = backColor != 0 ? backColor : Theme.multAlpha(progressColor, 0.20f);
+            int track = backColor != 0 ? backColor : org.telegram.ui.ActionBar.Theme.multAlpha(progressColor, 0.20f);
             progressPaint.setColor(track);
             progressPaint.setAlpha((int) (Color.alpha(track) * animatedAlphaValue));
             rect.set(0, cy - r, getWidth(), cy + r);
