@@ -409,7 +409,14 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 }
 
                 blur3_invalidateBlur();
-                blur3_updateFadeColors();
+                iBlur3SourceColor.setColor(color);
+                if (lastEstBackgroundColor != color || !hasLastEstBackgroundColor) {
+                    lastEstBackgroundColor = color;
+                    hasLastEstBackgroundColor = true;
+                    if (fadeView != null && fadeView.getVisibility() == View.VISIBLE) {
+                        fadeView.invalidate();
+                    }
+                }
 
                 super.dispatchDraw(canvas);
             }
@@ -1721,6 +1728,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private int tabLensContentVersion = 1;
     private int tabLensCapturedVersion = 0;
     private boolean capturingTabLens;
+    private boolean invalidatingBlur;
+    private boolean hasLastEstBackgroundColor;
+    private int lastEstBackgroundColor;
 
     /** The one the tabs draw now; null with the blur off, they are on the color then. */
     @Nullable
@@ -1758,17 +1768,22 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private final Runnable onFragmentGlassCaptured = this::blur3_onFragmentGlassCaptured;
 
     private void blur3_onFragmentGlassCaptured() {
+        if (capturingTabLens) {
+            return;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && iBlur3SourceTabGlass != null) {
             iBlur3SourceTabGlass.invalidateRenderer();
             iBlur3SourceTabGlass.invalidateDisplayListForDrawables();
             iBlur3SourceTabFrosted.invalidateRenderer();
             iBlur3SourceTabFrosted.invalidateDisplayListForDrawables();
-            tabLensContentVersion++;
-            if (iBlur3SourceTabLens != null) {
-                iBlur3SourceTabLens.invalidateRenderer();
-                iBlur3SourceTabLens.invalidateDisplayListForDrawables();
+            if (!invalidatingBlur) {
+                tabLensContentVersion++;
+                if (iBlur3SourceTabLens != null) {
+                    iBlur3SourceTabLens.invalidateRenderer();
+                    iBlur3SourceTabLens.invalidateDisplayListForDrawables();
+                }
+                blur3_invalidateBlur();
             }
-            blur3_invalidateBlur();
         }
     }
 
@@ -1799,40 +1814,43 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     }
 
     private void blur3_invalidateBlur() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || iBlur3SourceTabGlass == null || fragmentView == null) {
+        if (invalidatingBlur || Build.VERSION.SDK_INT < Build.VERSION_CODES.S || iBlur3SourceTabGlass == null || fragmentView == null) {
             return;
         }
 
         final int width = fragmentView.getMeasuredWidth();
         final int height = fragmentView.getMeasuredHeight();
-
-        blur3_updateFragmentsGlass();
-        final GlassSourceRenderNode source = getActiveTabSource();
-        if (source != null) {
-            source.setSize(width, height);
-            source.updateDisplayListIfNeeded();
-        }
-
-        // The elastic selector can force the true refractive lens even when
-        // global Liquid Glass is disabled. Keep its glass capture alive too;
-        // otherwise the drawable has a GPU effect but only a stale/empty source
-        // and looks like a flat dark capsule.
-        if (ElasticPillGesture.enabled()
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && iBlur3SourceTabGlass != null
-                && source != iBlur3SourceTabGlass) {
-            iBlur3SourceTabGlass.setSize(width, height);
-            iBlur3SourceTabGlass.updateDisplayListIfNeeded();
-        }
-        if (ElasticPillGesture.enabled()
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && iBlur3SourceTabLens != null) {
-            iBlur3SourceTabLens.setSize(width, height);
-            iBlur3SourceTabLens.updateDisplayListIfNeeded();
-            if (tabLensCapturedVersion != tabLensContentVersion) {
-                iBlur3SourceTabLens.invalidateDisplayListForDrawables();
-                tabLensCapturedVersion = tabLensContentVersion;
+        invalidatingBlur = true;
+        try {
+            blur3_updateFragmentsGlass();
+            final GlassSourceRenderNode source = getActiveTabSource();
+            if (source != null) {
+                source.setSize(width, height);
+                source.updateDisplayListIfNeeded();
             }
+
+            // The elastic selector can force the true refractive lens even when
+            // global Liquid Glass is disabled. Keep its glass capture alive too;
+            // otherwise the drawable has a GPU effect but only a stale/empty source
+            // and looks like a flat dark capsule.
+            if (ElasticPillGesture.enabled()
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && iBlur3SourceTabGlass != null
+                    && source != iBlur3SourceTabGlass) {
+                iBlur3SourceTabGlass.setSize(width, height);
+                iBlur3SourceTabGlass.updateDisplayListIfNeeded();
+            }
+            if (ElasticPillGesture.enabled()
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && iBlur3SourceTabLens != null
+                    && !capturingTabLens
+                    && tabLensCapturedVersion != tabLensContentVersion) {
+                tabLensCapturedVersion = tabLensContentVersion;
+                iBlur3SourceTabLens.setSize(width, height);
+                iBlur3SourceTabLens.updateDisplayListIfNeeded();
+            }
+        } finally {
+            invalidatingBlur = false;
         }
     }
 

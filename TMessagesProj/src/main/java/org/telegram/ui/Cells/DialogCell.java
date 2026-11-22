@@ -4488,7 +4488,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     final float msgH = Math.max(dp(24), messageLayout.getHeight());
                     int msgLayerSave = -1;
                     if (fadeReorderMsg && fadeRight > dp(16)) {
-                        msgLayerSave = canvas.saveLayer(0, 0, getMeasuredWidth(), getMeasuredHeight(), null);
+                        msgLayerSave = canvas.saveLayer(0, Math.max(0, top - dp(4)), getMeasuredWidth(), Math.min(getMeasuredHeight(), top + msgH + dp(4)), null);
                     }
                     canvas.save();
                     canvas.translate(messageLeft, top);
@@ -5048,7 +5048,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         }
 
         if (checkBox != null) {
-            checkBox.getCheckBoxBase().setBackground2ColorOverride(segmented ? getEffectiveCardBackgroundColor() : 0);
+            checkBox.getCheckBoxBase().setBackground2ColorOverride(segmented ? getEffectiveCardBackgroundColor() : 0, false);
         }
         if (avatarImage.getVisible()) {
             if (drawAvatarOverlays(canvas)) {

@@ -307,9 +307,15 @@ public class CheckBoxBase {
     private int background2ColorOverride;
 
     public void setBackground2ColorOverride(int color) {
+        setBackground2ColorOverride(color, true);
+    }
+
+    public void setBackground2ColorOverride(int color, boolean invalidate) {
         if (background2ColorOverride != color) {
             background2ColorOverride = color;
-            invalidate();
+            if (invalidate) {
+                invalidate();
+            }
         }
     }
 

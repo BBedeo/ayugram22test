@@ -2586,21 +2586,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 long dialogId = dialogCell.getDialogId();
                 if (actionBar.isActionModeShowed(null)) {
                     TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
-                    if (!allowMoving || dialog == null || !isDialogPinned(dialog) || DialogObject.isFolderDialogId(dialogId)) {
+                    if (!allowMoving || dialog == null || !isDialogPinned(dialog) || DialogObject.isFolderDialogId(dialogId) || getPinnedCount() <= 1) {
                         return 0;
-                    }
-                    movingView = (DialogCell) viewHolder.itemView;
-                    if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
-                        ThemeBind.clear(movingView);
-                        final GradientDrawable dragBg = new GradientDrawable();
-                        dragBg.setColor(app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(DialogsActivity.this.getResourceProvider()));
-                        dragBg.setCornerRadius(app.exteraless.appearance.SegmentedDialogsDecoration.getOuterRadiusPx());
-                        final int strokeColor = app.exteraless.appearance.M3SurfaceHelper.getOutlineVariantColor(DialogsActivity.this.getResourceProvider());
-                        dragBg.setStroke(dp(0.8f), Theme.multAlpha(strokeColor, 0.7f));
-                        movingView.setBackgroundDrawable(dragBg);
-                        movingView.setElevation(dp(8));
-                    } else {
-                        ThemeBind.backgroundColor(movingView, Theme.key_windowBackgroundWhite, DialogsActivity.this.getResourceProvider());
                     }
                     swipeFolderBack = false;
                     return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
@@ -2830,7 +2817,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             currentItemViewHolder = viewHolder;
             if (viewHolder != null && viewHolder.itemView instanceof DialogCell) {
-                ((DialogCell) viewHolder.itemView).swipeCanceled = false;
+                final DialogCell cell = (DialogCell) viewHolder.itemView;
+                cell.swipeCanceled = false;
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    movingView = cell;
+                    if (app.exteraless.appearance.AppearanceConfig.isSegmentedDialogsEnabled()) {
+                        ThemeBind.clear(movingView);
+                        final GradientDrawable dragBg = new GradientDrawable();
+                        dragBg.setColor(app.exteraless.appearance.M3SurfaceHelper.getPinnedCardColor(DialogsActivity.this.getResourceProvider()));
+                        dragBg.setCornerRadius(app.exteraless.appearance.SegmentedDialogsDecoration.getOuterRadiusPx());
+                        final int strokeColor = app.exteraless.appearance.M3SurfaceHelper.getOutlineVariantColor(DialogsActivity.this.getResourceProvider());
+                        dragBg.setStroke(dp(0.8f), Theme.multAlpha(strokeColor, 0.7f));
+                        movingView.setBackgroundDrawable(dragBg);
+                        movingView.setElevation(dp(8));
+                    } else {
+                        ThemeBind.backgroundColor(movingView, Theme.key_windowBackgroundWhite, DialogsActivity.this.getResourceProvider());
+                    }
+                }
             }
             super.onSelectedChanged(viewHolder, actionState);
         }
@@ -6091,6 +6094,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private boolean checkAutoscrollToStories(ViewPage viewPage) {
+        if (actionBar != null && actionBar.isActionModeShowed()) {
+            return false;
+        }
         if (!rightSlidingDialogContainer.hasFragment()) {
             int scrollY = (int) -scrollYOffset;
             int actionBarHeight = getMaxScrollYOffset();
@@ -11086,7 +11092,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private boolean shouldAnimateDialogReorder(ViewPage viewPage) {
         if (viewPage == null || isPaused || dialogsListFrozen
-                || viewPage.getVisibility() != View.VISIBLE) {
+                || viewPage.getVisibility() != View.VISIBLE
+                || (actionBar != null && actionBar.isActionModeShowed())) {
             return false;
         }
         if (viewPage.dialogsAdapter == null || viewPage.dialogsAdapter.getCurrentCount() <= 0) {
@@ -11095,7 +11102,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (viewPage.listView == null || viewPage.listView.getChildCount() <= 0 || !viewPage.listView.isAttachedToWindow()) {
             return false;
         }
-        if (viewPage.listView.isFastScrollAnimationRunning() || viewPage.listView.getScrollState() == RecyclerView.SCROLL_STATE_DRAGGING) {
+        if (viewPage.listView.isFastScrollAnimationRunning() || viewPage.listView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
             return false;
         }
         return initialDialogsType != 11 && initialDialogsType != 12 && initialDialogsType != 13;
