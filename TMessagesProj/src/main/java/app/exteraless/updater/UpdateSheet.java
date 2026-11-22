@@ -74,7 +74,10 @@ public class UpdateSheet extends BottomSheet {
         final int mode = SheetSurfaceMode.of(resourcesProvider);
         final boolean m3 = mode == SheetSurfaceMode.M3;
         final int accent = SheetSurfaceMode.accent(resourcesProvider);
-        final int buttonRadius = Math.round(dp(SheetSurfaceMode.buttonRadiusDp(resourcesProvider)));
+        // Радиусы для AdaptiveRipple.filledRect задаются в dp: внутри он сам умножает их на
+        // плотность (calcRadii). Прокидывать сюда dp() нельзя — получится двойная конверсия
+        // и капсула вместо кнопки.
+        final float buttonRadius = SheetSurfaceMode.buttonRadiusDp(resourcesProvider);
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -201,6 +204,15 @@ public class UpdateSheet extends BottomSheet {
             dismiss();
         });
         container.addView(skipButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 36, Gravity.CENTER_HORIZONTAL, 0, 8, 0, 0));
+
+        // Приложение перезапускается после установки (AppUpdateReceiver) — предупреждаем заранее,
+        // иначе закрытие шита и установщик выглядят как два несвязанных события.
+        TextView restartHint = new TextView(context);
+        restartHint.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
+        restartHint.setTextColor(getThemedColor(Theme.key_dialogTextGray3));
+        restartHint.setGravity(Gravity.CENTER);
+        restartHint.setText(getString(R.string.OEUpdateRestartHint));
+        container.addView(restartHint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
 
         setCustomView(container);
     }

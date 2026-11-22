@@ -346,12 +346,30 @@ public final class GitHubUpdater {
         }
     }
 
-/** В тексте релиза с апстрима остаётся чужое имя — в листе обновления его быть не должно. */
+    private static final Pattern MD_LINK = Pattern.compile("\\[([^\\]]*)]\\((https?://[^)\\s]+)\\)");
+    private static final Pattern UPSTREAM_BRAND = Pattern.compile("(?i)exteraless|extera\\s*gram|extera");
+
+    /**
+     * В тексте релиза с апстрима остаётся чужое имя — в листе обновления его быть не должно.
+     * Адреса ссылок не трогаем: «exteraless/exteraless» внутри URL иначе превращался в битую
+     * ссылку и вёл в никуда.
+     */
     private static String stripUpstreamBrand(String text) {
-        return text
-                .replaceAll("(?i)exteraless", "ExFullGram")
-                .replaceAll("(?i)extera\s*gram", "ExFullGram")
-                .replaceAll("(?i)extera", "ExFullGram");
+        StringBuilder out = new StringBuilder(text.length());
+        Matcher link = MD_LINK.matcher(text);
+        int last = 0;
+        while (link.find()) {
+            out.append(sanitizeBrand(text.substring(last, link.start())))
+                    .append('[').append(sanitizeBrand(link.group(1))).append("](")
+                    .append(link.group(2)).append(')');
+            last = link.end();
+        }
+        out.append(sanitizeBrand(text.substring(last)));
+        return out.toString();
+    }
+
+    private static String sanitizeBrand(String text) {
+        return UPSTREAM_BRAND.matcher(text).replaceAll("ExFullGram");
     }
 
     private static void show(Release release) {
@@ -515,7 +533,7 @@ public final class GitHubUpdater {
     }
 
     /** Публичный вход для кнопки «Установить» на уже скачанном APK. */
-    public static void installDownloaded(Activity activity, Release release, DownloadListener listener) {
+    public static void installDownloaded(Activity activity, DownloadListener listener) {
         File dir = new File(activity.getCacheDir(), "updates");
         File[] files = dir.listFiles();
         File apk = null;

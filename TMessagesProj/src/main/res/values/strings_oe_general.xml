@@ -165,7 +165,6 @@
     <string name="OEUpdateDownloading">Downloading update</string>
     <string name="OEUpdateDownloadFailed">Could not download the update</string>
     <string name="OEUpdateInstallFailed">Could not open the installer</string>
-    <string name="OEUpdateInstalling">Opening the installer…</string>
     <string name="OEUpdateRestartHint">The app will restart after the update</string>
     <string name="OEUpdateCheckFailed">Could not check for updates</string>
     <string name="OEUserLookupTitle">Starting @usinfobot</string>

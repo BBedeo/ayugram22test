@@ -51,22 +51,15 @@ public final class SheetSurfaceMode {
         if (LiquidGlassTuning.isActive() || LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR)) {
             return false;
         }
+        // isMaterial3SurfaceMode() включает ещё и стиль разделителей «сегменты», из-за чего
+        // шторки становились непрозрачными у классического пресета. Берём гейт именно хрома.
         return GlassOutlineStyle.current() == GlassOutlineStyle.SOLID
-                || M3SurfaceHelper.isMaterial3SurfaceMode();
-    }
-
-    public static boolean isGlass() {
-        return LiquidGlassTuning.isActive();
+                || M3SurfaceHelper.isMaterial3OpaqueChrome();
     }
 
     public static boolean isDark(@Nullable Theme.ResourcesProvider resourcesProvider) {
         return AndroidUtilities.computePerceivedBrightness(
                 Theme.getColor(Theme.key_dialogBackground, resourcesProvider)) < .72f;
-    }
-
-    /** Радиус верхних углов шторки: совпадает с rim в {@code BottomSheet}. */
-    public static float sheetRadiusDp(@Nullable Theme.ResourcesProvider resourcesProvider) {
-        return isM3(resourcesProvider) ? 28f : 18f;
     }
 
     /** Радиус карточек внутри шторки. M3 берёт пользовательский радиус секций. */

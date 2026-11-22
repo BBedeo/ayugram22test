@@ -76,6 +76,10 @@ def main() -> int:
         failures.append("update sheet subtitle must start from the app name")
     if "stripUpstreamBrand(" not in updater:
         failures.append("release notes must not print the upstream brand")
+    # Sanitizing the whole body also rewrote URLs (github.com/exteraless/exteraless) into
+    # broken links, so link targets must be skipped.
+    if "MD_LINK" not in updater:
+        failures.append("brand sanitizer must leave markdown link targets untouched")
 
     # The installer path: system installer + relaunch after replacement.
     if "canRequestPackageInstalls()" not in updater:
@@ -91,12 +95,18 @@ def main() -> int:
     if not surface:
         failures.append("SheetSurfaceMode is missing")
     else:
-        for marker in ("LiquidGlassTuning.isActive()", "M3SurfaceHelper.isMaterial3SurfaceMode()",
+        for marker in ("LiquidGlassTuning.isActive()", "M3SurfaceHelper.isMaterial3OpaqueChrome()",
                        "GlassOutlineStyle.current()"):
             if marker not in surface:
                 failures.append(f"SheetSurfaceMode lost its `{marker}` gate")
     if "SheetSurfaceMode.of(" not in sheet:
         failures.append("UpdateSheet must follow the active surface mode")
+    # Theme.AdaptiveRipple.filledRect() converts radii from dp itself; wrapping them in dp()
+    # doubles the conversion and turns a 10dp button into a capsule.
+    if "Math.round(dp(SheetSurfaceMode.buttonRadiusDp" in sheet:
+        failures.append("UpdateSheet must pass button radii in dp, not converted to px")
+    if "SheetSurfaceMode.buttonRadiusDp(" not in sheet:
+        failures.append("UpdateSheet lost its preset button radius")
     if "SheetSurfaceMode.isM3(" not in read(BOTTOM_SHEET):
         failures.append("BottomSheet must use SheetSurfaceMode.isM3() for its Material 3 chrome")
 

@@ -21,7 +21,10 @@
    (`ACTION_VIEW` + `FileProvider ${applicationId}.provider`). Перед этим проверяется
    `canRequestPackageInstalls()`, иначе Android молча отказывает.
 6. После замены пакета приходит `ACTION_MY_PACKAGE_REPLACED`, `AppUpdateReceiver`
-   перезапускает приложение — пользователь возвращается уже в новую версию.
+   перезапускает приложение — пользователь возвращается уже в новую версию. Начиная с
+   Android 10 система может заблокировать запуск активности из фона
+   (`Background activity launch blocked`), тогда остаётся кнопка «Открыть» в системном
+   установщике: исключения не будет, только запись в `FileLog`.
 
 ## «Применить на лету» невозможно — почему
 
@@ -49,24 +52,26 @@ Android не переопределяет загруженные классы: A
 1. Собрать APK: `./gradlew :TMessagesProj:assembleRelease -x lint`
    (`TMessagesProj/build/outputs/apk/release/`).
 2. Тег обязан содержать `X.Y.Z` — из него считается версия релиза. Версия в APK —
-   `1.<commits/100>.<commits%100>` из `git rev-list --count 6ba4739f1^..HEAD`, поэтому
-   тег должен совпадать с `versionName` собранного APK, иначе приложение будет вечно
-   предлагать «обновление» само себе либо не предложит его вовсе.
+   `1.<commits/100>.<commits%100>` из `git rev-list --count 6ba4739f1^..HEAD`, и при
+   сборке с `COMMIT_ID` к ней добавляется суффикс (`1.3.70-3f99855`). Сравниваются только
+   первые три числа, поэтому тег должен совпадать с этим `X.Y.Z`: иначе приложение будет
+   вечно предлагать «обновление» само себе либо не предложит его вовсе.
 3. Создать релиз **не** `prerelease` и **не** `draft`, приложив ассет с `.apk` в имени:
 
    ```bash
    curl -sS -X POST -H "Authorization: token $GITHUB_TOKEN" \
         -H "Accept: application/vnd.github+json" \
         https://api.github.com/repos/BBedeo/ayugram22test/releases \
-        -d '{"tag_name":"v1.3.68","name":"ExFullGram 1.3.68","prerelease":false,"draft":true}'
+        -d '{"tag_name":"v1.3.70","name":"ExFullGram 1.3.70","prerelease":false,"draft":true}'
    curl -sS -X POST -H "Authorization: token $GITHUB_TOKEN" \
         -H "Content-Type: application/vnd.android.package-archive" \
         "https://uploads.github.com/repos/BBedeo/ayugram22test/releases/<id>/assets?name=ExFullGram-v1.3.68-arm64-v8a.apk" \
         --data-binary @ExFullGram-v1.3.68.apk
    ```
 
-   Затем `PATCH /releases/<id>` с `{"draft":false}` — до этого шага релиз не виден
-   приложению (`draft` отфильтрован).
+   Имя ассета повторяет вывод Gradle (`ExFullGram-v<version>(<code>).apk`, ABI в имени нет,
+   поэтому `pickAsset()` идёт по ветке «любой `.apk`»). Затем `PATCH /releases/<id>` с
+   `{"draft":false}` — до этого шага релиз не виден приложению (`draft` отфильтрован).
 4. Проверить: `GET /repos/BBedeo/ayugram22test/releases/latest` отдаёт нужный тег и ассет
    `.apk`. На телефоне: «Проверить обновления» в настройках (или пункт в профиле) →
    лист обновления → «Обновить» → установщик → приложение перезапускается само.
