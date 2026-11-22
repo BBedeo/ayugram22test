@@ -78,11 +78,14 @@ half4 main(in float2 fragCoord) {
 
   // Crisp readable core with vivid passive & pressed perimeter Snell lens refraction.
   float2 uv = fragCoord + ray.xy * (0.64 * rayDepth * refract_intensity)
-      * (0.86 + lift * 0.34) * mix(1.0, 0.74, cardWeight);
-  uv -= isoRel * (0.028 + lift * 0.042) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.32 * bevel) * (1.0 - 0.88 * cardWeight);
+      * (0.86 + lift * 0.22) * mix(1.0, 0.74, cardWeight);
+  uv -= isoRel * (0.028 + lift * 0.032) * t * (0.28 + 0.72 * domeT) * (1.0 - 0.32 * bevel) * (1.0 - 0.88 * cardWeight);
 
-  float2 uvMin = center - size + 0.5;
-  float2 uvMax = center + size - 0.5;
+  float2 uvMin = center - size + 1.5;
+  float2 uvMax = center + size - 1.5;
+  // Optical mirror-fold at bounds instead of hard clamp so sticker/header borders never streak into stripes.
+  uv = uvMin + abs(uv - uvMin);
+  uv = uvMax - abs(uvMax - uv);
   uv = clamp(uv, uvMin, uvMax);
 
   // Symmetric RGB chromatic dispersion across curved edges + inset opposite-side reflection.
@@ -157,8 +160,8 @@ half4 main(in float2 fragCoord) {
   float offDiagTopRight = pow(max(perpDot, 0.0), 4.6) * (0.20 * pillWeight);
   float offDiagBotLeft = pow(max(-perpDot, 0.0), 4.6) * (0.24 * pillWeight);
   float capBoost = pow(abs(edgeDir.x), 3.8) * (0.06 + 0.08 * lift) * (1.0 - 0.35 * pillWeight) * (1.0 - 0.72 * cardWeight);
-  float rimCore = gaussian((dDp - 0.65) / 0.55);
-  float innerRidge = gaussian((dDp - 1.65) / 0.85);
+  float rimCore = gaussian((dDp - 0.95) / 0.62);
+  float innerRidge = gaussian((dDp - 1.75) / 0.85);
   float darkGlintScale = mix(0.92, mix(0.74, 0.88, cardWeight), darkCrystalTint);
   float rimProfile = rimCore * mix(0.90, 0.94, cardWeight) + innerRidge * mix(0.10, 0.06, cardWeight);
   float rimSpec = (keyArc + catchArc + offDiagTopRight + offDiagBotLeft + capBoost)
@@ -173,5 +176,6 @@ half4 main(in float2 fragCoord) {
   half3 specTint = mix(half3(0.92, 0.96, 1.0), half3(1.0, 0.99, 0.97), half(clamp(rawDot * 0.5 + 0.5, 0.0, 1.0)));
   surface.rgb = min(half3(1.0), surface.rgb + specTint * half(totalGlint * float(surface.a)));
 
-  return surface;
+  float edgeAA = smoothstep(0.6, -0.85, sdRaw);
+  return surface * half(edgeAA);
 }

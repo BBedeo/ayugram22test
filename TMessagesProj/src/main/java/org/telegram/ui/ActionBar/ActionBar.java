@@ -3646,7 +3646,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 glassBackRestRect.set(0, t, s + p * 2, b);
                 final float backPress = (headerGlassLens && motionEnabled) ? animatorBackGlassPressed.getFloatValue() : 0f;
                 final int swell = Math.round(dp(2.4f) * backPress);
-                glassDrawableBack.setBounds(-swell, t - swell, s + p * 2 + swell, b + swell);
+                glassDrawableBack.setBounds(Math.max(-dp(1), -swell), t - swell, s + p * 2 + swell, b + swell);
                 if (headerGlassLens) {
                     glassDrawableBack.setElasticPressProgress(backPress * 0.88f);
                 }

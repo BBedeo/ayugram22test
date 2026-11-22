@@ -214,6 +214,11 @@ public class ActionBarMenuItem extends FrameLayout {
     private ActionBarMenuItemDelegate delegate;
     ActionBarSubMenuItemDelegate subMenuDelegate;
     private boolean allowCloseAnimation = true;
+    private boolean fullWidthAnchorDropdown;
+
+    public void setFullWidthAnchorDropdown(boolean enabled) {
+        fullWidthAnchorDropdown = enabled;
+    }
     protected boolean overrideMenuClick;
     boolean processedPopupClick;
     private boolean layoutInScreen;
@@ -1401,7 +1406,14 @@ public class ActionBarMenuItem extends FrameLayout {
         });
 
        // if (measurePopup) {
-            container.measure(MeasureSpec.makeMeasureSpec(AndroidUtilities.displaySize.x - AndroidUtilities.dp(40), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(AndroidUtilities.displaySize.y, MeasureSpec.AT_MOST));
+            if (fullWidthAnchorDropdown && anchor != null && anchor.getMeasuredWidth() > 0) {
+                final int targetW = anchor.getMeasuredWidth();
+                popupLayout.setMinimumWidth(targetW);
+                popupWindow.setWidth(targetW);
+                container.measure(MeasureSpec.makeMeasureSpec(targetW, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.displaySize.y, MeasureSpec.AT_MOST));
+            } else {
+                container.measure(MeasureSpec.makeMeasureSpec(AndroidUtilities.displaySize.x - AndroidUtilities.dp(40), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(AndroidUtilities.displaySize.y, MeasureSpec.AT_MOST));
+            }
             if (setMinWidth != null && setMinWidth.getLayoutParams() != null && popupLayout.getSwipeBack() != null) {
                 View mainScrollView = popupLayout.getSwipeBack().getChildAt(0);
                 if (mainScrollView != null && mainScrollView.getMeasuredWidth() > 0) {
@@ -2530,6 +2542,26 @@ public class ActionBarMenuItem extends FrameLayout {
         int offsetY;
 
         if (anchor != null) {
+            if (fullWidthAnchorDropdown) {
+                int[] location = new int[2];
+                anchor.getLocationOnScreen(location);
+                int anchorBottom = location[1] + anchor.getMeasuredHeight();
+                int screenH = AndroidUtilities.displayMetrics.heightPixels;
+                int popH = popupLayout.getMeasuredHeight();
+                boolean showAbove = (anchorBottom + popH > screenH - AndroidUtilities.dp(24)) && (location[1] - popH > AndroidUtilities.dp(24));
+                offsetY = showAbove
+                        ? (-anchor.getMeasuredHeight() - popH + dp(4) + yOffset)
+                        : (-dp(4) + additionalYOffset + yOffset);
+                popupLayout.setShownFromBottom(showAbove);
+                if (show) {
+                    popupLayout.scrollToTop();
+                    popupWindow.showAsDropDown(anchor, 0, offsetY);
+                }
+                if (update) {
+                    popupWindow.update(anchor, 0, offsetY, -1, -1);
+                }
+                return;
+            }
             float scaleY = anchor.getScaleY();
             offsetY = -(int) (anchor.getMeasuredHeight() * scaleY - anchor.getTranslationY() / scaleY) + additionalYOffset;
             int height = AndroidUtilities.displayMetrics.heightPixels;
