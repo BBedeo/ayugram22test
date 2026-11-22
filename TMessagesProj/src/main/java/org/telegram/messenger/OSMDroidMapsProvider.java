@@ -243,28 +243,18 @@ public class OSMDroidMapsProvider implements IMapsProvider {
         }
 
         private void applyTileSource() {
-            final boolean useDarkTiles = currentMapType == MAP_TYPE_HYBRID || (currentMapType == MAP_TYPE_NORMAL && isDarkStyle);
+            final boolean useDarkFilter = currentMapType == MAP_TYPE_NORMAL && isDarkStyle;
             try {
                 if (mapView.getOverlayManager() != null && mapView.getOverlayManager().getTilesOverlay() != null) {
-                    mapView.getOverlayManager().getTilesOverlay().setLoadingBackgroundColor(useDarkTiles ? 0xFF1A1D24 : 0xFFEBE8E1);
-                    mapView.getOverlayManager().getTilesOverlay().setLoadingLineColor(useDarkTiles ? 0xFF282D37 : 0xFFD5D0C5);
+                    org.osmdroid.views.overlay.TilesOverlay tilesOverlay = mapView.getOverlayManager().getTilesOverlay();
+                    tilesOverlay.setLoadingBackgroundColor(isDarkStyle ? 0xFF1A1D24 : 0xFFEBE8E1);
+                    tilesOverlay.setLoadingLineColor(isDarkStyle ? 0xFF282D37 : 0xFFD5D0C5);
+                    tilesOverlay.setColorFilter(useDarkFilter ? org.osmdroid.views.overlay.TilesOverlay.INVERT_COLORS : null);
                 }
             } catch (Throwable ignore) {
             }
-            attributionOverlay.setShadowLayer(1, -1, -1, useDarkTiles ? Color.BLACK : Color.WHITE);
-            if (useDarkTiles) {
-                ITileSource tileSource = new XYTileSource(
-                        "Carto Dark", 0, 20,
-                        256, ".png",
-                        new String[]{
-                                "https://a.basemaps.cartocdn.com/dark_all/",
-                                "https://b.basemaps.cartocdn.com/dark_all/",
-                                "https://c.basemaps.cartocdn.com/dark_all/",
-                                "https://d.basemaps.cartocdn.com/dark_all/"},
-                        "© OpenStreetMap contributors, © CARTO");
-                attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, © <a href=\"https://carto.com/attributions\">CARTO</a>"));
-                mapView.setTileSource(tileSource);
-            } else if (currentMapType == MAP_TYPE_SATELLITE) {
+            attributionOverlay.setShadowLayer(1, -1, -1, isDarkStyle ? Color.BLACK : Color.WHITE);
+            if (currentMapType == MAP_TYPE_SATELLITE) {
                 ITileSource tileSource = new XYTileSource(
                         "Wikimedia", 0, 19,
                         256, ".png",
