@@ -699,7 +699,7 @@ public class ActionBarPopupWindow extends PopupWindow {
                         .scaleY(1.035f)
                         .translationY(-dp(1.5f))
                         .setDuration(160)
-                        .setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT)
+                        .setInterpolator(org.telegram.ui.Components.CubicBezierInterpolator.EASE_OUT_QUINT)
                         .start();
             } else {
                 if (dragHoverScaledView == view) {
@@ -710,7 +710,7 @@ public class ActionBarPopupWindow extends PopupWindow {
                         .scaleY(1f)
                         .translationY(0f)
                         .setDuration(180)
-                        .setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT)
+                        .setInterpolator(org.telegram.ui.Components.CubicBezierInterpolator.EASE_OUT_QUINT)
                         .start();
             }
         }
