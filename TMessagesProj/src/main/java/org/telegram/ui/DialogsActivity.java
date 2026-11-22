@@ -2563,7 +2563,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (!actionBar.isActionModeShowed(null) || !(viewHolder.itemView instanceof DialogCell)) {
                 return false;
             }
-            return hasDragFlag(recyclerView, viewHolder)
+            return (getMovementFlags(recyclerView, viewHolder) & makeFlag(ItemTouchHelper.ACTION_STATE_DRAG, ItemTouchHelper.UP | ItemTouchHelper.DOWN)) != 0
                     && ((DialogCell) viewHolder.itemView).isPointInsideReorderHandle(localX, localY);
         }
 
