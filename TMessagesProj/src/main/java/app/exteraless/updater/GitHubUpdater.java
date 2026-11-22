@@ -44,7 +44,11 @@ import xyz.nextalone.nagram.NaConfig;
 
 public final class GitHubUpdater {
 
-    private static final String REPO = "exteraless/exteraless";
+    // Обновления раздаются только из собственного репозитория форка: upstream
+    // (exteraless/exteraless) отдаёт чужой APK с другим пакетом и другой подписью —
+    // установка поверх ExFullGram падала с INSTALL_FAILED_UPDATE_INCOMPATIBLE,
+    // а баннер предлагал «обновление» другого приложения.
+    private static final String REPO = "BBedeo/ayugram22test";
     public static final String RELEASES_URL = "https://github.com/" + REPO + "/releases";
     private static final String API = "https://api.github.com/repos/" + REPO;
     private static final long AUTO_INTERVAL = TimeUnit.HOURS.toMillis(6);
@@ -52,6 +56,12 @@ public final class GitHubUpdater {
     private static final String KEY_LAST_CHECK = "last_check";
     private static final String KEY_SKIPPED = "skipped_tag";
     private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
+    // Релизы CI помечаются тегом ci-<sha> и собираются рабочим процессом без истории
+    // коммитов: их versionName — базовый, подпись — ci-ключ. Ставить такой APK поверх
+    // локальной сборки нельзя (INSTALL_FAILED_UPDATE_INCOMPATIBLE), а в списке релизов
+    // они стоят сверху и заслоняют настоящий. Поэтому обновлением считается только
+    // релиз с версионным тегом.
+    private static final Pattern RELEASE_TAG = Pattern.compile("^v?\\d+\\.\\d+\\.\\d+");
 
     private static volatile OkHttpClient client;
     private static volatile boolean checking;
@@ -198,8 +208,21 @@ public final class GitHubUpdater {
         }
     }
 
+    /**
+     * Стабильный канал спрашивает {@code /releases/latest}: CI кладёт по релизу на коммит, и
+     * десяток верхних записей — сплошные {@code ci-*} пре-релизы, из-за чего настоящий релиз
+     * в выборку не попадал вовсе. Бета дополнительно читает список, но тоже только версионные
+     * теги: APK из CI собран без истории коммитов и подписан ключом раннера, ставить его
+     * поверх локальной сборки нельзя.
+     */
     private static Release latest(boolean prerelease) throws Exception {
-        JSONObject wrapper = getJson(API + "/releases?per_page=10");
+        if (!prerelease) {
+            Release release = parseRelease(getJson(API + "/releases/latest"));
+            if (release != null) {
+                return release;
+            }
+        }
+        JSONObject wrapper = getJson(API + "/releases?per_page=30");
         JSONArray releases = wrapper == null ? null : wrapper.optJSONArray("items");
         if (releases == null) {
             return null;
@@ -209,21 +232,35 @@ public final class GitHubUpdater {
             if (item == null || item.optBoolean("draft") || item.optBoolean("prerelease") && !prerelease) {
                 continue;
             }
-            JSONObject asset = pickAsset(item.optJSONArray("assets"));
-            if (asset == null) {
-                continue;
+            Release release = parseRelease(item);
+            if (release != null) {
+                return release;
             }
-            Release release = new Release();
-            release.tag = item.optString("tag_name");
-            release.name = item.optString("name", release.tag);
-            release.body = item.optString("body", "");
-            release.apkUrl = asset.optString("browser_download_url");
-            release.apkName = asset.optString("name");
-            release.apkSize = asset.optLong("size");
-            release.published = parseDate(item.optString("published_at"));
-            return release;
         }
         return null;
+    }
+
+    private static Release parseRelease(JSONObject item) {
+        if (item == null) {
+            return null;
+        }
+        String tag = item.optString("tag_name");
+        if (!RELEASE_TAG.matcher(tag).find()) {
+            return null;
+        }
+        JSONObject asset = pickAsset(item.optJSONArray("assets"));
+        if (asset == null) {
+            return null;
+        }
+        Release release = new Release();
+        release.tag = tag;
+        release.name = item.optString("name", tag);
+        release.body = item.optString("body", "");
+        release.apkUrl = asset.optString("browser_download_url");
+        release.apkName = asset.optString("name");
+        release.apkSize = asset.optLong("size");
+        release.published = parseDate(item.optString("published_at"));
+        return release;
     }
 
     private static JSONObject pickAsset(JSONArray assets) {
@@ -309,6 +346,14 @@ public final class GitHubUpdater {
         }
     }
 
+/** В тексте релиза с апстрима остаётся чужое имя — в листе обновления его быть не должно. */
+    private static String stripUpstreamBrand(String text) {
+        return text
+                .replaceAll("(?i)exteraless", "ExFullGram")
+                .replaceAll("(?i)extera\s*gram", "ExFullGram")
+                .replaceAll("(?i)extera", "ExFullGram");
+    }
+
     private static void show(Release release) {
         BaseFragment fragment = LaunchActivity.getSafeLastFragment();
         Activity activity = fragment == null ? null : fragment.getParentActivity();
@@ -317,14 +362,18 @@ public final class GitHubUpdater {
         }
         String size = release.apkSize > 0 ? AndroidUtilities.formatFileSize(release.apkSize) : "";
         int[] remote = version(release.tag, release.name, release.apkName);
-        StringBuilder subtitle = new StringBuilder(TextUtils.isEmpty(release.name) ? release.tag : release.name);
+        // Имя релиза приходит с GitHub и раньше протекало в подзаголовок чужой сборкой
+        // («exteraGram 13.x»). Подпись собираем сами: имя приложения, версия, размер.
+        StringBuilder subtitle = new StringBuilder(LocaleController.getAppName());
         if (remote != null) {
-            subtitle.append(" · ").append(remote[0]).append('.').append(remote[1]).append('.').append(remote[2]);
+            subtitle.append(' ').append(remote[0]).append('.').append(remote[1]).append('.').append(remote[2]);
+        } else if (!TextUtils.isEmpty(release.displayVersion())) {
+            subtitle.append(' ').append(release.displayVersion());
         }
         if (!size.isEmpty()) {
             subtitle.append(" · ").append(size);
         }
-        String notes = TextUtils.isEmpty(release.body) ? release.tag : release.body;
+        String notes = TextUtils.isEmpty(release.body) ? release.tag : stripUpstreamBrand(release.body);
         String updateText = size.isEmpty() ? LocaleController.getString(R.string.OEUpdateInstall)
                 : LocaleController.formatString(R.string.OEUpdateInstallSize, size);
         new UpdateSheet(activity, fragment.getResourceProvider(), LocaleController.getString(R.string.OEUpdateTitle),
@@ -430,7 +479,29 @@ public final class GitHubUpdater {
         }, "gh-updater-download").start();
     }
 
-    private static void install(Activity activity, File file) {
+    /**
+     * Отдаём скачанный APK системному установщику. Android не умеет применять новый код
+     * без переустановки пакета: ART не переопределяет загруженные классы, а base.apk
+     * доступен только на чтение. Поэтому «применить на лету» здесь невозможно в принципе —
+     * единственный путь ACTION_VIEW → системный установщик → перезапуск.
+     */
+    public static void install(Activity activity, File file) {
+        if (activity == null || file == null || !file.exists() || file.length() == 0) {
+            bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
+            return;
+        }
+        // «Неизвестные источники»: без этого гранта установщик молча откажет.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !ApplicationLoader.applicationContext.getPackageManager().canRequestPackageInstalls()) {
+            try {
+                org.telegram.ui.Components.AlertsCreator
+                        .createApkRestrictedDialog(activity, null).show();
+            } catch (Exception e) {
+                FileLog.e("GitHubUpdater: restricted dialog failed", e);
+                bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
+            }
+            return;
+        }
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -438,8 +509,34 @@ public final class GitHubUpdater {
                     "application/vnd.android.package-archive");
             activity.startActivity(intent);
         } catch (Exception e) {
-            FileLog.e(e);
-            bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
+            FileLog.e("GitHubUpdater: open installer failed", e);
+            bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
+        }
+    }
+
+    /** Публичный вход для кнопки «Установить» на уже скачанном APK. */
+    public static void installDownloaded(Activity activity, Release release, DownloadListener listener) {
+        File dir = new File(activity.getCacheDir(), "updates");
+        File[] files = dir.listFiles();
+        File apk = null;
+        if (files != null) {
+            for (File f : files) {
+                if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".apk") && f.length() > 0) {
+                    apk = f;
+                    break;
+                }
+            }
+        }
+        if (apk == null) {
+            if (listener != null) {
+                listener.onFinished(false, false);
+            }
+            bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
+            return;
+        }
+        install(activity, apk);
+        if (listener != null) {
+            listener.onFinished(true, false);
         }
     }
 }

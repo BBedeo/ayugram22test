@@ -4,9 +4,11 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -21,6 +23,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.core.graphics.ColorUtils;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.LocaleController;
@@ -31,6 +35,8 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LineProgressView;
 import org.telegram.ui.Components.TypefaceSpan;
 import org.telegram.ui.Components.URLSpanNoUnderline;
+
+import app.exteraless.appearance.SheetSurfaceMode;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,11 +68,17 @@ public class UpdateSheet extends BottomSheet {
         this.updateText = updateText;
         fixNavigationBar();
 
-        final int accent = getThemedColor(Theme.key_featuredStickers_addButton);
+        // Оформление следует выбранному пресету: тот же режим, что BottomSheet выбрал для
+        // собственного фона (стекло / Material 3 / классика), иначе внутри непрозрачного
+        // M3-листа остаются классические серые плашки.
+        final int mode = SheetSurfaceMode.of(resourcesProvider);
+        final boolean m3 = mode == SheetSurfaceMode.M3;
+        final int accent = SheetSurfaceMode.accent(resourcesProvider);
+        final int buttonRadius = Math.round(dp(SheetSurfaceMode.buttonRadiusDp(resourcesProvider)));
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(dp(18), dp(10), dp(18), dp(14));
+        container.setPadding(dp(m3 ? 24 : 18), dp(m3 ? 12 : 10), dp(m3 ? 24 : 18), dp(m3 ? 20 : 14));
 
         LinearLayout header = new LinearLayout(context);
         header.setOrientation(LinearLayout.HORIZONTAL);
@@ -76,8 +88,9 @@ public class UpdateSheet extends BottomSheet {
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setImageResource(R.drawable.msg_download);
         icon.setColorFilter(new PorterDuffColorFilter(
-                getThemedColor(Theme.key_featuredStickers_buttonText), PorterDuff.Mode.SRC_IN));
-        icon.setBackground(Theme.createRoundRectDrawable(dp(20), accent));
+                m3 ? accent : SheetSurfaceMode.onAccent(resourcesProvider), PorterDuff.Mode.SRC_IN));
+        icon.setBackground(Theme.createRoundRectDrawable(dp(m3 ? 14 : 20),
+                m3 ? ColorUtils.setAlphaComponent(accent, 0x1F) : accent));
         icon.setPadding(dp(8), dp(8), dp(8), dp(8));
         header.addView(icon, LayoutHelper.createLinear(40, 40, Gravity.CENTER_VERTICAL, 0, 0, 12, 0));
 
@@ -123,14 +136,22 @@ public class UpdateSheet extends BottomSheet {
         scrollView.addView(notesView, new FrameLayout.LayoutParams(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         FrameLayout card = new FrameLayout(context);
-        card.setBackground(Theme.createRoundRectDrawable(dp(18), getThemedColor(Theme.key_graySection)));
+        GradientDrawable cardBackground = new GradientDrawable();
+        cardBackground.setCornerRadius(dp(SheetSurfaceMode.cardRadiusDp(resourcesProvider)));
+        cardBackground.setColor(SheetSurfaceMode.cardFill(resourcesProvider, getThemedColor(Theme.key_graySection)));
+        final int cardStrokePx = SheetSurfaceMode.cardStrokePx(resourcesProvider);
+        final int cardStrokeColor = SheetSurfaceMode.cardStroke(resourcesProvider);
+        if (cardStrokePx > 0 && Color.alpha(cardStrokeColor) != 0) {
+            cardBackground.setStroke(cardStrokePx, cardStrokeColor);
+        }
+        card.setBackground(cardBackground);
         card.setPadding(dp(15), dp(13), dp(15), dp(13));
         card.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 12));
 
         progressView = new LineProgressView(context);
         progressView.setProgressColor(accent);
-        progressView.setBackColor(getThemedColor(Theme.key_graySection));
+        progressView.setBackColor(SheetSurfaceMode.progressTrack(resourcesProvider));
         progressView.setVisibility(View.GONE);
         container.addView(progressView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 4, 2, 0, 2, 12));
 
@@ -140,18 +161,19 @@ public class UpdateSheet extends BottomSheet {
         secondaryButton = new TextView(context);
         secondaryButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         secondaryButton.setTypeface(AndroidUtilities.bold());
-        secondaryButton.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
-        secondaryButton.setBackground(Theme.AdaptiveRipple.filledRect(getThemedColor(Theme.key_graySection), 10));
+        secondaryButton.setTextColor(SheetSurfaceMode.secondaryButtonText(resourcesProvider, accent));
+        secondaryButton.setBackground(Theme.AdaptiveRipple.filledRect(
+                SheetSurfaceMode.secondaryButtonFill(resourcesProvider, accent), buttonRadius));
         secondaryButton.setGravity(Gravity.CENTER);
         secondaryButton.setText(getString(R.string.OEUpdateLater));
         secondaryButton.setOnClickListener(v -> dismiss());
-        buttons.addView(secondaryButton, LayoutHelper.createLinear(0, 46, 1f, Gravity.NO_GRAVITY, 0, 0, 8, 0));
+        buttons.addView(secondaryButton, LayoutHelper.createLinear(0, m3 ? 48 : 46, 1f, Gravity.NO_GRAVITY, 0, 0, 8, 0));
 
         primaryButton = new TextView(context);
         primaryButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         primaryButton.setTypeface(AndroidUtilities.bold());
-        primaryButton.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
-        primaryButton.setBackground(Theme.AdaptiveRipple.filledRect(accent, 10));
+        primaryButton.setTextColor(SheetSurfaceMode.onAccent(resourcesProvider));
+        primaryButton.setBackground(Theme.AdaptiveRipple.filledRect(accent, buttonRadius));
         primaryButton.setGravity(Gravity.CENTER);
         primaryButton.setSingleLine(true);
         primaryButton.setEllipsize(TextUtils.TruncateAt.END);
@@ -162,13 +184,13 @@ public class UpdateSheet extends BottomSheet {
                 delegate.onUpdate(this);
             }
         });
-        buttons.addView(primaryButton, LayoutHelper.createLinear(0, 46, 1.4f, Gravity.NO_GRAVITY));
+        buttons.addView(primaryButton, LayoutHelper.createLinear(0, m3 ? 48 : 46, 1.4f, Gravity.NO_GRAVITY));
 
         container.addView(buttons, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         skipButton = new TextView(context);
         skipButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        skipButton.setTextColor(getThemedColor(Theme.key_dialogTextGray2));
+        skipButton.setTextColor(m3 ? accent : getThemedColor(Theme.key_dialogTextGray2));
         skipButton.setGravity(Gravity.CENTER);
         skipButton.setText(getString(R.string.OEUpdateSkip));
         skipButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ROUNDRECT_6DP));

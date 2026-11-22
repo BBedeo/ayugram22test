@@ -1557,8 +1557,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                         && LaunchActivity.systemBlurEnabled) {
                     window.setBackgroundBlurRadius(Math.round(dp(24) * LiquidGlassTuning.blurScale()));
                 }
-            } else if (org.telegram.ui.Components.blur3.GlassOutlineStyle.current() == org.telegram.ui.Components.blur3.GlassOutlineStyle.SOLID
-                    && !org.telegram.messenger.LiteMode.isEnabled(org.telegram.messenger.LiteMode.FLAG_CHAT_BLUR)) {
+            } else if (app.exteraless.appearance.SheetSurfaceMode.isM3(resourcesProvider)) {
+                // Гейт прежнего вида требовал GlassOutlineStyle.SOLID, но пресет Material 3
+                // ставит HIDDEN — и M3-поверхность не включалась ни в одном пресете.
                 final int color = getThemedColor(Theme.key_dialogBackground);
                 final boolean dark = AndroidUtilities.computePerceivedBrightness(color) < .72f;
                 final int m3SurfaceLow = ColorUtils.blendARGB(color, dark ? 0xFF1D1B20 : 0xFFF7F2FA, 0.55f);
