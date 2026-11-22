@@ -44,6 +44,7 @@ import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.blur3.BlurredRecyclerView;
 import org.telegram.utils.glass.BaseFragmentSimpleGlass;
 
@@ -142,14 +143,32 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
             }
         });
 
-        FrameLayout frameLayout = new FrameLayout(context);
-        frameLayout.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+        SizeNotifierFrameLayout frameLayout = new SizeNotifierFrameLayout(context) {
+            @Override
+            protected boolean isActionBarVisible() {
+                return false;
+            }
+
+            @Override
+            protected boolean isStatusBarVisible() {
+                return false;
+            }
+
+            @Override
+            protected boolean useRootView() {
+                return false;
+            }
+        };
+        frameLayout.setOccupyStatusBar(false);
+        frameLayout.setBackgroundImage(Theme.getCachedWallpaper(), Theme.isWallpaperMotion());
         fragmentView = frameLayout;
 
         listView = new BlurredRecyclerView(context);
         listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setVerticalScrollBarEnabled(false);
         listView.setClipToPadding(false);
+        listView.setSelectorType(9);
+        listView.setSelectorDrawableColor(0);
         adapter = new ListAdapter(context);
         listView.setAdapter(adapter);
         listView.setOnItemClickListener((view, position) -> {
@@ -172,12 +191,13 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
 
         emptyView = new TextView(context);
         emptyView.setText(getString(R.string.OEHistoryEmpty));
-        emptyView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        emptyView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        emptyView.setTextColor(getThemedColor(Theme.key_chat_serviceText));
+        emptyView.setBackground(Theme.createRoundRectDrawable(dp(16), getThemedColor(Theme.key_chat_serviceBackground)));
+        emptyView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         emptyView.setGravity(Gravity.CENTER);
-        emptyView.setPadding(dp(32), dp(16), dp(32), dp(16));
+        emptyView.setPadding(dp(18), dp(10), dp(18), dp(10));
         emptyView.setVisibility(View.GONE);
-        frameLayout.addView(emptyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+        frameLayout.addView(emptyView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 24, 0, 24, 0));
 
         loadHistoryAsync();
         return fragmentView;
@@ -333,9 +353,19 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view;
             if (viewType == VIEW_TYPE_HEADER) {
-                HeaderCell header = new HeaderCell(context);
-                header.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                view = header;
+                FrameLayout pillContainer = new FrameLayout(context);
+                pillContainer.setPadding(dp(12), dp(8), dp(12), dp(2));
+                TextView pill = new TextView(context);
+                pill.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12.5f);
+                pill.setTypeface(AndroidUtilities.bold());
+                pill.setTextColor(getThemedColor(Theme.key_chat_serviceText));
+                pill.setBackground(Theme.createRoundRectDrawable(dp(12), getThemedColor(Theme.key_chat_serviceBackground)));
+                pill.setPadding(dp(11), dp(4), dp(11), dp(4));
+                pill.setSingleLine(true);
+                pill.setEllipsize(TextUtils.TruncateAt.END);
+                pillContainer.addView(pill, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+                pillContainer.setTag(pill);
+                view = pillContainer;
             } else {
                 AyuMessageHistory.NekoMessageCell cell = new AyuMessageHistory.NekoMessageCell(context, currentAccount);
                 cell.setShowAyuDeletedMark(false);
@@ -350,9 +380,9 @@ public class AyuAllHistoryActivity extends BaseFragmentSimpleGlass {
             if (idx < 0 || idx >= filteredEntries.size()) return;
             HistoryEntry entry = filteredEntries.get(idx);
             if (holder.getItemViewType() == VIEW_TYPE_HEADER) {
-                HeaderCell header = (HeaderCell) holder.itemView;
-                String tag = getString(entry.isEdited ? R.string.EditsHistoryMenuText : R.string.Delete);
-                header.setText(resolveDialogName(entry.dialogId) + " • " + tag);
+                TextView pill = (TextView) holder.itemView.getTag();
+                String tag = getString(entry.isEdited ? R.string.OEHistoryEdited : R.string.OEHistoryDeleted);
+                pill.setText(resolveDialogName(entry.dialogId) + " • " + tag);
             } else {
                 AyuMessageHistory.NekoMessageCell cell = (AyuMessageHistory.NekoMessageCell) holder.itemView;
                 cell.setMessageObject(entry.messageObject, null, false, false, false);

@@ -83,6 +83,8 @@
     <string name="OEGeneralAyuMomentsDisableAll">Turn off message history</string>
     <string name="OEHistoryAllChats">All chats</string>
     <string name="OEHistoryEmpty">No saved deleted or edited messages yet</string>
+    <string name="OEHistoryDeleted">Deleted</string>
+    <string name="OEHistoryEdited">Edited</string>
     <string name="OELastActivityFormatted">last activity %1$s</string>
     <string name="OELastActivityDateFormatted">last activity %1$s</string>
     <string name="OEGeneralNotificationsHeader">Notifications</string>
