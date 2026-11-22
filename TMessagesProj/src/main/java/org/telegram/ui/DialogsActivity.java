@@ -4346,6 +4346,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     }
                     hideActionMode(false);
                 } else if (id == pin || id == read || id == delete || id == clear || id == mute || id == archive || id == block || id == archive2 || id == pin2) {
+                    if (shouldUseDialogsHeaderGlass() && actionBar != null && !selectedDialogs.isEmpty()) {
+                        if (id == delete && showActionModeDeleteOverlay(selectedDialogs)) {
+                            return;
+                        }
+                        if (id == mute && showActionModeMuteOverlay(selectedDialogs)) {
+                            return;
+                        }
+                        if ((id == pin || id == pin2) && showActionModePinOverlay(selectedDialogs, id)) {
+                            return;
+                        }
+                    }
                     performSelectedDialogsAction(selectedDialogs, id, true, false);
                 } else if (id == select_all) {
                     final int initialSelectedCount = selectedDialogs.size();
@@ -14138,6 +14149,208 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         io.show();
         io.setTranslationY(-dp(64));
+    }
+
+    private boolean showActionModePinOverlay(ArrayList<Long> selectedDialogs, int actionId) {
+        final ActionBarMenuItem anchor = (pinItem != null && pinItem.getVisibility() == View.VISIBLE)
+                ? pinItem
+                : (pin2Item != null && pin2Item.getVisibility() == View.VISIBLE ? pin2Item : null);
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (anchor == null || overlay == null) {
+            return false;
+        }
+        final boolean pinning = canPinCount != 0;
+        final int count = selectedDialogs.size();
+        final String actionTitle = LocaleController.getString(pinning ? R.string.PinToTop : R.string.UnpinFromTop);
+        final String header = count > 1 ? actionTitle + " (" + count + ")" : actionTitle;
+        final ArrayList<Long> didsCopy = new ArrayList<>(selectedDialogs);
+        final ItemOptions io = ItemOptions.makeOptions(this, anchor);
+        io.addText(header, 14, dp(220));
+        io.add(pinning ? R.drawable.msg_pin : R.drawable.msg_unpin, actionTitle,
+                () -> performSelectedDialogsAction(didsCopy, actionId, true, false));
+        io.add(R.drawable.msg_close, LocaleController.getString(R.string.Cancel), null);
+        if (io.openInOverlay(actionBar, anchor, overlay, () -> invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS))) {
+            invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean showActionModeMuteOverlay(ArrayList<Long> selectedDialogs) {
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (muteItem == null || muteItem.getVisibility() != View.VISIBLE || overlay == null) {
+            return false;
+        }
+        final int count = selectedDialogs.size();
+        final ArrayList<Long> didsCopy = new ArrayList<>(selectedDialogs);
+        final ItemOptions io = ItemOptions.makeOptions(this, muteItem);
+        if (canMuteCount == 0) {
+            final String title = LocaleController.getString(R.string.ChatsUnmute);
+            io.addText(count > 1 ? title + " (" + count + ")" : title, 14, dp(220));
+            io.add(R.drawable.msg_unmute, title,
+                    () -> performSelectedDialogsAction(didsCopy, mute, true, false));
+        } else {
+            final String title = LocaleController.getString(R.string.ChatsMute);
+            io.addText(count > 1 ? title + " (" + count + ")" : title, 14, dp(220));
+            io.add(R.drawable.msg_mute,
+                    LocaleController.formatString("MuteFor", R.string.MuteFor, LocaleController.formatPluralString("Hours", 1)),
+                    () -> applySelectedDialogsMute(didsCopy, NotificationsController.SETTING_MUTE_HOUR));
+            io.add(R.drawable.msg_mute,
+                    LocaleController.formatString("MuteFor", R.string.MuteFor, LocaleController.formatPluralString("Hours", 8)),
+                    () -> applySelectedDialogsMute(didsCopy, NotificationsController.SETTING_MUTE_8_HOURS));
+            io.add(R.drawable.msg_mute,
+                    LocaleController.formatString("MuteFor", R.string.MuteFor, LocaleController.formatPluralString("Days", 2)),
+                    () -> applySelectedDialogsMute(didsCopy, NotificationsController.SETTING_MUTE_2_DAYS));
+            io.add(R.drawable.msg_mute,
+                    LocaleController.getString(R.string.MuteNotifications),
+                    () -> applySelectedDialogsMute(didsCopy, NotificationsController.SETTING_MUTE_FOREVER));
+        }
+        io.add(R.drawable.msg_close, LocaleController.getString(R.string.Cancel), null);
+        if (io.openInOverlay(actionBar, muteItem, overlay, () -> invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS))) {
+            invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS);
+            return true;
+        }
+        return false;
+    }
+
+    private void applySelectedDialogsMute(ArrayList<Long> dids, int setting) {
+        for (int a = 0, N = dids.size(); a < N; a++) {
+            final long did = dids.get(a);
+            if (!getMessagesController().isDialogMuted(did, 0)) {
+                getNotificationsController().setDialogNotificationsSettings(did, 0, setting);
+            }
+        }
+        if (BulletinFactory.canShowBulletin(DialogsActivity.this)) {
+            BulletinFactory.createMuteBulletin(DialogsActivity.this, setting).show();
+        }
+        hideActionMode(true);
+    }
+
+    private boolean showActionModeDeleteOverlay(ArrayList<Long> selectedDialogs) {
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (deleteItem == null || deleteItem.getVisibility() != View.VISIBLE || overlay == null) {
+            return false;
+        }
+        final int count = selectedDialogs.size();
+        if (count == 1 && getMessagesController().isPromoDialog(selectedDialogs.get(0), false)) {
+            return false;
+        }
+        final HashSet<Long> dialogsIdsPossibleToRevoke = new HashSet<>();
+        final boolean canRevokePmInbox = MessagesController.getInstance(currentAccount).canRevokePmInbox;
+        final long revokeTimePmLimit = MessagesController.getInstance(currentAccount).revokeTimePmLimit;
+        if (canRevokePmInbox && revokeTimePmLimit == 0x7fffffff) {
+            for (Long selectedDialog : selectedDialogs) {
+                if (DialogObject.isUserDialog(selectedDialog) || DialogObject.isEncryptedDialog(selectedDialog)) {
+                    TLRPC.User user = null;
+                    if (DialogObject.isEncryptedDialog(selectedDialog)) {
+                        TLRPC.EncryptedChat encryptedChat = getMessagesController().getEncryptedChat(DialogObject.getEncryptedChatId(selectedDialog));
+                        if (encryptedChat != null) {
+                            user = getMessagesController().getUser(encryptedChat.user_id);
+                        }
+                    } else {
+                        user = getMessagesController().getUser(selectedDialog);
+                    }
+                    if (user != null) {
+                        ArrayList<MessageObject> dialogMessages = MessagesController.getInstance(currentAccount).dialogMessage.get(user.id);
+                        boolean lastMessageIsJoined = dialogMessages != null && dialogMessages.size() == 1 && dialogMessages.get(0) != null && dialogMessages.get(0).messageOwner != null
+                                && (dialogMessages.get(0).messageOwner.action instanceof TLRPC.TL_messageActionUserJoined
+                                || dialogMessages.get(0).messageOwner.action instanceof TLRPC.TL_messageActionContactSignUp);
+                        if (!user.bot && !UserObject.isDeleted(user) && user.id != getUserConfig().getClientUserId() && !lastMessageIsJoined) {
+                            dialogsIdsPossibleToRevoke.add(selectedDialog);
+                        }
+                    }
+                }
+            }
+        }
+        final boolean hasDialogsToRevoke = !dialogsIdsPossibleToRevoke.isEmpty();
+        final ArrayList<Long> didsCopy = new ArrayList<>(selectedDialogs);
+        final ItemOptions io = ItemOptions.makeOptions(this, deleteItem);
+        final String header = count > 1
+                ? LocaleController.getString(R.string.DeleteChatUser) + " (" + count + ")"
+                : LocaleController.getString(R.string.DeleteChatUser);
+        io.addText(header, 14, dp(220));
+        if (hasDialogsToRevoke) {
+            io.add(R.drawable.msg_delete, LocaleController.getString(R.string.DeleteForAll), true,
+                    () -> executeSelectedDialogsDelete(didsCopy, dialogsIdsPossibleToRevoke));
+        }
+        io.add(R.drawable.msg_delete, LocaleController.getString(R.string.Delete), true,
+                () -> executeSelectedDialogsDelete(didsCopy, null));
+        io.add(R.drawable.msg_close, LocaleController.getString(R.string.Cancel), null);
+        if (io.openInOverlay(actionBar, deleteItem, overlay, () -> invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS))) {
+            invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS);
+            return true;
+        }
+        return false;
+    }
+
+    private void executeSelectedDialogsDelete(ArrayList<Long> didsCopy, HashSet<Long> revokeIds) {
+        if (didsCopy.isEmpty()) {
+            return;
+        }
+        if (didsCopy.size() > 1) {
+            final UndoView undoView = getUndoView();
+            if (undoView != null) {
+                undoView.showWithAction(didsCopy, UndoView.ACTION_DELETE_FEW, null, null, () -> {
+                    getMessagesController().setDialogsInTransaction(true);
+                    performSelectedDialogsAction(didsCopy, delete, false, false, revokeIds);
+                    getMessagesController().setDialogsInTransaction(false);
+                    getMessagesController().checkIfFolderEmpty(folderId);
+                    if (folderId != 0 && getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 0) {
+                        viewPages[0].listView.setEmptyView(null);
+                        viewPages[0].progressView.setVisibility(View.INVISIBLE);
+                        finishFragment();
+                    }
+                }, null);
+            }
+            hideActionMode(false);
+            return;
+        }
+        final long selectedDialog = didsCopy.get(0);
+        final TLRPC.Chat chat = getMessagesController().getChat(-selectedDialog);
+        final boolean isBot;
+        if (DialogObject.isUserDialog(selectedDialog)) {
+            TLRPC.User u = getMessagesController().getUser(selectedDialog);
+            isBot = u != null && u.bot;
+        } else {
+            isBot = false;
+        }
+        final boolean revoke = revokeIds != null && revokeIds.contains(selectedDialog);
+        hideActionMode(false);
+        if (folderId != 0 && getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 1) {
+            viewPages[0].progressView.setVisibility(View.INVISIBLE);
+        }
+        debugLastUpdateAction = 3;
+        int selectedDialogIndex = -1;
+        setDialogsListFrozen(true);
+        if (frozenDialogsList != null) {
+            for (int i = 0; i < frozenDialogsList.size(); i++) {
+                if (frozenDialogsList.get(i).id == selectedDialog) {
+                    selectedDialogIndex = i;
+                    break;
+                }
+            }
+        }
+        checkAnimationFinished();
+        final UndoView undoView = getUndoView();
+        if (undoView != null) {
+            undoView.showWithAction(selectedDialog, revoke ? UndoView.ACTION_DELETE : UndoView.ACTION_LEAVE,
+                    () -> performDeleteOrClearDialogAction(delete, selectedDialog, chat, isBot, revoke));
+        }
+        ArrayList<TLRPC.Dialog> currentDialogs = new ArrayList<>(getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false));
+        int currentDialogIndex = -1;
+        for (int i = 0; i < currentDialogs.size(); i++) {
+            if (currentDialogs.get(i).id == selectedDialog) {
+                currentDialogIndex = i;
+                break;
+            }
+        }
+        if (selectedDialogIndex >= 0 && currentDialogIndex < 0 && frozenDialogsList != null) {
+            frozenDialogsList.remove(selectedDialogIndex);
+            viewPages[0].dialogsItemAnimator.prepareForRemove();
+            viewPages[0].updateList(true);
+        } else {
+            setDialogsListFrozen(false);
+        }
     }
 
     private void showItemOptions() {
