@@ -1824,7 +1824,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         Paint paint = new Paint();
         RectF rectF = new RectF();
         private final RectF cardClipRect = new RectF();
-        private final Path cardClipPath = new Path();
+        private final android.graphics.Path cardClipPath = new android.graphics.Path();
         private final float[] cardClipRadii = new float[8];
         private RecyclerListView animationSupportListView;
         LongSparseArray<View> animationSupportViewsByDialogId;
