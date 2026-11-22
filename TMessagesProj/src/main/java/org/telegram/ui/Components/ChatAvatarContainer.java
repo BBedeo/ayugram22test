@@ -590,7 +590,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
                     || ((ActionBarMenuItem) child).isSearchField() && ((ActionBarMenuItem) child).isSearchFieldVisible()) {
                 continue;
             }
-            final ViewGroup.LayoutParams lp = child.getLayoutParams();
+            final android.view.ViewGroup.LayoutParams lp = child.getLayoutParams();
             if (child.getVisibility() == VISIBLE && child.getAlpha() > 0.05f && (lp == null || lp.width != 0)) {
                 width += child.getMeasuredWidth();
             }
