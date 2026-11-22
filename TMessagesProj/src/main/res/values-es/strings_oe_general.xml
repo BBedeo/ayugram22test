@@ -109,6 +109,8 @@
     <string name="OEUpdateSkip">Omitir esta versión</string>
     <string name="OEUpdateDownloading">Descargando actualización</string>
     <string name="OEUpdateDownloadFailed">No se pudo descargar la actualización</string>
+    <string name="OEUpdateInstallFailed">No se pudo abrir el instalador</string>
+    <string name="OEUpdateRestartHint">Es posible que la aplicación se reinicie tras la actualización</string>
     <string name="OEUpdateCheckFailed">No se pudieron buscar actualizaciones</string>
     <string name="OEUserLookupTitle">Iniciando @usinfobot</string>
     <string name="OEUserLookupStart">Para buscar a un usuario por ID se necesita **@usinfobot**. Solo funciona después de iniciarlo, así que le enviaremos /start. Aparecerá un chat con él en tu lista de chats.</string>

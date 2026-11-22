@@ -24,7 +24,10 @@
    перезапускает приложение — пользователь возвращается уже в новую версию. Начиная с
    Android 10 система может заблокировать запуск активности из фона
    (`Background activity launch blocked`), тогда остаётся кнопка «Открыть» в системном
-   установщике: исключения не будет, только запись в `FileLog`.
+   установщике: исключения не будет, след останется только в logcat. Перезапуск
+   выполняется лишь для установки, начатой из приложения: `GitHubUpdater.install()`
+   ставит флаг `relaunch_after_update`, а receiver без него молчит — при ручной установке
+   APK из файлового менеджера пользователь занят другим делом.
 
 ## «Применить на лету» невозможно — почему
 
@@ -65,8 +68,8 @@ Android не переопределяет загруженные классы: A
         -d '{"tag_name":"v1.3.70","name":"ExFullGram 1.3.70","prerelease":false,"draft":true}'
    curl -sS -X POST -H "Authorization: token $GITHUB_TOKEN" \
         -H "Content-Type: application/vnd.android.package-archive" \
-        "https://uploads.github.com/repos/BBedeo/ayugram22test/releases/<id>/assets?name=ExFullGram-v1.3.68-arm64-v8a.apk" \
-        --data-binary @ExFullGram-v1.3.68.apk
+        "https://uploads.github.com/repos/BBedeo/ayugram22test/releases/<id>/assets?name=ExFullGram-v1.3.70(1631).apk" \
+        --data-binary @'ExFullGram-v1.3.70(1631).apk'
    ```
 
    Имя ассета повторяет вывод Gradle (`ExFullGram-v<version>(<code>).apk`, ABI в имени нет,
@@ -74,7 +77,8 @@ Android не переопределяет загруженные классы: A
    `{"draft":false}` — до этого шага релиз не виден приложению (`draft` отфильтрован).
 4. Проверить: `GET /repos/BBedeo/ayugram22test/releases/latest` отдаёт нужный тег и ассет
    `.apk`. На телефоне: «Проверить обновления» в настройках (или пункт в профиле) →
-   лист обновления → «Обновить» → установщик → приложение перезапускается само.
+   лист обновления → «Обновить» → установщик → приложение возвращается в себя
+   (если система не заблокировала фоновый запуск — тогда кнопка «Открыть» в установщике).
 
 CI (`.github/workflows/release.yml`) собирает APK на каждый пуш и публикует пре-релиз
 `ci-<sha>`. Приложению он не предлагается никогда: это сборочный артефакт, а не релиз.

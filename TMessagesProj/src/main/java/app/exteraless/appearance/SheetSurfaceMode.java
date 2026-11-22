@@ -43,18 +43,23 @@ public final class SheetSurfaceMode {
     }
 
     /**
-     * Тот же гейт, по которому {@code BottomSheet} выбирает непрозрачную M3-поверхность.
-     * Прежняя проверка требовала {@link GlassOutlineStyle#SOLID}, но пресет Material 3
-     * ставит {@code HIDDEN} — и шит молча рисовался классикой.
+     * Гейт непрозрачной M3-поверхности шторки.
+     *
+     * <p>Прежняя проверка требовала {@link GlassOutlineStyle#SOLID}, но пресет Material 3
+     * ставит {@code HIDDEN} — и шит молча рисовался классикой. Заменять её на
+     * {@code M3SurfaceHelper.isMaterial3OpaqueChrome()} нельзя: тот считает признаком M3 и
+     * MD3-плеер, который включён по умолчанию, — классический пресет получил бы
+     * непрозрачные шторки с обводкой 28dp. Признак Material 3 здесь — пара «M3-списки +
+     * M3-шапка чата», ровно то, что ставит {@code AppearancePresets.PRESET_MATERIAL3}.
      */
     public static boolean isM3(@Nullable Theme.ResourcesProvider resourcesProvider) {
         if (LiquidGlassTuning.isActive() || LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR)) {
             return false;
         }
-        // isMaterial3SurfaceMode() включает ещё и стиль разделителей «сегменты», из-за чего
-        // шторки становились непрозрачными у классического пресета. Берём гейт именно хрома.
-        return GlassOutlineStyle.current() == GlassOutlineStyle.SOLID
-                || M3SurfaceHelper.isMaterial3OpaqueChrome();
+        if (GlassOutlineStyle.current() == GlassOutlineStyle.SOLID) {
+            return true;
+        }
+        return AppearanceConfig.m3ListItems() && AppearanceConfig.newChatHeaderStyle();
     }
 
     public static boolean isDark(@Nullable Theme.ResourcesProvider resourcesProvider) {

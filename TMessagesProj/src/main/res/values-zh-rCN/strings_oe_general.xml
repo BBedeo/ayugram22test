@@ -109,6 +109,8 @@
     <string name="OEUpdateSkip">跳过此版本</string>
     <string name="OEUpdateDownloading">正在下载更新</string>
     <string name="OEUpdateDownloadFailed">无法下载更新</string>
+    <string name="OEUpdateInstallFailed">无法打开安装程序</string>
+    <string name="OEUpdateRestartHint">更新后应用可能会重新启动</string>
     <string name="OEUpdateCheckFailed">无法检查更新</string>
     <string name="OEUserLookupTitle">启动 @usinfobot</string>
     <string name="OEUserLookupStart">按 ID 查找用户需要使用 **@usinfobot**。它必须先启动才能使用，因此我们会向它发送 /start。聊天列表中会出现与它的对话。</string>

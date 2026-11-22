@@ -140,6 +140,8 @@
     <string name="OEUpdateSkip">تخطي هذا الإصدار</string>
     <string name="OEUpdateDownloading">جارٍ تنزيل التحديث</string>
     <string name="OEUpdateDownloadFailed">تعذّر تنزيل التحديث</string>
+    <string name="OEUpdateInstallFailed">تعذّر فتح المثبّت</string>
+    <string name="OEUpdateRestartHint">قد يُعاد تشغيل التطبيق بعد التحديث</string>
     <string name="OEUpdateCheckFailed">تعذّر التحقق من التحديثات</string>
     <string name="OEUserLookupTitle">تشغيل @usinfobot</string>
     <string name="OEUserLookupStart">للعثور على مستخدم بواسطة المعرّف، يلزم البوت **@usinfobot**. لا يعمل إلا بعد تشغيله، لذلك سنرسل إليه /start. ستظهر محادثة معه في قائمة محادثاتك.</string>

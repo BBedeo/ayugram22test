@@ -55,6 +55,7 @@ public final class GitHubUpdater {
     private static final String PREFS = "exteraless_updater";
     private static final String KEY_LAST_CHECK = "last_check";
     private static final String KEY_SKIPPED = "skipped_tag";
+    private static final String KEY_RELAUNCH = "relaunch_after_update";
     private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
     // Релизы CI помечаются тегом ci-<sha> и собираются рабочим процессом без истории
     // коммитов: их versionName — базовый, подпись — ci-ключ. Ставить такой APK поверх
@@ -346,23 +347,38 @@ public final class GitHubUpdater {
         }
     }
 
-    private static final Pattern MD_LINK = Pattern.compile("\\[([^\\]]*)]\\((https?://[^)\\s]+)\\)");
-    private static final Pattern UPSTREAM_BRAND = Pattern.compile("(?i)exteraless|extera\\s*gram|extera");
+    // Всё, что не является обычным текстом, переносим как есть: адрес ссылки «exteraless/
+    // exteraless» после замены бренда вёл бы в несуществующий репозиторий, а имя в
+    // <autolink> или в `коде` — часть синтаксиса, а не подпись.
+    private static final Pattern BRAND_TOKEN = Pattern.compile(
+            "\\[([^\\]]*)]\\((https?://[^)\\s]+)\\)"   // [label](url)
+                    + "|<(https?://[^>\\s]+)>"          // <autolink>
+                    + "|`[^`]*`"                          // inline code
+                    + "|https?://\\S+");                 // bare url
+    private static final Pattern UPSTREAM_BRAND = Pattern.compile("(?i)exteraless|extera\\s*gram|extera\\b");
+    /** Тело релиза на GitHub — до 125 КБ; разбор регулярным выражением по такому тексту стоит секунд. */
+    private static final int NOTES_LIMIT = 8000;
 
     /**
      * В тексте релиза с апстрима остаётся чужое имя — в листе обновления его быть не должно.
-     * Адреса ссылок не трогаем: «exteraless/exteraless» внутри URL иначе превращался в битую
-     * ссылку и вёл в никуда.
+     * Ссылки и код при этом не трогаем: иначе адрес превращается в битую ссылку и ведёт в никуда.
      */
     private static String stripUpstreamBrand(String text) {
+        if (text.indexOf(']') < 0 && text.indexOf("http") < 0) {
+            return sanitizeBrand(text);
+        }
         StringBuilder out = new StringBuilder(text.length());
-        Matcher link = MD_LINK.matcher(text);
+        Matcher token = BRAND_TOKEN.matcher(text);
         int last = 0;
-        while (link.find()) {
-            out.append(sanitizeBrand(text.substring(last, link.start())))
-                    .append('[').append(sanitizeBrand(link.group(1))).append("](")
-                    .append(link.group(2)).append(')');
-            last = link.end();
+        while (token.find()) {
+            out.append(sanitizeBrand(text.substring(last, token.start())));
+            if (token.group(1) != null) {
+                out.append('[').append(sanitizeBrand(token.group(1))).append("](")
+                        .append(token.group(2)).append(')');
+            } else {
+                out.append(token.group(0));
+            }
+            last = token.end();
         }
         out.append(sanitizeBrand(text.substring(last)));
         return out.toString();
@@ -391,7 +407,11 @@ public final class GitHubUpdater {
         if (!size.isEmpty()) {
             subtitle.append(" · ").append(size);
         }
-        String notes = TextUtils.isEmpty(release.body) ? release.tag : stripUpstreamBrand(release.body);
+        String body = release.body;
+        if (body != null && body.length() > NOTES_LIMIT) {
+            body = body.substring(0, NOTES_LIMIT) + "…";
+        }
+        String notes = TextUtils.isEmpty(body) ? release.tag : stripUpstreamBrand(body);
         String updateText = size.isEmpty() ? LocaleController.getString(R.string.OEUpdateInstall)
                 : LocaleController.formatString(R.string.OEUpdateInstallSize, size);
         new UpdateSheet(activity, fragment.getResourceProvider(), LocaleController.getString(R.string.OEUpdateTitle),
@@ -497,6 +517,17 @@ public final class GitHubUpdater {
         }, "gh-updater-download").start();
     }
 
+
+    /** Перезапуск после установки запросил наш апдейтер, а не сторонний установщик. */
+    public static boolean consumeRelaunchRequest(Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (!preferences.getBoolean(KEY_RELAUNCH, false)) {
+            return false;
+        }
+        preferences.edit().putBoolean(KEY_RELAUNCH, false).commit();
+        return true;
+    }
+
     /**
      * Отдаём скачанный APK системному установщику. Android не умеет применять новый код
      * без переустановки пакета: ART не переопределяет загруженные классы, а base.apk
@@ -508,6 +539,10 @@ public final class GitHubUpdater {
             bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
             return;
         }
+        // Отмечаем перезапуск ДО установщика: процесс будет убит, и только этот флаг
+        // отличит нашу установку от ручной установки APK из файлового менеджера.
+        // commit(), а не apply(): процесс умрёт раньше, чем отработает фоновая запись.
+        prefs().edit().putBoolean(KEY_RELAUNCH, true).commit();
         // «Неизвестные источники»: без этого гранта установщик молча откажет.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && !ApplicationLoader.applicationContext.getPackageManager().canRequestPackageInstalls()) {
@@ -529,32 +564,6 @@ public final class GitHubUpdater {
         } catch (Exception e) {
             FileLog.e("GitHubUpdater: open installer failed", e);
             bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
-        }
-    }
-
-    /** Публичный вход для кнопки «Установить» на уже скачанном APK. */
-    public static void installDownloaded(Activity activity, DownloadListener listener) {
-        File dir = new File(activity.getCacheDir(), "updates");
-        File[] files = dir.listFiles();
-        File apk = null;
-        if (files != null) {
-            for (File f : files) {
-                if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".apk") && f.length() > 0) {
-                    apk = f;
-                    break;
-                }
-            }
-        }
-        if (apk == null) {
-            if (listener != null) {
-                listener.onFinished(false, false);
-            }
-            bulletin(LocaleController.getString(R.string.OEUpdateInstallFailed), true);
-            return;
-        }
-        install(activity, apk);
-        if (listener != null) {
-            listener.onFinished(true, false);
         }
     }
 }
