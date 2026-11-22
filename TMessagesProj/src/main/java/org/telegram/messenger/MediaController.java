@@ -7170,8 +7170,10 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         } else {
             currentForegroundConvertingVideo = null;
         }
-        if (currentForegroundConvertingVideo != null || cancelled) {
+        if (currentForegroundConvertingVideo != null) {
             VideoEncodingService.start(cancelled);
+        } else {
+            VideoEncodingService.stop();
         }
     }
 

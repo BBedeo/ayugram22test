@@ -417,7 +417,7 @@ public class NotificationsController extends BaseController implements Notificat
                 PendingIntent contentIntent = PendingIntent.getActivity(ApplicationLoader.applicationContext,
                         currentAccount, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(ApplicationLoader.applicationContext, channelId)
-                        .setSmallIcon(R.drawable.notification)
+                        .setSmallIcon(getNotificationIconResId())
                         .setContentTitle(LocaleController.getString(R.string.AppName))
                         .setContentText(message)
                         .setStyle(new NotificationCompat.BigTextStyle().bigText(message))

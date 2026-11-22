@@ -42,7 +42,12 @@ public class OSMDroidMapsProvider implements IMapsProvider {
 
     @Override
     public void initializeMaps(Context context) {
-
+        try {
+            org.osmdroid.config.Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE));
+            org.osmdroid.config.Configuration.getInstance().setUserAgentValue(context.getPackageName());
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
     }
 
     @Override
@@ -103,9 +108,17 @@ public class OSMDroidMapsProvider implements IMapsProvider {
     }
 
 
+    public static final class OSMDroidMapStyleOptions implements IMapStyleOptions {
+        private final boolean dark;
+
+        private OSMDroidMapStyleOptions(boolean dark) {
+            this.dark = dark;
+        }
+    }
+
     @Override
     public IMapStyleOptions loadRawResourceStyle(Context context, int resId) {
-        return null;
+        return new OSMDroidMapStyleOptions(resId != 0);
     }
 
     @Override
@@ -217,6 +230,9 @@ public class OSMDroidMapsProvider implements IMapsProvider {
         private Consumer<Location> onMyLocationChangeListener;
         private OnMarkerClickListener onMarkerClickListener;
         private OSMDroidUISettings uiSettings;
+        private int currentMapType = MAP_TYPE_NORMAL;
+        private boolean isDarkStyle;
+
         private OSMDroidMapImpl(MapView mapView) {
             this.mapView = mapView;
             attributionOverlay = new TextView(mapView.getContext());
@@ -225,39 +241,47 @@ public class OSMDroidMapsProvider implements IMapsProvider {
             attributionOverlay.setLinksClickable(true);
             attributionOverlay.setMovementMethod(LinkMovementMethod.getInstance());
         }
+
+        private void applyTileSource() {
+            final boolean useDarkTiles = currentMapType == MAP_TYPE_HYBRID || (currentMapType == MAP_TYPE_NORMAL && isDarkStyle);
+            try {
+                if (mapView.getOverlayManager() != null && mapView.getOverlayManager().getTilesOverlay() != null) {
+                    mapView.getOverlayManager().getTilesOverlay().setLoadingBackgroundColor(useDarkTiles ? 0xFF1A1D24 : 0xFFEBE8E1);
+                    mapView.getOverlayManager().getTilesOverlay().setLoadingLineColor(useDarkTiles ? 0xFF282D37 : 0xFFD5D0C5);
+                }
+            } catch (Throwable ignore) {
+            }
+            attributionOverlay.setShadowLayer(1, -1, -1, useDarkTiles ? Color.BLACK : Color.WHITE);
+            if (useDarkTiles) {
+                ITileSource tileSource = new XYTileSource(
+                        "Carto Dark", 0, 20,
+                        256, ".png",
+                        new String[]{
+                                "https://a.basemaps.cartocdn.com/dark_all/",
+                                "https://b.basemaps.cartocdn.com/dark_all/",
+                                "https://c.basemaps.cartocdn.com/dark_all/",
+                                "https://d.basemaps.cartocdn.com/dark_all/"},
+                        "© OpenStreetMap contributors, © CARTO");
+                attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, © <a href=\"https://carto.com/attributions\">CARTO</a>"));
+                mapView.setTileSource(tileSource);
+            } else if (currentMapType == MAP_TYPE_SATELLITE) {
+                ITileSource tileSource = new XYTileSource(
+                        "Wikimedia", 0, 19,
+                        256, ".png",
+                        new String[]{"https://maps.wikimedia.org/osm-intl/"},
+                        "© OpenStreetMap contributors");
+                attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"));
+                mapView.setTileSource(tileSource);
+            } else {
+                attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"));
+                mapView.setTileSource(TileSourceFactory.MAPNIK);
+            }
+        }
+
         @Override
         public void setMapType(int mapType) {
-            switch (mapType) {
-                case MAP_TYPE_NORMAL: {
-                    attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"));
-                    mapView.setTileSource(TileSourceFactory.MAPNIK);
-                    break;
-                }
-                case MAP_TYPE_SATELLITE: {
-                    // Create a custom tile source
-                    ITileSource tileSource = new XYTileSource(
-                            "Wikimedia", 0, 19,
-                            256, ".png",
-                            new String[]{"https://maps.wikimedia.org/osm-intl/"},
-                            "© OpenStreetMap contributors");
-                    attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"));
-                    mapView.setTileSource(tileSource);
-                    break;
-                }
-                case MAP_TYPE_HYBRID: {
-                    ITileSource tileSource = new XYTileSource(
-                            "Carto Dark", 0, 20,
-                            256, ".png",
-                            new String[]{
-                                    "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/",
-                                    "https://cartodb-basemaps-b.global.ssl.fastly.net/dark_all/",
-                                    "https://cartodb-basemaps-c.global.ssl.fastly.net/dark_all/",
-                                    "https://cartodb-basemaps-d.global.ssl.fastly.net/dark_all/"},
-                            "© OpenStreetMap contributors, © CARTO");
-                    attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, © <a href=\"https://carto.com/attributions\">CARTO</a>"));
-                    mapView.setTileSource(tileSource);
-                }
-            }
+            currentMapType = mapType;
+            applyTileSource();
         }
 
         @Override
@@ -391,7 +415,8 @@ public class OSMDroidMapsProvider implements IMapsProvider {
 
         @Override
         public void setMapStyle(IMapStyleOptions style) {
-            // ignore
+            isDarkStyle = style instanceof OSMDroidMapStyleOptions && ((OSMDroidMapStyleOptions) style).dark;
+            applyTileSource();
         }
 
         @Override
@@ -642,7 +667,7 @@ public class OSMDroidMapsProvider implements IMapsProvider {
         public ILatLngBounds build() {
             OSMDroidLatLngBounds bounds = new OSMDroidLatLngBounds();
             bounds.box = BoundingBox.fromGeoPoints(this.geoPoints);
-            return null;
+            return bounds;
         }
     }
 

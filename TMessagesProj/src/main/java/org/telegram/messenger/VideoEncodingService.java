@@ -108,6 +108,7 @@ public class VideoEncodingService extends Service implements NotificationCenter.
         try {
             MediaController.VideoConvertMessage message = MediaController.getInstance().getCurrentForegroundConverMessage();
             if (message == null) {
+                stopSelf();
                 return;
             }
             NotificationManagerCompat.from(ApplicationLoader.applicationContext).notify(4, builder.build());
@@ -123,13 +124,14 @@ public class VideoEncodingService extends Service implements NotificationCenter.
         }
         MediaController.VideoConvertMessage videoConvertMessage = MediaController.getInstance().getCurrentForegroundConverMessage();
         if (videoConvertMessage == null) {
+            stopSelf();
             return Service.START_NOT_STICKY;
         }
         instance = this;
         if (builder == null) {
             NotificationsController.checkOtherNotificationsChannel();
             builder = new NotificationCompat.Builder(ApplicationLoader.applicationContext, NotificationsController.OTHER_NOTIFICATIONS_CHANNEL);
-            builder.setSmallIcon(android.R.drawable.stat_sys_upload);
+            builder.setSmallIcon(R.drawable.exteraless_notification);
             builder.setWhen(System.currentTimeMillis());
             builder.setChannelId(NotificationsController.OTHER_NOTIFICATIONS_CHANNEL);
             builder.setContentTitle(LocaleController.getString(R.string.NagramX));
