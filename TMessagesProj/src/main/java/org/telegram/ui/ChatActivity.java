@@ -12463,6 +12463,8 @@ public class ChatActivity extends BaseFragment implements
         if (typingBubbleView == null) {
             return;
         }
+        // Тема могла смениться на лету: перекрашиваем пузырь под текущую тему (внутри есть кэш стиля).
+        typingBubbleView.updateStyle();
         final CharSequence liveDraft = app.exteraless.chats.ChatsConfig.liveTypingPreview()
                 ? app.exteraless.chats.LiveTypingDraftManager.getInstance(currentAccount).getDraftText(dialog_id)
                 : null;

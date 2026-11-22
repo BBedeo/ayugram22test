@@ -54,6 +54,14 @@ public class TypingBubbleView extends LinearLayout {
     private float animOffsetY;
     private ValueAnimator visibilityAnimator;
 
+    /** Кэш последнего применённого стиля: пересобирать фон на каждый кадр незачем. */
+    private int lastBubbleColor;
+    private int lastTextColor;
+    private int lastAccentColor;
+    private boolean lastUseGlass;
+    private boolean lastUseM3;
+    private boolean styleApplied;
+
     /** Режим живого черновика: многострочный текст вместо короткой строки «печатает…». */
     private boolean draftMode;
     /** Сколько символов черновика уже показано — дорисовываем только новый хвост. */
@@ -105,6 +113,25 @@ public class TypingBubbleView extends LinearLayout {
         final int bubbleColor = Theme.getColor(Theme.key_chat_inBubble, resourcesProvider);
         final int textColor = Theme.getColor(Theme.key_chat_messageTextIn, resourcesProvider);
         final int accentColor = Theme.getColor(Theme.key_chat_inTimeText, resourcesProvider);
+        final boolean useGlass = LiquidGlassTuning.isActive()
+                && !M3SurfaceHelper.isMaterial3OpaqueChrome()
+                && glassFactory != null
+                && glassColorProvider != null;
+        final boolean useM3 = !useGlass && M3SurfaceHelper.isMaterial3SurfaceMode();
+        if (styleApplied
+                && lastBubbleColor == bubbleColor
+                && lastTextColor == textColor
+                && lastAccentColor == accentColor
+                && lastUseGlass == useGlass
+                && lastUseM3 == useM3) {
+            return;
+        }
+        styleApplied = true;
+        lastBubbleColor = bubbleColor;
+        lastTextColor = textColor;
+        lastAccentColor = accentColor;
+        lastUseGlass = useGlass;
+        lastUseM3 = useM3;
 
         labelView.setTextColor(textColor);
         for (StatusDrawable d : statusDrawables) {
@@ -113,15 +140,23 @@ public class TypingBubbleView extends LinearLayout {
             }
         }
 
-        final boolean useGlass = LiquidGlassTuning.isActive()
-                && !M3SurfaceHelper.isMaterial3OpaqueChrome()
-                && glassFactory != null
-                && glassColorProvider != null;
         if (useGlass) {
             final BlurredBackgroundDrawable bg = glassFactory.create(this, glassColorProvider);
             bg.setRadius(dp(16), dp(16), dp(16), dp(6));
             setBackground(bg);
             setElevation(0f);
+        } else if (useM3) {
+            final GradientDrawable bg = new GradientDrawable();
+            bg.setColor(M3SurfaceHelper.getCardColor(resourcesProvider));
+            bg.setCornerRadii(new float[]{
+                    dp(18), dp(18),
+                    dp(18), dp(18),
+                    dp(18), dp(18),
+                    dp(6), dp(6)
+            });
+            bg.setStroke(dp(1), M3SurfaceHelper.getOutlineVariantColor(resourcesProvider));
+            setBackground(bg);
+            setElevation(dp(1));
         } else {
             final GradientDrawable bg = new GradientDrawable();
             bg.setColor(bubbleColor);
