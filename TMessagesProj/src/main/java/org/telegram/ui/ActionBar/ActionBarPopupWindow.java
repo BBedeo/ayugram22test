@@ -155,9 +155,15 @@ public class ActionBarPopupWindow extends PopupWindow {
 
         @Nullable
         private View dragHoverView;
+        @Nullable
+        private View dragHoverScaledView;
         private float dragHoverAlpha;
         private boolean dragHoverHasRect;
         private long dragHoverLastTime;
+        private float dragHoverVelX;
+        private float dragHoverVelY;
+        private float dragHoverSizeW;
+        private float dragHoverSizeH;
         private final RectF dragHoverCurrentRect = new RectF();
         private final RectF dragHoverTargetRect = new RectF();
         private final RectF dragHoverDrawRect = new RectF();
@@ -665,13 +671,48 @@ public class ActionBarPopupWindow extends PopupWindow {
             if (dragHoverView == target) {
                 return;
             }
+            updateDragHoverItemLift(dragHoverView, false);
             dragHoverView = target;
+            updateDragHoverItemLift(target, true);
             if (target != null && computeDescendantRect(target, dragHoverTargetRect) && !dragHoverHasRect) {
                 dragHoverCurrentRect.set(dragHoverTargetRect);
+                dragHoverSizeW = dragHoverTargetRect.width();
+                dragHoverSizeH = dragHoverTargetRect.height();
+                dragHoverVelX = 0f;
+                dragHoverVelY = 0f;
                 dragHoverHasRect = true;
             }
             dragHoverLastTime = 0;
             invalidateDragHover();
+        }
+
+        private void updateDragHoverItemLift(@Nullable View view, boolean selected) {
+            if (view == null) {
+                return;
+            }
+            if (selected) {
+                dragHoverScaledView = view;
+                view.setPivotX(view.getWidth() * 0.5f);
+                view.setPivotY(view.getHeight() * 0.5f);
+                view.animate()
+                        .scaleX(1.035f)
+                        .scaleY(1.035f)
+                        .translationY(-dp(1.5f))
+                        .setDuration(160)
+                        .setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT)
+                        .start();
+            } else {
+                if (dragHoverScaledView == view) {
+                    dragHoverScaledView = null;
+                }
+                view.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .translationY(0f)
+                        .setDuration(180)
+                        .setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT)
+                        .start();
+            }
         }
 
         /** Enables sliding finger across open menu items to glide the hover pill and select on release. */
@@ -695,10 +736,20 @@ public class ActionBarPopupWindow extends PopupWindow {
 
         /** Clears any active drag-hover highlight immediately without fading out. */
         public void resetDragHover() {
+            updateDragHoverItemLift(dragHoverView, false);
+            if (dragHoverScaledView != null) {
+                dragHoverScaledView.animate().cancel();
+                dragHoverScaledView.setScaleX(1f);
+                dragHoverScaledView.setScaleY(1f);
+                dragHoverScaledView.setTranslationY(0f);
+                dragHoverScaledView = null;
+            }
             dragHoverView = null;
             dragHoverAlpha = 0f;
             dragHoverHasRect = false;
             dragHoverLastTime = 0;
+            dragHoverVelX = 0f;
+            dragHoverVelY = 0f;
             resetIntraDrag(false);
             invalidateDragHover();
         }
@@ -992,20 +1043,50 @@ public class ActionBarPopupWindow extends PopupWindow {
             if (hasTarget) {
                 if (!dragHoverHasRect) {
                     dragHoverCurrentRect.set(dragHoverTargetRect);
+                    dragHoverSizeW = dragHoverTargetRect.width();
+                    dragHoverSizeH = dragHoverTargetRect.height();
+                    dragHoverVelX = 0f;
+                    dragHoverVelY = 0f;
                     dragHoverHasRect = true;
                 } else {
-                    final float kPos = Math.min(1f, dt * 24f);
-                    final boolean settled = Math.abs(dragHoverTargetRect.left - dragHoverCurrentRect.left) < 0.5f
-                            && Math.abs(dragHoverTargetRect.top - dragHoverCurrentRect.top) < 0.5f
-                            && Math.abs(dragHoverTargetRect.right - dragHoverCurrentRect.right) < 0.5f
-                            && Math.abs(dragHoverTargetRect.bottom - dragHoverCurrentRect.bottom) < 0.5f;
+                    final float targetCx = dragHoverTargetRect.centerX();
+                    final float targetCy = dragHoverTargetRect.centerY();
+                    final float targetW = dragHoverTargetRect.width();
+                    final float targetH = dragHoverTargetRect.height();
+                    final float currentCx = dragHoverCurrentRect.centerX();
+                    final float currentCy = dragHoverCurrentRect.centerY();
+
+                    final float stiffness = 380f;
+                    final float damping = 24f;
+                    final float ax = (targetCx - currentCx) * stiffness - dragHoverVelX * damping;
+                    final float ay = (targetCy - currentCy) * stiffness - dragHoverVelY * damping;
+                    dragHoverVelX += ax * dt;
+                    dragHoverVelY += ay * dt;
+                    float newCx = currentCx + dragHoverVelX * dt;
+                    float newCy = currentCy + dragHoverVelY * dt;
+
+                    final float kSize = Math.min(1f, dt * 22f);
+                    dragHoverSizeW += (targetW - dragHoverSizeW) * kSize;
+                    dragHoverSizeH += (targetH - dragHoverSizeH) * kSize;
+
+                    final boolean settled = Math.abs(targetCx - newCx) < 0.4f
+                            && Math.abs(targetCy - newCy) < 0.4f
+                            && Math.abs(dragHoverVelX) < 8f
+                            && Math.abs(dragHoverVelY) < 8f
+                            && Math.abs(targetW - dragHoverSizeW) < 0.5f
+                            && Math.abs(targetH - dragHoverSizeH) < 0.5f;
                     if (settled) {
                         dragHoverCurrentRect.set(dragHoverTargetRect);
+                        dragHoverSizeW = targetW;
+                        dragHoverSizeH = targetH;
+                        dragHoverVelX = 0f;
+                        dragHoverVelY = 0f;
                     } else {
-                        dragHoverCurrentRect.left += (dragHoverTargetRect.left - dragHoverCurrentRect.left) * kPos;
-                        dragHoverCurrentRect.top += (dragHoverTargetRect.top - dragHoverCurrentRect.top) * kPos;
-                        dragHoverCurrentRect.right += (dragHoverTargetRect.right - dragHoverCurrentRect.right) * kPos;
-                        dragHoverCurrentRect.bottom += (dragHoverTargetRect.bottom - dragHoverCurrentRect.bottom) * kPos;
+                        dragHoverCurrentRect.set(
+                                newCx - dragHoverSizeW * 0.5f,
+                                newCy - dragHoverSizeH * 0.5f,
+                                newCx + dragHoverSizeW * 0.5f,
+                                newCy + dragHoverSizeH * 0.5f);
                         needMore = true;
                     }
                 }
@@ -1014,6 +1095,8 @@ public class ActionBarPopupWindow extends PopupWindow {
             if (dragHoverAlpha <= 0.004f || !dragHoverHasRect) {
                 if (dragHoverAlpha <= 0.004f && !hasTarget) {
                     dragHoverHasRect = false;
+                    dragHoverVelX = 0f;
+                    dragHoverVelY = 0f;
                 }
                 if (needMore) {
                     invalidateDragHover();
@@ -1032,12 +1115,15 @@ public class ActionBarPopupWindow extends PopupWindow {
             );
             final float glideDeltaY = dragHoverView != null
                     ? Math.abs(dragHoverTargetRect.centerY() - dragHoverCurrentRect.centerY()) : 0f;
-            final float stretch = Math.min(0.14f, glideDeltaY / Math.max(dp(110), 1f));
+            final float normVelY = Math.max(-1f, Math.min(1f, dragHoverVelY / Math.max(dp(900), 1f)));
+            final float normVelX = Math.max(-1f, Math.min(1f, dragHoverVelX / Math.max(dp(900), 1f)));
+            final float stretchY = Math.min(0.20f, Math.abs(normVelY) * 0.16f + glideDeltaY / Math.max(dp(150), 1f) * 0.08f);
+            final float stretchX = Math.min(0.16f, Math.abs(normVelX) * 0.14f);
             final float scale = 0.94f + 0.06f * dragHoverAlpha;
             final float cx = dragHoverDrawRect.centerX();
             final float cy = dragHoverDrawRect.centerY();
-            final float hw = dragHoverDrawRect.width() * 0.5f * scale * (1f - stretch * 0.14f);
-            final float hh = dragHoverDrawRect.height() * 0.5f * scale * (1f + stretch * 0.46f);
+            final float hw = dragHoverDrawRect.width() * 0.5f * scale * (1f + stretchX - stretchY * 0.22f);
+            final float hh = dragHoverDrawRect.height() * 0.5f * scale * (1f + stretchY - stretchX * 0.22f);
             dragHoverDrawRect.set(cx - hw, cy - hh, cx + hw, cy + hh);
             final float radius = compact
                     ? Math.min(dragHoverDrawRect.width(), dragHoverDrawRect.height()) * 0.5f
