@@ -1669,19 +1669,42 @@ public class ActionBarPopupWindow extends PopupWindow {
                 }
             }
             windowAnimatorSet = new AnimatorSet();
+            final boolean jellyDismiss = app.exteraless.appearance.AppearanceConfig.isJellyAnimations()
+                    && !app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome();
             if (outEmptyTime > 0) {
                 windowAnimatorSet.playTogether(ValueAnimator.ofFloat(0, 1f));
                 windowAnimatorSet.setDuration(outEmptyTime);
             } else if (scaleOut) {
-                windowAnimatorSet.playTogether(
-                        ObjectAnimator.ofFloat(viewGroup, View.SCALE_Y, 0.8f),
-                        ObjectAnimator.ofFloat(viewGroup, View.SCALE_X, 0.8f),
-                        ObjectAnimator.ofFloat(viewGroup, View.ALPHA, 0.0f));
+                if (jellyDismiss) {
+                    windowAnimatorSet.playTogether(
+                            ObjectAnimator.ofFloat(viewGroup, View.SCALE_Y, 0.84f),
+                            ObjectAnimator.ofFloat(viewGroup, View.SCALE_X, 0.78f),
+                            ObjectAnimator.ofFloat(viewGroup, View.ALPHA, 0.0f));
+                    windowAnimatorSet.setInterpolator(new android.view.animation.AnticipateInterpolator(0.45f));
+                } else {
+                    windowAnimatorSet.playTogether(
+                            ObjectAnimator.ofFloat(viewGroup, View.SCALE_Y, 0.8f),
+                            ObjectAnimator.ofFloat(viewGroup, View.SCALE_X, 0.8f),
+                            ObjectAnimator.ofFloat(viewGroup, View.ALPHA, 0.0f));
+                }
                 windowAnimatorSet.setDuration(dismissAnimationDuration);
             } else {
-                windowAnimatorSet.playTogether(
-                        ObjectAnimator.ofFloat(viewGroup, View.TRANSLATION_Y, viewGroup.getTranslationY() + dp((content != null && content.shownFromBottom) ? 5 : -5)),
-                        ObjectAnimator.ofFloat(viewGroup, View.ALPHA, 0.0f));
+                if (jellyDismiss) {
+                    if (viewGroup.getHeight() > 0) {
+                        viewGroup.setPivotX(viewGroup.getWidth() * 0.5f);
+                        viewGroup.setPivotY(content != null && content.shownFromBottom ? viewGroup.getHeight() : 0f);
+                    }
+                    windowAnimatorSet.playTogether(
+                            ObjectAnimator.ofFloat(viewGroup, View.TRANSLATION_Y, viewGroup.getTranslationY() + dp((content != null && content.shownFromBottom) ? 5 : -5)),
+                            ObjectAnimator.ofFloat(viewGroup, View.SCALE_X, 0.90f),
+                            ObjectAnimator.ofFloat(viewGroup, View.SCALE_Y, 0.84f),
+                            ObjectAnimator.ofFloat(viewGroup, View.ALPHA, 0.0f));
+                    windowAnimatorSet.setInterpolator(new android.view.animation.AnticipateInterpolator(0.4f));
+                } else {
+                    windowAnimatorSet.playTogether(
+                            ObjectAnimator.ofFloat(viewGroup, View.TRANSLATION_Y, viewGroup.getTranslationY() + dp((content != null && content.shownFromBottom) ? 5 : -5)),
+                            ObjectAnimator.ofFloat(viewGroup, View.ALPHA, 0.0f));
+                }
                 windowAnimatorSet.setDuration(dismissAnimationDuration);
             }
 

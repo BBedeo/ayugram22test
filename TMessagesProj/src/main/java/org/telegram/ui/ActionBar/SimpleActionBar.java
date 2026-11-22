@@ -132,6 +132,10 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     private boolean simpleTitleWidthInitialized;
     private float lastSimpleTitleWidthTarget = -1f;
 
+    private final FloatValueHolder menuPillJellyHolder = new FloatValueHolder(0f);
+    private SpringAnimation menuPillJellySpring;
+    private boolean menuPillJellyPending;
+
     private ActionBar.ActionBarMenuOnItemClick actionBarMenuOnItemClick;
 
     private boolean occupyStatusBar = true;
@@ -473,9 +477,12 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
                     glassMenu.setRadius(radius);
                 }
                 final float press = motionEnabled ? menuPressAnimator.getFloatValue() : 0f;
+                final float j = motionEnabled ? menuPillJellyHolder.getValue() : 0f;
                 final float swell = dp(2.4f) * press;
-                glassMenu.setBounds((int) (menuPillRect.left - swell) - p, (int) (menuPillRect.top - swell) - p,
-                        (int) (menuPillRect.right + swell) + p, (int) (menuPillRect.bottom + swell) + p);
+                final float jellyX = menuPillRect.width() * 0.045f * j;
+                final float jellyY = -menuPillRect.height() * 0.055f * j;
+                glassMenu.setBounds((int) (menuPillRect.left - swell - jellyX) - p, (int) (menuPillRect.top - swell - jellyY) - p,
+                        (int) (menuPillRect.right + swell + jellyX) + p, (int) (menuPillRect.bottom + swell + jellyY) + p);
                 glassMenu.setElasticPressProgress(press * 0.88f);
                 glassMenu.setAlpha((int) (255 * alpha));
                 glassMenu.draw(canvas);
@@ -1369,6 +1376,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             return;
         }
         actionModeVisible = true;
+        cancelMenuPillJelly();
         if (menu != null) {
             menu.hideAllPopupMenus();
         }
@@ -1386,6 +1394,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             return;
         }
         actionModeVisible = false;
+        if (glassMenu != null && isAnimationsAllowed()) {
+            menuPillJellyPending = true;
+        }
         actionMode.hideAllPopupMenus();
         actionModeAnimator.setValue(false, isAnimationsAllowed());
         applyFactors();
@@ -1468,6 +1479,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         }
         createSearchLayout();
         searchFieldVisible = true;
+        cancelMenuPillJelly();
         if (menu != null) {
             menu.hideAllPopupMenus();
         }
@@ -1498,6 +1510,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             return;
         }
         searchFieldVisible = false;
+        if (glassMenu != null && isAnimationsAllowed()) {
+            menuPillJellyPending = true;
+        }
         searchField.clearFocus();
         if (closeKeyboard) {
             AndroidUtilities.hideKeyboard(searchField);
@@ -1673,6 +1688,37 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
 
     /* Animations */
 
+    private void cancelMenuPillJelly() {
+        menuPillJellyPending = false;
+        if (menuPillJellySpring != null) {
+            menuPillJellySpring.cancel();
+        }
+        menuPillJellyHolder.setValue(0f);
+    }
+
+    private void kickMenuPillJelly() {
+        if (glassMenu == null || !canPlayJellySpring()) {
+            return;
+        }
+        if (menuPillJellySpring == null) {
+            menuPillJellySpring = new SpringAnimation(menuPillJellyHolder, 0f);
+            menuPillJellySpring.setSpring(new SpringForce(0f)
+                    .setStiffness(260f)
+                    .setDampingRatio(0.42f));
+            menuPillJellySpring.addUpdateListener((animation, value, velocity) -> {
+                if (menu != null) {
+                    final float menuScale = lerp(0.7f, 1f, (1f - getStagedSearchProgress()) * (1f - getStagedActionModeProgress()));
+                    menu.setScaleX(menuScale * (1f + 0.045f * value));
+                    menu.setScaleY(menuScale * (1f - 0.055f * value));
+                }
+                invalidate();
+            });
+        }
+        menuPillJellySpring.cancel();
+        menuPillJellySpring.setStartVelocity(5.8f);
+        menuPillJellySpring.animateToFinalPosition(0f);
+    }
+
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
         if (id == ANIMATOR_SEARCH_CLEAR) {
@@ -1701,6 +1747,11 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         final float sk = s * (1f - a);
 
         syncTitleRevealSpring(animateTitleReveal);
+        if (menuPillJellyPending && !searchFieldVisible && !actionModeVisible
+                && getSearchFactor() <= 0.14f && getActionModeFactor() <= 0.14f) {
+            menuPillJellyPending = false;
+            kickMenuPillJelly();
+        }
         final float reveal = titleRevealHolder.getValue();
         final float titleAlpha = Utilities.clamp01(reveal / 0.42f) * titlesAlpha;
         final float titleScaleX = lerp(0.32f, 1f, reveal);
@@ -1725,11 +1776,12 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             menu.setTranslationX(-getDoneButtonSpace(false));
             final float menuAlpha = (1f - s) * (1f - a);
             setAlphaAndVisibility(menu, menuAlpha);
+            final float j = menuPillJellyHolder.getValue();
             final float scale = lerp(0.7f, 1f, menuAlpha);
             menu.setPivotX(menu.getWidth() - dp(19));
             menu.setPivotY(menu.getHeight() / 2f);
-            menu.setScaleX(scale);
-            menu.setScaleY(scale);
+            menu.setScaleX(scale * (1f + 0.045f * j));
+            menu.setScaleY(scale * (1f - 0.055f * j));
         }
         // custom children (screen buttons, avatars) behave like the menu
         final float customAlpha = Utilities.clamp01(reveal / 0.42f);

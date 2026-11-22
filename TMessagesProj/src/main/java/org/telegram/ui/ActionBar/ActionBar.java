@@ -1449,6 +1449,13 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
         actionMode.hideAllPopupMenus();
         actionModeVisible = false;
+        if (glassMode && glassDrawableMenu != null && !app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome()) {
+            postDelayed(() -> {
+                if (!actionModeVisible && !isSearchFieldVisible) {
+                    kickMenuPillJelly();
+                }
+            }, 110);
+        }
         checkMenuItemsWidth();
         ArrayList<Animator> animators = new ArrayList<>();
         animators.add(ObjectAnimator.ofFloat(actionMode, View.ALPHA, 0.0f));
@@ -1816,6 +1823,17 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     revealSpring.start();
                 }
                 kickTitlePillJelly(1f);
+                kickMenuPillJelly();
+            };
+            postDelayed(searchRevealRunnable, 110);
+        } else if (!visible && playJellyReveal && glassMode && glassDrawableMenu != null
+                && !app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome()) {
+            searchRevealRunnable = () -> {
+                searchRevealRunnable = null;
+                if (isSearchFieldVisible || !isAttachedToWindow()) {
+                    return;
+                }
+                kickMenuPillJelly();
             };
             postDelayed(searchRevealRunnable, 110);
         }
@@ -2990,6 +3008,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private final FloatValueHolder titlePillJellyHolder = new FloatValueHolder(0f);
     private SpringAnimation titlePillJellySpring;
 
+    private final FloatValueHolder menuPillJellyHolder = new FloatValueHolder(0f);
+    private SpringAnimation menuPillJellySpring;
+
     private boolean canPlayJellySpring() {
         return android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled();
     }
@@ -3012,6 +3033,22 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         titlePillJellySpring.cancel();
         titlePillJellySpring.setStartVelocity(direction * 5.2f);
         titlePillJellySpring.animateToFinalPosition(0f);
+    }
+
+    private void kickMenuPillJelly() {
+        if (!canPlayJellySpring() || !isAttachedToWindow() || glassDrawableMenu == null) {
+            return;
+        }
+        if (menuPillJellySpring == null) {
+            menuPillJellySpring = new SpringAnimation(menuPillJellyHolder, 0f);
+            menuPillJellySpring.setSpring(new SpringForce(0f)
+                    .setStiffness(260f)
+                    .setDampingRatio(0.42f));
+            menuPillJellySpring.addUpdateListener((animation, value, velocity) -> invalidate());
+        }
+        menuPillJellySpring.cancel();
+        menuPillJellySpring.setStartVelocity(5.8f);
+        menuPillJellySpring.animateToFinalPosition(0f);
     }
 
     private float getAvatarContainerWidthFactor() {
@@ -3625,8 +3662,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (hasMenuPill && menuAlphaInt > 0 && normalPillFade > 0.01f) {
             glassMenuRestRect.set(menuLeft, menuTop, menuRight, menuBottom);
             final float menuPress = (headerGlassLens && motionEnabled) ? animatorMenuGlassPressed.getFloatValue() : 0f;
+            final float menuJelly = motionEnabled ? menuPillJellyHolder.getValue() : 0f;
             final int swell = Math.round(dp(2.4f) * menuPress);
-            glassDrawableMenu.setBounds(menuLeft - swell, menuTop - swell, menuRight + swell, menuBottom + swell);
+            final int jellyX = Math.round(dp(2.8f) * menuJelly);
+            final int jellyY = Math.round(-dp(1.8f) * menuJelly);
+            glassDrawableMenu.setBounds(menuLeft - swell - jellyX, menuTop - swell - jellyY, menuRight + swell + jellyX, menuBottom + swell + jellyY);
             if (headerGlassLens) {
                 glassDrawableMenu.setElasticPressProgress(menuPress * 0.88f);
             }
