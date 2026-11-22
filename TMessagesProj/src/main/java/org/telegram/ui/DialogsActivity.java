@@ -936,10 +936,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             if (hasStories) {
                 int storiesHeight = dp(DialogStoriesCell.HEIGHT_IN_DP);
-                h += storiesHeight * (1f - searchAnimationProgress) * (1f - rightSlidingProgress) * (1f - progressToActionMode);
+                h += storiesHeight * (1f - searchAnimationProgress) * (1f - rightSlidingProgress);
             }
             h += storiesOverscroll;
-            h += getIdleSearchFieldHeight() * (1f - progressToActionMode) * (1f - searchAnimationProgress) * (1f - rightSlidingProgress);
+            h += getIdleSearchFieldHeight() * (1f - searchAnimationProgress) * (1f - rightSlidingProgress);
 
             return (int) h;
         }
@@ -950,7 +950,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (rightSlidingDialogContainer != null && rightSlidingDialogContainer.hasFragment()) {
                 rightSlidingProgress = rightSlidingDialogContainer.openedProgress;
             }
-            scrollY *= (1f - progressToActionMode) * (1f - rightSlidingProgress);
+            scrollY *= (1f - rightSlidingProgress);
             return (int) (-getY() + scrollY * (1f - searchAnimationProgress));
         }
 
@@ -1033,7 +1033,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (app.exteraless.appearance.M3SurfaceHelper.isMaterial3SurfaceMode()) {
                 canvas.drawColor(app.exteraless.appearance.M3SurfaceHelper.getCanvasColor(resourceProvider));
             }
-            if (invalidateScrollY && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment()) && progressToActionMode == 0) {
+            if (invalidateScrollY && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment())) {
                 invalidateScrollY = false;
                 int firstItemPosition = hasHiddenArchive() && viewPages[0].dialogsType == DIALOGS_TYPE_DEFAULT ? 1 : 0;
                 DialogsRecyclerView recyclerView = viewPages[0].listView;
@@ -1113,11 +1113,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     }
                 }
             } else if (!inPreviewMode) {
-                if (progressToActionMode > 0) {
+                if (progressToActionMode > 0 && !headerGlass) {
                     actionBarSearchPaint.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                    if (headerGlass) {
-                        actionBarSearchPaint.setAlpha((int) (255 * Math.min(1f, progressToActionMode)));
-                    }
                     blurBounds.set(0, Math.max(0, top), getMeasuredWidth(), top + actionBarHeight - dp(2 * searchAnimationProgress));
                     drawBlurRect(canvas, 0, blurBounds, actionBarSearchPaint, true);
                 } else if (!headerGlass) {
@@ -1127,11 +1124,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             tabsYOffset = 0;
             storiesYOffset = 0;
-            tabsYOffset -= Math.min(
-                dp(hasStories ? DialogStoriesCell.HEIGHT_IN_DP : 0) + getIdleSearchFieldHeight() + scrollYOffset,
-                progressToActionMode * (dp(hasStories ? DialogStoriesCell.HEIGHT_IN_DP : 0) + getIdleSearchFieldHeight())
-            );
-            storiesYOffset = tabsYOffset;
             if ((rightSlidingDialogContainer != null && rightSlidingDialogContainer.hasFragment())) {
                 final float rightSlidingProgress = rightSlidingDialogContainer.openedProgress;
 
@@ -1172,7 +1164,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             updateStoriesViewAlpha(storiesAlpha);
             if (dialogsTopFadeView != null) {
                 final float topFadeAlpha = shouldUseDialogsHeaderGlass() && !isMaterial3OpaqueHeader()
-                        ? (1f - Math.min(1f, progressToActionMode)) * (1f - Math.min(1f, getRightSlidingProgress()))
+                        ? (1f - Math.min(1f, getRightSlidingProgress()))
                         : 0f;
                 dialogsTopFadeView.setAlpha(topFadeAlpha);
                 dialogsTopFadeView.setVisibility(topFadeAlpha > 0.01f ? View.VISIBLE : View.GONE);
@@ -1732,14 +1724,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private void updateStoriesViewAlpha(float alpha) {
         final float factorSearch = Utilities.clamp(searchAnimationProgress * 2, 1f, 0f);
-        dialogStoriesCell.setAlpha((1f - progressToActionMode) * alpha * progressToDialogStoriesCell * (1f - factorSearch));
+        dialogStoriesCell.setAlpha(alpha * progressToDialogStoriesCell * (1f - factorSearch));
         float containersAlpha;
 
         if (hasStories || animateToHasStories) {
             float p = Utilities.clamp(-scrollYOffset / dp(DialogStoriesCell.HEIGHT_IN_DP), 1f, 0f);
-            if (progressToActionMode == 1f) {
-                p = 1f;
-            }
             float pHalf = Utilities.clamp(p / 0.5f, 1f, 0f);
             dialogStoriesCell.setClipTop(0);
             if (!hasStories && animateToHasStories) {
@@ -2210,12 +2199,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
             ignoreLayout = true;
             t = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
-            if (hasStories && !actionModeFullyShowed) {
+            if (hasStories) {
                 t += dp(DialogStoriesCell.HEIGHT_IN_DP);
             }
-            if (!actionModeFullyShowed) {
-                t += getIdleSearchFieldHeight();
-            }
+            t += getIdleSearchFieldHeight();
             additionalPadding = 0;
 
             final float filterTabsVisibility = getFilterTabsVisibilityFactor(false);
@@ -2565,8 +2552,52 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         private boolean swipeFolderBack;
         private ViewPage parentPage;
 
+        private float dragScrollFraction;
+
         public SwipeController(ViewPage page) {
             parentPage = page;
+        }
+
+        @Override
+        public boolean isImmediateDragTarget(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float localX, float localY) {
+            if (!actionBar.isActionModeShowed(null) || !(viewHolder.itemView instanceof DialogCell)) {
+                return false;
+            }
+            return hasDragFlag(recyclerView, viewHolder)
+                    && ((DialogCell) viewHolder.itemView).isPointInsideReorderHandle(localX, localY);
+        }
+
+        @Override
+        public boolean isSecondPointerScrollEnabled() {
+            return actionBar != null && actionBar.isActionModeShowed(null);
+        }
+
+        @Override
+        public int interpolateOutOfBoundsScroll(@NonNull RecyclerView recyclerView, int viewSize, int viewSizeOutOfBounds, int totalSize, long msSinceStartScroll) {
+            final int direction = viewSizeOutOfBounds >= 0 ? 1 : -1;
+            final float outRatio = Math.min(1f, Math.abs(viewSizeOutOfBounds) / (float) Math.max(1, viewSize));
+            final float easedOut = outRatio * outRatio * (0.4f + 0.6f * outRatio);
+            final float timeRatio = Math.min(1f, Math.max(0L, msSinceStartScroll) / 1600f);
+            final float timeScale = 0.25f + 0.75f * timeRatio * timeRatio;
+
+            float refreshHz = 60f;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && recyclerView.getDisplay() != null) {
+                refreshHz = Math.max(60f, recyclerView.getDisplay().getRefreshRate());
+            } else if (recyclerView.getDisplay() != null) {
+                refreshHz = Math.max(60f, recyclerView.getDisplay().getRefreshRate());
+            }
+            final float frameScale = 60f / refreshHz;
+            final float minPerFrame = AndroidUtilities.dpf2(1.2f) * frameScale;
+            final float maxPerFrame = AndroidUtilities.dpf2(6.5f) * frameScale;
+            final float speed = (minPerFrame + (maxPerFrame - minPerFrame) * easedOut) * timeScale;
+
+            dragScrollFraction += direction * speed;
+            final int scroll = Math.round(dragScrollFraction);
+            dragScrollFraction -= scroll;
+            if (scroll == 0 && outRatio > 0.08f) {
+                return direction;
+            }
+            return scroll;
         }
 
         @Override
@@ -4510,7 +4541,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         setStoriesOvercroll(viewPage, newOverscroll);
                         return super.scrollVerticallyBy(measuredDy, recycler, state);
                     }
-                    final boolean hasStories = DialogsActivity.this.hasStories && communityId == 0 && !(actionBar != null && actionBar.isActionModeShowed());
+                    final boolean hasStories = DialogsActivity.this.hasStories && communityId == 0;
                     int pTop = viewPage.listView.getPaddingTop();
                     int realTopPadding = pTop;
                     if (hasStories && !rightSlidingDialogContainer.hasFragment() && !fixScrollYAfterArchiveOpened) {
@@ -4534,13 +4565,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                     viewsH += viewPage.dialogsAdapter.getItemHeight(i);
                                 }
                                 int canScrollDy = -(view.getTop() - pTop) + viewsH;
-                                if (!rightSlidingDialogContainer.hasFragment() && !(actionBar != null && actionBar.isActionModeShowed())) {
+                                if (!rightSlidingDialogContainer.hasFragment()) {
                                     canScrollDy -= getIdleSearchFieldHeight();
                                 }
                                 if (hasStories && (viewPage.scroller.isRunning() || dialogStoriesCell.isExpanded()) && !rightSlidingDialogContainer.hasFragment() && !fixScrollYAfterArchiveOpened) {
                                     canScrollDy += dp(DialogStoriesCell.HEIGHT_IN_DP);
                                 }
-                                if ((viewPage.scroller.isRunning() || dialogStoriesCell.isExpanded()) && !rightSlidingDialogContainer.hasFragment() && !fixScrollYAfterArchiveOpened && !(actionBar != null && actionBar.isActionModeShowed())) {
+                                if ((viewPage.scroller.isRunning() || dialogStoriesCell.isExpanded()) && !rightSlidingDialogContainer.hasFragment() && !fixScrollYAfterArchiveOpened) {
                                     canScrollDy += getIdleSearchFieldHeight();
                                 }
                                 int positiveDy = Math.abs(dy);
@@ -4876,7 +4907,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             }
                         }
                     }
-                    if (!hasStories && recyclerView == viewPages[0].listView && !searching && actionBar != null && !actionBar.isActionModeShowed() && !disableActionBarScrolling && !rightSlidingDialogContainer.hasFragment()) {
+                    if (!hasStories && recyclerView == viewPages[0].listView && !searching && actionBar != null && !disableActionBarScrolling && !rightSlidingDialogContainer.hasFragment()) {
                         if (dy > 0 && hasHiddenArchive() && viewPages[0].dialogsType == DIALOGS_TYPE_DEFAULT) {
                             View child = recyclerView.getChildAt(0);
                             if (child != null) {
@@ -7972,6 +8003,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void showSearch(boolean show, boolean startFromDownloads, boolean animated, boolean forceNotOnlyDialogs) {
+        if (show && actionBar != null && actionBar.isActionModeShowed()) {
+            hideActionMode(false);
+        }
         if (show && actionBar != null && actionBar.isMenuOverlayOpened()) {
             actionBar.closeMenuOverlay(animated);
         }
@@ -9633,25 +9667,19 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (progressToActionMode == 0) {
             return;
         }
-        float translateListHeight = 0;
-        setScrollY(-getMaxScrollYOffset());
         for (int i = 0; i < viewPages.length; i++) {
             if (viewPages[i] != null) {
                 viewPages[i].listView.cancelClickRunnables(true);
             }
         }
-        translateListHeight = Math.max(0, dp(hasStories ? DialogStoriesCell.HEIGHT_IN_DP : 0) + getIdleSearchFieldHeight() + scrollYOffset);
-        float finalTranslateListHeight = translateListHeight;
         actionBarColorAnimator = ValueAnimator.ofFloat(progressToActionMode, 0);
         actionBarColorAnimator.addUpdateListener(valueAnimator -> {
-            viewPages[0].setTranslationY(finalTranslateListHeight * (1f - progressToActionMode));
             progressToActionMode = (float) valueAnimator.getAnimatedValue();
             for (int i = 0; i < actionBar.getChildCount(); i++) {
                 if (actionBar.getChildAt(i).getVisibility() == View.VISIBLE && actionBar.getChildAt(i) != actionBar.getActionMode() && actionBar.getChildAt(i) != actionBar.getBackButton()) {
                     actionBar.getChildAt(i).setAlpha(1f - progressToActionMode);
                 }
             }
-            checkUi_searchFieldVisibility();
             checkUi_itemBackButtonVisibility();
             if (fragmentView != null) {
                 fragmentView.invalidate();
@@ -9663,17 +9691,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 super.onAnimationEnd(animation);
                 actionBarColorAnimator = null;
                 actionModeFullyShowed = false;
-                invalidateScrollY = true;
-                fixScrollYAfterArchiveOpened = true;
-                fragmentView.invalidate();
-                scrollAdditionalOffset = -(dp(hasStories ? DialogStoriesCell.HEIGHT_IN_DP : 0) + getIdleSearchFieldHeight() - finalTranslateListHeight);
+                actionModeAdditionalHeight = 0;
+                scrollAdditionalOffset = 0;
                 viewPages[0].setTranslationY(0);
-                for (int i = 0; i < viewPages.length; i++) {
-                    if (viewPages[i] != null) {
-                        viewPages[i].listView.requestLayout();
-                    }
+                if (fragmentView != null) {
+                    fragmentView.invalidate();
                 }
-                fragmentView.requestLayout();
                 if (fragmentSearchField != null && animatorSearchVisible.getValue()) {
                     fragmentSearchField.editText.requestFocus();
                     AndroidUtilities.showKeyboard(fragmentSearchField.editText);
@@ -10652,21 +10675,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 actionBarColorAnimator.cancel();
             }
             actionBarColorAnimator = ValueAnimator.ofFloat(progressToActionMode, 1f);
-            float translateListHeight = 0;
             for (int i = 0; i < viewPages.length; i++) {
                 if (viewPages[i] != null) {
                     viewPages[i].listView.cancelClickRunnables(true);
                 }
             }
-            translateListHeight = Math.max(0, dp(hasStories ? DialogStoriesCell.HEIGHT_IN_DP : 0) + getIdleSearchFieldHeight() + scrollYOffset);
-            if (translateListHeight != 0) {
-                actionModeAdditionalHeight = (int) translateListHeight;
-                fragmentView.requestLayout();
-            }
-            float finalTranslateListHeight = translateListHeight;
             actionBarColorAnimator.addUpdateListener(valueAnimator -> {
                 progressToActionMode = (float) valueAnimator.getAnimatedValue();
-                viewPages[0].setTranslationY(-finalTranslateListHeight * progressToActionMode);
                 for (int i = 0; i < actionBar.getChildCount(); i++) {
                     if (actionBar.getChildAt(i).getVisibility() == View.VISIBLE && actionBar.getChildAt(i) != actionBar.getActionMode() && actionBar.getChildAt(i) != actionBar.getBackButton()) {
                         actionBar.getChildAt(i).setAlpha(1f - progressToActionMode);
@@ -10675,7 +10690,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 if (fragmentView != null) {
                     fragmentView.invalidate();
                 }
-                checkUi_searchFieldVisibility();
                 checkUi_itemBackButtonVisibility();
             });
             actionBarColorAnimator.addListener(new AnimatorListenerAdapter() {
@@ -10684,16 +10698,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     super.onAnimationEnd(animation);
                     actionBarColorAnimator = null;
                     actionModeAdditionalHeight = 0;
-                    actionModeFullyShowed = true;
-                    scrollAdditionalOffset = dp(hasStories ? DialogStoriesCell.HEIGHT_IN_DP : 0) + getIdleSearchFieldHeight() - finalTranslateListHeight;
+                    actionModeFullyShowed = false;
+                    scrollAdditionalOffset = 0;
                     viewPages[0].setTranslationY(0);
-                    for (int i = 0; i < viewPages.length; i++) {
-                        if (viewPages[i] != null) {
-                            viewPages[i].listView.requestLayout();
-                        }
+                    if (fragmentView != null) {
+                        fragmentView.invalidate();
                     }
-                    dialogStoriesCell.setProgressToCollapse(1f, false);
-                    fragmentView.requestLayout();
                 }
             });
             actionBarColorAnimator.setInterpolator(CubicBezierInterpolator.DEFAULT);
@@ -14629,11 +14639,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final int maxScrollWithoutSearch = getMaxScrollYOffsetWithoutSearch();
         final float alphaByScrollOffset = shouldShowIdleSearchField() ? 1f - MathUtils.clamp((-scrollYOffset - maxScrollWithoutSearch) / dp(SEARCH_FIELD_HEIGHT), 0, 1) : 0f;
 
-        final float actionModeVisible = Math.max(progressToActionMode, animatorActionModeVisible.getFloatValue());
         final float searchFieldVisible = animatorSearchVisible.getFloatValue();
 
         final float factor0 = isSupportSearch() ? 1 : 0;
-        final float factor1 = (1f - actionModeVisible) * (1f - animatorDoneButtonVisible.getFloatValue());
+        final float factor1 = 1f - animatorDoneButtonVisible.getFloatValue();
         final float factor2 = Math.max(searchFieldVisible, alphaByScrollOffset * (1f - getRightSlidingProgress()));
 
         final float alpha = factor0 * factor1 * factor2;

@@ -220,6 +220,10 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
     @SuppressWarnings("WeakerAccess") /* synthetic access */
     int mActivePointerId = ACTIVE_POINTER_ID_NONE;
 
+    private int mScrollPointerId = ACTIVE_POINTER_ID_NONE;
+    private float mLastScrollPointerY;
+    private Runnable mShortHoldDragRunnable;
+
     /**
      * Developer callback which controls the behavior of ItemTouchHelper.
      */
@@ -327,6 +331,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 mInitialTouchX = event.getX();
                 mInitialTouchY = event.getY();
                 obtainVelocityTracker();
+                cancelShortHoldDrag();
                 if (mSelected == null) {
                     final RecoverAnimation animation = findAnimation(event);
                     if (animation != null) {
@@ -338,10 +343,35 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                         }
                         select(animation.mViewHolder, animation.mActionState);
                         updateDxDy(event, mSelectedFlags, 0);
+                    } else if (mCallback.isLongPressDragEnabled()) {
+                        final View child = findChildView(event);
+                        final ViewHolder vh = child != null ? mRecyclerView.getChildViewHolder(child) : null;
+                        if (vh != null) {
+                            final float localX = event.getX() - child.getLeft() - child.getTranslationX();
+                            final float localY = event.getY() - child.getTop() - child.getTranslationY();
+                            if (mCallback.isImmediateDragTarget(mRecyclerView, vh, localX, localY)) {
+                                final int pointerId = mActivePointerId;
+                                mShortHoldDragRunnable = () -> {
+                                    mShortHoldDragRunnable = null;
+                                    if (mSelected != null || mRecyclerView == null || mActivePointerId != pointerId
+                                            || vh.itemView.getParent() != mRecyclerView) {
+                                        return;
+                                    }
+                                    if (mRecyclerView instanceof org.telegram.ui.Components.RecyclerListView) {
+                                        ((org.telegram.ui.Components.RecyclerListView) mRecyclerView).cancelClickRunnables(true);
+                                    }
+                                    mDx = mDy = 0f;
+                                    select(vh, ACTION_STATE_DRAG);
+                                };
+                                mRecyclerView.postDelayed(mShortHoldDragRunnable, 150);
+                            }
+                        }
                     }
                 }
             } else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
+                cancelShortHoldDrag();
                 mActivePointerId = ACTIVE_POINTER_ID_NONE;
+                mScrollPointerId = ACTIVE_POINTER_ID_NONE;
                 select(null, ACTION_STATE_IDLE);
             } else if (mActivePointerId != ACTIVE_POINTER_ID_NONE) {
                 // in a non scroll orientation, if distance change is above threshold, we
@@ -351,6 +381,13 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                     Log.d(TAG, "pointer index " + index);
                 }
                 if (index >= 0) {
+                    if (mShortHoldDragRunnable != null) {
+                        final float dx = Math.abs(event.getX(index) - mInitialTouchX);
+                        final float dy = Math.abs(event.getY(index) - mInitialTouchY);
+                        if (dx > mSlop || dy > mSlop) {
+                            cancelShortHoldDrag();
+                        }
+                    }
                     checkSelectForSwipe(action, event, index);
                 }
             }
@@ -383,13 +420,41 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 return;
             }
             switch (action) {
+                case MotionEvent.ACTION_POINTER_DOWN: {
+                    if (mActionState == ACTION_STATE_DRAG
+                            && mCallback.isSecondPointerScrollEnabled()
+                            && mScrollPointerId == ACTIVE_POINTER_ID_NONE) {
+                        final int actionIndex = event.getActionIndex();
+                        final int pointerId = event.getPointerId(actionIndex);
+                        if (pointerId != mActivePointerId) {
+                            mScrollPointerId = pointerId;
+                            mLastScrollPointerY = event.getY(actionIndex);
+                        }
+                    }
+                    break;
+                }
                 case MotionEvent.ACTION_MOVE: {
                     // Find the index of the active pointer and fetch its position
                     if (activePointerIndex >= 0) {
                         updateDxDy(event, mSelectedFlags, activePointerIndex);
+                        if (mScrollPointerId != ACTIVE_POINTER_ID_NONE && mActionState == ACTION_STATE_DRAG) {
+                            final int scrollIndex = event.findPointerIndex(mScrollPointerId);
+                            if (scrollIndex >= 0) {
+                                final float curY = event.getY(scrollIndex);
+                                int dy = Math.round(mLastScrollPointerY - curY);
+                                mLastScrollPointerY = curY;
+                                dy = clampSecondPointerScrollDy(viewHolder, dy);
+                                if (dy != 0 && mRecyclerView.getLayoutManager() != null
+                                        && mRecyclerView.getLayoutManager().canScrollVertically()) {
+                                    mRecyclerView.scrollBy(0, dy);
+                                }
+                            }
+                        }
                         moveIfNecessary(viewHolder);
                         mRecyclerView.removeCallbacks(mScrollRunnable);
-                        mScrollRunnable.run();
+                        if (mScrollPointerId == ACTIVE_POINTER_ID_NONE) {
+                            mScrollRunnable.run();
+                        }
                         mRecyclerView.invalidate();
                     }
                     break;
@@ -400,18 +465,28 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                     }
                     // fall through
                 case MotionEvent.ACTION_UP:
+                    cancelShortHoldDrag();
                     select(null, ACTION_STATE_IDLE);
                     mActivePointerId = ACTIVE_POINTER_ID_NONE;
+                    mScrollPointerId = ACTIVE_POINTER_ID_NONE;
                     break;
                 case MotionEvent.ACTION_POINTER_UP: {
                     final int pointerIndex = event.getActionIndex();
                     final int pointerId = event.getPointerId(pointerIndex);
-                    if (pointerId == mActivePointerId) {
-                        // This was our active pointer going up. Choose a new
-                        // active pointer and adjust accordingly.
-                        final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
-                        mActivePointerId = event.getPointerId(newPointerIndex);
-                        updateDxDy(event, mSelectedFlags, pointerIndex);
+                    if (pointerId == mScrollPointerId) {
+                        mScrollPointerId = ACTIVE_POINTER_ID_NONE;
+                    } else if (pointerId == mActivePointerId) {
+                        if (mScrollPointerId != ACTIVE_POINTER_ID_NONE) {
+                            select(null, ACTION_STATE_IDLE);
+                            mActivePointerId = ACTIVE_POINTER_ID_NONE;
+                            mScrollPointerId = ACTIVE_POINTER_ID_NONE;
+                        } else {
+                            // This was our active pointer going up. Choose a new
+                            // active pointer and adjust accordingly.
+                            final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
+                            mActivePointerId = event.getPointerId(newPointerIndex);
+                            updateDxDy(event, mSelectedFlags, pointerIndex);
+                        }
                     }
                     break;
                 }
@@ -448,6 +523,35 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
      */
     public ItemTouchHelper(@NonNull Callback callback) {
         mCallback = callback;
+    }
+
+    private void cancelShortHoldDrag() {
+        if (mShortHoldDragRunnable != null && mRecyclerView != null) {
+            mRecyclerView.removeCallbacks(mShortHoldDragRunnable);
+        }
+        mShortHoldDragRunnable = null;
+    }
+
+    private int clampSecondPointerScrollDy(ViewHolder viewHolder, int dy) {
+        if (dy == 0 || viewHolder == null || mRecyclerView == null) {
+            return dy;
+        }
+        final int itemH = viewHolder.itemView.getHeight();
+        if (itemH <= 0) {
+            return dy;
+        }
+        final int margin = Math.min(itemH / 2, AndroidUtilities.dp(24));
+        final int minTop = mRecyclerView.getPaddingTop() - itemH + margin;
+        final int maxBottom = mRecyclerView.getHeight() - mRecyclerView.getPaddingBottom() + itemH - margin;
+        final int curTop = viewHolder.itemView.getTop();
+        final int curBottom = viewHolder.itemView.getBottom();
+        if (dy > 0) {
+            final int maxScrollDown = Math.max(0, curTop - minTop);
+            return Math.min(dy, maxScrollDown);
+        } else {
+            final int maxScrollUp = Math.max(0, maxBottom - curBottom);
+            return Math.max(dy, -maxScrollUp);
+        }
     }
 
     private static boolean hitTest(View child, float x, float y, float left, float top) {
@@ -582,6 +686,12 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
     void select(@Nullable ViewHolder selected, int actionState) {
         if (selected == mSelected && actionState == mActionState) {
             return;
+        }
+        if (actionState == ACTION_STATE_DRAG) {
+            cancelShortHoldDrag();
+        }
+        if (actionState == ACTION_STATE_IDLE) {
+            mScrollPointerId = ACTIVE_POINTER_ID_NONE;
         }
         mDragScrollStartTimeInMs = Long.MIN_VALUE;
         final int prevActionState = mActionState;
@@ -1681,6 +1791,23 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
          */
         public boolean isLongPressDragEnabled() {
             return true;
+        }
+
+        /**
+         * Returns whether pressing at {@code (localX, localY)} inside {@code viewHolder}
+         * hits a dedicated drag handle that should enter drag after a brief hold.
+         */
+        public boolean isImmediateDragTarget(@NonNull RecyclerView recyclerView,
+                @NonNull ViewHolder viewHolder, float localX, float localY) {
+            return false;
+        }
+
+        /**
+         * Returns whether a second finger may vertically scroll the {@link RecyclerView}
+         * while another pointer holds a dragged item.
+         */
+        public boolean isSecondPointerScrollEnabled() {
+            return false;
         }
 
         /**

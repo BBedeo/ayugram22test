@@ -3288,6 +3288,21 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         }
     }
 
+    /** Returns true when touch falls on the visible pinned reorder handle ({@code ==}). */
+    public boolean isPointInsideReorderHandle(float x, float y) {
+        if (!drawReorder || reorderIconProgress <= 0.25f) {
+            return false;
+        }
+        final int handleW = Theme.dialogs_reorderDrawable != null
+                ? Theme.dialogs_reorderDrawable.getIntrinsicWidth()
+                : dp(24);
+        final int hitLeft = LocaleController.isRTL ? 0 : Math.max(0, pinLeft - dp(20));
+        final int hitRight = LocaleController.isRTL
+                ? Math.min(getMeasuredWidth(), pinLeft + handleW + dp(20))
+                : getMeasuredWidth();
+        return x >= hitLeft && x <= hitRight && y >= 0 && y <= getMeasuredHeight();
+    }
+
     public void setDialogSelected(boolean value) {
         if (isSelected != value) {
             invalidate();
