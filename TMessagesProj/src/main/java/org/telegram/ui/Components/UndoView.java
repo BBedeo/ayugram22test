@@ -331,7 +331,13 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
         textPaint.setColor(getThemedColor(Theme.key_undo_infoColor));
 
         setWillNotDraw(false);
-        backgroundDrawable = Theme.createRoundRectDrawable(AndroidUtilities.dp(10), getThemedColor(Theme.key_undo_background));
+        if (app.exteraless.appearance.glass.GlassTokens.isActive()) {
+            // Liquid Glass toast (tier 3): the undo color as dense glass with a light-catching rim.
+            backgroundDrawable = new app.exteraless.appearance.glass.GlassSurfaceDrawable(getThemedColor(Theme.key_undo_background),
+                    app.exteraless.appearance.glass.GlassTokens.TIER_THICK, app.exteraless.appearance.glass.GlassTokens.RADIUS_TOAST);
+        } else {
+            backgroundDrawable = Theme.createRoundRectDrawable(AndroidUtilities.dp(10), getThemedColor(Theme.key_undo_background));
+        }
 
         setOnTouchListener((v, event) -> true);
 

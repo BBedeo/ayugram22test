@@ -827,6 +827,18 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             if (blurredBackground && !blurredNativeBackground) {
                 containerView.setWillNotDraw(false);
             }
+            if (blurredNativeBackground && LiquidGlassTuning.isActive()) {
+                // The glass window background is rounded to the dialog radius: clip the content
+                // (buttons and their ripples) to the same corners.
+                final float radius = dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG);
+                containerView.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                    }
+                });
+                containerView.setClipToOutline(true);
+            }
             drawBackground = false;
         } else {
             if (notDrawBackgroundOnTopView) {
@@ -1477,12 +1489,13 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     blurredNativeBackground = true;
                     window.setBackgroundBlurRadius(50);
                     if (LiquidGlassTuning.isActive()) {
-                        // Translucent native blurred window backdrop instead of an opaque rectangle.
-                        GradientDrawable glass = new GradientDrawable();
-                        glass.setColor(ColorUtils.setAlphaComponent(backgroundColor,
-                                Math.round(blurAlpha * 255)));
-                        glass.setCornerRadius(dp(16));
-                        window.setBackgroundDrawable(glass);
+                        // Translucent native blurred window backdrop with the Liquid Glass rim and bevel
+                        // highlight; tier-3 dialog radius (the blur follows the drawable's outline).
+                        window.setBackgroundDrawable(new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
+                                app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
+                                app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG)
+                                .setFillAlpha(blurAlpha)
+                                .setShadow(false));
                     } else {
                         float rad = dp(12);
                         ShapeDrawable shapeDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));

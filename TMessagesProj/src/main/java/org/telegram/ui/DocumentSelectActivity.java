@@ -48,6 +48,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -68,6 +69,7 @@ import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
+import org.telegram.ui.ActionBar.SimpleActionBarMenu;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
@@ -266,14 +268,9 @@ public class DocumentSelectActivity extends BaseFragment {
             ApplicationLoader.registerReceiverNotExported(receiver, filter);
         }
 
-        actionBar.setBackgroundColor(Theme.getColor(Theme.key_dialogBackground));
-        actionBar.setTitleColor(Theme.getColor(Theme.key_dialogTextBlack));
-        actionBar.setItemsColor(Theme.getColor(Theme.key_dialogTextBlack), false);
-        actionBar.setItemsBackgroundColor(Theme.getColor(Theme.key_dialogButtonSelector), false);
-        actionBar.setBackButtonDrawable(new BackDrawable(false));
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString("SelectFile", R.string.SelectFile));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonDrawable(new BackDrawable(false));
+        simpleActionBar.setTitle(LocaleController.getString("SelectFile", R.string.SelectFile));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -291,7 +288,7 @@ public class DocumentSelectActivity extends BaseFragment {
             }
         });
 
-        final ActionBarMenu menu = actionBar.createMenu();
+        final SimpleActionBarMenu menu = simpleActionBar.createMenu();
         searchItem = menu.addItem(search_button, R.drawable.ic_ab_search_solar).setIsSearchField(true).setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
             @Override
             public void onSearchExpand() {
@@ -318,10 +315,6 @@ public class DocumentSelectActivity extends BaseFragment {
         });
         searchItem.setSearchFieldHint(LocaleController.getString("Search", R.string.Search));
         searchItem.setContentDescription(LocaleController.getString("Search", R.string.Search));
-        EditTextBoldCursor editText = searchItem.getSearchField();
-        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-        editText.setCursorColor(Theme.getColor(Theme.key_dialogTextBlack));
-        editText.setHintTextColor(Theme.getColor(Theme.key_chat_messagePanelHint));
 
         sortItem = menu.addItem(sort_button, sortByName ? R.drawable.contacts_sort_time : R.drawable.contacts_sort_name);
         sortItem.setContentDescription(LocaleController.getString("AccDescrContactSorting", R.string.AccDescrContactSorting));
@@ -495,7 +488,6 @@ public class DocumentSelectActivity extends BaseFragment {
         listView.setEmptyView(emptyView);
         listView.setClipToPadding(false);
         listView.setAdapter(listAdapter = new ListAdapter(context));
-        listView.setPadding(0, 0, 0, AndroidUtilities.dp(48));
         sizeNotifierFrameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         searchAdapter = new SearchAdapter(context);
 
@@ -560,7 +552,7 @@ public class DocumentSelectActivity extends BaseFragment {
                     }
                 } else {
                     HistoryEntry he = history.remove(history.size() - 1);
-                    actionBar.setTitle(he.title);
+                    simpleActionBar.setTitle(he.title);
                     if (he.dir != null) {
                         listFiles(he.dir);
                     } else {
@@ -577,13 +569,13 @@ public class DocumentSelectActivity extends BaseFragment {
                     he.scrollOffset = topView.getTop();
                 }
                 he.dir = currentDir;
-                he.title = actionBar.getTitle();
+                he.title = simpleActionBar.getTitle();
                 history.add(he);
                 if (!listFiles(file)) {
                     history.remove(he);
                     return;
                 }
-                actionBar.setTitle(item.title);
+                simpleActionBar.setTitle(item.title);
             } else {
                 onItemClick(view, item);
             }
@@ -620,7 +612,7 @@ public class DocumentSelectActivity extends BaseFragment {
         commentTextView.setFilters(inputFilters);
         commentTextView.setHint(LocaleController.getString("AddCaption", R.string.AddCaption));
         commentTextView.onResume();
-        editText = commentTextView.getEditText();
+        EditTextBoldCursor editText = commentTextView.getEditText();
         editText.setMaxLines(1);
         editText.setSingleLine(true);
         frameLayout2.addView(commentTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, 0, 0, 84, 0));
@@ -1167,7 +1159,7 @@ public class DocumentSelectActivity extends BaseFragment {
     private boolean canClosePicker() {
         if (history.size() > 0) {
             HistoryEntry he = history.remove(history.size() - 1);
-            actionBar.setTitle(he.title);
+            simpleActionBar.setTitle(he.title);
             if (he.dir != null) {
                 listFiles(he.dir);
             } else {
@@ -1662,15 +1654,30 @@ public class DocumentSelectActivity extends BaseFragment {
     }
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
+    protected int getListViewForSimpleGlassBottomPadding() {
+        return AndroidUtilities.dp(48);
+    }
+
+    @Override
     public ArrayList<ThemeDescription> getThemeDescriptions() {
         return new ArrayList<>(Arrays.asList(new ThemeDescription(sizeNotifierFrameLayout, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_dialogBackground),
 
-                new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_dialogBackground),
-                new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_dialogTextBlack),
-                new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_dialogTextBlack),
-                new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_dialogButtonSelector),
-                new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SEARCH, null, null, null, null, Theme.key_dialogTextBlack),
-                new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SEARCHPLACEHOLDER, null, null, null, null, Theme.key_chat_messagePanelHint),
                 new ThemeDescription(searchItem.getSearchField(), ThemeDescription.FLAG_CURSORCOLOR, null, null, null, null, Theme.key_dialogTextBlack),
 
                 new ThemeDescription(emptyImageView, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_dialogEmptyImage),

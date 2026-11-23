@@ -816,6 +816,9 @@ public final class ThemeBind {
         if (d instanceof ColorDrawable) {
             return ((ColorDrawable) d).getColor();
         }
+        if (d instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable) {
+            return ((app.exteraless.appearance.glass.GlassSurfaceDrawable) d).getBaseColor();
+        }
         return 0;
     }
 
@@ -833,6 +836,8 @@ public final class ThemeBind {
             drawable.invalidateSelf();
         } else if (d instanceof ColorDrawable) {
             ((ColorDrawable) d).setColor(color);
+        } else if (d instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable) {
+            ((app.exteraless.appearance.glass.GlassSurfaceDrawable) d).setBaseColor(color);
         }
     }
 

@@ -29,6 +29,9 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.ui.ActionBar.MessageDrawable;
 import org.telegram.ui.ActionBar.Theme;
 
+import app.exteraless.appearance.glass.GlassMotion;
+import app.exteraless.appearance.glass.GlassTokens;
+
 public class CheckBoxBase {
 
     private View parentView;
@@ -206,7 +209,9 @@ public class CheckBoxBase {
         progress = value;
         invalidate();
         if (progressDelegate != null) {
-            progressDelegate.setProgress(value);
+            // The glass spring overshoots a little; listeners only ever get 0..1 (a no-op for the
+            // classic curve, which stays inside that range).
+            progressDelegate.setProgress(Math.max(0f, Math.min(1f, value)));
         }
     }
 
@@ -233,7 +238,8 @@ public class CheckBoxBase {
 
     @Keep
     public float getProgress() {
-        return progress;
+        // Callers turn this into alpha/scale; the glass spring's small overshoot stays internal.
+        return Math.max(0f, Math.min(1f, progress));
     }
 
     public boolean isChecked() {
@@ -289,8 +295,14 @@ public class CheckBoxBase {
                 }
             }
         });
-        checkAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
-        checkAnimator.setDuration(animationDuration);
+        if (useGlassStyle()) {
+            // Overshoot only where the glass drawing clamps it; other box types keep their curve.
+            checkAnimator.setInterpolator(GlassMotion.SPRING);
+            checkAnimator.setDuration(Math.max(animationDuration, 380));
+        } else {
+            checkAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
+            checkAnimator.setDuration(animationDuration);
+        }
         checkAnimator.start();
     }
 
@@ -467,6 +479,11 @@ public class CheckBoxBase {
             } else {
                 backgroundPaint.setColor(AndroidUtilities.getOffsetColor(0x00ffffff, resolveBackground2Color(), progress, backgroundAlpha));
             }
+        }
+
+        if (useGlassStyle()) {
+            drawGlassStyle(canvas, cx, cy, rad);
+            return;
         }
 
         if (drawUnchecked && backgroundType >= 0) {
@@ -673,6 +690,71 @@ public class CheckBoxBase {
         }
         if (cutCheck) {
             canvas.restore();
+        }
+    }
+
+    /** iOS-style checkbox is used only for plain round boxes in Liquid Glass mode. */
+    private boolean useGlassStyle() {
+        return GlassTokens.isActive() && !forbidden && checkedText == null && customRadius <= 0 && !cutCheck
+                && drawUnchecked && ((backgroundType >= 0 && backgroundType <= 5) || backgroundType == 11);
+    }
+
+    private void drawGlassStyle(Canvas canvas, int cx, int cy, float rad) {
+        final float p = Math.max(0f, this.progress);
+        final float fillScale = Math.min(1.05f, p);
+        final float r = rad - dp(0.75f);
+        // unchecked: thin neutral ring in the existing border color at reduced alpha
+        final float oldWidth = backgroundPaint.getStrokeWidth();
+        backgroundPaint.setStyle(Paint.Style.STROKE);
+        backgroundPaint.setStrokeWidth(dp(1.5f));
+        backgroundPaint.setColor(getThemedColor(checkColorKey));
+        backgroundPaint.setAlpha((int) (255 * 0.7f * alpha * backgroundAlpha * (1f - Math.min(1f, p))));
+        if (backgroundPaint.getAlpha() > 0) {
+            canvas.drawCircle(cx, cy, r, backgroundPaint);
+        }
+        backgroundPaint.setStrokeWidth(oldWidth);
+        // checked: filled circle in the checked color
+        if (fillScale > 0) {
+            final int fillColor;
+            if (backgroundType == 11) {
+                fillColor = getThemedColor(backgroundColorKey);
+            } else if (backgroundColor != 0) {
+                fillColor = backgroundColor;
+            } else {
+                fillColor = getThemedColor(enabled ? Theme.key_checkbox : Theme.key_checkboxDisabled);
+            }
+            paint.setColor(fillColor);
+            paint.setAlpha((int) (Color.alpha(fillColor) * alpha * Math.min(1f, p * 2f)));
+            canvas.drawCircle(cx, cy, (rad - dp(0.5f)) * fillScale, paint);
+        }
+        final float checkProgress = Math.max(0f, Math.min(1f, (p - 0.3f) / 0.7f));
+        if (checkProgress > 0) {
+            int checkColor = getThemedColor(!useDefaultCheck && checkColorKey >= 0 ? checkColorKey : Theme.key_checkboxCheck);
+            checkPaint.setColor(checkColor);
+            checkPaint.setAlpha((int) (Color.alpha(checkColor) * alpha));
+            final float oldCheckWidth = checkPaint.getStrokeWidth();
+            checkPaint.setStrokeWidth(dp(2.3f));
+            final float scale = backgroundType == 5 ? 0.8f : 1f;
+            final float checkSide = dp(9 * scale) * checkProgress;
+            final float smallCheckSide = dp(4 * scale) * checkProgress;
+            final int x = cx - dp(1.5f);
+            final int y = cy + dp(4);
+            path.reset();
+            float side = (float) Math.sqrt(smallCheckSide * smallCheckSide / 2.0f);
+            path.moveTo(x - side, y - side);
+            path.lineTo(x, y);
+            side = (float) Math.sqrt(checkSide * checkSide / 2.0f);
+            path.lineTo(x + side, y - side);
+            final boolean scaled = checkScale != 1.0f;
+            if (scaled) {
+                canvas.save();
+                canvas.scale(checkScale, checkScale, cx, cy);
+            }
+            canvas.drawPath(path, checkPaint);
+            if (scaled) {
+                canvas.restore();
+            }
+            checkPaint.setStrokeWidth(oldCheckWidth);
         }
     }
 

@@ -28,6 +28,9 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.Theme;
 
+import app.exteraless.appearance.glass.GlassMotion;
+import app.exteraless.appearance.glass.GlassTokens;
+
 public class RadioButton extends View {
 
     private static Paint paint;
@@ -125,7 +128,13 @@ public class RadioButton extends View {
 
     private void animateToCheckedState(boolean newCheckedState) {
         checkAnimator = ObjectAnimator.ofFloat(this, "progress", newCheckedState ? 1 : 0);
-        checkAnimator.setDuration(200);
+        if (icon == null && GlassTokens.isActive()) {
+            // Overshoot only on the glass drawing, which clamps it; icon radios keep the classic curve.
+            checkAnimator.setInterpolator(GlassMotion.SPRING);
+            checkAnimator.setDuration(380);
+        } else {
+            checkAnimator.setDuration(200);
+        }
         checkAnimator.start();
     }
 
@@ -159,8 +168,39 @@ public class RadioButton extends View {
         return isChecked;
     }
 
+    /** iOS style: thin neutral ring when off, filled circle with a small white dot when on. */
+    private void drawGlassStyle(Canvas canvas) {
+        final float p = Math.max(0f, progress);
+        final float cx = getMeasuredWidth() / 2f;
+        final float cy = getMeasuredHeight() / 2f;
+        final float rad = size / 2f - AndroidUtilities.dp(1);
+        final float ringWidth = AndroidUtilities.dp(1.5f);
+        final float ringAlpha = 1f - Math.min(1f, p);
+        if (ringAlpha > 0) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(ringWidth);
+            paint.setColor(color);
+            paint.setAlpha((int) (Color.alpha(color) * 0.7f * ringAlpha));
+            canvas.drawCircle(cx, cy, rad - ringWidth / 2f, paint);
+            paint.setStrokeWidth(AndroidUtilities.dp(2));
+        }
+        if (p > 0) {
+            checkedPaint.setStyle(Paint.Style.FILL);
+            checkedPaint.setColor(checkedColor);
+            checkedPaint.setAlpha((int) (Color.alpha(checkedColor) * Math.min(1f, p * 2f)));
+            canvas.drawCircle(cx, cy, rad * Math.min(1.05f, p), checkedPaint);
+            checkedPaint.setColor(0xFFFFFFFF);
+            checkedPaint.setAlpha((int) (255 * Math.min(1f, p * 2f)));
+            canvas.drawCircle(cx, cy, size * 0.17f * p, checkedPaint);
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (icon == null && GlassTokens.isActive()) {
+            drawGlassStyle(canvas);
+            return;
+        }
         float circleProgress;
         if (progress <= 0.5f) {
             paint.setColor(color);

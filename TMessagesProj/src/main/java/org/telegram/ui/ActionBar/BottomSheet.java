@@ -1544,11 +1544,13 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 final int color = getThemedColor(Theme.key_dialogBackground);
                 final boolean dark = AndroidUtilities.computePerceivedBrightness(color) < .72f;
                 shadowDrawable.setAlpha(Math.round(LiquidGlassTuning.tintAlphaMenu(dark, .8f) * 255f));
-                GradientDrawable rim = new GradientDrawable();
-                rim.setColor(0x00000000);
-                final float radius = dp(18);
-                rim.setCornerRadii(new float[]{radius, radius, radius, radius, 0, 0, 0, 0});
-                rim.setStroke(dark ? 0 : 1, dark ? 0 : 0x10000000);
+                // Light-catching rim and polished bevel highlight of the Liquid Glass language (no fill:
+                // the translucent material underneath stays as tuned).
+                final Drawable rim = new app.exteraless.appearance.glass.GlassSurfaceDrawable(color,
+                        app.exteraless.appearance.glass.GlassTokens.TIER_THICK, 18)
+                        .setFillAlpha(0f)
+                        .setShadow(false)
+                        .setTopCornersOnly(true);
                 LayerDrawable material = new LayerDrawable(new Drawable[]{shadowDrawable, rim});
                 material.setLayerInset(1, backgroundPaddingLeft, backgroundPaddingTop,
                         backgroundPaddingLeft, 0);

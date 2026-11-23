@@ -820,6 +820,10 @@ public class Bulletin {
                 if (background != null && background == themeBackground && background instanceof ShapeDrawable) {
                     ((ShapeDrawable) background).getPaint().setColor(getThemedColor(Theme.key_undo_background));
                     invalidate();
+                } else if (background != null && background == themeBackground
+                        && background instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable) {
+                    ((app.exteraless.appearance.glass.GlassSurfaceDrawable) background).setBaseColor(getThemedColor(Theme.key_undo_background));
+                    invalidate();
                 }
             } catch (Exception e) {
                 FileLog.e(e);
@@ -832,7 +836,15 @@ public class Bulletin {
 
         public void setBackground(int color, int rounding) {
             if (!hasCustomBackground) {
-                background = Theme.createRoundRectDrawable(dp(rounding), color);
+                if (app.exteraless.appearance.glass.GlassTokens.isActive()) {
+                    // Liquid Glass toast: dense tier-3 glass of the toast's own color (its text colors
+                    // keep their contrast), light-catching rim and a soft ambient shadow.
+                    background = new app.exteraless.appearance.glass.GlassSurfaceDrawable(color,
+                            app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
+                            Math.max(rounding, app.exteraless.appearance.glass.GlassTokens.RADIUS_TOAST));
+                } else {
+                    background = Theme.createRoundRectDrawable(dp(rounding), color);
+                }
             }
         }
 

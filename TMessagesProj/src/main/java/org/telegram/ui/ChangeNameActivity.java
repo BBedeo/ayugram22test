@@ -16,7 +16,10 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+
+import androidx.annotation.Nullable;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -35,6 +38,7 @@ import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.SectionsScrollView;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,6 +49,7 @@ public class ChangeNameActivity extends BaseFragment {
     private EditTextBoldCursor lastNameField;
     private View headerLabelView;
     private View doneButton;
+    private SectionsScrollView scrollView;
 
     private Theme.ResourcesProvider resourcesProvider;
 
@@ -55,13 +60,15 @@ public class ChangeNameActivity extends BaseFragment {
     }
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
     public View createView(Context context) {
-        ThemeBind.actionBarItemsBackgroundColor(actionBar, Theme.key_avatar_actionBarSelectorBlue, resourcesProvider, false);
-        ThemeBind.actionBarItemsColor(actionBar, Theme.key_actionBarDefaultIcon, resourcesProvider, false);
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString(R.string.EditName));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(LocaleController.getString(R.string.EditName));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -75,19 +82,24 @@ public class ChangeNameActivity extends BaseFragment {
             }
         });
 
-        ActionBarMenu menu = actionBar.createMenu();
-        doneButton = menu.addItemWithWidth(done_button, R.drawable.ic_ab_done, AndroidUtilities.dp(56), LocaleController.getString(R.string.Done));
+        doneButton = simpleActionBar.createDoneButton(done_button, LocaleController.getString(R.string.Done));
 
         TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(UserConfig.getInstance(currentAccount).getClientUserId());
         if (user == null) {
             user = UserConfig.getInstance(currentAccount).getCurrentUser();
         }
 
-        LinearLayout linearLayout = new LinearLayout(context);
-        fragmentView = linearLayout;
+        FrameLayout frameLayout = new FrameLayout(context);
+        fragmentView = frameLayout;
         fragmentView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ((LinearLayout) fragmentView).setOrientation(LinearLayout.VERTICAL);
         fragmentView.setOnTouchListener((v, event) -> true);
+
+        LinearLayout linearLayout = new SectionsScrollView.SectionsLinearLayout(context);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        scrollView = new SectionsScrollView(context, linearLayout, resourcesProvider, false);
+        linearLayout.setPadding(0, 0, 0, 0);
+        scrollView.addView(linearLayout);
+        frameLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         firstNameField = new EditTextBoldCursor(context) {
             @Override
@@ -157,6 +169,17 @@ public class ChangeNameActivity extends BaseFragment {
         }
 
         return fragmentView;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected SectionsScrollView getScrollViewForSimpleGlass() {
+        return scrollView;
     }
 
     @Override

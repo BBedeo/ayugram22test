@@ -9483,6 +9483,9 @@ public class Theme {
             ((ShapeDrawable) drawable).getPaint().setColor(color);
         } else if (drawable instanceof ScamDrawable) {
             ((ScamDrawable) drawable).setColor(color);
+        } else if (drawable instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable) {
+            // A color filter would turn the translucent glass fill opaque.
+            ((app.exteraless.appearance.glass.GlassSurfaceDrawable) drawable).setBaseColor(color);
         } else {
             drawable.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.MULTIPLY));
         }

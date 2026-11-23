@@ -101,12 +101,12 @@ public class HintView extends FrameLayout {
         }
         if (currentType == TYPE_SEARCH_AS_LIST) {
             textView.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
-            ThemeBind.fillBackground(textView, Theme.createRoundRectDrawable(AndroidUtilities.dp(5), getThemedColor(Theme.key_chat_gifSaveHintBackground)), ThemeBind.of(Theme.key_chat_gifSaveHintBackground), resourcesProvider);
+            ThemeBind.fillBackground(textView, hintBackground(5, getThemedColor(Theme.key_chat_gifSaveHintBackground)), ThemeBind.of(Theme.key_chat_gifSaveHintBackground), resourcesProvider);
             textView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0);
             addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 30, Gravity.LEFT | Gravity.TOP, 0, topArrow ? 6 : 0, 0, topArrow ? 0 : 6));
         } else {
             textView.setGravity(Gravity.LEFT | Gravity.TOP);
-            ThemeBind.fillBackground(textView, Theme.createRoundRectDrawable(AndroidUtilities.dp(10), getThemedColor(Theme.key_chat_gifSaveHintBackground)), ThemeBind.of(Theme.key_chat_gifSaveHintBackground), resourcesProvider);
+            ThemeBind.fillBackground(textView, hintBackground(10, getThemedColor(Theme.key_chat_gifSaveHintBackground)), ThemeBind.of(Theme.key_chat_gifSaveHintBackground), resourcesProvider);
             textView.setPadding(AndroidUtilities.dp(currentType == TYPE_NOSOUND ? 54 : 12), AndroidUtilities.dp(9), AndroidUtilities.dp(12), AndroidUtilities.dp(10));
             addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 0, topArrow ? 6 : 0, 0, topArrow ? 0 : 6));
         }
@@ -125,6 +125,39 @@ public class HintView extends FrameLayout {
         arrowImageView.setImageResource(topArrow ? R.drawable.tooltip_arrow_up : R.drawable.tooltip_arrow);
         ThemeBind.colorFilter(arrowImageView, Theme.key_chat_gifSaveHintBackground, resourcesProvider, PorterDuff.Mode.MULTIPLY);
         addView(arrowImageView, LayoutHelper.createFrame(14, 6, Gravity.LEFT | (topArrow ? Gravity.TOP : Gravity.BOTTOM), 0, 0, 0, 0));
+        if (app.exteraless.appearance.glass.GlassTokens.isActive()) {
+            arrowImageView.setAlpha(glassArrowAlpha(glassHintColor));
+        }
+    }
+
+    private int glassHintColor = 0xFF000000;
+
+    /**
+     * The arrow is tinted with the color itself (its own alpha included), while the glass body uses the
+     * tier's opacity: the view alpha makes up the difference so both read as one piece of glass.
+     */
+    private static float glassArrowAlpha(int color) {
+        final float bodyAlpha = (app.exteraless.appearance.glass.GlassTokens.fill(color,
+                app.exteraless.appearance.glass.GlassTokens.TIER_THICK) >>> 24) / 255f;
+        final float colorAlpha = Math.max(1, color >>> 24) / 255f;
+        return Math.min(1f, bodyAlpha / colorAlpha);
+    }
+
+    /**
+     * The tooltip body: classic rounded rect, or with Liquid Glass a tier-3 glass bubble of the same
+     * color (its text color keeps its contrast); the arrow follows the glass opacity.
+     */
+    private Drawable hintBackground(int radiusDp, int color) {
+        if (app.exteraless.appearance.glass.GlassTokens.isActive()) {
+            glassHintColor = color;
+            if (arrowImageView != null) {
+                arrowImageView.setAlpha(glassArrowAlpha(color));
+            }
+            return new app.exteraless.appearance.glass.GlassSurfaceDrawable(color,
+                    app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
+                    Math.max(radiusDp, app.exteraless.appearance.glass.GlassTokens.RADIUS_HINT)).setShadow(false);
+        }
+        return Theme.createRoundRectDrawable(AndroidUtilities.dp(radiusDp), color);
     }
 
     public void createCloseButton() {
@@ -146,7 +179,7 @@ public class HintView extends FrameLayout {
         ThemeBind.clear(arrowImageView);
         textView.setTextColor(text);
         arrowImageView.setColorFilter(new PorterDuffColorFilter(background, PorterDuff.Mode.MULTIPLY));
-        textView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(currentType == 7 || currentType == 8 ? 6 : 3), background));
+        textView.setBackground(hintBackground(currentType == 7 || currentType == 8 ? 6 : 3, background));
     }
 
     public void setOverrideText(String text) {
