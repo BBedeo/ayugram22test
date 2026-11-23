@@ -11168,6 +11168,22 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             FileLog.e(e);
         }
         checkListLoad(viewPage);
+        scheduleVisibleRowsRebind();
+    }
+
+    private final Runnable rebindVisibleRows = () -> {
+        if (!isPaused && !dialogsListFrozen) {
+            updateVisibleRows(MessagesController.UPDATE_MASK_ALL, false);
+        }
+    };
+
+    /**
+     * Rows that were bound while the chats and their data were still loading stayed blank until the
+     * list was scrolled; once the loading calms down every visible row is bound again.
+     */
+    private void scheduleVisibleRowsRebind() {
+        AndroidUtilities.cancelRunOnUIThread(rebindVisibleRows);
+        AndroidUtilities.runOnUIThread(rebindVisibleRows, 350);
     }
 
     public void setPanTranslationOffset(float y) {
