@@ -33,12 +33,17 @@ try {
         exFullCommits = proc.text.trim().toInteger()
     }
 } catch (Exception ignored) {}
-// 1.4 line starts at the commit that introduced it (374 commits since 6ba4739f1):
-// the patch number counts commits after that point, so 1.4.0 > 1.3.73 and stays monotonic.
-def exFullBaseCommits = 374
-def exFullVer = exFullCommits >= exFullBaseCommits
-        ? "1.4.${exFullCommits - exFullBaseCommits}"
-        : (exFullCommits > 0 ? "1.${exFullCommits.intdiv(100)}.${exFullCommits % 100}" : APP_VERSION_NAME)
+// Version lines (the name must only grow, the updater compares the first three numbers):
+//   <=373 commits : 1.<c/100>.<c%100>  (legacy)
+//   374 .. new key: 1.3.99             bridge line, still signed with the old key, offers the settings export
+//   from exFullNewKeyBase: 1.4.<c-base>  release-key line (set the base to the commit count of the first 1.4 build)
+def exFullBridgeBaseCommits = 374
+def exFullNewKeyBaseCommits = 0
+def exFullVer = (exFullNewKeyBaseCommits > 0 && exFullCommits >= exFullNewKeyBaseCommits)
+        ? "1.4.${exFullCommits - exFullNewKeyBaseCommits}"
+        : (exFullCommits >= exFullBridgeBaseCommits
+                ? "1.3.99"
+                : (exFullCommits > 0 ? "1.${exFullCommits.intdiv(100)}.${exFullCommits % 100}" : APP_VERSION_NAME))
 def verName = "${exFullVer}${shortCommit ? "-${shortCommit}" : ''}"
 def verCode = 1261 + exFullCommits
 

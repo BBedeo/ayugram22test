@@ -79,6 +79,10 @@ public final class GitHubUpdater {
         public String apkName;
         public long apkSize;
         public long published;
+        /** Release notes carry `exfullgram:backup`: offer the settings export before updating. */
+        public boolean backupFirst;
+        /** Release notes carry `exfullgram:resign`: signed with another key, needs remove + reinstall. */
+        public boolean resign;
 
         public String displayVersion() {
             String value = TextUtils.isEmpty(tag) ? name : tag;
@@ -261,6 +265,8 @@ public final class GitHubUpdater {
         release.apkName = asset.optString("name");
         release.apkSize = asset.optLong("size");
         release.published = parseDate(item.optString("published_at"));
+        release.resign = release.body.contains("exfullgram:resign");
+        release.backupFirst = release.resign || release.body.contains("exfullgram:backup");
         return release;
     }
 
@@ -408,14 +414,23 @@ public final class GitHubUpdater {
             subtitle.append(" · ").append(size);
         }
         String body = release.body;
+        if (body != null) {
+            // Markers for the app live in HTML comments; they are not part of the text shown to people.
+            body = body.replaceAll("(?s)<!--.*?(-->|$)", "").trim();
+        }
         if (body != null && body.length() > NOTES_LIMIT) {
             body = body.substring(0, NOTES_LIMIT) + "…";
         }
         String notes = TextUtils.isEmpty(body) ? release.tag : stripUpstreamBrand(body);
+        if (release.resign) {
+            new MigrationSheet(activity, fragment.getResourceProvider(), release, subtitle.toString(),
+                    TextUtils.isEmpty(body) ? "" : notes).show();
+            return;
+        }
         String updateText = size.isEmpty() ? LocaleController.getString(R.string.OEUpdateInstall)
                 : LocaleController.formatString(R.string.OEUpdateInstallSize, size);
         new UpdateSheet(activity, fragment.getResourceProvider(), LocaleController.getString(R.string.OEUpdateTitle),
-                subtitle.toString(), notes, updateText, new UpdateSheet.Delegate() {
+                subtitle.toString(), notes, updateText, release.backupFirst, new UpdateSheet.Delegate() {
             @Override
             public void onUpdate(UpdateSheet sheet) {
                 sheet.setDownloading(true);
@@ -517,6 +532,72 @@ public final class GitHubUpdater {
         }, "gh-updater-download").start();
     }
 
+
+    /**
+     * Downloads the release APK into the public Downloads folder (for the key-change flow, where
+     * the system installer cannot replace the old app until it is removed).
+     */
+    public static void downloadToDownloads(Activity activity, Release release, DownloadListener listener,
+                                           java.util.function.Consumer<String> saved) {
+        if (download != null) {
+            return;
+        }
+        String name = "ExFullGram-" + (TextUtils.isEmpty(release.displayVersion()) ? "update" : release.displayVersion()) + ".apk";
+        name = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        final String fileName = name;
+        Call call = client().newCall(new Request.Builder().url(release.apkUrl)
+                .header("User-Agent", "ExFullGram").build());
+        download = call;
+        new Thread(() -> {
+            String savedName = null;
+            try (Response response = call.execute()) {
+                ResponseBody body = response.body();
+                if (!response.isSuccessful() || body == null) {
+                    throw new IllegalStateException("HTTP " + response.code());
+                }
+                long total = body.contentLength() > 0 ? body.contentLength() : release.apkSize;
+                try (InputStream input = body.byteStream();
+                     app.exteraless.backup.MigrationBackup.Sink sink = app.exteraless.backup.MigrationBackup.openDownload(
+                             activity, fileName, "application/vnd.android.package-archive")) {
+                    byte[] buffer = new byte[64 * 1024];
+                    long done = 0;
+                    int lastPercent = -1;
+                    int read;
+                    while ((read = input.read(buffer)) > 0) {
+                        sink.stream.write(buffer, 0, read);
+                        done += read;
+                        if (total > 0) {
+                            int percent = (int) (done * 100 / total);
+                            if (percent != lastPercent) {
+                                lastPercent = percent;
+                                final long doneBytes = done;
+                                AndroidUtilities.runOnUIThread(() -> listener.onProgress(doneBytes, total));
+                            }
+                        }
+                    }
+                    sink.finish();
+                    savedName = sink.name;
+                }
+            } catch (Exception e) {
+                if (!call.isCanceled()) {
+                    FileLog.e("GitHubUpdater: download to Downloads failed", e);
+                }
+            }
+            final String result = savedName;
+            AndroidUtilities.runOnUIThread(() -> {
+                download = null;
+                if (result != null) {
+                    listener.onFinished(true, false);
+                    saved.accept(result);
+                } else {
+                    listener.onFinished(false, call.isCanceled());
+                    if (!call.isCanceled()) {
+                        bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
+                    }
+                }
+            });
+        }, "gh-updater-download-dl").start();
+    }
 
     /** Перезапуск после установки запросил наш апдейтер, а не сторонний установщик. */
     public static boolean consumeRelaunchRequest(Context context) {

@@ -63,6 +63,11 @@ public class UpdateSheet extends BottomSheet {
 
     public UpdateSheet(Context context, Theme.ResourcesProvider resourcesProvider, String title,
                        String subtitle, String notes, String updateText, Delegate delegate) {
+        this(context, resourcesProvider, title, subtitle, notes, updateText, false, delegate);
+    }
+
+    public UpdateSheet(Context context, Theme.ResourcesProvider resourcesProvider, String title,
+                       String subtitle, String notes, String updateText, boolean offerBackup, Delegate delegate) {
         super(context, false, resourcesProvider);
         this.delegate = delegate;
         this.updateText = updateText;
@@ -151,6 +156,16 @@ public class UpdateSheet extends BottomSheet {
         card.setPadding(dp(15), dp(13), dp(15), dp(13));
         card.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 12));
+
+        if (offerBackup && context instanceof android.app.Activity) {
+            // The next release changes the signing key: settings are lost on reinstall unless exported first.
+            final android.app.Activity host = (android.app.Activity) context;
+            final MigrationStepView backup = new MigrationStepView(context, resourcesProvider, "",
+                    getString(R.string.OEMigExportTitle), getString(R.string.OEMigExportDesc),
+                    getString(R.string.OEMigExportButton));
+            backup.setOnAction(v -> MigrationActions.export(host, backup));
+            container.addView(backup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 12));
+        }
 
         progressView = new LineProgressView(context);
         progressView.setProgressColor(accent);

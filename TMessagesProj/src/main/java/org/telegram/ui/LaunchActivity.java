@@ -7039,6 +7039,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (app.exteraless.updater.RestoreBackupSheet.onActivityResult(this, requestCode, resultCode, data)) {
+            return;
+        }
         if (SharedConfig.passcodeHash.length() != 0 && SharedConfig.lastPauseTime != 0) {
             SharedConfig.lastPauseTime = 0;
             if (BuildVars.LOGS_ENABLED) {
@@ -7561,6 +7564,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             showUpdateActivity(UserConfig.selectedAccount, SharedConfig.pendingAppUpdate, true);
         }
         checkAppUpdate(false, null);
+        app.exteraless.updater.RestoreBackupSheet.maybeOffer(this);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             ApplicationLoader.canDrawOverlays = Settings.canDrawOverlays(this);
