@@ -84,11 +84,11 @@ public final class DemoBackend {
     }
 
     /**
-     * Removes any local Test accounts in release builds so the main app
-     * only exposes real Telegram accounts while debug builds retain Test mode.
+     * Used to remove local Test accounts in release builds. Test mode is now available in release
+     * builds too, so nothing is removed any more; the method stays for its caller.
      */
     public static void purgeTestAccountsIfRelease() {
-        if (org.telegram.messenger.BuildConfig.DEBUG) return;
+        if (true) return;
         boolean changed = false;
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
             if (isTestSlot(a)) {
