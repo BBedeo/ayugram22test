@@ -171,7 +171,7 @@ standard for ordinary tasks that have no visual acceptance reference.
 
 When implementing, extending, or fixing Liquid Glass surfaces (floating
 headers, morphing menus, bottom navigation pills, buttons, dialogs), **read and
-follow `.agents/skills/exfullgram-liquid-glass/SKILL.md`** before making code
+follow `.agents/skills/exfullgram-liquid-glass/SKILL.md`** (kept locally and in the private skills repository, not in this repository) before making code
 changes so accepted visuals match on the first attempt:
 
 - **Implicit acceptance tracking:** Verified golden commits in this repository

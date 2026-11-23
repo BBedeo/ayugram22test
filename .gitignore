@@ -29,3 +29,6 @@ TMessagesProj/release/
 tests/local/
 
 
+
+# Agent skills live in the private BBedeo/exfullgram-agent-skills repository
+.agents/
