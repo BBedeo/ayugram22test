@@ -74,6 +74,8 @@ public final class GitHubUpdater {
     private static final String NOTIFICATION_CHANNEL = "exfullgram_updates";
     private static final int NOTIFICATION_ID = 7301;
     private static volatile boolean readyShown;
+    private static UpdateProgressPill pill;
+    private static boolean backgroundDownload;
     private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
     // Релизы CI помечаются тегом ci-<sha> и собираются рабочим процессом без истории
     // коммитов: их versionName — базовый, подпись — ci-ключ. Ставить такой APK поверх
@@ -521,10 +523,17 @@ public final class GitHubUpdater {
                     @Override
                     public void onProgress(long done, long total) {
                         sheet.setProgress(done, total);
+                        if (pill != null) {
+                            pill.setProgress(done, total);
+                        }
                     }
 
                     @Override
                     public void onFinished(boolean success, boolean canceled) {
+                        removePill();
+                        if (!success) {
+                            backgroundDownload = false;
+                        }
                         if (success) {
                             sheet.finishDownload();
                         } else if (!canceled) {
@@ -546,11 +555,37 @@ public final class GitHubUpdater {
             public void onCancelDownload() {
                 cancelDownload();
             }
+
+            @Override
+            public void onBackground(UpdateSheet sheet) {
+                if (!isDownloading()) {
+                    return;
+                }
+                backgroundDownload = true;
+                removePill();
+                pill = UpdateProgressPill.show(activity, release.displayVersion(), GitHubUpdater::cancelDownload);
+            }
         }).show();
     }
 
     public static void download(Activity activity, Release release, DownloadListener listener) {
-        startCacheDownload(activity, release, listener, false, file -> install(activity, file));
+        startCacheDownload(activity, release, listener, false, file -> {
+            if (backgroundDownload) {
+                // Started from the sheet and sent to the background: no installer popping up over
+                // whatever the user is doing; the ready update is offered like an automatic one.
+                backgroundDownload = false;
+                markReady(release, file);
+            } else {
+                install(activity, file);
+            }
+        });
+    }
+
+    private static void removePill() {
+        if (pill != null) {
+            pill.remove();
+            pill = null;
+        }
     }
 
     /** Downloads the APK into the app cache (resumable) and hands the finished file to onReady on the UI thread. */

@@ -49,6 +49,10 @@ public class UpdateSheet extends BottomSheet {
         void onSkip();
 
         void onCancelDownload();
+
+        /** The download goes on without the sheet. */
+        default void onBackground(UpdateSheet sheet) {
+        }
     }
 
     private static final Pattern LINK = Pattern.compile("\\[([^\\]]+)]\\((https?://[^)\\s]+)\\)");
@@ -218,6 +222,14 @@ public class UpdateSheet extends BottomSheet {
         skipButton.setText(getString(R.string.OEUpdateSkip));
         skipButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ROUNDRECT_6DP));
         skipButton.setOnClickListener(v -> {
+            if (downloading) {
+                if (delegate != null) {
+                    delegate.onBackground(this);
+                }
+                downloading = false;
+                super.dismiss();
+                return;
+            }
             if (delegate != null) {
                 delegate.onSkip();
             }
@@ -251,7 +263,7 @@ public class UpdateSheet extends BottomSheet {
         downloading = value;
         progressView.setVisibility(value ? View.VISIBLE : View.GONE);
         progressView.setProgress(0, false);
-        skipButton.setVisibility(value ? View.GONE : View.VISIBLE);
+        skipButton.setText(getString(value ? R.string.OEUpdateBackground : R.string.OEUpdateSkip));
         secondaryButton.setText(getString(value ? R.string.Cancel : R.string.OEUpdateLater));
         primaryButton.setText(value ? getString(R.string.OEUpdateDownloading) : updateText);
     }
