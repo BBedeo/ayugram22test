@@ -66,7 +66,7 @@ public final class GitHubUpdater {
 
     private static volatile OkHttpClient client;
     private static volatile boolean checking;
-    private static volatile Call download;
+    private static volatile UpdateDownloader.Job download;
 
     private GitHubUpdater() {
     }
@@ -107,11 +107,49 @@ public final class GitHubUpdater {
                     client = new OkHttpClient.Builder()
                             .connectTimeout(20, TimeUnit.SECONDS)
                             .readTimeout(60, TimeUnit.SECONDS)
+                            // The SOCKS5 proxy configured in the app (if enabled) carries update traffic too.
+                            .proxySelector(UpdaterProxy.selector())
                             .build();
                 }
             }
         }
         return client;
+    }
+
+    /** Same settings, but never through a proxy: the fallback when the proxy itself is the problem. */
+    private static OkHttpClient direct() {
+        return client().newBuilder().proxy(java.net.Proxy.NO_PROXY).build();
+    }
+
+    private static UpdateDownloader.Progress progressTo(DownloadListener listener) {
+        final java.util.concurrent.atomic.AtomicInteger lastPercent = new java.util.concurrent.atomic.AtomicInteger(-1);
+        return (done, total) -> {
+            if (total <= 0) {
+                return;
+            }
+            int percent = (int) (done * 100 / total);
+            if (lastPercent.getAndSet(percent) != percent) {
+                AndroidUtilities.runOnUIThread(() -> listener.onProgress(done, total));
+            }
+        };
+    }
+
+    private static File updatesDir(Context context) {
+        File dir = new File(context.getCacheDir(), "updates");
+        return dir.exists() || dir.mkdirs() ? dir : null;
+    }
+
+    /** Removes old downloads but keeps the partial state of keepName, so it can resume. */
+    private static void cleanUpdatesDir(File dir, String keepName) {
+        File[] old = dir.listFiles();
+        if (old == null) {
+            return;
+        }
+        for (File file : old) {
+            if (!file.getName().startsWith(keepName)) {
+                file.delete();
+            }
+        }
     }
 
     private static SharedPreferences prefs() {
@@ -177,9 +215,9 @@ public final class GitHubUpdater {
     }
 
     public static void cancelDownload() {
-        Call call = download;
-        if (call != null) {
-            call.cancel();
+        UpdateDownloader.Job job = download;
+        if (job != null) {
+            job.cancel();
         }
     }
 
@@ -200,7 +238,20 @@ public final class GitHubUpdater {
                 .header("Accept", "application/vnd.github+json")
                 .header("User-Agent", "ExFullGram")
                 .build();
-        try (Response response = client().newCall(request).execute()) {
+        try {
+            return readJson(client(), request);
+        } catch (java.io.IOException e) {
+            // A dead proxy must not block update checks: try once more without it.
+            if (UpdaterProxy.active() == null) {
+                throw e;
+            }
+            FileLog.e("GitHubUpdater: check via proxy failed, retrying direct", e);
+            return readJson(direct(), request);
+        }
+    }
+
+    private static JSONObject readJson(OkHttpClient httpClient, Request request) throws Exception {
+        try (Response response = httpClient.newCall(request).execute()) {
             ResponseBody body = response.body();
             if (response.code() == 404) {
                 return null;
@@ -467,51 +518,25 @@ public final class GitHubUpdater {
         if (download != null) {
             return;
         }
-        File dir = new File(activity.getCacheDir(), "updates");
-        if (!dir.exists() && !dir.mkdirs()) {
+        File dir = updatesDir(activity);
+        if (dir == null) {
             bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
             listener.onFinished(false, false);
             return;
         }
-        File[] old = dir.listFiles();
-        if (old != null) {
-            for (File file : old) {
-                file.delete();
-            }
-        }
-        File target = new File(dir, release.apkName.replaceAll("[^A-Za-z0-9._-]", "_"));
-        Call call = client().newCall(new Request.Builder().url(release.apkUrl)
-                .header("User-Agent", "ExFullGram").build());
-        download = call;
+        String name = release.apkName.replaceAll("[^A-Za-z0-9._-]", "_");
+        cleanUpdatesDir(dir, name);
+        File target = new File(dir, name);
+        UpdateDownloader.Job job = new UpdateDownloader.Job();
+        download = job;
         new Thread(() -> {
             boolean ok = false;
-            try (Response response = call.execute()) {
-                ResponseBody body = response.body();
-                if (!response.isSuccessful() || body == null) {
-                    throw new IllegalStateException("HTTP " + response.code());
-                }
-                long total = body.contentLength() > 0 ? body.contentLength() : release.apkSize;
-                try (InputStream input = body.byteStream(); OutputStream output = new FileOutputStream(target)) {
-                    byte[] buffer = new byte[64 * 1024];
-                    long done = 0;
-                    int lastPercent = -1;
-                    int read;
-                    while ((read = input.read(buffer)) > 0) {
-                        output.write(buffer, 0, read);
-                        done += read;
-                        if (total > 0) {
-                            int percent = (int) (done * 100 / total);
-                            if (percent != lastPercent) {
-                                lastPercent = percent;
-                                final long doneBytes = done;
-                                AndroidUtilities.runOnUIThread(() -> listener.onProgress(doneBytes, total));
-                            }
-                        }
-                    }
-                }
+            try {
+                UpdateDownloader.download(client(), direct(), release.apkUrl, release.apkSize, target, job,
+                        progressTo(listener));
                 ok = true;
             } catch (Exception e) {
-                if (!call.isCanceled()) {
+                if (!job.isCanceled()) {
                     FileLog.e("GitHubUpdater: download failed", e);
                 }
             }
@@ -522,16 +547,15 @@ public final class GitHubUpdater {
                     listener.onFinished(true, false);
                     install(activity, target);
                 } else {
-                    target.delete();
-                    listener.onFinished(false, call.isCanceled());
-                    if (!call.isCanceled()) {
+                    // The .part/.state files stay, so the next attempt continues from here.
+                    listener.onFinished(false, job.isCanceled());
+                    if (!job.isCanceled()) {
                         bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
                     }
                 }
             });
         }, "gh-updater-download").start();
     }
-
 
     /**
      * Downloads the release APK into the public Downloads folder (for the key-change flow, where
@@ -543,43 +567,36 @@ public final class GitHubUpdater {
             return;
         }
         String name = "ExFullGram-" + (TextUtils.isEmpty(release.displayVersion()) ? "update" : release.displayVersion()) + ".apk";
-        name = name.replaceAll("[^A-Za-z0-9._-]", "_");
-        final String fileName = name;
-        Call call = client().newCall(new Request.Builder().url(release.apkUrl)
-                .header("User-Agent", "ExFullGram").build());
-        download = call;
+        final String fileName = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        File dir = updatesDir(activity);
+        if (dir == null) {
+            bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
+            listener.onFinished(false, false);
+            return;
+        }
+        cleanUpdatesDir(dir, fileName);
+        File temp = new File(dir, fileName);
+        UpdateDownloader.Job job = new UpdateDownloader.Job();
+        download = job;
         new Thread(() -> {
             String savedName = null;
-            try (Response response = call.execute()) {
-                ResponseBody body = response.body();
-                if (!response.isSuccessful() || body == null) {
-                    throw new IllegalStateException("HTTP " + response.code());
-                }
-                long total = body.contentLength() > 0 ? body.contentLength() : release.apkSize;
-                try (InputStream input = body.byteStream();
+            try {
+                UpdateDownloader.download(client(), direct(), release.apkUrl, release.apkSize, temp, job,
+                        progressTo(listener));
+                try (InputStream input = new java.io.FileInputStream(temp);
                      app.exteraless.backup.MigrationBackup.Sink sink = app.exteraless.backup.MigrationBackup.openDownload(
                              activity, fileName, "application/vnd.android.package-archive")) {
                     byte[] buffer = new byte[64 * 1024];
-                    long done = 0;
-                    int lastPercent = -1;
                     int read;
                     while ((read = input.read(buffer)) > 0) {
                         sink.stream.write(buffer, 0, read);
-                        done += read;
-                        if (total > 0) {
-                            int percent = (int) (done * 100 / total);
-                            if (percent != lastPercent) {
-                                lastPercent = percent;
-                                final long doneBytes = done;
-                                AndroidUtilities.runOnUIThread(() -> listener.onProgress(doneBytes, total));
-                            }
-                        }
                     }
                     sink.finish();
                     savedName = sink.name;
                 }
+                temp.delete();
             } catch (Exception e) {
-                if (!call.isCanceled()) {
+                if (!job.isCanceled()) {
                     FileLog.e("GitHubUpdater: download to Downloads failed", e);
                 }
             }
@@ -590,8 +607,8 @@ public final class GitHubUpdater {
                     listener.onFinished(true, false);
                     saved.accept(result);
                 } else {
-                    listener.onFinished(false, call.isCanceled());
-                    if (!call.isCanceled()) {
+                    listener.onFinished(false, job.isCanceled());
+                    if (!job.isCanceled()) {
                         bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
                     }
                 }
