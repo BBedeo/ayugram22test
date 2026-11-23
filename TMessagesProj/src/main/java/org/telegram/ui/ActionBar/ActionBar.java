@@ -3906,79 +3906,88 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (glassDrawableActionRight != null) {
             glassDrawableActionRight.updateColors();
         }
+        for (int i = 0; i < actionModePills.size(); i++) {
+            actionModePills.get(i).updateColors();
+        }
         if (additionalSubTitleOverlayContainer != null) {
             additionalSubTitleOverlayContainer.updateColors();
         }
     }
 
+    private final ArrayList<BlurredBackgroundDrawable> actionModePills = new ArrayList<>();
+
+    private BlurredBackgroundDrawable actionModePill(int index) {
+        while (actionModePills.size() <= index) {
+            if (glassFactory == null) {
+                return null;
+            }
+            // Selection mode: every button is its own liquid glass pill, the lens is always on here.
+            actionModePills.add(glassFactory.create(this)
+                    .setColorProvider(glassColorProvider)
+                    .setRadius(dp(23))
+                    .setPadding(dp(6))
+                    .setHeaderGlassLens(true));
+        }
+        return actionModePills.get(index);
+    }
+
+    private void drawActionModePill(Canvas canvas, int index, int left, int right, int t, int b, int alpha) {
+        final BlurredBackgroundDrawable pill = actionModePill(index);
+        if (pill == null || alpha <= 0 || right <= left) {
+            return;
+        }
+        pill.setBounds(left, t, right, b);
+        pill.setAlpha(alpha);
+        pill.draw(canvas);
+    }
+
+    /**
+     * Selection mode on glass: a separate pill under the back button, under the counter (only while its text
+     * fits) and under every visible button, so the pills follow the set of buttons that is shown right now.
+     */
     private void drawActionModeGlassPills(Canvas canvas, float amAlpha, int p, int s, int t, int b) {
         final int alphaInt = Math.round(255 * Math.max(0f, Math.min(1f, amAlpha)));
         if (alphaInt <= 0) {
             return;
         }
         final float offsetX = actionMode.getX();
-        int leftEdge = Integer.MAX_VALUE;
-        int rightTextEnd = 0;
-        int itemsLeft = Integer.MAX_VALUE;
-        int itemsRight = Integer.MIN_VALUE;
+        final int shapeHalfMax = s / 2;
+        int index = 0;
 
         if (backButtonImageView != null && backButtonImageView.getVisibility() == VISIBLE) {
-            leftEdge = 0;
-            rightTextEnd = Math.max(rightTextEnd, s + p * 2);
+            final int cx = Math.round(backButtonImageView.getX() + backButtonImageView.getWidth() / 2f);
+            drawActionModePill(canvas, index++, cx - shapeHalfMax - p, cx + shapeHalfMax + p, t, b, alphaInt);
         }
 
         for (int i = 0, n = actionMode.getChildCount(); i < n; i++) {
             final View child = actionMode.getChildAt(i);
-            if (child == null || child.getVisibility() != VISIBLE || child.getAlpha() <= 0.05f || child.getWidth() <= 0) {
+            if (child == null || child.getVisibility() != VISIBLE || child.getWidth() <= 0) {
                 continue;
             }
             if (child instanceof ActionBarMenuItem) {
-                final int cl = Math.round(offsetX + child.getLeft());
-                final int cr = Math.round(offsetX + child.getRight());
-                if (cl < itemsLeft) itemsLeft = cl;
-                if (cr > itemsRight) itemsRight = cr;
-            } else if (child instanceof org.telegram.ui.Components.NumberTextView) {
-                final org.telegram.ui.Components.NumberTextView ntv = (org.telegram.ui.Components.NumberTextView) child;
-                final float tw = ntv.getTextWidth();
-                final int cl = Math.round(offsetX + child.getLeft());
-                if (cl < leftEdge) leftEdge = Math.max(0, cl - dp(12));
-                final int end = Math.round(cl + Math.max(dp(12), tw) + dp(18));
-                if (end > rightTextEnd) rightTextEnd = end;
+                if (child.getAlpha() <= 0.05f) {
+                    continue;
+                }
+                final float cx = offsetX + (child.getLeft() + child.getRight()) / 2f + child.getTranslationX();
+                final int half = Math.min(shapeHalfMax, Math.max(dp(10), child.getWidth() / 2 - dp(1)));
+                final int a = Math.round(alphaInt * Math.min(1f, child.getAlpha() * 2f));
+                drawActionModePill(canvas, index++, Math.round(cx - half - p), Math.round(cx + half + p), t, b, a);
             } else if (child instanceof org.telegram.ui.Components.AnimatedTextView) {
                 final org.telegram.ui.Components.AnimatedTextView atv = (org.telegram.ui.Components.AnimatedTextView) child;
                 final float tw = atv.getDrawable() != null ? atv.getDrawable().getCurrentWidth() : atv.width();
-                final int cl = Math.round(offsetX + child.getLeft());
-                if (cl < leftEdge) leftEdge = Math.max(0, cl - dp(12));
-                final int end = Math.round(cl + Math.max(dp(16), tw) + dp(18));
-                if (end > rightTextEnd) rightTextEnd = end;
-            } else if (child instanceof ImageView) {
-                final int cl = Math.round(offsetX + child.getLeft());
-                if (cl < leftEdge) leftEdge = cl;
-                final int cr = Math.round(offsetX + child.getRight());
-                if (cr > rightTextEnd) rightTextEnd = cr;
-            }
-        }
-
-        int leftPillRight = 0;
-        if (glassDrawableActionLeft != null && leftEdge != Integer.MAX_VALUE && rightTextEnd > leftEdge) {
-            final int pillLeft = Math.max(0, leftEdge - dp(2));
-            final int pillRight = Math.max(pillLeft + s + p * 2, rightTextEnd);
-            leftPillRight = pillRight;
-            glassDrawableActionLeft.setBounds(pillLeft, t, pillRight, b);
-            glassDrawableActionLeft.setAlpha(alphaInt);
-            glassDrawableActionLeft.draw(canvas);
-        }
-
-        if (glassDrawableActionRight != null && itemsLeft < itemsRight) {
-            final int pillLeft = Math.max(leftPillRight > 0 ? leftPillRight + dp(8) : 0, itemsLeft - p);
-            final int pillRight = Math.min(getWidth(), itemsRight + p);
-            if (pillRight > pillLeft) {
-                glassDrawableActionRight.setBounds(pillLeft, t, pillRight, b);
-                glassDrawableActionRight.setAlpha(alphaInt);
-                glassDrawableActionRight.draw(canvas);
+                final float needed = tw + dp(8);
+                final boolean fits = tw > 0 && atv.getWidth() >= needed;
+                // A counter cut by the buttons would be a text without a pill: hide it instead.
+                atv.setAlpha(fits ? 1f : 0f);
+                if (fits) {
+                    final int left = Math.round(offsetX + child.getLeft() - dp(6));
+                    final int right = Math.round(offsetX + child.getLeft() + tw + dp(14));
+                    drawActionModePill(canvas, index++, left - p, right + p, t, b, alphaInt);
+                }
             }
         }
     }
+
     @Override
     public void addColorKeys(HashSet<Integer> colors) {
         colors.add(adaptive_lowerColorKey);
