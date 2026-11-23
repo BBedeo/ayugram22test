@@ -193,7 +193,16 @@ public class UpdateSheet extends BottomSheet {
                 SheetSurfaceMode.secondaryButtonFill(resourcesProvider, accent), buttonRadius));
         secondaryButton.setGravity(Gravity.CENTER);
         secondaryButton.setText(getString(R.string.OEUpdateLater));
-        secondaryButton.setOnClickListener(v -> dismiss());
+        secondaryButton.setOnClickListener(v -> {
+            if (downloading) {
+                // The explicit "Cancel" button is the only thing that stops a download.
+                if (delegate != null) {
+                    delegate.onCancelDownload();
+                }
+                downloading = false;
+            }
+            super.dismiss();
+        });
         buttons.addView(secondaryButton, LayoutHelper.createLinear(0, m3 ? 48 : 46, 1f, Gravity.NO_GRAVITY, 0, 0, 8, 0));
 
         primaryButton = new TextView(context);
@@ -282,8 +291,10 @@ public class UpdateSheet extends BottomSheet {
 
     @Override
     public void dismiss() {
+        // Closing the sheet (swipe, back, tap outside) while the download runs must not stop it:
+        // it goes on in the background with the progress plate.
         if (downloading && delegate != null) {
-            delegate.onCancelDownload();
+            delegate.onBackground(this);
         }
         downloading = false;
         super.dismiss();
