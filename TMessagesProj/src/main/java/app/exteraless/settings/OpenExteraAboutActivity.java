@@ -3,6 +3,7 @@ package app.exteraless.settings;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
+import android.view.View;
 
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -64,6 +65,11 @@ public class OpenExteraAboutActivity extends BaseNekoSettingsActivity {
     @Override
     protected String getKey() {
         return "exteraless_about";
+    }
+
+    @Override
+    protected void onItemClick(View view, int position, float x, float y) {
+        // Read-only page: nothing to open.
     }
 
     @Override
