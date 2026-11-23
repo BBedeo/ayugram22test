@@ -218,6 +218,9 @@ public class RegexFilterEditActivity extends BaseFragment {
             @Override
             public void afterTextChanged(Editable s) {
                 doneButton.setEnabled(!TextUtils.isEmpty(s));
+                if (doneButton instanceof org.telegram.ui.ActionBar.SimpleActionBarDoneButton) {
+                    ((org.telegram.ui.ActionBar.SimpleActionBarDoneButton) doneButton).setActive(!TextUtils.isEmpty(s), true);
+                }
 
                 if (errorTextView != null) {
                     errorTextView.setText("");

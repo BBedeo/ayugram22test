@@ -192,16 +192,20 @@ public class PluginPermissionsActivity extends BaseFragment {
     // ---------- экран ----------
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
     public View createView(Context context) {
         cells.clear();
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(getString(R.string.PluginPermissions));
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(getString(R.string.PluginPermissions));
         Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
         if (plugin != null) {
-            actionBar.setSubtitle(plugin.getDisplayName());
+            simpleActionBar.setSubtitle(plugin.getDisplayName());
         }
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {

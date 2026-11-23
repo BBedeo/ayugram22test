@@ -153,11 +153,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
             return;
         }
         final boolean show = !MainMenuLayout.getLayout().equals(MainMenuLayout.getDefaultLayout());
-        if (show && resetItem.getVisibility() != View.VISIBLE) {
-            AndroidUtilities.updateViewVisibilityAnimated(resetItem, true, 0.5f, animated);
-        } else if (!show && resetItem.getVisibility() == View.VISIBLE) {
-            AndroidUtilities.updateViewVisibilityAnimated(resetItem, false, 0.5f, animated);
-        }
+        ((org.telegram.ui.ActionBar.SimpleActionBarMenuItem) resetItem).setShown(show, animated);
     }
 
     // ---- содержимое ----

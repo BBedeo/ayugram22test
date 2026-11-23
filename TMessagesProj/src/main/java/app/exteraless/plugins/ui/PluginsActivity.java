@@ -83,11 +83,20 @@ public class PluginsActivity extends BaseFragment {
     private String searchQuery;
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(getString(R.string.OpenExteraPlugins));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(getString(R.string.OpenExteraPlugins));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -110,7 +119,7 @@ public class PluginsActivity extends BaseFragment {
         });
 
         org.telegram.ui.ActionBar.ActionBarMenuItem search =
-                actionBar.createMenu().addItem(MENU_SEARCH, R.drawable.ic_ab_search_solar)
+                simpleActionBar.createMenu().addItem(MENU_SEARCH, R.drawable.ic_ab_search_solar)
                         .setIsSearchField(true)
                         .setActionBarMenuItemSearchListener(
                                 new org.telegram.ui.ActionBar.ActionBarMenuItem.ActionBarMenuItemSearchListener() {
@@ -127,9 +136,9 @@ public class PluginsActivity extends BaseFragment {
                                     }
                                 });
         search.setSearchFieldHint(getString(R.string.Search));
-        actionBar.createMenu().addItem(MENU_INFO, R.drawable.msg_info);
+        simpleActionBar.createMenu().addItem(MENU_INFO, R.drawable.msg_info);
         org.telegram.ui.ActionBar.ActionBarMenuItem other =
-                actionBar.createMenu().addItem(MENU_OTHER, R.drawable.ic_ab_other);
+                simpleActionBar.createMenu().addItem(MENU_OTHER, R.drawable.ic_ab_other);
         other.addSubItem(MENU_EXPORT_PLUGINS, R.drawable.msg_shareout, getString(R.string.PluginsExportAll));
         other.addSubItem(MENU_IMPORT_PLUGINS, R.drawable.msg_download, getString(R.string.PluginsImportAll));
         other.addSubItem(MENU_EXPORT_LOGS, R.drawable.msg_share, getString(R.string.PluginsExportLogs));
@@ -774,11 +783,6 @@ public class PluginsActivity extends BaseFragment {
                 updateRows();
             });
         }
-    }
-
-    @Override
-    public boolean isSupportEdgeToEdge() {
-        return true;
     }
 
     @Override

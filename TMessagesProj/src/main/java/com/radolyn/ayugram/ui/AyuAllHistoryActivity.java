@@ -36,7 +36,7 @@ import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.ActionBar.ActionBarMenu;
+import org.telegram.ui.ActionBar.SimpleActionBarMenu;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.SimpleActionBarMenuOverlay;
 import org.telegram.ui.ActionBar.Theme;
@@ -105,13 +105,22 @@ public class AyuAllHistoryActivity extends BaseFragment {
     }
 
     @Override
-    public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(getString(R.string.OEGeneralAyuMoments));
-        actionBar.setSubtitle(getString(R.string.OEHistoryAllChats));
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
 
-        ActionBarMenu menu = actionBar.createMenu();
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public View createView(Context context) {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(getString(R.string.OEGeneralAyuMoments));
+        simpleActionBar.setSubtitle(getString(R.string.OEHistoryAllChats));
+
+        SimpleActionBarMenu menu = simpleActionBar.createMenu();
         ActionBarMenuItem searchItem = menu.addItem(MENU_SEARCH, R.drawable.outline_header_search)
                 .setIsSearchField(true)
                 .setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
@@ -132,7 +141,7 @@ public class AyuAllHistoryActivity extends BaseFragment {
         filterItem = menu.addItem(MENU_FILTER, R.drawable.msg_groups);
         menu.addItem(MENU_SETTINGS, R.drawable.msg_settings_old);
 
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -289,7 +298,7 @@ public class AyuAllHistoryActivity extends BaseFragment {
         ItemOptions io = ItemOptions.makeOptions(this, filterItem);
         io.addChecked(selectedDialogId == 0, getString(R.string.OEHistoryAllChats), () -> {
             selectedDialogId = 0L;
-            actionBar.setSubtitle(getString(R.string.OEHistoryAllChats));
+            simpleActionBar.setSubtitle(getString(R.string.OEHistoryAllChats));
             loadHistoryAsync();
         });
         if (!availableDialogIds.isEmpty()) {
@@ -300,14 +309,14 @@ public class AyuAllHistoryActivity extends BaseFragment {
                 final String title = resolveDialogName(targetDid);
                 io.addChecked(selectedDialogId == targetDid, title, () -> {
                     selectedDialogId = targetDid;
-                    actionBar.setSubtitle(title);
+                    simpleActionBar.setSubtitle(title);
                     loadHistoryAsync();
                 });
             }
         }
         if (LiquidGlassTuning.isActive() && !M3SurfaceHelper.isMaterial3OpaqueChrome()) {
             SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
-            if (overlay != null && io.openInOverlay(actionBar, filterItem, overlay, null)) {
+            if (overlay != null && io.openInOverlay(simpleActionBar, filterItem, overlay, null)) {
                 return;
             }
         }

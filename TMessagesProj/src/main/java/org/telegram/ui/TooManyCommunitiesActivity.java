@@ -210,6 +210,7 @@ public class TooManyCommunitiesActivity extends BaseFragment {
 
         searchListView = new RecyclerListView(context);
         searchListView.setLayoutManager(new LinearLayoutManager(context));
+        searchListView.setClipToPadding(false);
         searchListView.setAdapter(searchAdapter = new SearchAdapter());
         searchListView.setOnItemClickListener(onItemClickListener);
         searchListView.setOnItemLongClickListener(onItemLongClickListener);
