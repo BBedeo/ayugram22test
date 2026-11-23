@@ -28,7 +28,8 @@ def main() -> int:
 
     for needle, why in (
         ('"Range"', "must request byte ranges"),
-        ("static final int PARTS = 4", "must keep several parallel connections"),
+        ("Protocol.HTTP_1_1", "segments must use separate HTTP/1.1 connections, not one shared HTTP/2 stream"),
+        ("static final int SEGMENTS = 16", "must keep several small segments for parallel workers"),
         ("response.code() == 206", "must detect range support"),
         (".state", "must persist progress for resuming"),
         ("single(", "must fall back to one stream without range support"),

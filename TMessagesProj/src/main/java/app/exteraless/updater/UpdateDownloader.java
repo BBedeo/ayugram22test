@@ -30,7 +30,12 @@ import okhttp3.ResponseBody;
  */
 final class UpdateDownloader {
 
-    static final int PARTS = 4;
+    /**
+     * The file is cut into many small segments and a few workers take the next free one, so one slow
+     * connection delays only its own small piece instead of a quarter of the file.
+     */
+    static final int SEGMENTS = 16;
+    static final int WORKERS = 6;
     private static final long MIN_PARALLEL_BYTES = 4L * 1024 * 1024;
     private static final int SEGMENT_ATTEMPTS = 4;
     private static final long STATE_SAVE_INTERVAL_MS = 1500;
@@ -130,7 +135,11 @@ final class UpdateDownloader {
             throw new IOException("canceled");
         }
         if (ranges && total >= MIN_PARALLEL_BYTES) {
-            parallel(client, url, finalUrl, total, target, job, progress);
+            // Over HTTP/2 every segment would share one TCP connection (and one throttle), so the
+            // parallel segments would gain nothing. HTTP/1.1 gives each of them its own connection.
+            OkHttpClient perSegment = client.newBuilder()
+                    .protocols(java.util.Collections.singletonList(okhttp3.Protocol.HTTP_1_1)).build();
+            parallel(perSegment, url, finalUrl, total, target, job, progress);
         } else {
             single(client, url, total > 0 ? total : hintSize, target, job, progress);
         }
@@ -167,16 +176,16 @@ final class UpdateDownloader {
                                  File target, Job job, Progress progress) throws IOException {
         File part = new File(target.getPath() + ".part");
         File stateFile = new File(target.getPath() + ".state");
-        final long segmentSize = (total + PARTS - 1) / PARTS;
-        final AtomicLongArray done = new AtomicLongArray(PARTS);
+        final long segmentSize = (total + SEGMENTS - 1) / SEGMENTS;
+        final AtomicLongArray done = new AtomicLongArray(SEGMENTS);
         boolean resumed = loadState(stateFile, total, segmentSize, done) && part.length() == total;
         if (!resumed) {
-            for (int i = 0; i < PARTS; i++) {
+            for (int i = 0; i < SEGMENTS; i++) {
                 done.set(i, 0);
             }
         }
         final AtomicLong overall = new AtomicLong();
-        for (int i = 0; i < PARTS; i++) {
+        for (int i = 0; i < SEGMENTS; i++) {
             overall.addAndGet(done.get(i));
         }
 
@@ -188,15 +197,21 @@ final class UpdateDownloader {
             final AtomicBoolean failed = new AtomicBoolean();
             final IOException[] error = new IOException[1];
             final long[] lastSave = {System.currentTimeMillis()};
-            Thread[] threads = new Thread[PARTS];
-            for (int i = 0; i < PARTS; i++) {
-                final int index = i;
-                final long start = i * segmentSize;
-                final long end = Math.min(total, start + segmentSize) - 1;
+            final java.util.concurrent.atomic.AtomicInteger nextSegment = new java.util.concurrent.atomic.AtomicInteger();
+            Thread[] threads = new Thread[WORKERS];
+            for (int i = 0; i < WORKERS; i++) {
                 threads[i] = new Thread(() -> {
                     try {
-                        segment(client, resolvedUrl, originalUrl, index, start, end,
-                                channel, done, overall, total, job, failed, progress, stateFile, segmentSize, lastSave);
+                        int index;
+                        while (!failed.get() && (index = nextSegment.getAndIncrement()) < SEGMENTS) {
+                            final long start = index * segmentSize;
+                            final long end = Math.min(total, start + segmentSize) - 1;
+                            if (start > end) {
+                                continue;
+                            }
+                            segment(client, resolvedUrl, originalUrl, index, start, end,
+                                    channel, done, overall, total, job, failed, progress, stateFile, segmentSize, lastSave);
+                        }
                     } catch (Throwable t) {
                         final IOException e = t instanceof IOException ? (IOException) t : new IOException(t);
                         synchronized (error) {
@@ -234,7 +249,7 @@ final class UpdateDownloader {
                 throw new IOException("canceled");
             }
         }
-        for (int i = 0; i < PARTS; i++) {
+        for (int i = 0; i < SEGMENTS; i++) {
             long length = Math.min(total, (i + 1) * segmentSize) - i * segmentSize;
             if (done.get(i) != length) {
                 throw new IOException("incomplete segment " + i);
@@ -351,10 +366,10 @@ final class UpdateDownloader {
                 bytes.write(buffer, 0, read);
             }
             JSONArray array = new JSONArray(bytes.toString("UTF-8"));
-            if (array.length() != PARTS + 1 || array.getLong(0) != total) {
+            if (array.length() != SEGMENTS + 1 || array.getLong(0) != total) {
                 return false;
             }
-            for (int i = 0; i < PARTS; i++) {
+            for (int i = 0; i < SEGMENTS; i++) {
                 long length = Math.min(total, (i + 1) * segmentSize) - i * segmentSize;
                 long value = array.getLong(i + 1);
                 if (value < 0 || value > length) {
