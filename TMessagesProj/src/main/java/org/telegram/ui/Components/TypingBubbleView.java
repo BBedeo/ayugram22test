@@ -54,6 +54,8 @@ public class TypingBubbleView extends LinearLayout {
     private float animOffsetY;
     private ValueAnimator visibilityAnimator;
     private Runnable onHiddenListener;
+    /** Fallback that collapses the bubble the old way if the message cell never shows up. */
+    private Runnable flowTimeout;
 
     /** Кэш последнего применённого стиля: пересобирать фон на каждый кадр незачем. */
     private int lastBubbleColor;
@@ -189,6 +191,11 @@ public class TypingBubbleView extends LinearLayout {
         return showing || morphingOut;
     }
 
+    /** True only while the bubble is meant to stay: not while it leaves or turns into a message. */
+    public boolean isShowing() {
+        return showing;
+    }
+
     /**
      * Живой черновик собеседника: многострочный пузырь с реальным текстом.
      * Новые символы дорисовываются «печатной машинкой», поэтому пузырь растёт на глазах.
@@ -309,7 +316,9 @@ public class TypingBubbleView extends LinearLayout {
         }
         showing = true;
         morphingOut = false;
+        cancelFlowTimeout();
         cancelVisibilityAnimator();
+        setTranslationX(0f);
 
         setVisibility(VISIBLE);
         setPivotX(0f);
@@ -391,23 +400,105 @@ public class TypingBubbleView extends LinearLayout {
         visibilityAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                morphingOut = false;
-                if (!showing) {
-                    setVisibility(GONE);
-                    setAlpha(0f);
-                    setScaleX(1f);
-                    setScaleY(1f);
-                    animOffsetY = 0f;
-                    setTranslationY(baseTranslationY);
-                    stopStatusDrawables();
-                    draftMode = false;
-                    displayedDraft = null;
-                    cancelDraftReveal();
-                    applyTypingLabelStyle();
-                    if (onHiddenListener != null) {
-                        onHiddenListener.run();
-                    }
-                }
+                completeHide();
+            }
+        });
+        visibilityAnimator.start();
+    }
+
+    private void completeHide() {
+        morphingOut = false;
+        if (!showing) {
+            setVisibility(GONE);
+            setAlpha(0f);
+            setScaleX(1f);
+            setScaleY(1f);
+            setTranslationX(0f);
+            setPivotX(0f);
+            animOffsetY = 0f;
+            setTranslationY(baseTranslationY);
+            stopStatusDrawables();
+            draftMode = false;
+            displayedDraft = null;
+            cancelDraftReveal();
+            applyTypingLabelStyle();
+            if (onHiddenListener != null) {
+                onHiddenListener.run();
+            }
+        }
+    }
+
+    private void cancelFlowTimeout() {
+        if (flowTimeout != null) {
+            removeCallbacks(flowTimeout);
+            flowTimeout = null;
+        }
+    }
+
+    /**
+     * An incoming message is about to appear: the bubble stays where it is until the message cell
+     * exists, then {@link #flowTo} carries it there. If the cell never shows up (message not
+     * inserted, chat scrolled away) the bubble collapses the old way after a short wait.
+     */
+    public void beginFlowIntoMessage() {
+        if (!showing && getVisibility() != VISIBLE) {
+            return;
+        }
+        showing = false;
+        morphingOut = true;
+        cancelDraftReveal();
+        cancelVisibilityAnimator();
+        cancelFlowTimeout();
+        flowTimeout = () -> {
+            flowTimeout = null;
+            if (morphingOut) {
+                animateOut(CollapseKind.INTO_MESSAGE);
+            }
+        };
+        postDelayed(flowTimeout, 450);
+    }
+
+    /**
+     * Carries the bubble onto the incoming message: it travels and stretches to the message bubble
+     * while it fades, so the message seems to grow out of the "typing" bubble. Coordinates are
+     * screen pixels of the message bubble. The bubble keeps the current theme style (glass,
+     * Material 3 or classic), the message cell draws its own themed background.
+     */
+    public void flowTo(float targetLeft, float targetTop, float targetWidth, float targetHeight) {
+        if (!morphingOut || getWidth() <= 0 || getHeight() <= 0) {
+            return;
+        }
+        cancelFlowTimeout();
+        cancelVisibilityAnimator();
+        final int[] location = new int[2];
+        getLocationOnScreen(location);
+        final float startX = location[0];
+        final float startY = location[1];
+        final float startTranslationX = getTranslationX();
+        final float startTranslationY = getTranslationY();
+        final float startAlpha = getAlpha();
+        final float endScaleX = Math.max(0.4f, Math.min(2.6f, targetWidth / getWidth()));
+        final float endScaleY = Math.max(0.4f, Math.min(2.6f, targetHeight / getHeight()));
+        setPivotX(0f);
+        setPivotY(0f);
+
+        visibilityAnimator = ValueAnimator.ofFloat(0f, 1f);
+        visibilityAnimator.setDuration(300);
+        visibilityAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+        visibilityAnimator.addUpdateListener(anim -> {
+            final float p = (float) anim.getAnimatedValue();
+            setTranslationX(startTranslationX + (targetLeft - startX) * p);
+            setTranslationY(startTranslationY + (targetTop - startY) * p);
+            setScaleX(AndroidUtilities.lerp(1f, endScaleX, p));
+            setScaleY(AndroidUtilities.lerp(1f, endScaleY, p));
+            // Stays solid for the first third so the move reads, then dissolves into the message.
+            final float fade = Math.max(0f, Math.min(1f, (p - 0.3f) / 0.7f));
+            setAlpha(AndroidUtilities.lerp(startAlpha, 0f, fade));
+        });
+        visibilityAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                completeHide();
             }
         });
         visibilityAnimator.start();

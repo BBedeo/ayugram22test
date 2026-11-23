@@ -677,6 +677,8 @@ public class ChatActivity extends BaseFragment implements
     // private ChatActivitySideControlsButtonsLayout topButtonsLayout;
     private ChatActivitySideControlsButtonsLayout sideControlsButtonsLayout;
     private TypingBubbleView typingBubbleView;
+    // True while a round video is being recorded: the typing bubble would cover the recording UI.
+    private boolean recordingRoundVideo;
     private boolean pagedownButtonShowedByScroll;
     private int reactionsMentionCount;
     private int pollVotesMentionCount;
@@ -2778,6 +2780,11 @@ public class ChatActivity extends BaseFragment implements
         @Override
         public void needStartRecordVideo(int state, boolean notify, int scheduleDate, int scheduleRepeatPeriod, int ttl, long effectId, long stars) {
             checkInstantCameraView();
+            final boolean recording = state == 0;
+            if (recordingRoundVideo != recording) {
+                recordingRoundVideo = recording;
+                updateTypingBubbleView();
+            }
             if (instantCameraView != null) {
                 if (state == 0) {
                     instantCameraView.showCamera(false);
@@ -12482,6 +12489,7 @@ public class ChatActivity extends BaseFragment implements
                 || chatMode != MODE_DEFAULT
                 || (ChatObject.isChannel(currentChat) && !currentChat.megagroup)
                 || UserObject.isUserSelf(currentUser)
+                || recordingRoundVideo
                 || isInPreviewMode()) {
             typingBubbleView.hideTyping();
             return;
@@ -13708,7 +13716,7 @@ public class ChatActivity extends BaseFragment implements
         if (chatListView == null || typingBubbleView == null) {
             return;
         }
-        final boolean visible = typingBubbleView.isShowingOrMorphing();
+        final boolean visible = typingBubbleView.isShowing();
         final int bubbleHeight = typingBubbleView.getMeasuredHeight() > 0
                 ? typingBubbleView.getMeasuredHeight() : dp(38);
         final float target = visible ? bubbleHeight + dp(6) : 0f;
@@ -13741,6 +13749,68 @@ public class ChatActivity extends BaseFragment implements
             }
         });
         typingBubblePaddingAnimator.start();
+    }
+
+    /**
+     * The bubble turns into the incoming message: give its space back to the list right now, before
+     * the message is inserted, with the same compensation the normal hide uses. Collapsing the space
+     * later, after the message already moved the history up, made the chat jerk and could leave the
+     * new message out of sight.
+     */
+    private void releaseTypingBubbleSpaceForMessage() {
+        if (chatListView == null || typingBubbleExtraPadding == 0f) {
+            return;
+        }
+        final boolean atBottom = !chatListView.canScrollVertically(1);
+        if (typingBubblePaddingAnimator != null) {
+            typingBubblePaddingAnimator.cancel();
+            typingBubblePaddingAnimator = null;
+        }
+        final float previous = typingBubbleExtraPadding;
+        typingBubbleExtraPadding = 0f;
+        checkUi_chatListViewPaddings();
+        if (atBottom) {
+            chatListView.scrollBy(0, Math.round(-previous));
+        }
+    }
+
+    /** Once the incoming message has a cell, lets the "typing" bubble flow onto it. */
+    private void flowTypingBubbleIntoMessage(MessageObject message, int attempt) {
+        if (typingBubbleView == null || chatListView == null || message == null) {
+            return;
+        }
+        chatListView.post(() -> {
+            if (typingBubbleView == null || chatListView == null) {
+                return;
+            }
+            ChatMessageCell target = null;
+            for (int i = 0, n = chatListView.getChildCount(); i < n; i++) {
+                final View child = chatListView.getChildAt(i);
+                if (child instanceof ChatMessageCell) {
+                    final MessageObject object = ((ChatMessageCell) child).getMessageObject();
+                    if (object != null && object.getId() == message.getId() && object.getDialogId() == message.getDialogId()) {
+                        target = (ChatMessageCell) child;
+                        break;
+                    }
+                }
+            }
+            if (target == null) {
+                if (attempt < 8) {
+                    AndroidUtilities.runOnUIThread(() -> flowTypingBubbleIntoMessage(message, attempt + 1), 40);
+                }
+                return;
+            }
+            // Layout position, not the current one: the cell may still be sliding in with its own animation.
+            final int[] list = new int[2];
+            chatListView.getLocationOnScreen(list);
+            final float left = list[0] + target.getLeft() + target.getBackgroundDrawableLeft();
+            final float top = list[1] + target.getTop() + target.getBackgroundDrawableTop();
+            final float width = target.getBackgroundDrawableRight() - target.getBackgroundDrawableLeft();
+            final float height = target.getBackgroundDrawableBottom() - target.getBackgroundDrawableTop();
+            if (width > 0 && height > 0) {
+                typingBubbleView.flowTo(left, top, width, height);
+            }
+        });
     }
 
     private void checkUi_chatListViewPaddings() {
@@ -24588,16 +24658,22 @@ public class ChatActivity extends BaseFragment implements
                 if (!scheduled) {
                     invalidatePaidMessagesPriceOnIncoming(arr);
                 }
+                MessageObject flowMessage = null;
                 if (typingBubbleView != null && typingBubbleView.isShowingOrMorphing() && arr != null) {
                     for (int a = 0, N = arr.size(); a < N; a++) {
                         final MessageObject msg = arr.get(a);
                         if (msg != null && !msg.isOutOwner()) {
-                            typingBubbleView.morphIntoMessage();
+                            typingBubbleView.beginFlowIntoMessage();
+                            releaseTypingBubbleSpaceForMessage();
+                            flowMessage = msg;
                             break;
                         }
                     }
                 }
                 processNewMessages(arr);
+                if (flowMessage != null) {
+                    flowTypingBubbleIntoMessage(flowMessage, 0);
+                }
             } else if (ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && did == -chatInfo.linked_chat_id) {
                 for (int a = 0, N = arr.size(); a < N; a++) {
                     MessageObject messageObject = arr.get(a);
