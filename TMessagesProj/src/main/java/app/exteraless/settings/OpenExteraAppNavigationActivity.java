@@ -7,6 +7,8 @@ import android.content.Context;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -35,6 +37,7 @@ import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UniversalRecyclerView;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.MainTabsLayout;
@@ -86,11 +89,15 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     private int nextDividerId = DIVIDER_ID_BASE;
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(getString(R.string.OEAppNavigation));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(getString(R.string.OEAppNavigation));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -114,13 +121,24 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
 
         // Кнопка сброса раскладки меню: появляется, только когда раскладка отличается
         // от дефолтной, и гаснет обратно после сброса.
-        resetItem = actionBar.createMenu().addItem(0, R.drawable.msg_reset);
+        resetItem = simpleActionBar.createMenu().addItem(0, R.drawable.msg_reset);
         resetItem.setContentDescription(getString(R.string.Reset));
         resetItem.setOnClickListener(v -> resetMenuLayout());
         updateResetButtonVisibility(false);
 
         fragmentView = contentView;
         return fragmentView;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
     }
 
     private void resetMenuLayout() {

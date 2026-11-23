@@ -17,6 +17,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Components.FlickerLoadingView;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
@@ -45,14 +46,27 @@ public class SuggestedAffiliateProgramsFragment extends BaseFragment implements 
         super.onFragmentDestroy();
     }
 
-    private BackDrawable backDrawable;
     private UniversalRecyclerView listView;
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonDrawable(backDrawable = new BackDrawable(false));
-        backDrawable.setAnimationTime(240);
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -60,12 +74,7 @@ public class SuggestedAffiliateProgramsFragment extends BaseFragment implements 
                 }
             }
         });
-        ThemeBind.backgroundColor(actionBar, Theme.key_windowBackgroundWhite);
-        ThemeBind.actionBarItemsColor(actionBar, Theme.key_windowBackgroundWhiteBlackText, false);
-        ThemeBind.actionBarItemsColor(actionBar, Theme.key_windowBackgroundWhiteBlackText, true);
-        ThemeBind.actionBarItemsBackgroundColor(actionBar, Theme.key_actionBarActionModeDefaultSelector, false);
-        ThemeBind.actionBarTitleColor(actionBar, Theme.key_windowBackgroundWhiteBlackText);
-        actionBar.setTitle(LocaleController.getString(R.string.ChannelAffiliatePrograms));
+        simpleActionBar.setTitle(LocaleController.getString(R.string.ChannelAffiliatePrograms));
 
         final SizeNotifierFrameLayout contentView = new SizeNotifierFrameLayout(context);
         contentView.addView(
@@ -114,9 +123,6 @@ public class SuggestedAffiliateProgramsFragment extends BaseFragment implements 
             return false;
         }
         int color = Theme.getColor(Theme.key_windowBackgroundWhite);
-        if (actionBar.isActionModeShowed()) {
-            color = Theme.getColor(Theme.key_actionBarActionModeDefault);
-        }
         return ColorUtils.calculateLuminance(color) > 0.7f;
     }
 }

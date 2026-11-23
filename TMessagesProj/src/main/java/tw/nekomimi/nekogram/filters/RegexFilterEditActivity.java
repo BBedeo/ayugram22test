@@ -13,15 +13,17 @@ import android.text.method.LinkMovementMethod;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.annotation.Nullable;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBar;
-import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
@@ -29,6 +31,7 @@ import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.SectionsScrollView;
 
 import java.util.ArrayList;
 import java.util.regex.Pattern;
@@ -51,6 +54,7 @@ public class RegexFilterEditActivity extends BaseFragment {
     private boolean reversed;
     private boolean addToSharedFilters;
 
+    private SectionsScrollView scrollView;
     private EditTextBoldCursor editField;
     private View doneButton;
     private TextView helpTextView;
@@ -117,14 +121,18 @@ public class RegexFilterEditActivity extends BaseFragment {
         this.addToSharedFilters = false;
     }
 
+    @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public View createView(Context context) {
         boolean isEdit = (filterIdx != -1) || (chatFilterIdx != -1);
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(getString(!isEdit ? R.string.RegexFiltersAdd : R.string.RegexFiltersEdit));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(getString(!isEdit ? R.string.RegexFiltersAdd : R.string.RegexFiltersEdit));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -174,12 +182,16 @@ public class RegexFilterEditActivity extends BaseFragment {
             }
         });
 
-        ActionBarMenu menu = actionBar.createMenu();
-        doneButton = menu.addItemWithWidth(done_button, R.drawable.ic_ab_done, dp(56));
+        doneButton = simpleActionBar.createDoneButton(done_button, getString(R.string.Done));
 
-        fragmentView = new LinearLayout(context);
-        LinearLayout linearLayout = (LinearLayout) fragmentView;
+        FrameLayout frameLayout = new FrameLayout(context);
+        fragmentView = frameLayout;
+        LinearLayout linearLayout = new SectionsScrollView.SectionsLinearLayout(context);
         linearLayout.setOrientation(LinearLayout.VERTICAL);
+        scrollView = new SectionsScrollView(context, linearLayout, null, false);
+        linearLayout.setPadding(0, 0, 0, 0);
+        scrollView.addView(linearLayout);
+        frameLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         fragmentView.setOnTouchListener((v, event) -> true);
 
         editField = new EditTextBoldCursor(context);
@@ -280,6 +292,17 @@ public class RegexFilterEditActivity extends BaseFragment {
     }
 
     @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected SectionsScrollView getScrollViewForSimpleGlass() {
+        return scrollView;
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
@@ -316,11 +339,6 @@ public class RegexFilterEditActivity extends BaseFragment {
         ArrayList<ThemeDescription> themeDescriptions = new ArrayList<>();
 
         themeDescriptions.add(new ThemeDescription(fragmentView, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundWhite));
-
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_actionBarDefault));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_actionBarDefaultIcon));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_actionBarDefaultSelector));
 
         themeDescriptions.add(new ThemeDescription(editField, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(editField, ThemeDescription.FLAG_HINTTEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteHintText));

@@ -26,6 +26,8 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
@@ -48,6 +50,7 @@ import org.telegram.ui.Components.CodepointsLengthInputFilter;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.NumberTextView;
+import org.telegram.ui.Components.SectionsScrollView;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -61,12 +64,29 @@ public class ChangeBioActivity extends BaseFragment {
 
     private final static int done_button = 1;
 
+    private SectionsScrollView scrollView;
+
+    @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected SectionsScrollView getScrollViewForSimpleGlass() {
+        return scrollView;
+    }
+
     @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString(R.string.UserBio));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(LocaleController.getString(R.string.UserBio));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -77,14 +97,18 @@ public class ChangeBioActivity extends BaseFragment {
             }
         });
 
-        ActionBarMenu menu = actionBar.createMenu();
-        doneButton = menu.addItemWithWidth(done_button, R.drawable.ic_ab_done, AndroidUtilities.dp(56));
-        doneButton.setContentDescription(LocaleController.getString(R.string.Done));
+        doneButton = simpleActionBar.createDoneButton(done_button, LocaleController.getString(R.string.Done));
 
-        fragmentView = new LinearLayout(context);
-        LinearLayout linearLayout = (LinearLayout) fragmentView;
-        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        FrameLayout rootLayout = new FrameLayout(context);
+        fragmentView = rootLayout;
         fragmentView.setOnTouchListener((v, event) -> true);
+
+        LinearLayout linearLayout = new SectionsScrollView.SectionsLinearLayout(context);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        scrollView = new SectionsScrollView(context, linearLayout, getResourceProvider(), false);
+        linearLayout.setPadding(0, 0, 0, 0);
+        scrollView.addView(linearLayout);
+        rootLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         FrameLayout fieldContainer = new FrameLayout(context);
         linearLayout.addView(fieldContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 24, 24, 20, 0));

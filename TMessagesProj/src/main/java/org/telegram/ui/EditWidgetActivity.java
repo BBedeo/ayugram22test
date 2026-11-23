@@ -776,22 +776,32 @@ public class EditWidgetActivity extends BaseFragment {
     }
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(false);
-        if (parentLayout != null && parentLayout.isLayersLayout()) {
-            actionBar.setOccupyStatusBar(false);
-        }
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
 
         if (widgetType == TYPE_CHATS) {
-            actionBar.setTitle(LocaleController.getString(R.string.WidgetChats));
+            simpleActionBar.setTitle(LocaleController.getString(R.string.WidgetChats));
         } else {
-            actionBar.setTitle(LocaleController.getString(R.string.WidgetShortcuts));
+            simpleActionBar.setTitle(LocaleController.getString(R.string.WidgetShortcuts));
         }
-        ActionBarMenu menu = actionBar.createMenu();
-        menu.addItem(done_item, LocaleController.getString(R.string.Done).toUpperCase());
+        simpleActionBar.createDoneButton(done_item, LocaleController.getString(R.string.Done));
 
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -1072,10 +1082,6 @@ public class EditWidgetActivity extends BaseFragment {
     public ArrayList<ThemeDescription> getThemeDescriptions() {
         ArrayList<ThemeDescription> themeDescriptions = new ArrayList<>();
 
-
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBMENUBACKGROUND, null, null, null, null, Theme.key_actionBarDefaultSubmenuBackground));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBMENUITEM, null, null, null, null, Theme.key_actionBarDefaultSubmenuItem));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBMENUITEM | ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_actionBarDefaultSubmenuItemIcon));
 
 
 

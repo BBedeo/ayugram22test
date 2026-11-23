@@ -111,10 +111,25 @@ public class ChannelWallpaperActivity extends BaseFragment {
     private ActionBarMenuItem dayNightItem;
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setTitle(LocaleController.getString(isChannel ? R.string.ChannelWallpaper : R.string.GroupWallpaper));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(LocaleController.getString(isChannel ? R.string.ChannelWallpaper : R.string.GroupWallpaper));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -141,7 +156,7 @@ public class ChannelWallpaperActivity extends BaseFragment {
         sunDrawable.setLayerColor("Path", color);
         sunDrawable.setLayerColor("Path 5", color);
         if (resourceProvider instanceof ChannelColorActivity.ThemeDelegate) {
-            dayNightItem = actionBar.createMenu().addItem(1, sunDrawable);
+            dayNightItem = simpleActionBar.createMenu().addItem(1, sunDrawable);
         }
 
         contentView = new FrameLayout(context);
@@ -342,10 +357,8 @@ public class ChannelWallpaperActivity extends BaseFragment {
         super.onThemeColorsChanged();
         // theme frames: the cheap part of updateColors() (cells are bound / Colorable, no rebinds)
         try {
-            if (actionBar != null) {
-                actionBar.setBackgroundColor(getThemedColor(Theme.key_actionBarDefault));
-                actionBar.setTitleColor(getThemedColor(Theme.key_actionBarDefaultTitle));
-                actionBar.setItemsColor(getThemedColor(Theme.key_actionBarDefaultIcon), false);
+            if (simpleActionBar != null) {
+                simpleActionBar.updateColors();
             }
             if (listView != null) {
                 listView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
@@ -359,10 +372,9 @@ public class ChannelWallpaperActivity extends BaseFragment {
     }
 
     public void updateColors() {
-        actionBar.setBackgroundColor(getThemedColor(Theme.key_actionBarDefault));
-        actionBar.setTitleColor(getThemedColor(Theme.key_actionBarDefaultTitle));
-        actionBar.setItemsColor(getThemedColor(Theme.key_actionBarDefaultIcon), false);
-        actionBar.setItemsBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSelector), false);
+        if (simpleActionBar != null) {
+            simpleActionBar.updateColors();
+        }
         listView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         adapter.notifyDataSetChanged();
         AndroidUtilities.forEachViews(listView, this::updateColors);

@@ -32,6 +32,7 @@ import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.StickerEmptyView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
@@ -107,10 +108,8 @@ public class CommunityPendingRequestsActivity extends BaseFragment implements Fa
 
 
 
-        actionBar.setBackButtonDrawable(new BackDrawable(false));
-        // actionBar.setAddToContainer(false);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonDrawable(new BackDrawable(false));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -118,7 +117,7 @@ public class CommunityPendingRequestsActivity extends BaseFragment implements Fa
                 }
             }
         });
-        actionBar.setTitle(getString(R.string.CommunityPendingRequests));
+        simpleActionBar.setTitle(getString(R.string.CommunityPendingRequests));
 
         containerView = new FrameLayout(context);
         ThemeBind.backgroundColor(containerView, Theme.key_windowBackgroundGray);
@@ -134,7 +133,6 @@ public class CommunityPendingRequestsActivity extends BaseFragment implements Fa
                 pendingRequestsList.checkLoadNext(listView);
             }
         });
-        actionBar.setAdaptiveBackground(listView);
         containerView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         fadeView = new ChatActivityFadeView(context);
@@ -142,7 +140,6 @@ public class CommunityPendingRequestsActivity extends BaseFragment implements Fa
         fadeView.setFadeZoneBottom(dp(72));
         fadeView.setFadeHeightBottom(dp(24));
         containerView.addView(fadeView, LayoutHelper.createFrameMatchParent());
-        containerView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP));
 
         buttonsLayout = new LinearLayout(context);
         buttonsLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -218,13 +215,13 @@ public class CommunityPendingRequestsActivity extends BaseFragment implements Fa
 
     @NonNull
     private WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+        onInsetsInternal(v, insets);
         final int bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
         checkPaddings(bottom);
         return WindowInsetsCompat.CONSUMED;
     }
 
     private void checkPaddings(int bottom) {
-        listView.setPadding(0, 0, 0, dp(60) + bottom);
         buttonsLayout.setPadding(dp(7), 0, dp(7), bottom + dp(12));
         emptyView.setTranslationY((listView.getPaddingTop() - listView.getPaddingBottom()) / 2f);
         fadeView.setFadeZoneBottom(dp(72) + bottom);
@@ -232,8 +229,23 @@ public class CommunityPendingRequestsActivity extends BaseFragment implements Fa
 
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
     public boolean isSupportEdgeToEdge() {
         return true;
+    }
+
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
+    protected int getListViewForSimpleGlassBottomPadding() {
+        return dp(60);
     }
 
     @Override

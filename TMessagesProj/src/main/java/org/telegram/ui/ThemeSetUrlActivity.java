@@ -30,8 +30,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.annotation.Nullable;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -60,6 +63,7 @@ import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.SectionsScrollView;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -69,6 +73,7 @@ public class ThemeSetUrlActivity extends BaseFragment implements NotificationCen
     private EditTextBoldCursor linkField;
     private EditTextBoldCursor nameField;
     private View doneButton;
+    private SectionsScrollView scrollView;
     private TextInfoPrivacyCell helpInfoCell;
     private TextInfoPrivacyCell checkInfoCell;
     private ThemePreviewMessagesCell messagesCell;
@@ -166,15 +171,30 @@ public class ThemeSetUrlActivity extends BaseFragment implements NotificationCen
     }
 
     @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected SectionsScrollView getScrollViewForSimpleGlass() {
+        return scrollView;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
         if (creatingNewTheme) {
-            actionBar.setTitle(LocaleController.getString(R.string.NewThemeTitle));
+            simpleActionBar.setTitle(LocaleController.getString(R.string.NewThemeTitle));
         } else {
-            actionBar.setTitle(LocaleController.getString(R.string.EditThemeTitle));
+            simpleActionBar.setTitle(LocaleController.getString(R.string.EditThemeTitle));
         }
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -185,13 +205,17 @@ public class ThemeSetUrlActivity extends BaseFragment implements NotificationCen
             }
         });
 
-        ActionBarMenu menu = actionBar.createMenu();
-        doneButton = menu.addItem(done_button, LocaleController.getString(R.string.Done).toUpperCase());
+        doneButton = simpleActionBar.createDoneButton(done_button, LocaleController.getString(R.string.Done));
 
-        fragmentView = new LinearLayout(context);
+        FrameLayout rootLayout = new FrameLayout(context);
+        fragmentView = rootLayout;
         ThemeBind.backgroundColor(fragmentView, Theme.key_windowBackgroundGray);
-        LinearLayout linearLayout = (LinearLayout) fragmentView;
+        LinearLayout linearLayout = new SectionsScrollView.SectionsLinearLayout(context);
         linearLayout.setOrientation(LinearLayout.VERTICAL);
+        scrollView = new SectionsScrollView(context, linearLayout, getResourceProvider(), false);
+        linearLayout.setPadding(0, 0, 0, 0);
+        scrollView.addView(linearLayout);
+        rootLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         fragmentView.setOnTouchListener((v, event) -> true);
 
         linearLayoutTypeContainer = new LinearLayout(context);

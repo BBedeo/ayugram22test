@@ -21,6 +21,7 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -31,7 +32,9 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.utils.glass.BaseFragmentSimpleGlass;
 import org.telegram.ui.ActionBar.ActionBarMenu;
+import org.telegram.ui.ActionBar.SimpleActionBarMenu;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
@@ -82,6 +85,8 @@ public class TooManyCommunitiesActivity extends BaseFragment {
     int type;
 
     private int buttonHeight = AndroidUtilities.dp(64);
+    private int listBottomPadding;
+    private int searchBottomPadding;
 
     Runnable showProgressRunnable = new Runnable() {
         @Override
@@ -129,10 +134,9 @@ public class TooManyCommunitiesActivity extends BaseFragment {
     public View createView(Context context) {
         type = arguments.getInt("type", TYPE_JOIN);
 
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString(R.string.LimitReached));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+        simpleActionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        simpleActionBar.setTitle(LocaleController.getString(R.string.LimitReached));
+        simpleActionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
@@ -141,7 +145,7 @@ public class TooManyCommunitiesActivity extends BaseFragment {
             }
         });
 
-        ActionBarMenu menu = actionBar.createMenu();
+        SimpleActionBarMenu menu = simpleActionBar.createMenu();
         ActionBarMenuItem searchItem = menu.addItem(0, R.drawable.outline_header_search).setIsSearchField(true).setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
 
             boolean expanded = false;
@@ -278,6 +282,51 @@ public class TooManyCommunitiesActivity extends BaseFragment {
         return fragmentView;
     }
 
+    @Override
+    protected boolean useSimpleActionBar() {
+        return true;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    protected RecyclerListView getListViewForSimpleGlass() {
+        return listView;
+    }
+
+    @Override
+    protected int getListViewForSimpleGlassBottomPadding() {
+        return listBottomPadding;
+    }
+
+    private void applyListPaddings() {
+        if (listView != null) {
+            BaseFragmentSimpleGlass.setListViewParams(listView, mSystemInsets.top, mSystemInsets.bottom, getListViewForSimpleGlassTopPadding(), listBottomPadding);
+        }
+        if (searchListView != null) {
+            BaseFragmentSimpleGlass.setListViewParams(searchListView, mSystemInsets.top, mSystemInsets.bottom, getListViewForSimpleGlassTopPadding(), searchBottomPadding);
+        }
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        super.onInsets(left, top, right, bottom);
+        buttonHeight = AndroidUtilities.dp(64) + bottom;
+        if (buttonLayout != null) {
+            buttonLayout.setPadding(0, 0, 0, bottom);
+            final FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) buttonLayout.getLayoutParams();
+            if (lp != null && lp.height != buttonHeight) {
+                lp.height = buttonHeight;
+                buttonLayout.setLayoutParams(lp);
+            }
+        }
+        applyListPaddings();
+    }
+
     private void onSelectedCountChange() {
         if (selectedIds.isEmpty() && buttonAnimation != -1 && buttonLayout.getVisibility() == View.VISIBLE) {
             buttonAnimation = -1;
@@ -308,8 +357,9 @@ public class TooManyCommunitiesActivity extends BaseFragment {
                     }
                 }
             }
-            listView.setPadding(0, 0, 0, 0);
-            searchListView.setPadding(0, 0, 0, 0);
+            listBottomPadding = 0;
+            searchBottomPadding = 0;
+            applyListPaddings();
 
         }
         if (!selectedIds.isEmpty() && buttonLayout.getVisibility() == View.GONE && buttonAnimation != 1) {
@@ -324,8 +374,9 @@ public class TooManyCommunitiesActivity extends BaseFragment {
                 }
             }).start();
 
-            listView.setPadding(0, 0, 0, buttonHeight - AndroidUtilities.dp(12));
-            searchListView.setPadding(0, 0, 0, buttonHeight);
+            listBottomPadding = AndroidUtilities.dp(64) - AndroidUtilities.dp(12);
+            searchBottomPadding = AndroidUtilities.dp(64);
+            applyListPaddings();
         }
 
         if (!selectedIds.isEmpty()) {
@@ -657,8 +708,6 @@ public class TooManyCommunitiesActivity extends BaseFragment {
     public ArrayList<ThemeDescription> getThemeDescriptions() {
         ArrayList<ThemeDescription> themeDescriptions = new ArrayList<>();ThemeDescription.ThemeDescriptionDelegate cellDelegate = this::cellDelegateThemeColors;
 
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SEARCH, null, null, null, null, Theme.key_actionBarDefaultSearch));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SEARCHPLACEHOLDER, null, null, null, null, Theme.key_actionBarDefaultSearchPlaceholder));
 
 
 
