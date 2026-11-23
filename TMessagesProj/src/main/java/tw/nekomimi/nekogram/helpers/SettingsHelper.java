@@ -26,6 +26,7 @@ import app.exteraless.icons.IconPacksActivity;
 import app.exteraless.pillstack.pills.weather.WeatherSettingsActivity;
 import app.exteraless.settings.OpenExteraCloudActivity;
 import app.exteraless.settings.OpenExteraGlyphActivity;
+import app.exteraless.settings.OpenExteraAboutActivity;
 import app.exteraless.settings.OpenExteraUpdatesActivity;
 import app.exteraless.pillstack.PillStackSettingsActivity;
 import app.exteraless.plugins.ui.PluginsActivity;
@@ -386,6 +387,9 @@ public class SettingsHelper {
                 case "exteraless_updates":
                     fragment = neko_fragment = new OpenExteraUpdatesActivity();
                     break;
+                case "exteraless_about":
+                    fragment = neko_fragment = new OpenExteraAboutActivity();
+                    break;
                 case "send_logs":
                     sendLogs(activity, false);
                     return;
@@ -589,6 +593,7 @@ public class SettingsHelper {
         exteralessFragments.add(new OpenExteraAyuMomentsActivity());
         exteralessFragments.add(new PillStackSettingsActivity());
         exteralessFragments.add(new OpenExteraUpdatesActivity());
+        exteralessFragments.add(new OpenExteraAboutActivity());
         exteralessFragments.add(new AiSettingsActivity());
 
         String e_title = getString(R.string.OpenExtera);

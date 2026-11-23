@@ -67,7 +67,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int designStudioRow;
     private int designDividerRow;
 
+    private int aboutAppHeaderRow;
     private int versionRow;
+    private int aboutAppRow;
     private int versionDividerRow;
 
     private ActionBarMenuItem searchItem;
@@ -104,7 +106,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         designStudioRow = addRow("designStudio");
         designDividerRow = addRow();
 
+        aboutAppHeaderRow = addRow("aboutAppHeader");
         versionRow = addRow("updates");
+        aboutAppRow = addRow("aboutApp");
         versionDividerRow = addRow();
     }
 
@@ -253,6 +257,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new OpenExteraOtherActivity());
         } else if (position == versionRow) {
             presentFragment(new OpenExteraUpdatesActivity());
+        } else if (position == aboutAppRow) {
+            presentFragment(new OpenExteraAboutActivity());
         } else if (position == channelRow) {
             getMessagesController().openByUserName("exteraless", this, 1);
         } else if (position == sourceRow) {
@@ -481,6 +487,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setText(getString(R.string.OpenExteraCategories));
                     } else if (position == linksHeaderRow) {
                         cell.setText(getString(R.string.OpenExteraLinks));
+                    } else if (position == aboutAppHeaderRow) {
+                        cell.setText(getString(R.string.OpenExteraAboutSection));
                     }
                     break;
                 }
@@ -514,7 +522,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                                 "@BlueprintDsgn", R.drawable.msg_groups, false);
                     } else if (position == versionRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraUpdates),
-                                org.telegram.messenger.BuildVars.BUILD_VERSION_STRING, R.drawable.msg_download, false);
+                                org.telegram.messenger.BuildVars.BUILD_VERSION_STRING, R.drawable.msg_download, true);
+                    } else if (position == aboutAppRow) {
+                        cell.setTextAndIcon(getString(R.string.OpenExteraAboutApp), R.drawable.msg_info, false);
                     }
                     // ВАЖНО: только после setTextAndIcon* — они сбрасывают imageLeft в 16dp.
                     // Метрики сняты с 12.9.0 (420 dpi): иконка 88px от края экрана, текст 219px,
@@ -545,7 +555,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             if (position == aboutRow) {
                 return TYPE_ABOUT;
             } else if (position == categoriesHeaderRow || position == linksHeaderRow
-                    || position == designHeaderRow) {
+                    || position == designHeaderRow || position == aboutAppHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == categoriesDividerRow || position == linksDividerRow
                     || position == designDividerRow) {

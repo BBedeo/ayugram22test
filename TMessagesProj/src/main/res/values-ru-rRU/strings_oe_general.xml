@@ -173,6 +173,17 @@
     <string name="OEUpdateTitle">Доступно обновление</string>
     <string name="OEUpdateDownloadProgress">%1$s из %2$s</string>
     <string name="OpenExteraUpdates">Версия и обновления</string>
+    <string name="OpenExteraAboutSection">О приложении</string>
+    <string name="OpenExteraAboutApp">Об ExFullGram</string>
+    <string name="OEAboutTitle">Об ExFullGram</string>
+    <string name="OEAboutIdea">Задумка</string>
+    <string name="OEAboutIdeaText">ExFullGram — Telegram для Android, который собирает лучшее из модифицированных клиентов в одном месте: настройки и дизайн exteraGram, твики NagramX и функции, которые делают повседневное общение удобнее. Это по-прежнему нативный Telegram: те же чаты, те же анимации и темы, только с гораздо большим контролем.</string>
+    <string name="OEAboutPlugins">Плагины и безопасность</string>
+    <string name="OEAboutPluginsText">Плагины exteraGram здесь работают, но каждый плагин запрашивает разрешения (сеть, файлы, сообщения и так далее) и получает только то, что вы разрешили. У каждого плагина есть журнал действий, а тот, который раз за разом роняет приложение, отключается автоматически.</string>
+    <string name="OEAboutClient">Что внутри</string>
+    <string name="OEAboutClientText">Настройки чатов и оформления с поиском, стили жидкого стекла и Material 3, плеер с текстами песен, режим призрака, сохранение удалённых и изменённых сообщений, своя ИИ-служба, темы Monet, иконки приложения и обновления прямо с GitHub.</string>
+    <string name="OEAboutBeta">Бета</string>
+    <string name="OEAboutBetaText">Проект в бете: часть возможностей оригинальных клиентов ещё переносится. Если чего-то не хватает или что-то сломалось, откройте issue в репозитории на GitHub.</string>
     <string name="OEUpdatesTitle">Версия и обновления</string>
     <string name="OEUpdatesCheck">Проверить обновления</string>
     <string name="OEUpdatesChannel">Канал обновлений</string>

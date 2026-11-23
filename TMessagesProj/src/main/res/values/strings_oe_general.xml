@@ -176,6 +176,17 @@
     <string name="OEUpdateTitle">Update available</string>
     <string name="OEUpdateDownloadProgress">%1$s of %2$s</string>
     <string name="OpenExteraUpdates">Version and updates</string>
+    <string name="OpenExteraAboutSection">About the app</string>
+    <string name="OpenExteraAboutApp">About ExFullGram</string>
+    <string name="OEAboutTitle">About ExFullGram</string>
+    <string name="OEAboutIdea">The idea</string>
+    <string name="OEAboutIdeaText">ExFullGram is Telegram for Android that brings the best of the modded clients together in one place: the settings and design of exteraGram, the tweaks of NagramX and the features that make everyday chatting more convenient. It stays a native Telegram: the same chats, the same animations and themes, only with far more control.</string>
+    <string name="OEAboutPlugins">Plugins and safety</string>
+    <string name="OEAboutPluginsText">Plugins from exteraGram work here, but every plugin asks for permissions (network, files, messages and so on) and gets only what you allow. Each plugin has an activity log, and one that keeps crashing the app is switched off automatically.</string>
+    <string name="OEAboutClient">What is inside</string>
+    <string name="OEAboutClientText">Chat and appearance settings with search, liquid glass and Material 3 styles, a player with lyrics, ghost mode, saving of deleted and edited messages, your own AI service, Monet themes, app icons and updates straight from GitHub.</string>
+    <string name="OEAboutBeta">Beta</string>
+    <string name="OEAboutBetaText">The project is in beta: some features of the original clients are still being moved over. If something is missing or broken, open an issue in the GitHub repository.</string>
     <string name="OEUpdatesTitle">Version and updates</string>
     <string name="OEUpdatesCheck">Check for updates</string>
     <string name="OEUpdatesChannel">Update channel</string>
