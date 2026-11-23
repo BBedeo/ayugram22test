@@ -33,6 +33,18 @@ final class NotesScrollThumb extends View {
         scrollView.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> invalidate());
     }
 
+    /**
+     * The thumb must not size its parent: with a match-parent height and an at-most parent spec a plain
+     * View takes the whole available height, the card grows to the full screen and pushes the buttons
+     * out of the sheet. It takes a height only when the parent gives an exact one.
+     */
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        final int height = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
+                ? MeasureSpec.getSize(heightMeasureSpec) : 0;
+        setMeasuredDimension(getDefaultSize(getSuggestedMinimumWidth(), widthMeasureSpec), height);
+    }
+
     private int contentHeight() {
         return scrollView.getChildCount() > 0 ? scrollView.getChildAt(0).getHeight() : 0;
     }
