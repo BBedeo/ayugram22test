@@ -2342,6 +2342,9 @@ public class MessagesController extends BaseController implements NotificationCe
                             if (!keepsLocalPin(currentDialog, newDialog)) {
                                 currentDialog.pinned = newDialog.pinned;
                                 currentDialog.pinnedNum = newDialog.pinnedNum;
+                            } else {
+                                newDialog.pinned = true;
+                                newDialog.pinnedNum = currentDialog.pinnedNum;
                             }
                             ArrayList<MessageObject> oldMsgs = dialogMessage.get(key);
                             boolean oldMsgsDeleted = false;
@@ -14036,6 +14039,11 @@ public class MessagesController extends BaseController implements NotificationCe
                         if (loadType == DIALOGS_LOAD_TYPE_CACHE || !keepsLocalPin(currentDialog, value)) {
                             currentDialog.pinned = value.pinned;
                             currentDialog.pinnedNum = value.pinnedNum;
+                        } else {
+                            // The server object below may replace the current one (a chat with a newer message):
+                            // the local pin has to go on it too, or the chat drops out of the pinned block.
+                            value.pinned = true;
+                            value.pinnedNum = currentDialog.pinnedNum;
                         }
                         ArrayList<MessageObject> oldMsgs = dialogMessage.get(key);
 
