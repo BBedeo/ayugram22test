@@ -176,6 +176,13 @@
     <string name="OEUpdatesTitle">Версия и обновления</string>
     <string name="OEUpdatesCheck">Проверить обновления</string>
     <string name="OEUpdatesChannel">Канал обновлений</string>
+    <string name="OEUpdatesCheckInterval">Как часто проверять</string>
+    <string name="OEUpdatesIntervalEveryStart">При каждом заходе в приложение</string>
+    <string name="OEUpdatesInterval1h">Каждый час</string>
+    <string name="OEUpdatesInterval3h">Каждые 3 часа</string>
+    <string name="OEUpdatesInterval6h">Каждые 6 часов</string>
+    <string name="OEUpdatesInterval12h">Каждые 12 часов</string>
+    <string name="OEUpdatesInterval24h">Раз в сутки</string>
     <string name="OEUpdatesAutoUpdate">Скачивать обновления автоматически</string>
     <string name="OEUpdatesWifiOnly">Только по Wi-Fi</string>
     <string name="OEUpdatesPostponed">Отложенное обновление</string>

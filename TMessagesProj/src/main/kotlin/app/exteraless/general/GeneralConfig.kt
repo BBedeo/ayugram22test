@@ -62,6 +62,10 @@ object GeneralConfig {
     @JvmField
     val autoUpdateWifiOnly = addConfig("OEGeneralAutoUpdateWifiOnly", ConfigItem.configTypeBool, true)
 
+    /** How often the app looks for an update: index into GitHubUpdater.CHECK_INTERVALS (0 = on every start). */
+    @JvmField
+    val autoUpdateInterval = addConfig("OEGeneralAutoUpdateInterval", ConfigItem.configTypeInt, 3)
+
     /**
      * Показывать ли вход в настройки NagramX («N-Settings») в общем списке настроек.
      *

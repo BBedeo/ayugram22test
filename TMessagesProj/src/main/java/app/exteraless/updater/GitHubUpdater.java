@@ -59,7 +59,9 @@ public final class GitHubUpdater {
     private static final String REPO = "BBedeo/ayugram22test";
     public static final String RELEASES_URL = "https://github.com/" + REPO + "/releases";
     private static final String API = "https://api.github.com/repos/" + REPO;
-    private static final long AUTO_INTERVAL = TimeUnit.HOURS.toMillis(6);
+    /** Choices of the check frequency; 0 means on every start of the app. */
+    public static final long[] CHECK_INTERVALS = {0, TimeUnit.HOURS.toMillis(1), TimeUnit.HOURS.toMillis(3),
+            TimeUnit.HOURS.toMillis(6), TimeUnit.HOURS.toMillis(12), TimeUnit.HOURS.toMillis(24)};
     private static final String PREFS = "exteraless_updater";
     private static final String KEY_LAST_CHECK = "last_check";
     private static final String KEY_SKIPPED = "skipped_tag";
@@ -185,7 +187,9 @@ public final class GitHubUpdater {
             if (channel == UpdateHelper.UPDATE_OFF) {
                 return;
             }
-            if (Math.abs(System.currentTimeMillis() - lastCheck()) < AUTO_INTERVAL) {
+            GeneralConfig.init();
+            int index = Math.max(0, Math.min(CHECK_INTERVALS.length - 1, GeneralConfig.autoUpdateInterval.Int()));
+            if (CHECK_INTERVALS[index] > 0 && Math.abs(System.currentTimeMillis() - lastCheck()) < CHECK_INTERVALS[index]) {
                 return;
             }
         }

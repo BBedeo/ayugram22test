@@ -36,6 +36,7 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
     private int updatesHeaderRow;
     private int checkRow;
     private int channelRow;
+    private int intervalRow;
     private int autoUpdateRow;
     private int wifiOnlyRow;
     private int postponedRow;
@@ -59,6 +60,7 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
         updatesHeaderRow = addRow("updatesHeader");
         checkRow = addRow("check");
         channelRow = addRow("channel");
+        intervalRow = addRow("checkInterval");
         autoUpdateRow = addRow("autoUpdate");
         wifiOnlyRow = addRow("wifiOnly");
         postponedRow = addRow("postponed");
@@ -105,6 +107,35 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
                 ? R.string.OEUpdaterChannelBeta : R.string.OEUpdaterChannelStable);
     }
 
+    private static final int[] INTERVAL_NAMES = {
+            R.string.OEUpdatesIntervalEveryStart, R.string.OEUpdatesInterval1h, R.string.OEUpdatesInterval3h,
+            R.string.OEUpdatesInterval6h, R.string.OEUpdatesInterval12h, R.string.OEUpdatesInterval24h};
+
+    private String intervalName() {
+        int index = Math.max(0, Math.min(INTERVAL_NAMES.length - 1, GeneralConfig.autoUpdateInterval.Int()));
+        return getString(INTERVAL_NAMES[index]);
+    }
+
+    private void showIntervalSelector() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        CharSequence[] items = new CharSequence[INTERVAL_NAMES.length];
+        for (int i = 0; i < items.length; i++) {
+            items[i] = getString(INTERVAL_NAMES[i]);
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(getString(R.string.OEUpdatesCheckInterval));
+        builder.setItems(items, (dialog, which) -> {
+            GeneralConfig.autoUpdateInterval.setConfigInt(which);
+            if (listAdapter != null) {
+                listAdapter.notifyItemChanged(intervalRow);
+            }
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        showDialog(builder.create());
+    }
+
     private void showChannelSelector() {
         if (getParentActivity() == null) {
             return;
@@ -130,6 +161,8 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
             GitHubUpdater.check(true);
         } else if (position == channelRow) {
             showChannelSelector();
+        } else if (position == intervalRow) {
+            showIntervalSelector();
         } else if (position == autoUpdateRow) {
             boolean enabled = GeneralConfig.autoUpdate.toggleConfigBool();
             if (view instanceof TextCheckCell) {
@@ -195,6 +228,9 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
                     } else if (position == channelRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OEUpdatesChannel),
                                 channelName(), R.drawable.msg_channel, true);
+                    } else if (position == intervalRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.OEUpdatesCheckInterval),
+                                intervalName(), R.drawable.msg_clear_recent, true);
                     } else if (position == postponedRow) {
                         String postponed = GitHubUpdater.postponedTag();
                         cell.setTextAndValueAndIcon(getString(R.string.OEUpdatesPostponed),

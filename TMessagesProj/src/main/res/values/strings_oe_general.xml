@@ -179,6 +179,13 @@
     <string name="OEUpdatesTitle">Version and updates</string>
     <string name="OEUpdatesCheck">Check for updates</string>
     <string name="OEUpdatesChannel">Update channel</string>
+    <string name="OEUpdatesCheckInterval">Check frequency</string>
+    <string name="OEUpdatesIntervalEveryStart">On every app start</string>
+    <string name="OEUpdatesInterval1h">Every hour</string>
+    <string name="OEUpdatesInterval3h">Every 3 hours</string>
+    <string name="OEUpdatesInterval6h">Every 6 hours</string>
+    <string name="OEUpdatesInterval12h">Every 12 hours</string>
+    <string name="OEUpdatesInterval24h">Once a day</string>
     <string name="OEUpdatesAutoUpdate">Download updates automatically</string>
     <string name="OEUpdatesWifiOnly">Only on Wi-Fi</string>
     <string name="OEUpdatesPostponed">Postponed update</string>
