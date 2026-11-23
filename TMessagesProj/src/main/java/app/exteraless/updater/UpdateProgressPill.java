@@ -6,15 +6,18 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -24,31 +27,42 @@ import org.telegram.ui.Components.LayoutHelper;
 
 /**
  * A minimal plate that shows the progress of an update downloaded in the background. It uses the
- * dialog colors of the active theme. It does not stay in the way: a few seconds after it appears it
- * shrinks to a small chip with the percentage, a tap expands or shrinks it, and it can be dragged
- * anywhere on the screen. The cross cancels the download.
+ * dialog colors of the active theme. It never sits on top of anything the user can tap: a few seconds
+ * after it appears it shrinks to a small chip, and every second it checks which spot of the screen
+ * has no buttons, lists or other tappable views under it and glides there. A tap on the chip expands
+ * it (with the cross that cancels the download) for a few seconds.
  */
 final class UpdateProgressPill extends FrameLayout {
 
     private static final long COLLAPSE_DELAY_MS = 3000;
+    private static final long RELOCATE_INTERVAL_MS = 1000;
 
+    private final ViewGroup content;
     private final TextView label;
     private final TextView cancel;
     private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
+    private final Rect probe = new Rect();
+    private final Rect viewRect = new Rect();
+    private final int[] location = new int[2];
     private final String version;
-    private final int touchSlop;
     private final Runnable collapseRunnable = () -> setCollapsed(true);
+    private final Runnable relocateRunnable = new Runnable() {
+        @Override
+        public void run() {
+            relocate(true);
+            postDelayed(this, RELOCATE_INTERVAL_MS);
+        }
+    };
     private float progress;
     private boolean collapsed;
-    private float downX, downY, startTx, startTy;
-    private boolean dragging;
+    private boolean removed;
 
-    private UpdateProgressPill(Context context, String version, Runnable onCancel) {
+    private UpdateProgressPill(Context context, ViewGroup content, String version, Runnable onCancel) {
         super(context);
+        this.content = content;
         this.version = version;
-        touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setWillNotDraw(false);
         setElevation(dp(6));
         setBackground(Theme.createRoundRectDrawable(dp(20), Theme.getColor(Theme.key_dialogBackground)));
@@ -79,14 +93,14 @@ final class UpdateProgressPill extends FrameLayout {
         if (content == null) {
             return null;
         }
-        UpdateProgressPill pill = new UpdateProgressPill(activity, version, onCancel);
-        FrameLayout.LayoutParams params = LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40,
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0);
-        params.topMargin = AndroidUtilities.statusBarHeight + dp(8);
-        content.addView(pill, params);
+        UpdateProgressPill pill = new UpdateProgressPill(activity, content, version, onCancel);
+        content.addView(pill, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.LEFT));
         pill.setAlpha(0f);
-        pill.setTranslationY(-dp(16));
-        pill.animate().alpha(1f).translationY(0).setDuration(220).start();
+        pill.post(() -> {
+            pill.relocate(false);
+            pill.animate().alpha(1f).setDuration(220).start();
+        });
+        pill.postDelayed(pill.relocateRunnable, RELOCATE_INTERVAL_MS);
         pill.scheduleCollapse();
         return pill;
     }
@@ -102,13 +116,18 @@ final class UpdateProgressPill extends FrameLayout {
         }
         collapsed = value;
         cancel.setVisibility(value ? View.GONE : View.VISIBLE);
-        final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) label.getLayoutParams();
-        params.leftMargin = dp(value ? 12 : 16);
-        params.rightMargin = dp(value ? 12 : 44);
-        label.setLayoutParams(params);
+        final FrameLayout.LayoutParams labelParams = (FrameLayout.LayoutParams) label.getLayoutParams();
+        labelParams.leftMargin = dp(value ? 12 : 16);
+        labelParams.rightMargin = dp(value ? 12 : 44);
+        label.setLayoutParams(labelParams);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_DIP, value ? 12 : 13);
+        final ViewGroup.LayoutParams params = getLayoutParams();
+        params.height = dp(value ? 26 : 40);
+        setLayoutParams(params);
         update();
-        requestLayout();
         invalidate();
+        // The new size may need another spot: look again once it has been laid out.
+        post(() -> relocate(true));
         if (!value) {
             scheduleCollapse();
         }
@@ -129,78 +148,107 @@ final class UpdateProgressPill extends FrameLayout {
     }
 
     void remove() {
+        removed = true;
         removeCallbacks(collapseRunnable);
+        removeCallbacks(relocateRunnable);
         final View self = this;
-        animate().alpha(0f).translationY(getTranslationY() - dp(16)).setDuration(180).withEndAction(() -> {
+        animate().alpha(0f).setDuration(180).withEndAction(() -> {
             if (self.getParent() instanceof ViewGroup) {
                 ((ViewGroup) self.getParent()).removeView(self);
             }
         }).start();
     }
 
+    // ---- staying off the tappable views ---------------------------------------------------------
+
+    /** Moves the plate to the first spot of the screen where nothing tappable is under it. */
+    private void relocate(boolean animated) {
+        if (removed || getWidth() == 0 || getHeight() == 0 || content.getWidth() == 0) {
+            return;
+        }
+        final int w = getWidth();
+        final int h = getHeight();
+        final int cw = content.getWidth();
+        final int ch = content.getHeight();
+        final int strip = Math.max(0, (AndroidUtilities.statusBarHeight - h) / 2);
+        final int side = dp(8);
+        // Candidates in the order of preference: the top edge (above the action bar buttons) in the
+        // center, then at the sides, then a line below the action bar and the bottom edge.
+        final int[][] spots = {
+                {(cw - w) / 2, strip},
+                {side, strip},
+                {cw - w - side, strip},
+                {(cw - w) / 2, AndroidUtilities.statusBarHeight + dp(2)},
+                {(cw - w) / 2, ch - h - dp(2)},
+        };
+        int[] chosen = spots[0];
+        for (int[] spot : spots) {
+            if (!coversTappable(spot[0], spot[1], w, h)) {
+                chosen = spot;
+                break;
+            }
+        }
+        final float x = chosen[0];
+        final float y = chosen[1];
+        if (animated && (Math.abs(getTranslationX() - x) > 1 || Math.abs(getTranslationY() - y) > 1)) {
+            animate().translationX(x).translationY(y).setDuration(220).start();
+        } else if (!animated) {
+            setTranslationX(x);
+            setTranslationY(y);
+        }
+    }
+
+    private boolean coversTappable(int x, int y, int w, int h) {
+        content.getLocationInWindow(location);
+        probe.set(location[0] + x, location[1] + y, location[0] + x + w, location[1] + y + h);
+        return hasTappable(content, probe);
+    }
+
+    private boolean hasTappable(View view, Rect area) {
+        if (view == this || view.getVisibility() != View.VISIBLE || view.getAlpha() < 0.05f) {
+            return false;
+        }
+        view.getLocationInWindow(location);
+        viewRect.set(location[0], location[1], location[0] + view.getWidth(), location[1] + view.getHeight());
+        if (!Rect.intersects(viewRect, area)) {
+            return false;
+        }
+        if (view instanceof RecyclerView || view instanceof AbsListView
+                || view.isClickable() || view.isLongClickable()) {
+            return true;
+        }
+        if (view instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) view;
+            for (int i = group.getChildCount() - 1; i >= 0; i--) {
+                if (hasTappable(group.getChildAt(i), area)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                downX = event.getRawX();
-                downY = event.getRawY();
-                startTx = getTranslationX();
-                startTy = getTranslationY();
-                dragging = false;
-                removeCallbacks(collapseRunnable);
-                getParent().requestDisallowInterceptTouchEvent(true);
-                return true;
-            case MotionEvent.ACTION_MOVE: {
-                final float dx = event.getRawX() - downX;
-                final float dy = event.getRawY() - downY;
-                if (!dragging && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
-                    dragging = true;
-                }
-                if (dragging) {
-                    setTranslationX(startTx + dx);
-                    setTranslationY(startTy + dy);
-                }
-                return true;
+        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+            setCollapsed(!collapsed);
+            if (!collapsed) {
+                scheduleCollapse();
             }
-            case MotionEvent.ACTION_UP:
-                if (!dragging) {
-                    setCollapsed(!collapsed);
-                    if (!collapsed) {
-                        scheduleCollapse();
-                    }
-                } else if (!collapsed) {
-                    scheduleCollapse();
-                }
-                return true;
-            case MotionEvent.ACTION_CANCEL:
-                if (!collapsed) {
-                    scheduleCollapse();
-                }
-                return true;
-            default:
-                return true;
         }
+        return true;
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (collapsed) {
-            // The chip shows the progress as a thin ring-like bar under the percentage.
-            final float left = dp(10);
-            final float right = getWidth() - dp(10);
-            final float y = getHeight() - dp(5);
-            rect.set(left, y - dp(1.25f), right, y + dp(1.25f));
-            canvas.drawRoundRect(rect, dp(2), dp(2), trackPaint);
-            rect.set(left, y - dp(1.25f), left + (right - left) * progress, y + dp(1.25f));
-            canvas.drawRoundRect(rect, dp(2), dp(2), barPaint);
-            return;
-        }
-        final float left = dp(16);
-        final float right = getWidth() - dp(16);
-        final float y = getHeight() - dp(5);
-        rect.set(left, y - dp(1.5f), right, y + dp(1.5f));
+        final float inset = dp(collapsed ? 10 : 16);
+        final float left = inset;
+        final float right = getWidth() - inset;
+        final float y = getHeight() - dp(collapsed ? 4 : 5);
+        final float half = dp(collapsed ? 1.25f : 1.5f);
+        rect.set(left, y - half, right, y + half);
         canvas.drawRoundRect(rect, dp(2), dp(2), trackPaint);
-        rect.set(left, y - dp(1.5f), left + (right - left) * progress, y + dp(1.5f));
+        rect.set(left, y - half, left + (right - left) * progress, y + half);
         canvas.drawRoundRect(rect, dp(2), dp(2), barPaint);
     }
 }
