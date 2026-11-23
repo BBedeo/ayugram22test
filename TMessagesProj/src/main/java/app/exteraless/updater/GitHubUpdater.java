@@ -77,6 +77,9 @@ public final class GitHubUpdater {
     private static final int NOTIFICATION_ID = 7301;
     private static volatile boolean readyShown;
     private static UpdateProgressPill pill;
+    private static UpdateSheet liveSheet;
+    private static long lastDone;
+    private static long lastTotal;
     private static boolean backgroundDownload;
     private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
     // Релизы CI помечаются тегом ci-<sha> и собираются рабочим процессом без истории
@@ -512,7 +515,7 @@ public final class GitHubUpdater {
         String updateText = ready != null ? LocaleController.getString(R.string.OEUpdateReadyInstall)
                 : size.isEmpty() ? LocaleController.getString(R.string.OEUpdateInstall)
                 : LocaleController.formatString(R.string.OEUpdateInstallSize, size);
-        new UpdateSheet(activity, fragment.getResourceProvider(), LocaleController.getString(R.string.OEUpdateTitle),
+        final UpdateSheet shown = new UpdateSheet(activity, fragment.getResourceProvider(), LocaleController.getString(R.string.OEUpdateTitle),
                 subtitle.toString(), notes, updateText, release.backupFirst, new UpdateSheet.Delegate() {
             @Override
             public void onUpdate(UpdateSheet sheet) {
@@ -523,10 +526,17 @@ public final class GitHubUpdater {
                     return;
                 }
                 sheet.setDownloading(true);
+                liveSheet = sheet;
+                lastDone = 0;
+                lastTotal = 0;
                 download(activity, release, new DownloadListener() {
                     @Override
                     public void onProgress(long done, long total) {
-                        sheet.setProgress(done, total);
+                        lastDone = done;
+                        lastTotal = total;
+                        if (liveSheet != null) {
+                            liveSheet.setProgress(done, total);
+                        }
                         if (pill != null) {
                             pill.setProgress(done, total);
                         }
@@ -535,13 +545,17 @@ public final class GitHubUpdater {
                     @Override
                     public void onFinished(boolean success, boolean canceled) {
                         removePill();
+                        final UpdateSheet current = liveSheet;
+                        liveSheet = null;
                         if (!success) {
                             backgroundDownload = false;
                         }
-                        if (success) {
-                            sheet.finishDownload();
-                        } else if (!canceled) {
-                            sheet.setDownloading(false);
+                        if (current != null) {
+                            if (success) {
+                                current.finishDownload();
+                            } else if (!canceled) {
+                                current.setDownloading(false);
+                            }
                         }
                     }
                 });
@@ -557,19 +571,37 @@ public final class GitHubUpdater {
 
             @Override
             public void onCancelDownload() {
+                if (liveSheet != null) {
+                    liveSheet = null;
+                }
                 cancelDownload();
             }
 
             @Override
             public void onBackground(UpdateSheet sheet) {
+                if (liveSheet == sheet) {
+                    liveSheet = null;
+                }
                 if (!isDownloading()) {
                     return;
                 }
                 backgroundDownload = true;
                 removePill();
                 pill = UpdateProgressPill.show(activity, release.displayVersion(), GitHubUpdater::cancelDownload);
+                if (pill != null) {
+                    pill.setProgress(lastDone, lastTotal);
+                }
             }
-        }).show();
+        });
+        if (ready == null && isDownloading()) {
+            // A download is already running (started earlier and sent to the background): the sheet
+            // shows its live progress instead of offering to start it again.
+            shown.setDownloading(true);
+            shown.setProgress(lastDone, lastTotal);
+            liveSheet = shown;
+            removePill();
+        }
+        shown.show();
     }
 
     public static void download(Activity activity, Release release, DownloadListener listener) {

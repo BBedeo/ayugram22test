@@ -272,7 +272,7 @@ public class UpdateSheet extends BottomSheet {
         downloading = value;
         progressView.setVisibility(value ? View.VISIBLE : View.GONE);
         progressView.setProgress(0, false);
-        skipButton.setText(getString(value ? R.string.OEUpdateBackground : R.string.OEUpdateSkip));
+        skipButton.setVisibility(value ? View.GONE : View.VISIBLE);
         secondaryButton.setText(getString(value ? R.string.Cancel : R.string.OEUpdateLater));
         primaryButton.setText(value ? getString(R.string.OEUpdateDownloading) : updateText);
     }

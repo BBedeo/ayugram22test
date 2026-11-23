@@ -12,7 +12,7 @@ def main() -> int:
     updater = (U / "GitHubUpdater.java").read_text(encoding="utf-8", errors="ignore")
     pill = (U / "UpdateProgressPill.java").read_text(encoding="utf-8", errors="ignore")
     failures = []
-    if "onBackground(" not in sheet or "OEUpdateBackground" not in sheet:
+    if "onBackground(" not in sheet or "liveSheet" not in updater:
         failures.append("the update sheet must offer a background download")
     if "UpdateProgressPill.show(" not in updater or "markReady(release, file)" not in updater:
         failures.append("a background download must show the plate and finish as a ready update")

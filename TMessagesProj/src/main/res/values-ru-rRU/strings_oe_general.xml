@@ -162,6 +162,7 @@
     <string name="OEUpdateDownloading">Загрузка обновления</string>
     <string name="OEUpdateBackground">Скачать в фоне</string>
     <string name="OEUpdateBackgroundPill">Обновление %1$s · %2$d%%</string>
+    <string name="OEUpdateBackgroundChip">%1$d%%</string>
     <string name="OEUpdateDownloadFailed">Не удалось скачать обновление</string>
     <string name="OEUpdateInstallFailed">Не удалось открыть установщик</string>
     <string name="OEUpdateRestartHint">После обновления приложение может перезапуститься</string>
