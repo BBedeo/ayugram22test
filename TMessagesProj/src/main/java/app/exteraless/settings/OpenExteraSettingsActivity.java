@@ -67,6 +67,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int designStudioRow;
     private int designDividerRow;
 
+    private int versionRow;
+    private int versionDividerRow;
+
     private ActionBarMenuItem searchItem;
     private boolean inSearchMode;
     private String searchQuery = "";
@@ -100,6 +103,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         designerRow = addRow("designer");
         designStudioRow = addRow("designStudio");
         designDividerRow = addRow();
+
+        versionRow = addRow("updates");
+        versionDividerRow = addRow();
     }
 
     /**
@@ -245,6 +251,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new app.exteraless.plugins.ui.PluginsActivity());
         } else if (position == otherRow) {
             presentFragment(new OpenExteraOtherActivity());
+        } else if (position == versionRow) {
+            presentFragment(new OpenExteraUpdatesActivity());
         } else if (position == channelRow) {
             getMessagesController().openByUserName("exteraless", this, 1);
         } else if (position == sourceRow) {
@@ -504,6 +512,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                     } else if (position == designStudioRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraDesignStudio),
                                 "@BlueprintDsgn", R.drawable.msg_groups, false);
+                    } else if (position == versionRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.OpenExteraUpdates),
+                                org.telegram.messenger.BuildVars.BUILD_VERSION_STRING, R.drawable.msg_download, false);
                     }
                     // ВАЖНО: только после setTextAndIcon* — они сбрасывают imageLeft в 16dp.
                     // Метрики сняты с 12.9.0 (420 dpi): иконка 88px от края экрана, текст 219px,
@@ -514,7 +525,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    if (position == designDividerRow) {
+                    if (position == versionDividerRow) {
                         cell.setText(null);
                         cell.setBackground(Theme.getThemedDrawable(mContext,
                                 R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
@@ -536,11 +547,12 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             } else if (position == categoriesHeaderRow || position == linksHeaderRow
                     || position == designHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == categoriesDividerRow || position == linksDividerRow) {
+            } else if (position == categoriesDividerRow || position == linksDividerRow
+                    || position == designDividerRow) {
                 // Промежуток между секциями — тень фиксированной высоты. TextInfoPrivacyCell
                 // здесь держал высоту под подпись, которой нет, и оставлял пустое поле.
                 return TYPE_SHADOW;
-            } else if (position == designDividerRow) {
+            } else if (position == versionDividerRow) {
                 return TYPE_INFO_PRIVACY;
             }
             return TYPE_TEXT;

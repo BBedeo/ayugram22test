@@ -52,6 +52,17 @@ object GeneralConfig {
     fun downloadSpeedBoost(): Int = downloadSpeedBoost.Int()
 
     /**
+     * Автообновление: найденное обновление скачивается заранее (пока приложение открыто),
+     * а потом приходит уведомление «Установить». Установку Android всегда подтверждает сам.
+     */
+    @JvmField
+    val autoUpdate = addConfig("OEGeneralAutoUpdate", ConfigItem.configTypeBool, false)
+
+    /** Автообновление скачивает только по Wi-Fi (без лимита), чтобы не тратить мобильный трафик. */
+    @JvmField
+    val autoUpdateWifiOnly = addConfig("OEGeneralAutoUpdateWifiOnly", ConfigItem.configTypeBool, true)
+
+    /**
      * Показывать ли вход в настройки NagramX («N-Settings») в общем списке настроек.
      *
      * По умолчанию выключено: форк ведёт свои экраны, а параллельный набор от
