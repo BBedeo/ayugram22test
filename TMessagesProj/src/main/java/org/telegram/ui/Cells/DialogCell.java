@@ -6682,7 +6682,10 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         }
 
         private long calcStateHash() {
-            long hash = (dialogMuted ? 1 : 0) | (drawUnmute ? 2 : 0) | (twoLinesForName ? 4 : 0) | (showTopicIconInName ? 8 : 0) | (SharedConfig.useThreeLinesLayout ? 16 : 0);
+            // user / chat are part of the state: a row laid out before they were loaded (cold start) stayed
+            // blank because nothing in the old hash changed when they arrived.
+            long hash = (dialogMuted ? 1 : 0) | (drawUnmute ? 2 : 0) | (twoLinesForName ? 4 : 0) | (showTopicIconInName ? 8 : 0) | (SharedConfig.useThreeLinesLayout ? 16 : 0)
+                    | (user != null ? 32 : 0) | (chat != null ? 64 : 0) | (encryptedChat != null ? 128 : 0);
             hash = MediaDataController.calcHash(hash, customMessage == null ? 0 : customMessage.hashCode());
             hash = MediaDataController.calcHash(hash, titleOverride == null ? 0 : titleOverride.hashCode());
             if (message != null) {

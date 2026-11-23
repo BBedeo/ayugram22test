@@ -11172,8 +11172,26 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private final Runnable rebindVisibleRows = () -> {
-        if (!isPaused && !dialogsListFrozen) {
-            updateVisibleRows(MessagesController.UPDATE_MASK_ALL, false);
+        if (isPaused || dialogsListFrozen || viewPages == null) {
+            return;
+        }
+        // A full re-read of the dialog (message, user, chat) with the cell's "already drawn" cache dropped,
+        // otherwise a row that was laid out empty believes it is up to date and stays blank.
+        for (int c = 0; c < viewPages.length; c++) {
+            final ViewPage page = viewPages[c];
+            if (page == null || page.listView == null || page.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            for (int a = 0, n = page.listView.getChildCount(); a < n; a++) {
+                final View child = page.listView.getChildAt(a);
+                if (child instanceof DialogCell) {
+                    final DialogCell cell = (DialogCell) child;
+                    cell.invalidateLastDrawnState();
+                    if (cell.update(0, false)) {
+                        cell.requestLayout();
+                    }
+                }
+            }
         }
     };
 
