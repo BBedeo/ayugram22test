@@ -6637,10 +6637,10 @@ public class NotificationsController extends BaseController implements Notificat
             case 0:
                 return R.drawable.notification;
             case 1:
-                return R.drawable.exteraless_notification;
+                return app.exteraless.appicons.NotificationIconHelper.currentSmallIcon();
         }
 
-        return R.drawable.exteraless_notification;
+        return app.exteraless.appicons.NotificationIconHelper.currentSmallIcon();
     }
 
     public void loadTopicsNotificationsExceptions(long dialogId, Consumer<HashSet<Integer>> consumer) {

@@ -59,6 +59,7 @@ public class UpdateSheet extends BottomSheet {
     private final TextView skipButton;
     private final LineProgressView progressView;
     private final String updateText;
+    private ScrollView notesScroll;
     private boolean downloading;
 
     public UpdateSheet(Context context, Theme.ResourcesProvider resourcesProvider, String title,
@@ -133,7 +134,7 @@ public class UpdateSheet extends BottomSheet {
         notesView.setText(Emoji.replaceEmoji(format(notes), notesView.getPaint().getFontMetricsInt(), false));
         notesView.setMovementMethod(LinkMovementMethod.getInstance());
 
-        ScrollView scrollView = new ScrollView(context) {
+        final ScrollView scrollView = new ScrollView(context) {
             @Override
             protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
                 super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(
@@ -142,6 +143,7 @@ public class UpdateSheet extends BottomSheet {
         };
         scrollView.setVerticalScrollBarEnabled(false);
         scrollView.addView(notesView, new FrameLayout.LayoutParams(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        notesScroll = scrollView;
 
         FrameLayout card = new FrameLayout(context);
         GradientDrawable cardBackground = new GradientDrawable();
@@ -154,7 +156,10 @@ public class UpdateSheet extends BottomSheet {
         }
         card.setBackground(cardBackground);
         card.setPadding(dp(15), dp(13), dp(15), dp(13));
-        card.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        card.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.NO_GRAVITY, 0, 0, 14, 0));
+        // A draggable thumb on the right: the notes can be scrolled both ways without the sheet closing.
+        card.addView(new NotesScrollThumb(context, scrollView, accent, SheetSurfaceMode.progressTrack(resourcesProvider)),
+                LayoutHelper.createFrame(14, LayoutHelper.MATCH_PARENT, Gravity.RIGHT));
         container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 12));
 
         if (offerBackup && context instanceof android.app.Activity) {
@@ -230,6 +235,16 @@ public class UpdateSheet extends BottomSheet {
         container.addView(restartHint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
 
         setCustomView(container);
+    }
+
+    /** While the notes scroll, a vertical drag belongs to them, not to the sheet's swipe-to-dismiss. */
+    @Override
+    protected boolean canDismissWithSwipe() {
+        if (notesScroll != null && notesScroll.getChildCount() > 0
+                && notesScroll.getChildAt(0).getHeight() > notesScroll.getHeight() && notesScroll.getHeight() > 0) {
+            return false;
+        }
+        return super.canDismissWithSwipe();
     }
 
     public void setDownloading(boolean value) {

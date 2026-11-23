@@ -742,7 +742,7 @@ public final class GitHubUpdater {
             PendingIntent pending = PendingIntent.getActivity(context, NOTIFICATION_ID, intent,
                     PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
             Notification notification = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-                    .setSmallIcon(R.drawable.notification)
+                    .setSmallIcon(app.exteraless.appicons.NotificationIconHelper.currentSmallIcon())
                     .setContentTitle(LocaleController.getString(R.string.OEUpdateReadyTitle))
                     .setContentText(LocaleController.formatString(R.string.OEUpdateReadyNotification,
                             release.displayVersion()))

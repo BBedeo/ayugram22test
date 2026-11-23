@@ -755,6 +755,7 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
                 // openExtera: стеклянная плашка вместо заливки bgPaint.
                 // Ветка восстановлена по поведению:
                 // по аналогии с drawBubbles.
+                drawGlassBacking(canvas, rect, radius, 255);
                 GlassMenuHelper.draw(glassBackground, canvas, rect, radius, 255);
             } else {
                 if (blurredBackgroundDrawable != null) {
@@ -952,6 +953,7 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
             delegate.drawRoundRect(canvas, rectF, br, getX(), getY(), alpha, false);
         } else if (glassBackground != null) {
             rectF.set(cx - br, cy - br, cx + br, cy + br);
+            drawGlassBacking(canvas, rectF, br, alpha);
             GlassMenuHelper.draw(glassBackground, canvas, rectF, br, alpha);
         } else {
             if (blurredBackgroundDrawable1 != null) {
@@ -979,6 +981,7 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
             delegate.drawRoundRect(canvas, rectF, sr, getX(), getY(), alpha, false);
         } else if (glassBackground != null) {
             rectF.set(cx - sr, cy - sr, cx + sr, cy + sr);
+            drawGlassBacking(canvas, rectF, sr, alpha);
             GlassMenuHelper.draw(glassBackground, canvas, rectF, sr, alpha);
         } else {
             if (blurredBackgroundDrawable2 != null) {
@@ -1800,6 +1803,17 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
 
     public void setCurrentAccount(int currentAccount) {
         this.currentAccount = currentAccount;
+    }
+
+    /**
+     * The glass pill alone is nearly transparent over bright message text, so the emoji lose their
+     * background. A theme-colored fill under it keeps the bar readable in every theme.
+     */
+    private void drawGlassBacking(Canvas canvas, RectF area, float cornerRadius, int alpha) {
+        final int saved = bgPaint.getAlpha();
+        bgPaint.setAlpha(Math.round(Math.min(255, alpha) * 0.7f));
+        canvas.drawRoundRect(area, cornerRadius, cornerRadius, bgPaint);
+        bgPaint.setAlpha(saved);
     }
 
     /**
