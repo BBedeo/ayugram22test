@@ -531,7 +531,12 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         versionView.setPadding(dp(21), dp(10), dp(21), dp(10));
         versionView.setGravity(Gravity.CENTER);
         ThemeBind.selectorBackground(versionView, Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL), null, ThemeBind.of(Theme.key_listSelector), getResourceProvider());
-        versionView.setOnClickListener(v -> showVersionMenu());
+        // A tap on the version opens the updates page; the old menu (copy, logs, profilers) is on long press.
+        versionView.setOnClickListener(v -> presentFragment(new app.exteraless.settings.OpenExteraUpdatesActivity()));
+        versionView.setOnLongClickListener(v -> {
+            showVersionMenu();
+            return true;
+        });
         versionView.setOnLongClickListener(v -> {
             versionViewPressCount++;
             if (versionViewPressCount < 2 && !BuildVars.DEBUG_PRIVATE_VERSION) {
