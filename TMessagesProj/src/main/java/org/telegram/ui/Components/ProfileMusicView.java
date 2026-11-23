@@ -41,6 +41,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 
+import app.exteraless.appearance.glass.GlassTokens;
 import xyz.nextalone.nagram.NaConfig;
 
 public class ProfileMusicView extends View {
@@ -163,6 +164,16 @@ public class ProfileMusicView extends View {
 
 
     public void setMusicDocument(TLRPC.Document document) {
+        if (GlassTokens.isActive()) {
+            // Liquid Glass: bold track first, then the grey " - artist"
+            final CharSequence artist = getAuthor(document);
+            CharSequence track = getTitle(document);
+            if (TextUtils.isEmpty(track)) {
+                track = getString(R.string.AudioUnknownTitle);
+            }
+            setText(track, TextUtils.isEmpty(artist) ? "" : " - " + artist);
+            return;
+        }
         CharSequence author = getAuthor(document);
         CharSequence title = getTitle(document);
         if (TextUtils.isEmpty(author)) {
@@ -221,6 +232,16 @@ public class ProfileMusicView extends View {
         this.author = new Text(author, 11, AndroidUtilities.bold());
         this.title = new Text(title, 11);
 
+        if (GlassTokens.isActive()) {
+            final String prefix = getString(R.string.AccDescrProfileMusic) + " " + author;
+            if (TextUtils.isEmpty(title)) {
+                setContentDescription(prefix);
+            } else {
+                final String t = title.toString();
+                setContentDescription(prefix + " — " + (t.startsWith(" - ") ? t.substring(3) : t));
+            }
+            return;
+        }
         setContentDescription(getString(R.string.AccDescrProfileMusic) + " " + author + " — " + title);
     }
 
@@ -295,8 +316,13 @@ public class ProfileMusicView extends View {
 
     protected float getContentWidth(float maxWidth) {
         final float textWidth = Math.max(0, maxWidth - dp(16) - dp(16.6f) - dp(8));
-        this.author.ellipsize(textWidth / 2f);
-        this.title.ellipsize(Math.max(0, textWidth - this.author.getWidth()));
+        if (GlassTokens.isActive() && this.title.isEmpty()) {
+            this.author.ellipsize(textWidth);
+            this.title.ellipsize(0);
+        } else {
+            this.author.ellipsize(textWidth / 2f);
+            this.title.ellipsize(Math.max(0, textWidth - this.author.getWidth()));
+        }
         return dp(16.6f) + this.author.getWidth() + this.title.getWidth() + dp(8);
     }
 
@@ -310,7 +336,7 @@ public class ProfileMusicView extends View {
         canvas.translate(dp(16.6f), 0);
         this.author.draw(canvas, 0, cy, textColor, alpha);
         canvas.translate(this.author.getWidth(), 0);
-        this.title.draw(canvas, 0, cy, textColor, 0.85f * alpha);
+        this.title.draw(canvas, 0, cy, textColor, (GlassTokens.isActive() ? 0.55f : 0.85f) * alpha);
         canvas.translate(this.title.getWidth(), 0);
 
         arrowPaint.setStrokeWidth(dpf2(1.16f));

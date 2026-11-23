@@ -50,6 +50,7 @@ public class TextDetailCell extends FrameLayout implements Theme.Colorable {
     private boolean needDivider;
     private boolean contentDescriptionValueFirst;
     private boolean multiline;
+    private boolean glassLayout;
 
     private Theme.ResourcesProvider resourcesProvider;
 
@@ -175,6 +176,32 @@ public class TextDetailCell extends FrameLayout implements Theme.Colorable {
         return color;
     }
 
+    /**
+     * Opt-in (the profile, while Liquid Glass is active): the small grey label (valueTextView) goes on top,
+     * the larger text (textView) under it. Call once after construction.
+     */
+    public void setGlassLayout(boolean enabled) {
+        if (!enabled) {
+            return;
+        }
+        glassLayout = true;
+        final int gravity = LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT;
+        final FrameLayout.LayoutParams textParams = (FrameLayout.LayoutParams) textView.getLayoutParams();
+        textParams.gravity = Gravity.TOP | gravity;
+        textParams.topMargin = dp(24);
+        textParams.bottomMargin = textParams.bottomMargin > 0 ? dp(10) : dp(6);
+        textView.setLayoutParams(textParams);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 17);
+        final TextView[] labels = {valueTextView, rightValueTextView};
+        for (TextView label : labels) {
+            final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) label.getLayoutParams();
+            params.gravity = Gravity.TOP | gravity;
+            params.topMargin = dp(8);
+            params.bottomMargin = 0;
+            label.setLayoutParams(params);
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         boolean hit = valueTextView.hit((int) ev.getX() - valueTextView.getLeft(), (int) ev.getY() - valueTextView.getTop()) != null;
@@ -189,10 +216,29 @@ public class TextDetailCell extends FrameLayout implements Theme.Colorable {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(
-            MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
-            multiline ? heightMeasureSpec : MeasureSpec.makeMeasureSpec(dp(60) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY)
-        );
+        final int fullWidthSpec = MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY);
+        if (!glassLayout) {
+            super.onMeasure(
+                fullWidthSpec,
+                multiline ? heightMeasureSpec : MeasureSpec.makeMeasureSpec(dp(60) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY)
+            );
+            return;
+        }
+        final FrameLayout.LayoutParams valueParams = (FrameLayout.LayoutParams) valueTextView.getLayoutParams();
+        final FrameLayout.LayoutParams textParams = (FrameLayout.LayoutParams) textView.getLayoutParams();
+        measureChildWithMargins(valueTextView, fullWidthSpec, 0, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), 0);
+        final int valueBottom = valueParams.topMargin + Math.max(0, valueTextView.getMeasuredHeight() - valueTextView.getPaddingBottom());
+        final int desiredTextTop = Math.max(dp(24), valueBottom - textView.getPaddingTop());
+        if (textParams.topMargin != desiredTextTop) {
+            textParams.topMargin = desiredTextTop;
+        }
+        super.onMeasure(fullWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        final int minHeight = dp(60) + (needDivider ? 1 : 0);
+        if (getMeasuredHeight() < minHeight) {
+            super.onMeasure(fullWidthSpec, MeasureSpec.makeMeasureSpec(minHeight, MeasureSpec.EXACTLY));
+        } else if (needDivider) {
+            super.onMeasure(fullWidthSpec, MeasureSpec.makeMeasureSpec(getMeasuredHeight() + 1, MeasureSpec.EXACTLY));
+        }
     }
 
     public void setTextAndValue(CharSequence text, CharSequence value, boolean divider) {

@@ -51,6 +51,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import app.exteraless.appearance.glass.GlassTokens;
 import tw.nekomimi.nekogram.NekoConfig;
 
 @SuppressLint("ViewConstructor")
@@ -69,6 +70,7 @@ public class ProfileActionsView extends View {
     @Nullable
     private BlurredBackgroundDrawableViewFactory glassFactory;
     private final ArrayList<BlurredBackgroundDrawable> glass = new ArrayList<>();
+    private final ArrayList<Float> glassRadius = new ArrayList<>();
     private int glassUsed;
 
     private int activeCount = 0;
@@ -106,6 +108,8 @@ public class ProfileActionsView extends View {
     public static final int KEY_EDIT_USERNAME = 15;
     public static final int KEY_EDIT_INFO = 16;
     public static final int KEY_SETTINGS = 17;
+    public static final int KEY_SEARCH = 18;
+    public static final int KEY_MORE = 19;
 
     private boolean isApplying;
     private boolean isNotificationsEnabled;
@@ -146,6 +150,7 @@ public class ProfileActionsView extends View {
     public void setGlassFactory(@Nullable BlurredBackgroundDrawableViewFactory factory) {
         glassFactory = factory;
         glass.clear();
+        glassRadius.clear();
         glassUsed = 0;
         invalidate();
     }
@@ -153,8 +158,14 @@ public class ProfileActionsView extends View {
     private void drawGlass(Canvas canvas, RectF rect, float radius, float alpha) {
         if (glassUsed == glass.size()) {
             glass.add(glassFactory.create(this, ProfileButtonsGlass.NO_COLORS).setRadius(radius));
+            glassRadius.add(radius);
         }
-        final BlurredBackgroundDrawable drawable = glass.get(glassUsed++);
+        final BlurredBackgroundDrawable drawable = glass.get(glassUsed);
+        if (Math.abs(glassRadius.get(glassUsed) - radius) > 0.5f) {
+            glassRadius.set(glassUsed, radius);
+            drawable.setRadius(radius);
+        }
+        glassUsed++;
         drawable.setBounds((int) rect.left, (int) rect.top, (int) Math.ceil(rect.right), (int) Math.ceil(rect.bottom));
         drawable.setAlpha((int) (0xFF * alpha));
         drawable.draw(canvas);
@@ -289,6 +300,7 @@ public class ProfileActionsView extends View {
         lastAction = newLastAction;
 
         float fraction = Utilities.clamp01(height / targetHeight);
+        final boolean circles = GlassTokens.isActive();
         float alphaFraction1 = Utilities.clamp01((fraction - 0.2f) / 0.8f);
         if (alphaFraction1 <= 0f) {
             hideUnusedGlass();
@@ -300,13 +312,21 @@ public class ProfileActionsView extends View {
             if (action.isDeleted) {
                 continue;
             }
-            AndroidUtilities.rectTmp.set(action.rect);
-            AndroidUtilities.rectTmp.inset(
-                action.rect.width() / 2.0f * (1.0f - action.getScale()),
-                action.rect.height() / 2.0f * (1.0f - action.getScale())
-            );
+            float rr = r;
+            if (circles) {
+                // Liquid Glass: a circle at the top of the cell, the caption goes under it
+                final float dd = getCircleSize(action) * fraction * action.getScale();
+                AndroidUtilities.rectTmp.set(action.rect.centerX() - dd / 2f, action.rect.top, action.rect.centerX() + dd / 2f, action.rect.top + dd);
+                rr = dd / 2f;
+            } else {
+                AndroidUtilities.rectTmp.set(action.rect);
+                AndroidUtilities.rectTmp.inset(
+                    action.rect.width() / 2.0f * (1.0f - action.getScale()),
+                    action.rect.height() / 2.0f * (1.0f - action.getScale())
+                );
+            }
             if (glassFactory != null) {
-                drawGlass(canvas, AndroidUtilities.rectTmp, r, action.getAlpha() * alphaFraction1);
+                drawGlass(canvas, AndroidUtilities.rectTmp, rr, action.getAlpha() * alphaFraction1);
                 continue;
             }
             int wasAlpha = paint.getAlpha();
@@ -314,13 +334,13 @@ public class ProfileActionsView extends View {
             paint.setAlpha((int) (newAlpha * (radialGradient != null ? 0.1f : 1f)));
             paint.setShadowLayer(0, 0, 0, 0);
 
-            canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
+            canvas.drawRoundRect(AndroidUtilities.rectTmp, rr, rr, paint);
             if (radialGradient != null) {
                 int wasAlpha2 = shaderPaint.getAlpha();
                 shaderPaint.setAlpha((int) (action.getAlpha() * alphaFraction1 * wasAlpha2));
                 matrix.setTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                 radialGradient.setLocalMatrix(matrix);
-                canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, shaderPaint);
+                canvas.drawRoundRect(AndroidUtilities.rectTmp, rr, rr, shaderPaint);
                 shaderPaint.setAlpha(wasAlpha2);
             }
             paint.setAlpha(wasAlpha);
@@ -355,6 +375,18 @@ public class ProfileActionsView extends View {
 
         action.text.setMaxWidth(action.rect.width() - dp(2));
         action.textScale = action.text.getLineCount() >= 3 ? 0.75f : action.text.getLineCount() >= 2 ? 0.85f : 1.0f;
+        if (GlassTokens.isActive()) {
+            // the icon sits in the middle of the circle
+            final int glassIconSize = dp(26);
+            final float circleCy = action.rect.top + getCircleSize(action) / 2f;
+            action.setBounds(
+                (int) (cx - glassIconSize / 2f),
+                (int) (circleCy - glassIconSize / 2f),
+                (int) (cx + glassIconSize / 2f),
+                (int) (circleCy + glassIconSize / 2f)
+            );
+            return;
+        }
         final float drawableTop = Math.max(0, (targetHeight - action.text.getHeight() * action.textScale) / 3f + dpf2(1.33f));
         action.setBounds(
             (int) (cx - drawableR),
@@ -362,6 +394,27 @@ public class ProfileActionsView extends View {
             (int) (cx + drawableR),
             (int) (drawableTop + drawableSize)
         );
+    }
+
+    /** Liquid Glass: bounds of the action's circle in this view's coordinates. */
+    public boolean getActionCircleBounds(int key, RectF out) {
+        final Action a = find(key);
+        if (a == null || a.rect.isEmpty()) {
+            return false;
+        }
+        final float dd = getCircleSize(a);
+        out.set(a.rect.centerX() - dd / 2f, a.rect.top, a.rect.centerX() + dd / 2f, a.rect.top + dd);
+        return true;
+    }
+
+    /** Liquid Glass: diameter of the action's circle. */
+    private float getCircleSize(Action action) {
+        return Math.min(dp(60), action.rect.width());
+    }
+
+    /** Height of the whole buttons row of the profile; the circles of Liquid Glass need room for the captions under them. */
+    public static int getRowHeight() {
+        return dp(GlassTokens.isActive() ? 98 : 74);
     }
 
     private int lastColorFilterColor;
@@ -385,17 +438,25 @@ public class ProfileActionsView extends View {
         canvas.save();
         alpha *= action.getAlpha();
         final float cx = action.rect.centerX();
-        final float cy = action.rect.centerY();
+        final boolean circles = GlassTokens.isActive();
+        // the circles collapse towards their top edge
+        final float cy = circles ? action.rect.top : action.rect.centerY();
         fraction *= action.getScale();
         canvas.scale(fraction, fraction, cx, cy);
-        canvas.clipRect(action.rect);
+        canvas.clipRect(action.rect.left, action.rect.top, action.rect.right, action.rect.bottom + (circles ? ypadding : 0f));
 
         updateBounds(action);
 
-        final float textY = action.bounds.bottom + action.bounds.top - action.text.getHeight() * action.textScale / 2.0f - dp(4.66f);
+        final float textY = circles
+            ? action.rect.top + getCircleSize(action) + dp(4)
+            : action.bounds.bottom + action.bounds.top - action.text.getHeight() * action.textScale / 2.0f - dp(4.66f);
         canvas.save();
-        canvas.scale(action.textScale, action.textScale, cx, textY + action.text.getHeight() * action.textScale / 2.0f);
-        action.text.draw(canvas, cx - action.text.getWidth() / 2f, textY, textColor, alpha);
+        canvas.scale(action.textScale, action.textScale, cx, circles ? textY : textY + action.text.getHeight() * action.textScale / 2.0f);
+        // Liquid Glass: the captions match the header icons when collapsed and blend to page text color over the photo fade
+        final int captionColor = circles
+            ? ColorUtils.blendARGB(textColor, Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), parentExpanded)
+            : textColor;
+        action.text.draw(canvas, cx - action.text.getWidth() / 2f, textY, captionColor, alpha);
         canvas.restore();
 
         if (action.iconTranslationY != 0) {
@@ -463,8 +524,15 @@ public class ProfileActionsView extends View {
         }
 
         if (action.loadingDrawable != null) {
-            action.loadingDrawable.setBounds(action.rect);
-            action.loadingDrawable.setRadii(getRoundRadius());
+            if (GlassTokens.isActive()) {
+                final float dd = getCircleSize(action);
+                AndroidUtilities.rectTmp.set(action.rect.centerX() - dd / 2f, action.rect.top, action.rect.centerX() + dd / 2f, action.rect.top + dd);
+                action.loadingDrawable.setBounds(AndroidUtilities.rectTmp);
+                action.loadingDrawable.setRadii(dd / 2f);
+            } else {
+                action.loadingDrawable.setBounds(action.rect);
+                action.loadingDrawable.setRadii(getRoundRadius());
+            }
             action.loadingDrawable.setAlpha((int) (0xFF * alpha));
             action.loadingDrawable.draw(canvas);
         }
@@ -674,6 +742,15 @@ public class ProfileActionsView extends View {
 
         switch (mode) {
             case MODE_USER:
+                if (GlassTokens.isActive()) {
+                    // Liquid Glass: call, video, mute, search, more; Message and Gift live in the "more" menu
+                    insertIfAvailable(out, KEY_CALL);
+                    insertIfAvailable(out, KEY_VIDEO);
+                    insertIfAvailable(out, KEY_NOTIFICATION);
+                    out.add(getOrCreate(KEY_SEARCH));
+                    out.add(getOrCreate(KEY_MORE));
+                    break;
+                }
                 insertIfAvailable(out, KEY_MESSAGE);
                 insertIfAvailable(out, KEY_NOTIFICATION);
                 insertIfAvailable(out, KEY_CALL);
@@ -855,6 +932,12 @@ public class ProfileActionsView extends View {
                 newAction.supportsLoading = true;
                 newAction.stopDelay = 300;
                 break;
+            case KEY_SEARCH:
+                newAction = new Action(ActionButton.SEARCH);
+                break;
+            case KEY_MORE:
+                newAction = new Action(ActionButton.MORE);
+                break;
             case KEY_NOTIFICATION:
                 newAction = new Action();
                 updateNotification(newAction, false);
@@ -992,7 +1075,7 @@ public class ProfileActionsView extends View {
         }
 
         public void setText(CharSequence cs) {
-            this.text = new Text(cs, 11, AndroidUtilities.bold())
+            this.text = (GlassTokens.isActive() ? new Text(cs, 11) : new Text(cs, 11, AndroidUtilities.bold()))
                 .multiline(3)
                 .align(Layout.Alignment.ALIGN_CENTER);
         }
@@ -1196,7 +1279,9 @@ public class ProfileActionsView extends View {
         SET_PHOTO(R.string.ProfileActionsEditPhoto2, R.drawable.filled_profile_photo, R.drawable.outline_profile_photo),
         EDIT_USERNAME(R.string.ProfileActionsEditUsername, R.drawable.filled_profile_edit_24, R.drawable.outline_profile_edit_24),
         EDIT_INFO(R.string.ProfileActionsEditInfo, R.drawable.filled_profile_edit_24, R.drawable.outline_profile_edit_24),
-        SETTINGS(R.string.Settings, R.drawable.filled_profile_settings, R.drawable.outline_profile_settings),;
+        SETTINGS(R.string.Settings, R.drawable.filled_profile_settings, R.drawable.outline_profile_settings),
+        SEARCH(R.string.Search, R.drawable.outline_header_search, R.drawable.outline_header_search),
+        MORE(R.string.More, R.drawable.ic_ab_other, R.drawable.ic_ab_other),;
 
         final @StringRes int title;
         final @DrawableRes int filledIcon;

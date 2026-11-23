@@ -4099,7 +4099,55 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
     }
     public void drawBackgroundRect(Canvas canvas, RectF rect, float topRadius, float bottomRadius, float alpha) {
+        if (glassSections && app.exteraless.appearance.glass.GlassTokens.isActive()) {
+            drawGlassBackgroundRect(canvas, rect, topRadius, bottomRadius, alpha);
+            return;
+        }
         drawBackgroundRect(canvas, rect, topRadius, bottomRadius, alpha, resourcesProvider);
+    }
+
+    private boolean glassSections;
+    private final RectF glassInsetRect = new RectF();
+
+    /** Opt-in (the profile): while Liquid Glass is active the section cards are translucent tier-2 glass with a 1px rim. */
+    public void setGlassSections(boolean glassSections) {
+        if (this.glassSections != glassSections) {
+            this.glassSections = glassSections;
+            if (glassSections && app.exteraless.appearance.glass.GlassTokens.isActive()) {
+                setLegacySections(true);
+            }
+            invalidate();
+        }
+    }
+
+    private void drawGlassBackgroundRect(Canvas canvas, RectF rect, float topRadius, float bottomRadius, float alpha) {
+        if (rect.width() <= 0 || rect.height() <= 0) {
+            return;
+        }
+        final int base = app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourcesProvider);
+        sectionBackgroundPaint.setShadowLayer(0, 0, 0, 0);
+        sectionBackgroundPaint.setColor(multAlpha(app.exteraless.appearance.glass.GlassTokens.fill(base, app.exteraless.appearance.glass.GlassTokens.TIER_BASE), alpha));
+        sectionBackgroundPath.rewind();
+        radii[0] = radii[1] = radii[2] = radii[3] = topRadius;
+        radii[4] = radii[5] = radii[6] = radii[7] = bottomRadius;
+        sectionBackgroundPath.addRoundRect(rect, radii, Path.Direction.CW);
+        canvas.drawPath(sectionBackgroundPath, sectionBackgroundPaint);
+
+        final float stroke = AndroidUtilities.dpf2(1f);
+        sectionBackgroundStrokePaint.setStyle(Paint.Style.STROKE);
+        sectionBackgroundStrokePaint.setStrokeWidth(stroke);
+        sectionBackgroundStrokePaint.setColor(multAlpha(app.exteraless.appearance.glass.GlassTokens.rimShade(base), alpha));
+        canvas.drawPath(sectionBackgroundPath, sectionBackgroundStrokePaint);
+        // the lit rim goes a pixel inside, over the shade
+        glassInsetRect.set(rect.left + stroke, rect.top + stroke, rect.right - stroke, rect.bottom - stroke);
+        if (glassInsetRect.width() > 0 && glassInsetRect.height() > 0) {
+            sectionBackgroundPath.rewind();
+            radii[0] = radii[1] = radii[2] = radii[3] = Math.max(0, topRadius - stroke);
+            radii[4] = radii[5] = radii[6] = radii[7] = Math.max(0, bottomRadius - stroke);
+            sectionBackgroundPath.addRoundRect(glassInsetRect, radii, Path.Direction.CW);
+            sectionBackgroundStrokePaint.setColor(multAlpha(app.exteraless.appearance.glass.GlassTokens.rimLight(base), alpha));
+            canvas.drawPath(sectionBackgroundPath, sectionBackgroundStrokePaint);
+        }
     }
 
     private final Path clipPath = new Path();
