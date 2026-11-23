@@ -55,7 +55,9 @@ Android не переопределяет загруженные классы: A
 1. Собрать APK: `./gradlew :TMessagesProj:assembleRelease -x lint`
    (`TMessagesProj/build/outputs/apk/release/`).
 2. Тег обязан содержать `X.Y.Z` — из него считается версия релиза. Версия в APK —
-   `1.<commits/100>.<commits%100>` из `git rev-list --count 6ba4739f1^..HEAD`, и при
+   `1.<commits/100>.<commits%100>` из `git rev-list --count 6ba4739f1^..HEAD` (до 373
+   коммитов; с 374-го начинается линия **1.4**: `1.4.<commits-374>`, константа
+   `exFullBaseCommits` в `TMessagesProj/build.gradle`), и при
    сборке с `COMMIT_ID` к ней добавляется суффикс (`1.3.70-3f99855`). Сравниваются только
    первые три числа, поэтому тег должен совпадать с этим `X.Y.Z`: иначе приложение будет
    вечно предлагать «обновление» само себе либо не предложит его вовсе.

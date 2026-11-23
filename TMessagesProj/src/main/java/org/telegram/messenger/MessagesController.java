@@ -2339,8 +2339,10 @@ public class MessagesController extends BaseController implements NotificationCe
                             }
                             getTranslateController().checkDialogMessage(key);
                         } else {
-                            currentDialog.pinned = newDialog.pinned;
-                            currentDialog.pinnedNum = newDialog.pinnedNum;
+                            if (!keepsLocalPin(currentDialog, newDialog)) {
+                                currentDialog.pinned = newDialog.pinned;
+                                currentDialog.pinnedNum = newDialog.pinnedNum;
+                            }
                             ArrayList<MessageObject> oldMsgs = dialogMessage.get(key);
                             boolean oldMsgsDeleted = false;
                             for (int i = 0; oldMsgs != null && i < oldMsgs.size(); ++i) {
@@ -14010,8 +14012,10 @@ public class MessagesController extends BaseController implements NotificationCe
                         if (loadType != DIALOGS_LOAD_TYPE_CACHE) {
                             currentDialog.notify_settings = value.notify_settings;
                         }
-                        currentDialog.pinned = value.pinned;
-                        currentDialog.pinnedNum = value.pinnedNum;
+                        if (loadType == DIALOGS_LOAD_TYPE_CACHE || !keepsLocalPin(currentDialog, value)) {
+                            currentDialog.pinned = value.pinned;
+                            currentDialog.pinnedNum = value.pinnedNum;
+                        }
                         ArrayList<MessageObject> oldMsgs = dialogMessage.get(key);
 
                         boolean oldMsgsDeleted = false;
@@ -17668,6 +17672,14 @@ public class MessagesController extends BaseController implements NotificationCe
         }));
     }
 
+    /**
+     * With unlimited pinned dialogs the extra pins live only on this device, so a dialog
+     * refreshed from the server (which arrives unpinned) must not clear a local pin.
+     */
+    private static boolean keepsLocalPin(TLRPC.Dialog current, TLRPC.Dialog fromServer) {
+        return NekoConfig.unlimitedPinnedDialogs.Bool() && current.pinned && !fromServer.pinned;
+    }
+
     public void reorderPinnedDialogs(int folderId, ArrayList<TLRPC.InputDialogPeer> order, long taskId) {
         TLRPC.TL_messages_reorderPinnedDialogs req = new TLRPC.TL_messages_reorderPinnedDialogs();
         req.folder_id = folderId;
@@ -17714,6 +17726,12 @@ public class MessagesController extends BaseController implements NotificationCe
             }
             getMessagesStorage().setDialogsPinned(dids, pinned);
 
+            if (NekoConfig.unlimitedPinnedDialogs.Bool()) {
+                // Unlimited pins are local-only: never push the order to Telegram servers,
+                // otherwise other clients get their own pins reshuffled.
+                return;
+            }
+
             NativeByteBuffer data = null;
             try {
                 data = new NativeByteBuffer(4 + 4 + 4 + size);
@@ -17730,6 +17748,14 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             req.order = order;
             newTaskId = taskId;
+        }
+
+        if (NekoConfig.unlimitedPinnedDialogs.Bool()) {
+            // A queued sync task restored from storage must not reach the server either.
+            if (newTaskId != 0) {
+                getMessagesStorage().removePendingTask(newTaskId);
+            }
+            return;
         }
 
         getConnectionsManager().sendRequest(req, (response, error) -> {
@@ -17772,7 +17798,11 @@ public class MessagesController extends BaseController implements NotificationCe
         }
         getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
         if (!DialogObject.isEncryptedDialog(dialogId)) {
-            if (taskId != -1) {
+            if (NekoConfig.unlimitedPinnedDialogs.Bool()) {
+                if (taskId > 0) {
+                    getMessagesStorage().removePendingTask(taskId);
+                }
+            } else if (taskId != -1) {
                 TLRPC.TL_messages_toggleDialogPin req = new TLRPC.TL_messages_toggleDialogPin();
                 req.pinned = pin;
                 if (peer == null) {

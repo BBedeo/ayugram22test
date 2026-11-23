@@ -17884,7 +17884,16 @@ public class MessagesStorage extends BaseController {
                     state_dialogs.bindInteger(8, dialog.unread_mentions_count);
                     state_dialogs.bindInteger(9, dialog.pts);
                     state_dialogs.bindInteger(10, 0);
-                    state_dialogs.bindInteger(11, dialog.pinnedNum);
+                    int storedPinnedNum = dialog.pinnedNum;
+                    if (storedPinnedNum == 0 && NekoConfig.unlimitedPinnedDialogs.Bool()) {
+                        // Server data arrives unpinned; keep the local-only pin already in the database.
+                        SQLiteCursor pinCursor = database.queryFinalized("SELECT pinned FROM dialogs WHERE did = " + dialog.id);
+                        if (pinCursor.next()) {
+                            storedPinnedNum = pinCursor.intValue(0);
+                        }
+                        pinCursor.dispose();
+                    }
+                    state_dialogs.bindInteger(11, storedPinnedNum);
                     int flags = 0;
                     if (dialog.unread_mark) {
                         flags |= 1;
