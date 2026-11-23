@@ -52,9 +52,15 @@ def main() -> int:
         failures.append("manifest must declare REQUEST_DELETE_PACKAGES for removing the old app")
 
     backup = read(JAVA / "app/exteraless/backup/MigrationBackup.java")
-    for forbidden in ("passcode", "tgnet", "cache4.db", "UserConfig"):
+    for forbidden in ("tgnet", "cache4.db", "UserConfig"):
         if forbidden in backup:
             failures.append(f"MigrationBackup must not touch `{forbidden}`")
+    # The helper dumps the app lock hash (without its salt) into `userconfing`: it must be dropped on
+    # export, rejected on restore, and the lock preferences of the mod must stay out of the file.
+    if 'root.remove("userconfing")' not in backup:
+        failures.append("the backup must drop the userconfing section (app lock hash)")
+    if '"nekopasscode"' not in backup or "ALLOWED_SECTIONS" not in backup:
+        failures.append("the backup must exclude nekopasscode and restore only whitelisted sections")
     if "Environment.DIRECTORY_DOWNLOADS" not in backup:
         failures.append("the backup must live in the public Downloads folder")
 
