@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -18,6 +19,8 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
+
+import app.exteraless.appearance.SheetSurfaceMode;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -65,9 +68,28 @@ final class UpdateProgressPill extends FrameLayout {
         this.version = version;
         setWillNotDraw(false);
         setElevation(dp(6));
-        setBackground(Theme.createRoundRectDrawable(dp(20), Theme.getColor(Theme.key_dialogBackground)));
-        barPaint.setColor(Theme.getColor(Theme.key_featuredStickers_addButton));
-        trackPaint.setColor(Theme.multAlpha(Theme.getColor(Theme.key_dialogTextGray2), 0.25f));
+        // Same surface rules as the update sheet: classic dialog color, an opaque Material 3 card with an
+        // outline, or a translucent liquid glass plate with a hairline rim.
+        final int mode = SheetSurfaceMode.of(null);
+        final int dialogColor = Theme.getColor(Theme.key_dialogBackground);
+        final GradientDrawable background = new GradientDrawable();
+        background.setCornerRadius(dp(20));
+        if (mode == SheetSurfaceMode.GLASS) {
+            background.setColor(Theme.multAlpha(dialogColor, 0.82f));
+        } else if (mode == SheetSurfaceMode.M3) {
+            background.setColor(SheetSurfaceMode.cardFill(null, dialogColor));
+        } else {
+            background.setColor(dialogColor);
+        }
+        final int strokePx = SheetSurfaceMode.cardStrokePx(null);
+        if (strokePx > 0) {
+            background.setStroke(strokePx, SheetSurfaceMode.cardStroke(null));
+        }
+        setBackground(background);
+        barPaint.setColor(SheetSurfaceMode.accent(null));
+        trackPaint.setColor(mode == SheetSurfaceMode.CLASSIC
+                ? Theme.multAlpha(Theme.getColor(Theme.key_dialogTextGray2), 0.25f)
+                : SheetSurfaceMode.progressTrack(null));
 
         label = new TextView(context);
         label.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
