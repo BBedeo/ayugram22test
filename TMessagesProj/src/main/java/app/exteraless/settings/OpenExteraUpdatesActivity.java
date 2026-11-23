@@ -267,7 +267,7 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
         public int getItemViewType(int position) {
             if (position == updatesHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == checkRow || position == channelRow || position == postponedRow
+            } else if (position == checkRow || position == channelRow || position == intervalRow || position == postponedRow
                     || position == allReleasesRow) {
                 return TYPE_TEXT;
             } else if (position == dividerRow) {

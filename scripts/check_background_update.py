@@ -18,6 +18,9 @@ def main() -> int:
         failures.append("a background download must show the plate and finish as a ready update")
     if "Theme.key_dialogBackground" not in pill:
         failures.append("the plate must use theme colors")
+    page = (ROOT / "TMessagesProj/src/main/java/app/exteraless/settings/OpenExteraUpdatesActivity.java").read_text(encoding="utf-8", errors="ignore")
+    if "position == intervalRow || position == postponedRow" not in page:
+        failures.append("the check-frequency row must be a text row in getItemViewType, not a switch")
     for f in failures:
         print("FAIL:", f)
     if failures:
