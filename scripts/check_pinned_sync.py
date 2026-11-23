@@ -61,6 +61,17 @@ def main() -> int:
     if not re.search(r"unlimitedPinnedDialogs\.Bool\(\)[\s\S]{0,400}SELECT pinned FROM dialogs", storage):
         failures.append("MessagesStorage must keep the stored local pin when saving server dialogs")
 
+    # A long absence triggers a dialogs reset that deleted local-only pins and hid old pinned chats.
+    if "keepLocalPins" not in storage or "serverDialogIds" not in storage:
+        failures.append("MessagesStorage.resetDialogs must keep local-only pins")
+    if "keepLocalPins && oldDialog.pinned" not in text:
+        failures.append("completeDialogsReset must keep local-only pins in memory")
+    if "d.pinned && NekoConfig.unlimitedPinnedDialogs.Bool()" not in text:
+        failures.append("sortDialogs must not drop pinned dialogs by date with unlimited pins")
+
+    if "localPinsInResponse" not in storage or "localPins.get(key)" not in text:
+        failures.append("a local pin on a chat the server returned unpinned must be put back after a reset")
+
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")

@@ -4787,15 +4787,34 @@ public class MessagesStorage extends BaseController {
                     TLRPC.Dialog dialog = dialogsRes.dialogs.get(a);
                     orderArrayList.add(dialog.id);
                 }
+                // With unlimited pinned dialogs the extra pins exist only on this device, so the
+                // server response never contains them: they must survive the reset (a long absence
+                // triggers it) instead of being deleted and coming back unpinned.
+                final boolean keepLocalPins = NekoConfig.unlimitedPinnedDialogs.Bool();
+                final HashSet<Long> serverDialogIds = new HashSet<>();
+                for (int a = 0; a < dialogsRes.dialogs.size(); a++) {
+                    serverDialogIds.add(dialogsRes.dialogs.get(a).id);
+                }
+                // Local pins of chats that the server returned as ordinary (unpinned) dialogs: they are
+                // re-saved with the response, so the pin is put back on the new object below.
+                final HashMap<Long, Integer> localPinsInResponse = new HashMap<>();
 
                 cursor = database.queryFinalized("SELECT did, pinned FROM dialogs WHERE 1");
                 while (cursor.next()) {
                     long did = cursor.longValue(0);
                     int pinnedNum = cursor.intValue(1);
                     if (!DialogObject.isEncryptedDialog(did)) {
-                        dids.add(did);
                         if (pinnedNum > 0) {
                             maxPinnedNum = Math.max(pinnedNum, maxPinnedNum);
+                            if (keepLocalPins && !serverDialogIds.contains(did)) {
+                                continue;
+                            }
+                            if (keepLocalPins && !orderArrayList.contains(did)) {
+                                localPinsInResponse.put(did, pinnedNum);
+                            }
+                        }
+                        dids.add(did);
+                        if (pinnedNum > 0) {
                             oldPinnedDialogNums.put(did, pinnedNum);
                             oldPinnedOrder.add(did);
                         }
@@ -4856,6 +4875,17 @@ public class MessagesStorage extends BaseController {
                     }
                     if (dialog.pinnedNum == 0) {
                         dialog.pinnedNum = (totalPinnedCount - a) + maxPinnedNum;
+                    }
+                }
+
+                if (!localPinsInResponse.isEmpty()) {
+                    for (int a = 0; a < dialogsRes.dialogs.size(); a++) {
+                        TLRPC.Dialog dialog = dialogsRes.dialogs.get(a);
+                        Integer localNum = localPinsInResponse.get(dialog.id);
+                        if (localNum != null && !dialog.pinned) {
+                            dialog.pinned = true;
+                            dialog.pinnedNum = localNum;
+                        }
                     }
                 }
 

@@ -13392,9 +13392,25 @@ public class MessagesController extends BaseController implements NotificationCe
                 putUsers(dialogsRes.users, false);
                 putChats(dialogsRes.chats, false);
 
+                final boolean keepLocalPins = NekoConfig.unlimitedPinnedDialogs.Bool();
+                // A local pin on a chat the server returned as an ordinary dialog goes back on the new object.
+                final HashMap<Long, Integer> localPins = new HashMap<>();
+                if (keepLocalPins) {
+                    for (int a = 0; a < allDialogs.size(); a++) {
+                        TLRPC.Dialog oldDialog = allDialogs.get(a);
+                        TLRPC.Dialog fresh = oldDialog.pinned ? new_dialogs_dict.get(oldDialog.id) : null;
+                        if (fresh != null && !fresh.pinned) {
+                            localPins.put(oldDialog.id, oldDialog.pinnedNum);
+                        }
+                    }
+                }
                 for (int a = 0; a < allDialogs.size(); a++) {
                     TLRPC.Dialog oldDialog = allDialogs.get(a);
                     if (!DialogObject.isEncryptedDialog(oldDialog.id)) {
+                        if (keepLocalPins && oldDialog.pinned && new_dialogs_dict.indexOfKey(oldDialog.id) < 0) {
+                            // Local-only pin: the server does not know it, keep it through the reset.
+                            continue;
+                        }
                         dialogs_dict.remove(oldDialog.id);
                         ArrayList<MessageObject> messages = dialogMessage.get(oldDialog.id);
                         dialogMessage.remove(oldDialog.id);
@@ -13419,6 +13435,11 @@ public class MessagesController extends BaseController implements NotificationCe
                     TLRPC.Dialog value = new_dialogs_dict.valueAt(a);
                     if (value.draft instanceof TLRPC.TL_draftMessage) {
                         mediaDataController.saveDraft(value.id, 0, value.draft, null, false);
+                    }
+                    Integer localPinNum = localPins.get(key);
+                    if (localPinNum != null && !value.pinned) {
+                        value.pinned = true;
+                        value.pinnedNum = localPinNum;
                     }
                     dialogs_dict.put(key, value);
                     ArrayList<MessageObject> messageObjects = new_dialogMessage.get(value.id);
@@ -23130,7 +23151,8 @@ public class MessagesController extends BaseController implements NotificationCe
                         }
                     }
                     if (maxDate > Integer.MIN_VALUE) {
-                        if (maxDate < dialogsLoadedTillDate) {
+                        if (maxDate < dialogsLoadedTillDate
+                                && !(d.pinned && NekoConfig.unlimitedPinnedDialogs.Bool())) {
                             continue;
                         }
                     }
