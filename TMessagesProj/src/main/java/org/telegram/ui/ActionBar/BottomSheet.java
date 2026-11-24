@@ -1886,6 +1886,10 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         });
     }
 
+    protected boolean isGlassLensApplied() {
+        return glassLensApplied;
+    }
+
     public Drawable getBackDrawable() {
         return backDrawable;
     }

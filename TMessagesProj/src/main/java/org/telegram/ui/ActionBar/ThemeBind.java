@@ -842,7 +842,15 @@ public final class ThemeBind {
     }
 
     private static void applyBackground(View view, Bindings bindings) {
-        if (bindings.background == null || view.getBackground() != bindings.background) {
+        // Liquid Glass: the lite glass was swapped for a {lens, rim} layer; the rim has to follow the theme too
+        final Drawable shown = view.getBackground();
+        final app.exteraless.appearance.glass.GlassSurfaceDrawable lensRim = shown != bindings.background
+                && bindings.background instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable
+                && shown instanceof android.graphics.drawable.LayerDrawable
+                && ((android.graphics.drawable.LayerDrawable) shown).getNumberOfLayers() == 2
+                && ((android.graphics.drawable.LayerDrawable) shown).getDrawable(1) instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable
+                ? (app.exteraless.appearance.glass.GlassSurfaceDrawable) ((android.graphics.drawable.LayerDrawable) shown).getDrawable(1) : null;
+        if (bindings.background == null || shown != bindings.background && lensRim == null) {
             return;
         }
         final Binding content = bindings.backgroundContent;
@@ -852,6 +860,9 @@ public final class ThemeBind {
             if (current == content.applied || current == color) {
                 if (current != color) {
                     setContentColor(bindings.background, color);
+                    if (lensRim != null) {
+                        lensRim.setBaseColor(color);
+                    }
                 }
                 content.applied = color;
             }

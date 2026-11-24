@@ -1905,7 +1905,9 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                         getActionBarDrawableColor();
                     shadowDrawable.setAlpha(viewAlpha);
                     shadowDrawable.setBounds(0, top, getMeasuredWidth(), getMeasuredHeight() + dp(45) + backgroundPaddingTop);
-                    shadowDrawable.draw(canvas);
+                    if (!isGlassLensApplied()) { // the lens is the sheet body: its opaque fill would hide it
+                        shadowDrawable.draw(canvas);
+                    }
                     if (actionBarType == 2) {
                         Theme.dialogs_onlineCirclePaint.setColor(backgroundColor);
                         Theme.dialogs_onlineCirclePaint.setAlpha(viewAlpha);
@@ -2024,7 +2026,9 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                     if (drawBackground) {
                         shadowDrawable.setAlpha(viewAlpha);
                         shadowDrawable.setBounds(0, top, getMeasuredWidth(), height);
-                        shadowDrawable.draw(canvas);
+                        if (!isGlassLensApplied()) {
+                            shadowDrawable.draw(canvas);
+                        }
                         if (actionBarType == 2) {
                             Theme.dialogs_onlineCirclePaint.setColor(backgroundColor);
                             Theme.dialogs_onlineCirclePaint.setAlpha(viewAlpha);

@@ -152,6 +152,8 @@ public class HintView extends FrameLayout {
                     }
                     glassLite = lite;
                     textView.setBackground(layer);
+                    // the lens body is lighter than the lite fill the arrow was matched to: thin the arrow out
+                    arrowImageView.setAlpha(glassArrowAlpha(glassHintColor) * 0.6f);
                 });
     }
 
@@ -171,6 +173,7 @@ public class HintView extends FrameLayout {
         if (glassLite != null) {
             if (textView.getBackground() instanceof android.graphics.drawable.LayerDrawable) {
                 textView.setBackground(glassLite);
+                arrowImageView.setAlpha(glassArrowAlpha(glassHintColor));
             }
             glassLite = null;
         }
