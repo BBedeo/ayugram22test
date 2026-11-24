@@ -1622,15 +1622,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 matrix.reset();
                 matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
-
-                if (!monet && GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
-                    final float sw = dp(1);
-                    strokePaint.setStrokeWidth(sw);
-                    matrix.reset();
-                    matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
-                    AndroidUtilities.rectTmp.inset(sw / 2.0f, sw / 2.0f);
-                    canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, strokePaint);
-                }
+                // no rim: Telegram-iOS draws these tiles as a plain gradient fill (PresentationResourcesSettings)
             }
 
             @Override
