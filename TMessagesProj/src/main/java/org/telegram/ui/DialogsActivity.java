@@ -1886,6 +1886,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         public void onDraw(Canvas canvas) {
+            if (hasActiveEdgeEffects() && app.exteraless.appearance.LiquidGlassTuning.isActive()) {
+                glassEngine.invalidateScroll(); // the stretch changes what is under the glass without any scroll
+            }
             if (parentPage.pullForegroundDrawable != null && viewOffset != 0) {
                 int pTop = getPaddingTop();
                 if (pTop != 0) {

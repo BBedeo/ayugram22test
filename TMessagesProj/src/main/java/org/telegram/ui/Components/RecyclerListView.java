@@ -3260,8 +3260,25 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 canvas.restoreToCount(saveCount);
             }
         } else {
-            captureChildren(canvas, position, drawingTime);
+            final float stretch = captureStretch();
+            if (stretch != 0f) {
+                // the rows themselves do not move while the list stretches: follow the system stretch, as the glass shows it
+                final int saveCount = canvas.save();
+                canvas.scale(1f, 1f + stretch, 0f, 0f);
+                captureChildren(canvas, position, drawingTime);
+                canvas.restoreToCount(saveCount);
+            } else {
+                captureChildren(canvas, position, drawingTime);
+            }
         }
+    }
+
+    /** The top stretch of the list captured without its own render node (approximate), 0 when there is none. */
+    private float captureStretch() {
+        if (captureThroughEdgeEffects() || getOverScrollMode() == OVER_SCROLL_NEVER || !hasActiveEdgeEffects()) {
+            return 0f;
+        }
+        return getEdgeEffectDistance(EdgeEffectFactory.DIRECTION_TOP);
     }
 
     protected void captureChildren(Canvas canvas, RectF position, long drawingTime) {
@@ -3310,6 +3327,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             builder.unsupported();
             return;
         }
+        builder.addF(captureStretch());
 
         for (int a = 0, N = getItemDecorationCount(); a < N; a++) {
             ItemDecoration itemDecoration = getItemDecorationAt(a);
