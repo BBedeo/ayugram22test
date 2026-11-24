@@ -1859,6 +1859,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         final app.exteraless.appearance.glass.GlassWindowBackdrop backdrop =
                 new app.exteraless.appearance.glass.GlassWindowBackdrop(containerView);
         glassBackdrop = backdrop;
+        backdrop.setDim(dimBehind ? dimBehindAlpha / 255f : 0f);
         backdrop.captureWhenLaidOut(containerView, null, ok -> {
             if (!ok || containerView.getBackground() != material) {
                 return;

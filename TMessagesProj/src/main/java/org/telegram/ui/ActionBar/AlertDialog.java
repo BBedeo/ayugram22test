@@ -435,6 +435,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         final app.exteraless.appearance.glass.GlassWindowBackdrop backdrop =
                 new app.exteraless.appearance.glass.GlassWindowBackdrop(window.getDecorView());
         glassBackdrop = backdrop;
+        backdrop.setDim(dimEnabled ? dimAlpha : 0f);
         backdrop.captureWhenLaidOut(containerView,
                 // the window background is part of the window's own draw: keep it out of the snapshot
                 () -> window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)),

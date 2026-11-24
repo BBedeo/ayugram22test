@@ -21,6 +21,13 @@ public final class GlassSourceBitmap implements GlassSource {
         bitmapPaint.setFilterBitmap(true);
     }
 
+    /** Darkens the snapshot like the window dim that is drawn over the real screen but is not in the capture. */
+    public void setDim(float amount) {
+        bitmapPaint.setColorFilter(amount > 0f
+                ? new android.graphics.PorterDuffColorFilter(((int) (255 * Math.min(1f, amount)) << 24), android.graphics.PorterDuff.Mode.SRC_OVER)
+                : null);
+    }
+
     public void setBitmap(Bitmap bitmap) {
         if (this.bitmap == bitmap) {
             return;
