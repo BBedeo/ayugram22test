@@ -558,6 +558,12 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         bubble.setAlpha(0f);
         layout.addView(bubble);
 
+        if (Md3Player.isIosPlayer() && PlayerGlass.supported() && !previewMode) {
+            glass = new PlayerGlass(root, resourcesProvider, (cv, w, h) -> {
+                cv.drawColor(colors.surface);
+                drawBackdrop(cv, w, h);
+            });
+        }
         applyStyle(false);
         applyColors(colors);
         if (previewMode) {
@@ -1891,6 +1897,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             likeButton.setBackground(glassPlate(0, c));
             collapseButton.setBackground(glassPlate(1, c));
             moreButton.setBackground(glassPlate(2, c));
+            if (glass != null) {
+                glass.refresh();
+            }
         } else {
             controls.prev.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
             controls.next.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
@@ -2223,11 +2232,23 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         return dp(islandActions || active ? 26 : 8);
     }
 
+    private PlayerGlass glass;
+    private final android.graphics.drawable.Drawable[] glassLenses = new android.graphics.drawable.Drawable[4];
     private final app.exteraless.appearance.glass.GlassSurfaceDrawable[] glassPlates = new app.exteraless.appearance.glass.GlassSurfaceDrawable[4];
 
     /** iOS 26 glass surface (house GlassSurfaceDrawable: tinted fill, bevel highlight, light rim) over the blurred cover. */
     private android.graphics.drawable.Drawable glassPlate(int slot, PlayerColors c) {
         final int base = ColorUtils.blendARGB(c.surface, c.onSurface, c.dark ? 0.18f : 0.05f);
+        if (glass != null) {
+            android.graphics.drawable.Drawable lens = glassLenses[slot];
+            if (lens == null) {
+                final View[] hosts = {likeButton, collapseButton, moreButton, group};
+                lens = glass.attach(hosts[slot], base);
+                glassLenses[slot] = lens;
+            }
+            glass.setTint(base);
+            return lens;
+        }
         app.exteraless.appearance.glass.GlassSurfaceDrawable d = glassPlates[slot];
         if (d == null) {
             d = new app.exteraless.appearance.glass.GlassSurfaceDrawable(base, app.exteraless.appearance.glass.GlassTokens.TIER_THIN,
@@ -2335,12 +2356,18 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
                     prevBackdrop = null;
                 }
                 layout.invalidate();
+                if (glass != null) {
+                    glass.refresh();
+                }
             });
             backdropFader.start();
         }
         backdrop = blurred;
         backdropKey = key;
         layout.invalidate();
+        if (glass != null) {
+            glass.refresh();
+        }
     }
 
     private Bitmap prevBackdrop;
