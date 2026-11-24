@@ -2310,9 +2310,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         @Override
-        public void setOverScrollMode(int overScrollMode) {
-            // under the glass header the system's stretch of the list darkens the glass that samples it: no stretch there
-            super.setOverScrollMode(app.exteraless.appearance.LiquidGlassTuning.isActive() ? View.OVER_SCROLL_NEVER : overScrollMode);
+        protected boolean captureThroughEdgeEffects() {
+            // the stretch stays, but the glass keeps sampling the rows the usual way: the other path loses the backdrop and darkens it
+            return !app.exteraless.appearance.LiquidGlassTuning.isActive();
         }
 
         @Override

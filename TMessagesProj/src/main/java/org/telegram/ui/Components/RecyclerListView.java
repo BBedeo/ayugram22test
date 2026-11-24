@@ -3226,11 +3226,20 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
     private Matrix selfTransformationsMatrix;
 
+    /** Whether glass captures the list through its own render node while an edge effect (stretch) is visible. */
+    protected boolean captureThroughEdgeEffects() {
+        return true;
+    }
+
+    private boolean captureEdgeEffects() {
+        return hasActiveEdgeEffects() && getOverScrollMode() != OVER_SCROLL_NEVER && captureThroughEdgeEffects();
+    }
+
     @Override
     public void capture(Canvas canvas, RectF position) {
         final long drawingTime = SystemClock.uptimeMillis();
 
-        if (hasActiveEdgeEffects() && getOverScrollMode() != OVER_SCROLL_NEVER) {
+        if (captureEdgeEffects()) {
             if (selfTransformationsMatrix == null) {
                 selfTransformationsMatrix = new Matrix();
             }
@@ -3297,7 +3306,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             return;
         }
 
-        if (hasActiveEdgeEffects() && getOverScrollMode() != OVER_SCROLL_NEVER) {
+        if (captureEdgeEffects()) {
             builder.unsupported();
             return;
         }
