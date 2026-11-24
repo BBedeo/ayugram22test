@@ -437,6 +437,18 @@ public class ProfileActionsView extends View {
         return true;
     }
 
+    private final RectF morphRect = new RectF();
+    private final int[] morphLoc = new int[2];
+
+    /** A confirmation dialog opened by this action grows out of its circle (see DialogMorph). */
+    private void setMorphOrigin(int key) {
+        if (GlassTokens.isActive() && getActionCircleBounds(key, morphRect)) {
+            getLocationOnScreen(morphLoc);
+            morphRect.offset(morphLoc[0], morphLoc[1]);
+            app.exteraless.appearance.glass.DialogMorphOrigin.set(morphRect);
+        }
+    }
+
     /** Liquid Glass: diameter of the action's circle. */
     private float getCircleSize(Action action) {
         return Math.min(dp(60), action.rect.width());
@@ -668,9 +680,11 @@ public class ProfileActionsView extends View {
                     final Action finalHit = hit;
                     if (onActionClickListener != null) {
                         if (finalHit.callDelay == 0) {
+                            setMorphOrigin(hit.key);
                             onActionClickListener.onClick(hit.key, hit.rect.left, hit.rect.top);
                         } else {
                             postDelayed(() -> {
+                                setMorphOrigin(finalHit.key);
                                 onActionClickListener.onClick(finalHit.key, finalHit.rect.left, finalHit.rect.top);
                             }, finalHit.callDelay);
                         }

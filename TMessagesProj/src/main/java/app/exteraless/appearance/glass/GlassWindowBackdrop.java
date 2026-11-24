@@ -164,6 +164,20 @@ public final class GlassWindowBackdrop {
         done.run(true);
     }
 
+    /** The still snapshot, to hand to another backdrop over the same screen (see adoptSnapshot). */
+    public @Nullable Bitmap getSnapshot() {
+        return source.getBitmap();
+    }
+
+    /** Uses a snapshot another backdrop took instead of capturing again; false when it is gone. */
+    public boolean adoptSnapshot(@Nullable Bitmap bitmap) {
+        if (released || bitmap == null || bitmap.isRecycled()) {
+            return false;
+        }
+        source.setBitmap(bitmap);
+        return true;
+    }
+
     /** The window's dim over the screen, 0..1: the snapshot is taken without it, so the lens darkens it the same way. */
     public void setDim(float amount) {
         if (released || amount == dim) {

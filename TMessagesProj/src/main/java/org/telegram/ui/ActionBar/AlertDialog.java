@@ -485,7 +485,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         if (!AndroidUtilities.isSafeToShow(getContext())) return;
         dismissed = false;
         super.show();
-        if (glassLensWanted) {
+        if (glassLensWanted && !startGlassMorph()) {
             startGlassLens();
         }
         if (progressViewContainer != null && progressViewStyle == ALERT_TYPE_SPINNER) {
@@ -498,6 +498,69 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 .start();
         }
         shownAt = System.currentTimeMillis();
+    }
+
+    private app.exteraless.appearance.glass.DialogMorph glassMorph;
+
+    /** The panel grows out of the button that was tapped; false when this dialog does not morph (see DialogMorph). */
+    private boolean startGlassMorph() {
+        final Window window = getWindow();
+        if (dismissed || window == null || containerView == null || glassLiteBackground == null
+                || !LiquidGlassTuning.motionEnabled() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            return false;
+        }
+        final android.app.Activity activity = app.exteraless.appearance.glass.DialogMorph.findActivity(getContext());
+        final android.graphics.RectF origin = activity != null ? app.exteraless.appearance.glass.DialogMorphOrigin.consume() : null;
+        if (origin == null) {
+            return false;
+        }
+        // the panel and its window background stay clear until the ghost hands over
+        containerView.setAlpha(0f);
+        window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        window.setBackgroundBlurRadius(0);
+        if (glassBackdrop != null) {
+            glassBackdrop.release();
+            glassBackdrop = null;
+        }
+        if (glassMorph != null) {
+            glassMorph.cancel();
+        }
+        glassMorph = app.exteraless.appearance.glass.DialogMorph.start(activity, origin, containerView, resourcesProvider, backgroundColor, this::onGlassMorphHandoff);
+        if (glassMorph == null) {
+            containerView.setAlpha(1f);
+            window.setBackgroundDrawable(glassLiteBackground);
+            window.setBackgroundBlurRadius(50);
+            return false;
+        }
+        return true;
+    }
+
+    /** The ghost reached the panel: its snapshot becomes this window's lens, or null when the morph failed. */
+    private void onGlassMorphHandoff(Bitmap snapshot) {
+        glassMorph = null;
+        final Window window = getWindow();
+        if (dismissed || window == null || containerView == null || glassLiteBackground == null) {
+            return;
+        }
+        if (snapshot != null) {
+            final app.exteraless.appearance.glass.GlassWindowBackdrop backdrop =
+                    new app.exteraless.appearance.glass.GlassWindowBackdrop(window.getDecorView());
+            if (backdrop.adoptSnapshot(snapshot)) {
+                if (glassBackdrop != null) {
+                    glassBackdrop.release();
+                }
+                glassBackdrop = backdrop;
+                backdrop.setDim(dimEnabled ? dimAlpha : 0f);
+                applyGlassLens(window, backdrop, false);
+                return;
+            }
+            backdrop.release();
+        }
+        containerView.animate().cancel();
+        containerView.setAlpha(1f);
+        window.setBackgroundDrawable(glassLiteBackground);
+        window.setBackgroundBlurRadius(50);
     }
 
     private void startGlassLens() {
@@ -523,24 +586,35 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                         window.setBackgroundDrawable(glassLiteBackground);
                         return;
                     }
-                    try {
-                        final Drawable lens = backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimPanelBackgroundFill(resourcesProvider))
-                                .setRadius(dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG));
-                        final Drawable rim = new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
-                                app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
-                                app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG)
-                                .setFillAlpha(0f)
-                                .setShadow(false);
-                        window.setBackgroundDrawable(new android.graphics.drawable.LayerDrawable(new Drawable[]{lens, rim}));
-                        // the lens samples the snapshot itself: the system blur behind it would double up
-                        window.setBackgroundBlurRadius(0);
-                        backdrop.animateIn();
-                    } catch (Throwable t) {
-                        FileLog.e(t);
-                        window.setBackgroundDrawable(glassLiteBackground);
-                        window.setBackgroundBlurRadius(50);
-                    }
+                    applyGlassLens(window, backdrop, true);
                 });
+    }
+
+    /** Puts the lens (over the backdrop's snapshot) and its rim in as the window background. */
+    private void applyGlassLens(Window window, app.exteraless.appearance.glass.GlassWindowBackdrop backdrop, boolean animate) {
+        try {
+            final Drawable lens = backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimPanelBackgroundFill(resourcesProvider))
+                    .setRadius(dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG));
+            final Drawable rim = new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
+                    app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
+                    app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG)
+                    .setFillAlpha(0f)
+                    .setShadow(false);
+            window.setBackgroundDrawable(new android.graphics.drawable.LayerDrawable(new Drawable[]{lens, rim}));
+            // the lens samples the snapshot itself: the system blur behind it would double up
+            window.setBackgroundBlurRadius(0);
+            // after a morph the ghost's lens has already settled
+            if (animate) {
+                backdrop.animateIn();
+            }
+        } catch (Throwable t) {
+            FileLog.e(t);
+            window.setBackgroundDrawable(glassLiteBackground);
+            window.setBackgroundBlurRadius(50);
+            if (!animate) {
+                containerView.setAlpha(1f);
+            }
+        }
     }
 
     public void setCancelDialog(boolean enable) {
@@ -1962,6 +2036,15 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
 
         }
         AndroidUtilities.cancelRunOnUIThread(showRunnable);
+        if (glassMorph != null) {
+            glassMorph.cancel();
+            glassMorph = null;
+            // a dialog shown again must not stay clear
+            if (containerView != null) {
+                containerView.animate().cancel();
+                containerView.setAlpha(1f);
+            }
+        }
         if (glassBackdrop != null) {
             glassBackdrop.release();
             glassBackdrop = null;
