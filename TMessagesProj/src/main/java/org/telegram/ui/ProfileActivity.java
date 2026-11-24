@@ -1511,7 +1511,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (fading) {
                 canvas.restore();
             }
-            drawProfileAura(canvas, y1);
             // below y1 the header of the media is glass: headerFadeView, over the pages. Leaving the media the header
             // grows back from the top while the media are already lower: the screen's background between them
             if (mediaHeaderAnimationProgress > 0 && y1 < v && sharedMediaLayout != null && sharedMediaLayout.isAttachedToWindow()) {
@@ -1526,51 +1525,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         private final Paint gapPaint = new Paint();
         private final RectF previousMenuRect = new RectF();
-
-        private final AnimatedFloat auraAnimated = new AnimatedFloat(this, 450, CubicBezierInterpolator.EASE_OUT_QUINT);
-        private final Paint auraPaint = new Paint();
-        private LinearGradient auraGradient;
-        private int auraGradientColor, auraGradientHeight;
-        private long auraPollUntil;
-
-        /** Liquid Glass: below the photo the page is tinted with its colour, fading out down the screen. */
-        private void drawProfileAura(Canvas canvas, int top) {
-            final int color = getProfileAuraColor();
-            final float t = auraAnimated.set(color != 0 ? 1f : 0f);
-            if (color == 0 && glassPhotoHeader() && app.exteraless.appearance.AppearanceConfig.profileAura()) {
-                // the photo is not loaded yet: look again for a few seconds
-                final long now = SystemClock.uptimeMillis();
-                if (auraPollUntil == 0) {
-                    auraPollUntil = now + 4000;
-                }
-                if (now < auraPollUntil) {
-                    postInvalidateDelayed(250);
-                }
-            }
-            if (t <= 0.001f || top <= 0 || color == 0 && auraGradient == null) {
-                return;
-            }
-            final int height = Math.min(dp(640), Math.max(0, getMeasuredHeight() - top));
-            if (height <= 0) {
-                return;
-            }
-            if (color != 0 && (auraGradientColor != color || auraGradientHeight != height)) {
-                auraGradientColor = color;
-                auraGradientHeight = height;
-                auraGradient = new LinearGradient(0, 0, 0, height,
-                        new int[]{color, Theme.multAlpha(color, 0.70f), Theme.multAlpha(color, 0.38f), Theme.multAlpha(color, 0.14f), color & 0x00FFFFFF},
-                        new float[]{0f, 0.18f, 0.45f, 0.75f, 1f}, Shader.TileMode.CLAMP);
-                auraPaint.setShader(auraGradient);
-            }
-            if (auraGradient == null) {
-                return;
-            }
-            auraPaint.setAlpha((int) (255 * t));
-            canvas.save();
-            canvas.translate(0, top);
-            canvas.drawRect(0, 0, getMeasuredWidth(), height, auraPaint);
-            canvas.restore();
-        }
 
         /** Drawn into the glass capture: without the pattern of the gift, it barely shows through the blur. */
         private boolean capturing;
@@ -1596,6 +1550,16 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         private GradientDrawable glassFadeGradient;
         private int glassFadeColor;
         private int glassFadeAlpha = 255;
+
+        /** Bottom to top: the aura colour, easing out to nothing, the mirror of how the page aura eases out below. */
+        private int[] glassFadeColors(int color) {
+            final int steps = 8;
+            final int[] colors = new int[steps + 1];
+            for (int i = 0; i <= steps; i++) {
+                colors[i] = Theme.multAlpha(color, 1f - auraEase(i / (float) steps));
+            }
+            return colors;
+        }
         private final ValueAnimator animator;
         private final float[] animatorValues = new float[]{0f, 1f};
         private final Paint backgroundPaint;
@@ -1745,12 +1709,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     glassFadeColor = color;
                     glassFadeGradient = new GradientDrawable(
                             GradientDrawable.Orientation.BOTTOM_TOP,
-                            new int[]{color, Theme.multAlpha(color, 0.92f), Theme.multAlpha(color, 0.50f), color & 0x00FFFFFF}
+                            glassFadeColors(color)
                     );
                     glassFadeGradient.setShape(GradientDrawable.RECTANGLE);
                 }
                 final int w = getWidth(), h = getHeight();
-                glassFadeGradient.setBounds(0, Math.max(0, h - getActionsExtraHeight() - dp(16)), w, h);
+                glassFadeGradient.setBounds(0, Math.max(0, h - getActionsExtraHeight() - dp(16) - Math.min(h / 3, dp(150))), w, h);
                 glassFadeGradient.setAlpha(glassFadeAlpha);
                 glassFadeGradient.draw(canvas);
             }
@@ -3616,6 +3580,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 //                    int top = searchListView.getTop();
 //                    canvas.drawRect(0, top + extraHeight + searchTransitionOffset, getMeasuredWidth(), top + getMeasuredHeight(), whitePaint);
                 }
+                drawProfileAura(canvas, this);
                 super.dispatchDraw(canvas);
                 /*
                 if (profileTransitionInProgress && parentLayout.getFragmentStack().size() > 1) {
@@ -11407,6 +11372,76 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         AndroidUtilities.runOnUIThread(animatorSet::start, 50);
         return animatorSet;
+    }
+
+    private AnimatedFloat auraAnimated;
+    private final Paint auraPaint = new Paint();
+    private LinearGradient auraGradient;
+    private int auraGradientColor, auraGradientHeight;
+    private long auraPollUntil;
+
+    /** Where the photo ends and the page starts, in the screen's coordinates. */
+    private int getProfileAuraTop() {
+        final int height = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
+        return (int) ((height + extraHeight + searchTransitionOffset) * (1f - mediaHeaderAnimationProgress));
+    }
+
+    /** Alpha of the aura at {@code u} (0..1) of its way: eases out of the photo and into the page, with no seam. */
+    private static float auraEase(float u) {
+        final float c = Math.max(0f, Math.min(1f, u));
+        return c * c * (3f - 2f * c);
+    }
+
+    /**
+     * Liquid Glass: under the list the page is tinted with the colour of the photo, which fades out down the screen;
+     * the photo itself fades into it (see {@link OverlaysView}).
+     */
+    private void drawProfileAura(Canvas canvas, View host) {
+        final int color = getProfileAuraColor();
+        if (auraAnimated == null) {
+            auraAnimated = new AnimatedFloat(host, 450, CubicBezierInterpolator.EASE_OUT_QUINT);
+        }
+        final float t = auraAnimated.set(color != 0 ? 1f : 0f);
+        if (color == 0 && glassPhotoHeader() && app.exteraless.appearance.AppearanceConfig.profileAura()) {
+            // the photo is not loaded yet: look again for a few seconds
+            final long now = SystemClock.uptimeMillis();
+            if (auraPollUntil == 0) {
+                auraPollUntil = now + 4000;
+            }
+            if (now < auraPollUntil) {
+                host.postInvalidateDelayed(250);
+            }
+        }
+        final int top = getProfileAuraTop();
+        if (t <= 0.001f || top <= 0 || color == 0 && auraGradient == null) {
+            return;
+        }
+        final int height = host.getMeasuredHeight();
+        if (height <= 0) {
+            return;
+        }
+        if (color != 0 && (auraGradientColor != color || auraGradientHeight != height)) {
+            auraGradientColor = color;
+            auraGradientHeight = height;
+            final int steps = 10;
+            final int[] colors = new int[steps + 1];
+            final float[] positions = new float[steps + 1];
+            for (int i = 0; i <= steps; i++) {
+                final float u = i / (float) steps;
+                colors[i] = Theme.multAlpha(color, 1f - auraEase(u));
+                positions[i] = u;
+            }
+            auraGradient = new LinearGradient(0, 0, 0, height, colors, positions, Shader.TileMode.CLAMP);
+            auraPaint.setShader(auraGradient);
+        }
+        if (auraGradient == null) {
+            return;
+        }
+        auraPaint.setAlpha((int) (255 * t));
+        canvas.save();
+        canvas.translate(0, top);
+        canvas.drawRect(0, 0, host.getMeasuredWidth(), height, auraPaint);
+        canvas.restore();
     }
 
     private Object auraSource;
