@@ -1887,8 +1887,10 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             controls.prev.setColors(0, c.onSurface, 0, c.onSurface);
             controls.next.setColors(0, c.onSurface, 0, c.onSurface);
             controls.play.setColors(0, c.onSurface, 0, c.onSurface);
-            int glassCircle = ColorUtils.setAlphaComponent(c.onSurface, 0x26);
-            likeButton.setColors(glassCircle, c.onSurface, glassCircle, c.onSurface);
+            likeButton.setColors(0, c.onSurface, 0, c.onSurface);
+            likeButton.setBackground(glassPlate(0, c));
+            collapseButton.setBackground(glassPlate(1, c));
+            moreButton.setBackground(glassPlate(2, c));
         } else {
             controls.prev.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
             controls.next.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
@@ -2198,7 +2200,6 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             // iOS: bare icons spread over the row, no plates and no captions
             lyricsButton.setText(null);
             queueButton.setText(null);
-            group.setBackground(null);
             group.setElevation(0);
             speedButton.setRadius(dp(26), dp(26), false);
             queueButton.setRadius(dp(26), dp(26), false);
@@ -2222,6 +2223,23 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         return dp(islandActions || active ? 26 : 8);
     }
 
+    private final app.exteraless.appearance.glass.GlassSurfaceDrawable[] glassPlates = new app.exteraless.appearance.glass.GlassSurfaceDrawable[4];
+
+    /** iOS 26 glass surface (house GlassSurfaceDrawable: tinted fill, bevel highlight, light rim) over the blurred cover. */
+    private android.graphics.drawable.Drawable glassPlate(int slot, PlayerColors c) {
+        final int base = ColorUtils.blendARGB(c.surface, c.onSurface, c.dark ? 0.18f : 0.05f);
+        app.exteraless.appearance.glass.GlassSurfaceDrawable d = glassPlates[slot];
+        if (d == null) {
+            d = new app.exteraless.appearance.glass.GlassSurfaceDrawable(base, app.exteraless.appearance.glass.GlassTokens.TIER_THIN,
+                    app.exteraless.appearance.glass.GlassTokens.RADIUS_CAPSULE);
+            d.setShadow(true);
+            glassPlates[slot] = d;
+        }
+        d.setFillAlpha(c.dark ? 0.46f : 0.58f);
+        d.setBaseColor(base);
+        return d;
+    }
+
     private void bindActionColors(PlayerColors c) {
         islandBackground.setCornerRadius(dp(28));
         final boolean ios = Md3Player.isIosPlayer();
@@ -2230,6 +2248,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         int background = islandActions ? 0 : (ios ? glass : c.surfaceHigh);
         if (ios) {
             islandBackground.setColor(0);
+            group.setBackground(glassPlate(3, c));
+            group.setPadding(dp(8), dp(4), dp(8), dp(4));
             speedButton.setColors(0, c.onSurface, 0, c.onSurface);
             speedButton.setBadgeColors(c.onSurface, c.surface);
             lyricsButton.setColors(0, c.onSurface, glass, c.onSurface);
@@ -2309,7 +2329,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         if (coverStyle == PlayerStyle.COVER_FULL) {
             return;
         }
-        int mode = PlayerStyle.background();
+        final boolean ios = Md3Player.isIosPlayer();
+        int mode = ios ? (backdrop != null ? PlayerStyle.BACKGROUND_BLUR : PlayerStyle.BACKGROUND_GRADIENT) : PlayerStyle.background();
         if (mode == PlayerStyle.BACKGROUND_BLUR && backdrop != null && !backdrop.isRecycled()) {
             int bw = backdrop.getWidth();
             int bh = backdrop.getHeight();
@@ -2327,19 +2348,19 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             backdropPaint.setAlpha(255);
             canvas.drawBitmap(backdrop, backdropSrc, previewRect, backdropPaint);
             overlayPaint.setShader(null);
-            overlayPaint.setColor(ColorUtils.setAlphaComponent(colors.surface, colors.dark ? 0xa8 : 0xb4));
+            overlayPaint.setColor(ColorUtils.setAlphaComponent(colors.surface, ios ? (colors.dark ? 0x70 : 0x80) : (colors.dark ? 0xa8 : 0xb4)));
             canvas.drawRect(previewRect, overlayPaint);
         } else if (mode == PlayerStyle.BACKGROUND_GRADIENT && (coverStyle != PlayerStyle.COVER_WIDE || landscape)) {
-            int key = colors.primaryContainer * 31 + height;
+            int key = colors.primaryContainer * 31 + height + (ios ? 1 : 0);
             if (backgroundGradient == null || backgroundGradientKey != key) {
                 backgroundGradientKey = key;
-                backgroundGradient = new LinearGradient(0, 0, 0, height * 0.7f,
-                        new int[]{ColorUtils.setAlphaComponent(colors.primaryContainer, 0xd9), ColorUtils.setAlphaComponent(colors.primaryContainer, 0)},
+                backgroundGradient = new LinearGradient(0, 0, 0, height * (ios ? 1f : 0.7f),
+                        new int[]{ColorUtils.setAlphaComponent(colors.primaryContainer, 0xd9), ColorUtils.setAlphaComponent(colors.primaryContainer, ios ? 0x40 : 0)},
                         null, Shader.TileMode.CLAMP);
             }
             overlayPaint.setShader(backgroundGradient);
             overlayPaint.setAlpha(255);
-            canvas.drawRect(0, 0, width, height * 0.7f, overlayPaint);
+            canvas.drawRect(0, 0, width, height * (ios ? 1f : 0.7f), overlayPaint);
             overlayPaint.setShader(null);
         }
     }
