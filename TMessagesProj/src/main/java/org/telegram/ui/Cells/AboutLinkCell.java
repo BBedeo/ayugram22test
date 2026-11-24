@@ -295,7 +295,8 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
             canvas.restore();
         }
         viewAlpha = bottomShadow.getAlpha();
-        if (viewAlpha > 0) {
+        // Liquid Glass: the card is translucent, the page-coloured fade of the collapsed text would show as a dark band
+        if (viewAlpha > 0 && !app.exteraless.appearance.glass.GlassTokens.isActive()) {
             canvas.save();
             canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), (int) (viewAlpha * 255), Canvas.ALL_SAVE_FLAG);
             canvas.translate(bottomShadow.getLeft(), bottomShadow.getTop());

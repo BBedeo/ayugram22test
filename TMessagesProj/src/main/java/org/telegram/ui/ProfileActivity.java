@@ -1471,7 +1471,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 canvas.saveLayerAlpha(0, 0, getMeasuredWidth(), y1, (int) (0xFF * (1f - headerBlurFactor)));
             }
             if (y1 != 0) {
-                paint.setColor(currentColor);
+                paint.setColor(headerColorWithAura(currentColor, hasColorById));
                 updateBackgroundPaint();
                 final float progressToGradient = (playProfileAnimation == 0 ? 1f : avatarAnimationProgress) * hasColorAnimated.set(hasColorById);
                 if (progressToGradient < 1) {
@@ -11377,6 +11377,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     }
 
     private AnimatedFloat auraAnimated;
+
+    /** The colour of the collapsed header: the aura's colour, so the header and the page under it are one. */
+    private int headerColorWithAura(int color, boolean hasColorById) {
+        if (hasColorById || !profileAuraOwnsPage()) {
+            return color;
+        }
+        final int aura = getProfileAuraColor();
+        if (aura == 0 || auraAnimated == null) {
+            return color;
+        }
+        return ColorUtils.blendARGB(color, aura, auraAnimated.get());
+    }
     private final Paint auraPaint = new Paint();
     private LinearGradient auraGradient;
     private int auraGradientColor, auraGradientHeight;
