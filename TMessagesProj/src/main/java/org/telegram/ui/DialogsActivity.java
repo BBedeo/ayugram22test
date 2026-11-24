@@ -15155,6 +15155,22 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             scrollableViewNoiseSuppressor.setupRenderNodes(iBlur3Positions, hasBottomBlur ? 2 : 1);
         }
         scrollableViewNoiseSuppressor.invalidateResultRenderNodes(iBlur3Capture, fragmentView.getMeasuredWidth(), fragmentView.getMeasuredHeight());
+        // the bottom nav pill is the parent's glass: it has its own sources and engine, so it learns of the live stretch only from here
+        if (parentTabsGlassInvalidationCallback != null && BitwiseUtils.hasFlag(flags, GlassEngine.FLAG_INVALIDATED_SCROLL)) {
+            for (ViewPage viewPage : viewPages) {
+                if (viewPage != null && viewPage.listView != null && viewPage.getVisibility() == View.VISIBLE && viewPage.listView.hasActiveEdgeEffects()) {
+                    parentTabsGlassInvalidationCallback.run();
+                    break;
+                }
+            }
+        }
+    }
+
+    private Runnable parentTabsGlassInvalidationCallback;
+
+    @Override
+    public void setParentTabsGlassInvalidationCallback(Runnable callback) {
+        parentTabsGlassInvalidationCallback = callback;
     }
 
     private int calculateListViewPaddingBottom() {
