@@ -445,7 +445,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                         return;
                     }
                     try {
-                        final Drawable lens = backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimMenuBackgroundFill(resourcesProvider))
+                        final Drawable lens = backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimPanelBackgroundFill(resourcesProvider))
                                 .setRadius(dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG));
                         final Drawable rim = new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
                                 app.exteraless.appearance.glass.GlassTokens.TIER_THICK,

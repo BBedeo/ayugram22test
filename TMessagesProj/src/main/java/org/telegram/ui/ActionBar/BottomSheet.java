@@ -1872,7 +1872,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 return;
             }
             final org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable lens =
-                    backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimMenuBackgroundFill(resourcesProvider));
+                    backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimPanelBackgroundFill(resourcesProvider));
             final float radius = dp(18);
             lens.setRadius(radius, radius, 0f, 0f, false);
             material.setDrawable(1, lens);

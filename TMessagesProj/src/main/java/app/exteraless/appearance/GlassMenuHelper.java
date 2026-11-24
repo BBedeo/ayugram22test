@@ -47,6 +47,11 @@ public abstract class GlassMenuHelper {
      * обводки нет совсем.
      */
     private static BlurredBackgroundProviderBuilder scrimMenuGlass(Theme.ResourcesProvider resourcesProvider) {
+        return scrimMenuGlass(resourcesProvider, false);
+    }
+
+    /** {@code dense}: panels full of text (dialogs, sheets) need a firmer tint than a short menu or a pill. */
+    private static BlurredBackgroundProviderBuilder scrimMenuGlass(Theme.ResourcesProvider resourcesProvider, boolean dense) {
         final boolean liquid = LiquidGlassTuning.isActive();
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
@@ -56,6 +61,10 @@ public abstract class GlassMenuHelper {
                     final int tinted = isDark
                         ? 0xFF1C1D20
                         : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.80f);
+                    if (dense) {
+                        // readable over a busy chat: the text behind must not show through the panel
+                        return ColorUtils.setAlphaComponent(tinted, isDark ? 214 : 224);
+                    }
                     return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 28 : 36, isDark ? 120 : 150));
                 }
                 if (!org.telegram.messenger.LiteMode.isEnabled(org.telegram.messenger.LiteMode.FLAG_CHAT_BLUR)) {
@@ -80,6 +89,13 @@ public abstract class GlassMenuHelper {
 
     public static BlurredBackgroundProvider scrimMenuBackgroundFill(Theme.ResourcesProvider resourcesProvider) {
         return scrimMenuGlass(resourcesProvider)
+            .setShadowColor(0, 0)
+            .build();
+    }
+
+    /** Fill for text-heavy lens panels (dialogs, bottom sheets). */
+    public static BlurredBackgroundProvider scrimPanelBackgroundFill(Theme.ResourcesProvider resourcesProvider) {
+        return scrimMenuGlass(resourcesProvider, true)
             .setShadowColor(0, 0)
             .build();
     }
