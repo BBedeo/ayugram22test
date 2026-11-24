@@ -11390,6 +11390,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         return ColorUtils.blendARGB(color, aura, auraAnimated.get());
     }
     private final Paint auraPaint = new Paint();
+    private final Paint auraSolidPaint = new Paint();
     private LinearGradient auraGradient;
     private int auraGradientColor, auraGradientHeight;
     private long auraPollUntil;
@@ -11419,7 +11420,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (!profileAuraOwnsPage()) {
             return;
         }
-        final int pageTop = Math.max(0, getProfileAuraTop());
+        final int pageTop = 0; // under the header too: a header that is see-through while it collapses blends with itself, not with the window
         auraPaint.setShader(null);
         auraPaint.setColor(getThemedColor(Theme.key_windowBackgroundGray) | 0xFF000000);
         canvas.drawRect(0, pageTop, host.getMeasuredWidth(), host.getMeasuredHeight(), auraPaint);
@@ -11465,6 +11466,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             return;
         }
         auraPaint.setAlpha((int) (255 * t));
+        if (top > 0) {
+            // the header's own part of the page: the aura colour, as the gradient starts
+            auraSolidPaint.setColor(auraGradientColor);
+            auraSolidPaint.setAlpha((int) (255 * t));
+            canvas.drawRect(0, 0, host.getMeasuredWidth(), top, auraSolidPaint);
+        }
         canvas.save();
         canvas.translate(0, top);
         canvas.drawRect(0, 0, host.getMeasuredWidth(), height, auraPaint);
