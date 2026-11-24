@@ -3265,15 +3265,58 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 // the rows themselves do not move while the list stretches: follow the system stretch, as the glass shows it
                 // the system's stretch pulls the edge that is overscrolled and leaves the far side where it is: the top moves
                 // by its share of the pull, the bottom (the nav pill) stays; the unmoved rows fill what the pull uncovers
-                captureChildren(canvas, position, drawingTime);
-                final float h = getHeight();
-                final int saveCount = canvas.save();
-                canvas.scale(1f, 1f - STRETCH_TOP_SHARE * stretch, 0f, h);
-                captureChildren(canvas, position, drawingTime);
-                canvas.restoreToCount(saveCount);
+                if (!captureStretchedRows(canvas, position, drawingTime, stretch)) {
+                    captureChildren(canvas, position, drawingTime);
+                    final float h = getHeight();
+                    final int saveCount = canvas.save();
+                    canvas.scale(1f, 1f - STRETCH_TOP_SHARE * stretch, 0f, h);
+                    captureChildren(canvas, position, drawingTime);
+                    canvas.restoreToCount(saveCount);
+                }
             } else {
                 captureChildren(canvas, position, drawingTime);
             }
+        }
+    }
+
+    private android.graphics.RenderNode stretchNode;
+    private android.graphics.RuntimeShader stretchShader;
+
+    /**
+     * The live rows, stretched by a shader every frame: the top follows the pull by a curve, the far side stays. The rows
+     * are the real ones (with the backdrop around them), not a still picture, and not the system's own node that darkens.
+     */
+    private boolean captureStretchedRows(Canvas canvas, RectF position, long drawingTime, float stretch) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || !canvas.isHardwareAccelerated() || getWidth() <= 0 || getHeight() <= 0) {
+            return false;
+        }
+        try {
+            if (stretchNode == null) {
+                stretchNode = new android.graphics.RenderNode("listStretch");
+                stretchShader = new android.graphics.RuntimeShader(
+                    "uniform shader content; uniform float h; uniform float d;" +
+                    "half4 main(float2 c) {" +
+                    "  float src = c.y;" +
+                    "  for (int i = 0; i < 6; i++) { float k = clamp(1.0 - src / h, 0.0, 1.0); src = c.y - d * k * k; }" +
+                    "  return content.eval(float2(c.x, max(src, 0.0)));" +
+                    "}");
+            }
+            final float h = getHeight();
+            stretchShader.setFloatUniform("h", h);
+            stretchShader.setFloatUniform("d", STRETCH_TOP_SHARE * stretch * h);
+            stretchNode.setPosition(0, 0, getWidth(), getHeight());
+            stretchNode.setRenderEffect(android.graphics.RenderEffect.createRuntimeShaderEffect(stretchShader, "content"));
+            final Canvas rc = stretchNode.beginRecording();
+            try {
+                captureChildren(rc, position, drawingTime);
+            } finally {
+                stretchNode.endRecording();
+            }
+            canvas.drawRenderNode(stretchNode);
+            return true;
+        } catch (Throwable t) {
+            FileLog.e(t);
+            return false;
         }
     }
 
