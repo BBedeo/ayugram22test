@@ -90,6 +90,10 @@ public class GlassSurfaceDrawable extends Drawable {
         return GlassTokens.fill(baseColor, tier);
     }
 
+    public float getRadiusDp() {
+        return radiusDp;
+    }
+
     public void setBaseColor(int color) {
         baseColor = color;
         fillPaint.setColor(fillColor());

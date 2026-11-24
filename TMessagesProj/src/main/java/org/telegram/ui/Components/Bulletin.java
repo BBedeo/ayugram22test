@@ -824,6 +824,9 @@ public class Bulletin {
                         && background instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable) {
                     ((app.exteraless.appearance.glass.GlassSurfaceDrawable) background).setBaseColor(getThemedColor(Theme.key_undo_background));
                     invalidate();
+                } else if (glassLayer != null && background == glassLayer && background == themeBackground) {
+                    ((app.exteraless.appearance.glass.GlassSurfaceDrawable) glassLayer.getDrawable(1)).setBaseColor(getThemedColor(Theme.key_undo_background));
+                    invalidate();
                 }
             } catch (Exception e) {
                 FileLog.e(e);
@@ -954,8 +957,54 @@ public class Bulletin {
             }
         }
 
+        private app.exteraless.appearance.glass.GlassWindowBackdrop glassBackdrop;
+        private Drawable glassLite;
+        private android.graphics.drawable.LayerDrawable glassLayer;
+
+        /** Liquid Glass: swaps the lite glass for a real lens once a snapshot of the screen is ready. */
+        private void startGlassLens() {
+            if (glassBackdrop != null || hasCustomBackground || !app.exteraless.appearance.glass.GlassWindowBackdrop.supported()
+                    || !(background instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable)) {
+                return;
+            }
+            final app.exteraless.appearance.glass.GlassSurfaceDrawable lite = (app.exteraless.appearance.glass.GlassSurfaceDrawable) background;
+            glassBackdrop = app.exteraless.appearance.glass.GlassWindowBackdrop.attachLens(this, this, resourcesProvider,
+                    lite.getBaseColor(), lite.getRadiusDp(), true, layer -> {
+                        if (glassBackdrop == null || background != lite) {
+                            return;
+                        }
+                        glassLite = lite;
+                        glassLayer = layer;
+                        if (themeBackground == lite) {
+                            themeBackground = layer;
+                        }
+                        background = layer;
+                        invalidate();
+                    });
+        }
+
+        private void stopGlassLens() {
+            if (glassBackdrop == null) {
+                return;
+            }
+            glassBackdrop.release();
+            glassBackdrop = null;
+            if (glassLayer != null) {
+                if (background == glassLayer) {
+                    background = glassLite;
+                }
+                if (themeBackground == glassLayer) {
+                    themeBackground = glassLite;
+                }
+                glassLayer = null;
+                glassLite = null;
+                invalidate();
+            }
+        }
+
         @CallSuper
         protected void onDetach() {
+            stopGlassLens();
             this.bulletin = null;
             for (int i = 0, size = callbacks.size(); i < size; i++) {
                 callbacks.get(i).onDetach(this);
@@ -967,6 +1016,7 @@ public class Bulletin {
 
         @CallSuper
         protected void onShow() {
+            startGlassLens();
             for (int i = 0, size = callbacks.size(); i < size; i++) {
                 callbacks.get(i).onShow(this);
             }

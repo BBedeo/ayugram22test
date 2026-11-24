@@ -132,6 +132,50 @@ public class HintView extends FrameLayout {
 
     private int glassHintColor = 0xFF000000;
 
+    private app.exteraless.appearance.glass.GlassWindowBackdrop glassBackdrop;
+    private Drawable glassLite;
+
+    /**
+     * Liquid Glass: swaps the lite glass body for a real lens once a snapshot of the screen is ready.
+     * The lens follows the rounded body only; the arrow stays the tinted image.
+     */
+    private void startGlassLens() {
+        if (glassBackdrop != null || textView == null || !app.exteraless.appearance.glass.GlassWindowBackdrop.supported()
+                || !(textView.getBackground() instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable)) {
+            return;
+        }
+        final app.exteraless.appearance.glass.GlassSurfaceDrawable lite = (app.exteraless.appearance.glass.GlassSurfaceDrawable) textView.getBackground();
+        glassBackdrop = app.exteraless.appearance.glass.GlassWindowBackdrop.attachLens(textView, this, resourcesProvider,
+                lite.getBaseColor(), lite.getRadiusDp(), false, layer -> {
+                    if (glassBackdrop == null || textView.getBackground() != lite) {
+                        return;
+                    }
+                    glassLite = lite;
+                    textView.setBackground(layer);
+                });
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        stopGlassLens();
+    }
+
+    /** Puts the lite body back unless the caller already replaced it with a new background. */
+    private void stopGlassLens() {
+        if (glassBackdrop == null) {
+            return;
+        }
+        glassBackdrop.release();
+        glassBackdrop = null;
+        if (glassLite != null) {
+            if (textView.getBackground() instanceof android.graphics.drawable.LayerDrawable) {
+                textView.setBackground(glassLite);
+            }
+            glassLite = null;
+        }
+    }
+
     /**
      * The arrow is tinted with the color itself (its own alpha included), while the glass body uses the
      * tier's opacity: the view alpha makes up the difference so both read as one piece of glass.
@@ -148,6 +192,12 @@ public class HintView extends FrameLayout {
      * color (its text color keeps its contrast); the arrow follows the glass opacity.
      */
     private Drawable hintBackground(int radiusDp, int color) {
+        if (glassBackdrop != null) {
+            // the caller is about to set a new body: drop the lens of the old one without restoring it
+            glassBackdrop.release();
+            glassBackdrop = null;
+            glassLite = null;
+        }
         if (app.exteraless.appearance.glass.GlassTokens.isActive()) {
             glassHintColor = color;
             if (arrowImageView != null) {
@@ -340,6 +390,7 @@ public class HintView extends FrameLayout {
 
         setTag(1);
         setVisibility(VISIBLE);
+        startGlassLens();
         if (visibleListener != null) {
             visibleListener.onVisible(true);
         }
@@ -387,6 +438,7 @@ public class HintView extends FrameLayout {
 
         setTag(1);
         setVisibility(VISIBLE);
+        startGlassLens();
         if (visibleListener != null) {
             visibleListener.onVisible(true);
         }
@@ -577,6 +629,9 @@ public class HintView extends FrameLayout {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     setVisibility(View.INVISIBLE);
+                    if (getTag() == null) {
+                        stopGlassLens();
+                    }
                     if (visibleListener != null) {
                         visibleListener.onVisible(false);
                     }
@@ -589,6 +644,7 @@ public class HintView extends FrameLayout {
             animatorSet.start();
         } else {
             setVisibility(View.INVISIBLE);
+            stopGlassLens();
             if (visibleListener != null) {
                 visibleListener.onVisible(false);
             }

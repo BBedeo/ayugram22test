@@ -346,6 +346,59 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
 
     private boolean customColors;
 
+    private app.exteraless.appearance.glass.GlassWindowBackdrop glassBackdrop;
+    private Drawable glassLite;
+    private app.exteraless.appearance.glass.GlassSurfaceDrawable glassRim;
+
+    /** Liquid Glass: swaps the lite glass for a real lens once a snapshot of the screen is ready. */
+    private void startGlassLens() {
+        if (glassBackdrop != null || !app.exteraless.appearance.glass.GlassWindowBackdrop.supported()
+                || !(backgroundDrawable instanceof app.exteraless.appearance.glass.GlassSurfaceDrawable)) {
+            return;
+        }
+        final app.exteraless.appearance.glass.GlassSurfaceDrawable lite = (app.exteraless.appearance.glass.GlassSurfaceDrawable) backgroundDrawable;
+        glassBackdrop = app.exteraless.appearance.glass.GlassWindowBackdrop.attachLens(this, this, resourcesProvider,
+                lite.getBaseColor(), lite.getRadiusDp(), true, layer -> {
+                    if (glassBackdrop == null || backgroundDrawable != lite) {
+                        return;
+                    }
+                    glassLite = lite;
+                    glassRim = (app.exteraless.appearance.glass.GlassSurfaceDrawable) layer.getDrawable(1);
+                    layer.setBounds(lite.getBounds());
+                    backgroundDrawable = layer;
+                    invalidate();
+                });
+    }
+
+    private void stopGlassLens() {
+        if (glassBackdrop == null) {
+            return;
+        }
+        glassBackdrop.release();
+        glassBackdrop = null;
+        if (glassRim != null) {
+            backgroundDrawable = glassLite;
+            glassLite = null;
+            glassRim = null;
+            invalidate();
+        }
+    }
+
+    private void setUndoBackgroundColor(int color) {
+        if (glassRim != null) {
+            glassRim.setBaseColor(color);
+            Theme.setDrawableColor(glassLite, color); // the lite drawable comes back on hide
+        } else {
+            Theme.setDrawableColor(backgroundDrawable, color);
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        stopGlassLens();
+    }
+
     private void applyDefaultLayerColors() {
         setLayerColorKey("info1", Theme.key_undo_background, true);
         setLayerColorKey("info2", Theme.key_undo_background, true);
@@ -403,7 +456,7 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
             }
             progressPaint.setColor(getThemedColor(Theme.key_undo_infoColor));
             textPaint.setColor(getThemedColor(Theme.key_undo_infoColor));
-            Theme.setDrawableColor(backgroundDrawable, getThemedColor(Theme.key_undo_background));
+            setUndoBackgroundColor(getThemedColor(Theme.key_undo_background));
             invalidate();
             if (undoButton != null) {
                 Theme.setSelectorDrawableColor(undoButton.getBackground(), getThemedColor(Theme.key_undo_cancelColor) & 0x22ffffff, true);
@@ -420,7 +473,7 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
 
     public void setColors(int background, int text) {
         customColors = true;
-        Theme.setDrawableColor(backgroundDrawable, background);
+        setUndoBackgroundColor(background);
         // caller-owned text color: drop the undo_infoColor text bindings (link color stays bound)
         ThemeBind.clear(infoTextView);
         ThemeBind.linkTextColor(infoTextView, Theme.key_undo_cancelColor, resourcesProvider);
@@ -513,6 +566,9 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     setVisibility(INVISIBLE);
+                    if (!isShown) {
+                        stopGlassLens();
+                    }
                     setScaleX(1.0f);
                     setScaleY(1.0f);
                     setAlpha(1.0f);
@@ -522,6 +578,7 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
         } else {
             setEnterOffset((fromTop ? -1.0f : 1.0f) * (enterOffsetMargin + undoViewHeight));
             setVisibility(INVISIBLE);
+            stopGlassLens();
         }
     }
 
@@ -1689,6 +1746,7 @@ public class UndoView extends FrameLayout implements Theme.Colorable {
 
         if (getVisibility() != VISIBLE) {
             setVisibility(VISIBLE);
+            startGlassLens();
             setEnterOffset((fromTop ? -1.0f : 1.0f) * (enterOffsetMargin + undoViewHeight));
             AnimatorSet animatorSet = new AnimatorSet();
             animatorSet.playTogether(ObjectAnimator.ofFloat(this, "enterOffset", (fromTop ? -1.0f : 1.0f) * (enterOffsetMargin + undoViewHeight), (fromTop ? 1.0f : -1.0f)));

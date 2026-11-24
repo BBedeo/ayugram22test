@@ -4112,7 +4112,6 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     private boolean glassSections;
-    private final RectF glassInsetRect = new RectF();
 
     /** Opt-in (the profile): while Liquid Glass is active the section cards are translucent tier-2 glass with a 1px rim. */
     public void setGlassSections(boolean glassSections) {
@@ -4137,22 +4136,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         radii[4] = radii[5] = radii[6] = radii[7] = bottomRadius;
         sectionBackgroundPath.addRoundRect(rect, radii, Path.Direction.CW);
         canvas.drawPath(sectionBackgroundPath, sectionBackgroundPaint);
-
-        final float stroke = AndroidUtilities.dpf2(1f);
-        sectionBackgroundStrokePaint.setStyle(Paint.Style.STROKE);
-        sectionBackgroundStrokePaint.setStrokeWidth(stroke);
-        sectionBackgroundStrokePaint.setColor(multAlpha(app.exteraless.appearance.glass.GlassTokens.rimShade(base), alpha));
-        canvas.drawPath(sectionBackgroundPath, sectionBackgroundStrokePaint);
-        // the lit rim goes a pixel inside, over the shade
-        glassInsetRect.set(rect.left + stroke, rect.top + stroke, rect.right - stroke, rect.bottom - stroke);
-        if (glassInsetRect.width() > 0 && glassInsetRect.height() > 0) {
-            sectionBackgroundPath.rewind();
-            radii[0] = radii[1] = radii[2] = radii[3] = Math.max(0, topRadius - stroke);
-            radii[4] = radii[5] = radii[6] = radii[7] = Math.max(0, bottomRadius - stroke);
-            sectionBackgroundPath.addRoundRect(glassInsetRect, radii, Path.Direction.CW);
-            sectionBackgroundStrokePaint.setColor(multAlpha(app.exteraless.appearance.glass.GlassTokens.rimLight(base), alpha));
-            canvas.drawPath(sectionBackgroundPath, sectionBackgroundStrokePaint);
-        }
+        // iOS grouped cards have no outline: the fill alone separates the card (a double rim read as a harsh border)
     }
 
     private final Path clipPath = new Path();
