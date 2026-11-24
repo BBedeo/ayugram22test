@@ -460,9 +460,12 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     + moveDistance * .016f));
             elasticReleaseVelocityX = 0f;
             selectedTabPositionX.animateToFinalPosition(cx);
-            elasticJellyBounce.setStartVelocity(impulse);
-            elasticJellyBounce.animateToFinalPosition(0f);
-            if (!elasticTouchStartedOnPill && !elasticDragging && moveDistance > dp(4f)) {
+            final boolean elasticMotion = app.exteraless.appearance.LiquidGlassTuning.motionEnabled();
+            if (elasticMotion) {
+                elasticJellyBounce.setStartVelocity(impulse);
+                elasticJellyBounce.animateToFinalPosition(0f);
+            }
+            if (elasticMotion && !elasticTouchStartedOnPill && !elasticDragging && moveDistance > dp(4f)) {
                 elasticGlideAnimating = true;
                 elasticPressScale.setStartVelocity(4.2f);
                 elasticPressScale.animateToFinalPosition(1f);

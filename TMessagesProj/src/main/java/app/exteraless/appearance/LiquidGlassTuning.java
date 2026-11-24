@@ -26,7 +26,19 @@ public final class LiquidGlassTuning {
 
     public static boolean motionEnabled() {
         return isActive() && AppearanceConfig.liquidGlassMotion.Bool()
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU;
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && !systemReduceMotion();
+    }
+
+    /** Android has no Reduce Motion flag; animator scale 0 is the system "remove animations" switch. */
+    private static boolean systemReduceMotion() {
+        try {
+            return android.provider.Settings.Global.getFloat(
+                    org.telegram.messenger.ApplicationLoader.applicationContext.getContentResolver(),
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
+        } catch (Throwable ignore) {
+            return false;
+        }
     }
 
     public static boolean adaptiveLightEnabled() {
