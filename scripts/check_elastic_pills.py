@@ -69,7 +69,7 @@ checks = {
         and "elasticPressScale.setStartVelocity(4.2f)" in nav
         and "travelled <= dp(3.5f)" in nav,
     "Native glass sampling and forced GPU refraction are preserved behind icons":
-        "iBlur3FactoryGlass.create(tabsView," in main
+        ("iBlur3FactoryGlass.create(tabsView," in main or "barFactory.create(tabsView," in main)
         and "iBlur3FactoryTabLens.create(tabsView," in main
         and "createTabLensSource()" in main
         and "capsule.setLiquidGlassEffectAllowed();" in main

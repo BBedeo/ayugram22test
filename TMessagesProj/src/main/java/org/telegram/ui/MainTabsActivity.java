@@ -586,7 +586,16 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         iBlur3FactoryGlass.setSourceRootView(viewPositionWatcher, contentView);
         iBlur3FactoryGlass.setLiquidGlassEffectAllowed(true);
 
-        tabsViewBackground = iBlur3FactoryGlass.create(tabsView, BlurredBackgroundProviderImpl.mainTabs(resourceProvider));
+        // with the elastic pill the bar takes the capsule's live strip capture too: the page's own glass capture does
+        // not follow the list's overscroll stretch, so the bar stood still while the capsule on it moved
+        BlurredBackgroundDrawableViewFactory barFactory = iBlur3FactoryGlass;
+        if (ElasticPillGesture.enabled() && iBlur3SourceTabLens != null) {
+            barFactory = new BlurredBackgroundDrawableViewFactory(iBlur3SourceTabLens,
+                iBlur3SourceTabFrosted != null ? iBlur3SourceTabFrosted : iBlur3SourceColor, iBlur3SourceColor);
+            barFactory.setSourceRootView(viewPositionWatcher, contentView);
+            barFactory.setLiquidGlassEffectAllowed(true);
+        }
+        tabsViewBackground = barFactory.create(tabsView, BlurredBackgroundProviderImpl.mainTabs(resourceProvider));
         tabsViewBackground.setRadius(MainTabsUiHelper.getBackgroundRadius());
         tabsViewBackground.setPadding(MainTabsUiHelper.getBackgroundInset());
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && app.exteraless.appearance.LiquidGlassTuning.isActive()) {
