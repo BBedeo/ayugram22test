@@ -8655,9 +8655,27 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             public void setMenuOverlay(@Nullable SimpleActionBarMenuOverlay overlay, @Nullable ActionBarMenuItem item) {
                 if (overlay == null) {
                     moreOverlayFromActions = false;
+                    if (actionsView != null) {
+                        actionsView.setHiddenKey(-1);
+                    }
                     super.setMenuOverlay(null, null);
                 } else {
+                    if (actionsView != null) {
+                        actionsView.setHiddenKey(moreOverlayFromActions ? overlayActionKey : -1);
+                    }
                     super.setMenuOverlay(overlay, moreOverlayFromActions ? null : item);
+                }
+            }
+
+            @Override
+            public boolean ownsMenuStartButton() {
+                return moreOverlayFromActions && actionsView != null;
+            }
+
+            @Override
+            public void drawMenuStartIcon(Canvas canvas, RectF rect, float alpha, float scale) {
+                if (actionsView != null) {
+                    actionsView.drawActionIconAt(overlayActionKey, canvas, rect.centerX(), rect.centerY(), alpha, scale);
                 }
             }
 

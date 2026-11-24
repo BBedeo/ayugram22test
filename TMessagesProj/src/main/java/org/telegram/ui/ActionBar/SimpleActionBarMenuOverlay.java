@@ -634,10 +634,11 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         // the one glass shape: the button's pill stretched into the menu
         final int p = dp(6);
         // an action mode button has no glass of its own: the menu's glass appears over its pill
-        final float glassAlpha = startFromPill ? 1f : Utilities.clamp01(m / 0.25f);
+        final boolean ownStart = bar.ownsMenuStartButton();
+        final float glassAlpha = startFromPill || ownStart ? 1f : Utilities.clamp01(m / 0.25f);
         if (glass != null) {
             // from the color of the button's glass (a tinted header) to the menu's
-            glassColorsFactor = startFromPill ? Utilities.clamp01(m) : 1f;
+            glassColorsFactor = startFromPill || ownStart ? Utilities.clamp01(m) : 1f;
             // keep mostly crisp optical refraction (like the bottom pill) with only gentle frost for text contrast
             bar.setMenuGlassFrostedProgress(glassColorsFactor * 0.28f);
             glass.updateColors();
@@ -675,7 +676,9 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         final float ia = 1f - Utilities.clamp01(m / (opened ? 0.3f : 0.7f));
         if (ia > 0.004f) {
             final float s = 1f - 0.15f * Utilities.clamp01(m / 0.3f);
-            if (startFromPill) {
+            if (ownStart) {
+                bar.drawMenuStartIcon(canvas, startRect, ia, s * (1f + wobble * 0.5f));
+            } else if (startFromPill) {
                 drawMorphingPillIcon(canvas, bar.getMenuView(), ia, s);
                 drawMorphingPillIcon(canvas, bar.getMenuPillExtraView(), ia, s);
             } else if (item != null) {

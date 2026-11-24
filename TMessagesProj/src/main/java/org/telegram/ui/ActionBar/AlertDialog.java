@@ -290,9 +290,10 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         // Telegram's original fallback stays untouched with the toggle OFF.
         // System blur may also be disabled in Android settings, so the regular
         // blurred-bitmap/opaque paths remain available as a fallback.
+        // the glass lens samples its own snapshot: it does not need the system's window blur
         return LiquidGlassTuning.isActive()
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && LaunchActivity.systemBlurEnabled;
+                && (LaunchActivity.systemBlurEnabled || app.exteraless.appearance.glass.GlassWindowBackdrop.supported());
     }
 
     public void redPositive() {
@@ -381,6 +382,8 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 && (isDark || optionalGlass);
         if (optionalGlass) {
             blurAlpha = LiquidGlassTuning.tintAlphaMenu(isDark, blurAlpha);
+            // as light a dim as behind the glass menus
+            dimAlpha = 0.12f;
         }
 
         backgroundPaddings = new Rect();

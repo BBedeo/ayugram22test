@@ -7,11 +7,13 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Outline;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 
@@ -55,6 +57,18 @@ public final class DialogMorph {
     private final int[] panelLoc = new int[2];
     private final float originRadius;
     private final Runnable stepper = this::step;
+
+    // the panel is revealed by the growing shape: it is clipped to it, so it comes out of the shape and touches its edges
+    private final RectF reveal = new RectF();
+    private float revealRadius;
+    private ViewOutlineProvider panelOutline;
+    private boolean panelClipped;
+    private final ViewOutlineProvider revealOutline = new ViewOutlineProvider() {
+        @Override
+        public void getOutline(View view, Outline outline) {
+            outline.setRoundRect(Math.round(reveal.left), Math.round(reveal.top), Math.round(reveal.right), Math.round(reveal.bottom), revealRadius);
+        }
+    };
 
     private @Nullable BlurredBackgroundDrawable lens;
     private @Nullable GlassSurfaceDrawable rim;
@@ -177,6 +191,16 @@ public final class DialogMorph {
         final float radius = Math.min(Math.min(shape.width(), shape.height()) / 2f,
                 lerp(originRadius, dp(GlassTokens.RADIUS_DIALOG), Utilities.clamp01(ph)));
 
+        reveal.set(shape.left - panelLoc[0], shape.top - panelLoc[1], shape.right - panelLoc[0], shape.bottom - panelLoc[1]);
+        revealRadius = radius;
+        if (!panelClipped) {
+            panelClipped = true;
+            panelOutline = panel.getOutlineProvider();
+            panel.setOutlineProvider(revealOutline);
+            panel.setClipToOutline(true);
+        }
+        panel.invalidateOutline();
+        panel.setAlpha(Utilities.clamp01((u - 0.08f) / 0.3f));
         host.getLocationOnScreen(hostLoc);
         lens.setRadius(radius);
         rim.setRadius(radius / AndroidUtilities.density);
@@ -190,10 +214,6 @@ public final class DialogMorph {
             layer.setAlpha(alpha);
         }
 
-        if (!panelFading && u >= PANEL_FADE_AT) {
-            panelFading = true;
-            panel.animate().alpha(1f).setDuration(160).setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
-        }
         if (!handedOff && u >= HANDOFF_AT) {
             handedOff = true;
             handoff.run(snapshot);
@@ -231,6 +251,11 @@ public final class DialogMorph {
             return;
         }
         done = true;
+        if (panelClipped) {
+            panelClipped = false;
+            panel.setClipToOutline(false);
+            panel.setOutlineProvider(panelOutline);
+        }
         if (current == this) {
             current = null;
         }

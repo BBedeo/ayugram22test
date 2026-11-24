@@ -355,6 +355,9 @@ public class ProfileActionsView extends View {
                     action.rect.height() / 2.0f * (1.0f - action.getScale())
                 );
             }
+            if (action.key == hiddenKey) {
+                continue; // its menu's glass is drawn over it, grown out of the circle
+            }
             if (glassFactory != null) {
                 drawGlass(canvas, AndroidUtilities.rectTmp, rr, action.getAlpha() * alphaFraction1);
                 continue;
@@ -508,24 +511,59 @@ public class ProfileActionsView extends View {
         if (action.iconScale != 1f) {
             canvas.scale(action.iconScale, action.iconScale, action.bounds.centerX(), action.bounds.centerY());
         }
-        if (!isAnimatingCallAction || action.key != KEY_CALL) {
-            final float outlineAlpha = (1f - useFilledWhiteIcon) * alpha;
-            final float filledAlpha = useFilledWhiteIcon * alpha;
-            if (action.drawableAnimated != null) {
-                if (action.key == KEY_NOTIFICATION) {
-                    drawActionDrawable(canvas, action.drawableOutline, outlineAlpha);
-                    drawActionDrawable(canvas, action.drawableAnimated, filledAlpha);
-                } else {
-                    drawActionDrawable(canvas, action.drawableAnimated, alpha);
-                }
-            } else {
-                drawActionDrawable(canvas, action.drawableOutline, outlineAlpha);
-                drawActionDrawable(canvas, action.drawableFilled, filledAlpha);
-            }
+        if ((!isAnimatingCallAction || action.key != KEY_CALL) && action.key != hiddenKey) {
+            drawActionIcon(canvas, action, alpha, useFilledWhiteIcon);
         }
 
         canvas.restore();
         drawLoading(canvas, action, alpha);
+    }
+
+    private void drawActionIcon(Canvas canvas, Action action, float alpha, float useFilledWhiteIcon) {
+        final float outlineAlpha = (1f - useFilledWhiteIcon) * alpha;
+        final float filledAlpha = useFilledWhiteIcon * alpha;
+        if (action.drawableAnimated != null) {
+            if (action.key == KEY_NOTIFICATION) {
+                drawActionDrawable(canvas, action.drawableOutline, outlineAlpha);
+                drawActionDrawable(canvas, action.drawableAnimated, filledAlpha);
+            } else {
+                drawActionDrawable(canvas, action.drawableAnimated, alpha);
+            }
+        } else {
+            drawActionDrawable(canvas, action.drawableOutline, outlineAlpha);
+            drawActionDrawable(canvas, action.drawableFilled, filledAlpha);
+        }
+    }
+
+    /** The action whose circle and icon the glass of its menu draws instead (-1: none). */
+    private int hiddenKey = -1;
+
+    public void setHiddenKey(int key) {
+        if (hiddenKey != key) {
+            hiddenKey = key;
+            invalidate();
+        }
+    }
+
+    /** The icon of the action drawn by the glass of its menu: centred on (cx, cy), in the canvas of the overlay. */
+    public void drawActionIconAt(int key, Canvas canvas, float cx, float cy, float alpha, float scale) {
+        final Action action = find(key);
+        if (action == null) {
+            return;
+        }
+        updateBounds(action);
+        final boolean isButtonColorLight = isButtonColorLight();
+        final float useFilledWhiteIcon = !isButtonColorLight ? 1 : MathUtils.clamp((parentExpanded - 0.75f) / 0.25f, 0, 1);
+        final int textColor = ColorUtils.blendARGB(Color.BLACK, Color.WHITE, useFilledWhiteIcon);
+        if (lastColorFilter == null || lastColorFilterColor != textColor) {
+            lastColorFilterColor = textColor;
+            lastColorFilter = new PorterDuffColorFilter(textColor, PorterDuff.Mode.SRC_IN);
+        }
+        canvas.save();
+        canvas.translate(cx - action.bounds.centerX(), cy - action.bounds.centerY());
+        canvas.scale(scale, scale, action.bounds.centerX(), action.bounds.centerY());
+        drawActionIcon(canvas, action, alpha, useFilledWhiteIcon);
+        canvas.restore();
     }
 
     private void drawActionDrawable(Canvas canvas, Drawable drawable, float alpha) {

@@ -77,6 +77,18 @@ public interface MenuOverlayHost {
         return 0;
     }
 
+    /**
+     * The menu grows out of a button the host draws itself (not a header item): the glass starts as the button, whose own
+     * circle is not drawn meanwhile, and its icon is drawn by {@link #drawMenuStartIcon} inside the growing shape.
+     */
+    default boolean ownsMenuStartButton() {
+        return false;
+    }
+
+    /** The icon of the host's own start button, centred on {@code rect} (in the overlay), faded and scaled by the overlay. */
+    default void drawMenuStartIcon(android.graphics.Canvas canvas, RectF rect, float alpha, float scale) {
+    }
+
     /** Whether menus opening from this host should use the crystal header AGSL lens profile. */
     default boolean isHeaderGlassLensEnabled() {
         return false;
