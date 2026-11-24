@@ -646,6 +646,8 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
             // rounded, not truncated: at the start and the end the shape is the button's, it must not move by a pixel
             glass.setBounds(Math.round(bulgedRect.left) - p, Math.round(bulgedRect.top) - p, Math.round(bulgedRect.right) + p, Math.round(bulgedRect.bottom) + p);
             reserveGlass();
+            // the menu materializes through its lens, not a fade: refraction and light start lifted and settle as it opens
+            glass.setElasticPressProgress(app.exteraless.appearance.LiquidGlassTuning.motionEnabled() ? 1f - Utilities.clamp01(m) : 0f);
             glass.setAlpha((int) (255 * glassAlpha));
             glass.draw(canvas);
         } else {
