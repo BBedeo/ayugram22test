@@ -6588,6 +6588,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (headerBlurView == null || headerFadeView == null) {
             return;
         }
+        // the fade goes over the page: with the aura that is the aura's colour, not the themed grey (a dark band under the header)
+        final int gray = getThemedColor(Theme.key_windowBackgroundGray) | 0xFF000000;
+        final int aura = getProfileAuraColor();
+        getBaseSimpleGlass().setBackgroundColor(aura == 0 ? gray : ColorUtils.blendARGB(aura, gray, mediaHeaderAnimationProgress));
         final boolean media = sharedMediaLayout != null && sharedMediaLayout.getParent() == listView && sharedMediaLayout.isAttachedToWindow();
         final float alpha = Math.max(Math.min(headerBlurFactor, headerRowsProgress), mediaHeaderAnimationProgress);
         headerBlurView.setAlpha(media ? 0 : alpha);

@@ -157,6 +157,11 @@ public class BaseFragmentSimpleGlass {
 
 
 
+    /** The colour the fades and the glass go over: the screen's own while the page behind it is not the themed one. */
+    public void setBackgroundColor(int color) {
+        glassBackgroundSourceColor.setColor(color);
+    }
+
     @NonNull
     public Drawable createActionBarFadeDrawable(View view) {
         final GlassFadeBlurredDrawable glassBlurredFadeDrawable = new GlassFadeBlurredDrawable(
