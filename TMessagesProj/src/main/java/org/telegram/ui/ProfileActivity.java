@@ -11496,6 +11496,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (!glassPhotoHeader() || !app.exteraless.appearance.AppearanceConfig.profileAura() || avatarImage == null) {
             return 0;
         }
+        if (topView != null && topView.hasColorById && topView.color1 != 0) {
+            // a profile colour paints the header itself: the page pours out of that very colour, not the photo's
+            return topView.color1 | 0xFF000000;
+        }
         final ImageReceiver receiver = avatarImage.getImageReceiver();
         final Object source = receiver.getDrawable() instanceof VectorAvatarThumbDrawable ? receiver.getDrawable() : receiver.getBitmap();
         if (source == null) {
