@@ -1561,12 +1561,17 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         public static class Background extends Drawable implements GlassOutlineStyle.Listener {
             private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            private LinearGradient gradient, strokeGradient;
+            private LinearGradient gradient;
+            private final android.graphics.SweepGradient strokeGradient;
             private final Matrix matrix = new Matrix();
 
             public Background() {
                 strokePaint.setStyle(Paint.Style.STROKE);
-                strokePaint.setColor(0x38ffffff);
+                // sweep angles: 0.125 = bottom-right, 0.375 = bottom-left, 0.625 = top-left, 0.875 = top-right
+                strokeGradient = new android.graphics.SweepGradient(0, 0,
+                        new int[] { 0x20ffffff, 0x40ffffff, 0, 0x40ffffff, 0, 0x20ffffff },
+                        new float[] { 0f, 0.125f, 0.375f, 0.625f, 0.875f, 1f });
+                strokePaint.setShader(strokeGradient);
                 GlassOutlineStyle.addListener(this);
             }
 
@@ -1623,9 +1628,13 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
 
                 if (!monet && GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
-                    // Telegram-iOS "Item List/Icons/Backdrop": a ~0.5pt white inner edge, ~20-28% alpha, no gradient
-                    final float sw = dp(0.5f);
+                    // Telegram-iOS "Item List/Icons/Backdrop": the light sits on the top-left and bottom-right
+                    // corners and fades out toward the other two. Drawn as a vector sweep, never as a bitmap.
+                    final float sw = dp(0.75f);
                     strokePaint.setStrokeWidth(sw);
+                    matrix.reset();
+                    matrix.postTranslate(AndroidUtilities.rectTmp.centerX(), AndroidUtilities.rectTmp.centerY());
+                    strokeGradient.setLocalMatrix(matrix);
                     AndroidUtilities.rectTmp.inset(sw / 2.0f, sw / 2.0f);
                     canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, strokePaint);
                 }
