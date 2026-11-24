@@ -579,6 +579,10 @@ public class ProfileActionsView extends View {
     }
 
     private void drawLoading(Canvas canvas, Action action, float alpha) {
+        if (GlassTokens.isActive()) {
+            // Liquid Glass: no outline loading animation around the round buttons
+            return;
+        }
         if (action.stopDelay > 0 && System.currentTimeMillis() > action.stopDelay + action.startTime) {
             action.isLoading = false;
         }
