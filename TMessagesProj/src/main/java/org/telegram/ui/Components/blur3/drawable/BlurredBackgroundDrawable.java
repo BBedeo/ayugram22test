@@ -1371,6 +1371,11 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
             if (liquidGlassEffect == null || Build.VERSION.SDK_INT < 33 || !(source instanceof GlassFadeBlurredDrawable.GlassFadeDownsampledSource)) {
                 return 1;
             }
+            // Header glass (back circle, title pill) is small: on the source grid its rim and edge AA fall under one
+            // pixel and are blown up into blocks. The lens runs in screen pixels over the already smooth blur.
+            if (headerGlassLens && !elasticPillLens) {
+                return 1;
+            }
             final GlassFadeBlurredDrawable.GlassFadeDownsampledSource downsampled = (GlassFadeBlurredDrawable.GlassFadeDownsampledSource) source;
             if (!downsampled.isDownsampledSourceSupported()) {
                 return 1;
