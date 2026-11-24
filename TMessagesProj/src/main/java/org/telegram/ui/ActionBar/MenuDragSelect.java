@@ -25,7 +25,9 @@ public final class MenuDragSelect {
             return;
         }
         final View pageRoot = content.getVisiblePageRoot();
-        final View hit = ActionBarMenuItem.findHoveredMenuChild(pageRoot, pageRoot, screenX, screenY, location);
+        final boolean visible = !(content.getParent() instanceof SimpleActionBarMenuOverlay)
+                || ((SimpleActionBarMenuOverlay) content.getParent()).containsScreenPoint(screenX, screenY);
+        final View hit = visible ? ActionBarMenuItem.findHoveredMenuChild(pageRoot, pageRoot, screenX, screenY, location) : null;
         if (ActionBarMenuItem.applyHoverSelection(selected, hit, screenX, screenY, location)) {
             hit.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
         }

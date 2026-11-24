@@ -675,6 +675,14 @@ public class ActionBarMenuItem extends FrameLayout {
                 || root instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout;
         if (root instanceof ViewGroup && !(root instanceof ActionBarMenuSubItem)) {
             final ViewGroup vg = (ViewGroup) root;
+            if (vg.getClipChildren() && (root instanceof android.widget.ScrollView || root instanceof HorizontalScrollView)) {
+                // rows scrolled out of view are not there to be picked
+                vg.getLocationOnScreen(location);
+                if (screenX < location[0] || screenX >= location[0] + vg.getWidth()
+                        || screenY < location[1] || screenY >= location[1] + vg.getHeight()) {
+                    return null;
+                }
+            }
             for (int i = vg.getChildCount() - 1; i >= 0; i--) {
                 final View hit = findHoveredMenuChild(vg.getChildAt(i), pageRoot, screenX, screenY, location);
                 if (hit != null) {

@@ -188,6 +188,13 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         return content;
     }
 
+    /** Whether the point (screen coordinates) is inside the glass shape as it is now: what is outside it is not seen. */
+    public boolean containsScreenPoint(float screenX, float screenY) {
+        final int[] loc = new int[2];
+        getLocationOnScreen(loc);
+        return shapeRect.contains(screenX - loc[0], screenY - loc[1]);
+    }
+
     /** Whether the menu is on screen, opening, open or closing. */
     public boolean isShown(ActionBarMenuItem item) {
         return this.item == item && (opened || animating);
