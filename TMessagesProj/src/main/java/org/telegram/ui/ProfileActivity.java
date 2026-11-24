@@ -4172,8 +4172,20 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     final MenuDragSelect select = actionsDragSelect;
                     actionsDragSelect = null;
                     if (select != null) {
-                        // released over a row: it runs; released elsewhere: the menu stays for a tap
-                        select.release(rawX, rawY);
+                        // released over a row: it runs; outside the menu: it goes away, as the "more" menu does
+                        if (!select.release(rawX, rawY)) {
+                            final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+                            final View content = overlay != null ? overlay.getContent() : null;
+                            if (content != null) {
+                                final int[] loc = new int[2];
+                                content.getLocationOnScreen(loc);
+                                final boolean inside = rawX >= loc[0] && rawX <= loc[0] + content.getWidth()
+                                        && rawY >= loc[1] && rawY <= loc[1] + content.getHeight();
+                                if (!inside) {
+                                    overlay.close(true);
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -7242,6 +7254,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             updateNotifications(true);
             return;
         }
+        if (fromActions && openNotificationsInOverlay(did)) {
+            return;
+        }
         ChatNotificationsPopupWrapper chatNotificationsPopupWrapper = new ChatNotificationsPopupWrapper(getContext(), currentAccount, null, true, true, new ChatNotificationsPopupWrapper.Callback() {
             @Override
             public void toggleSound() {
@@ -7304,13 +7319,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             @Override
             public void dismiss() {
-                closeNotificationsOverlay();
             }
         }, getResourceProvider());
         chatNotificationsPopupWrapper.update(did, topicId, notificationsExceptionTopics);
-        if (fromActions && openNotificationsInOverlay(chatNotificationsPopupWrapper)) {
-            return;
-        }
         if (AndroidUtilities.isTablet()) {
             final View v = parentLayout.getView();
             x += v.getX() + v.getPaddingLeft();
@@ -8556,7 +8567,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     /** The button of the action row the menu of the header grows out of. */
     private int overlayActionKey = ProfileActionsView.KEY_MORE;
     private MenuDragSelect actionsDragSelect;
-    private ChatNotificationsPopupWrapper notificationsOverlayWrapper;
 
     private void toggleMoreFromActions() {
         if (otherItem == null) {
@@ -8572,35 +8582,59 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
-    /** The menu of the bell grows out of its button in the glass, as the one of the "more" button. */
-    private boolean openNotificationsInOverlay(ChatNotificationsPopupWrapper wrapper) {
+    /** The menu of the bell (unmuted chat) grows out of its button in the glass, built like the menus of the chat list. */
+    private boolean openNotificationsInOverlay(long did) {
         final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
         if (!LiquidGlassTuning.isActive() || simpleActionBar == null || otherItem == null || overlay == null
-                || simpleActionBar.getOpenMenuOverlay() != null || wrapper.windowLayout == null) {
+                || simpleActionBar.getOpenMenuOverlay() != null || actionsView == null) {
             return false;
         }
+        final ItemOptions io = ItemOptions.makeOptions(this, actionsView);
+        final boolean soundOn = getMessagesController().isDialogNotificationsSoundEnabled(did, topicId);
+        io.add(soundOn ? R.drawable.msg_tone_off : R.drawable.msg_tone_on,
+                LocaleController.getString(soundOn ? R.string.SoundOff : R.string.SoundOn), () -> {
+                    final SharedPreferences preferences = MessagesController.getNotificationsSettings(currentAccount);
+                    final String key = "sound_enabled_" + NotificationsController.getSharedPrefKey(did, topicId);
+                    final boolean enabled = !preferences.getBoolean(key, true);
+                    preferences.edit().putBoolean(key, enabled).apply();
+                    if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
+                        BulletinFactory.createSoundEnabledBulletin(ProfileActivity.this, enabled ? NotificationsController.SETTING_SOUND_ON : NotificationsController.SETTING_SOUND_OFF, getResourceProvider()).show();
+                    }
+                });
+        io.add(R.drawable.msg_mute_period, LocaleController.getString(R.string.MuteForPopup), () ->
+                AlertsCreator.createMuteForPickerDialog(getParentActivity(), resourcesProvider, (notify, inSecond, scheduleRepeatPeriod) -> AndroidUtilities.runOnUIThread(() -> {
+                    if (inSecond == 0) {
+                        return;
+                    }
+                    getNotificationsController().muteUntil(did, topicId, inSecond);
+                    if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
+                        BulletinFactory.createMuteBulletin(ProfileActivity.this, NotificationsController.SETTING_MUTE_CUSTOM, inSecond, getResourceProvider()).show();
+                    }
+                    updateExceptions();
+                    updateNotifications(true);
+                }, 16)));
+        io.add(R.drawable.msg_customize, LocaleController.getString(R.string.NotificationsCustomize), () -> {
+            final Bundle args = new Bundle();
+            args.putLong("dialog_id", did);
+            args.putLong("topic_id", topicId);
+            presentFragment(new ProfileNotificationsActivity(args, resourcesProvider));
+        });
+        io.add(R.drawable.msg_mute, LocaleController.getString(R.string.MuteNotifications), true, () -> {
+            getNotificationsController().muteDialog(did, topicId, true);
+            if (fragmentView != null) {
+                BulletinFactory.createMuteBulletin(ProfileActivity.this, true, null).show();
+            }
+            updateExceptions();
+            updateNotifications(true);
+        });
         overlayActionKey = ProfileActionsView.KEY_NOTIFICATION;
         moreOverlayFromActions = true;
-        notificationsOverlayWrapper = wrapper;
-        overlay.setOnClosed(() -> notificationsOverlayWrapper = null);
-        overlay.open(simpleActionBar, otherItem, wrapper.windowLayout);
-        if (simpleActionBar.getOpenMenuOverlay() == null) {
+        if (!io.openInOverlay(simpleActionBar, otherItem, overlay, () -> moreOverlayFromActions = false)
+                || simpleActionBar.getOpenMenuOverlay() == null) {
             moreOverlayFromActions = false;
-            notificationsOverlayWrapper = null;
             return false;
         }
         return true;
-    }
-
-    private void closeNotificationsOverlay() {
-        if (notificationsOverlayWrapper == null) {
-            return;
-        }
-        notificationsOverlayWrapper = null;
-        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
-        if (overlay != null) {
-            overlay.close(true);
-        }
     }
 
     private final RectF moreCircleRect = new RectF(), moreActionsRect = new RectF(), moreBarRect = new RectF();
