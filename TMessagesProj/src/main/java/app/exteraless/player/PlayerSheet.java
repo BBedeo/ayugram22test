@@ -2320,9 +2320,49 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             Utilities.stackBlurBitmap(blurred, Math.max(8, Math.min(blurred.getWidth(), blurred.getHeight()) / 6));
         } catch (Throwable ignore) {
         }
+        if (Md3Player.isIosPlayer() && backdrop != null && !backdrop.isRecycled() && !previewMode) {
+            // the background melts from the previous cover's colours into the new ones
+            prevBackdrop = backdrop;
+            backdropFade = 0f;
+            if (backdropFader != null) {
+                backdropFader.cancel();
+            }
+            backdropFader = ValueAnimator.ofFloat(0f, 1f);
+            backdropFader.setDuration(600);
+            backdropFader.addUpdateListener(a -> {
+                backdropFade = (float) a.getAnimatedValue();
+                if (backdropFade >= 1f) {
+                    prevBackdrop = null;
+                }
+                layout.invalidate();
+            });
+            backdropFader.start();
+        }
         backdrop = blurred;
         backdropKey = key;
         layout.invalidate();
+    }
+
+    private Bitmap prevBackdrop;
+    private float backdropFade = 1f;
+    private ValueAnimator backdropFader;
+
+    private void drawBackdropBitmap(Canvas canvas, Bitmap bitmap, int width, int height, int alpha) {
+        int bw = bitmap.getWidth();
+        int bh = bitmap.getHeight();
+        float ratio = width / (float) Math.max(1, height);
+        if (bw / (float) bh > ratio) {
+            int w = Math.max(1, (int) (bh * ratio));
+            int x = (bw - w) / 2;
+            backdropSrc.set(x, 0, x + w, bh);
+        } else {
+            int h = Math.max(1, (int) (bw / ratio));
+            int y = (bh - h) / 2;
+            backdropSrc.set(0, y, bw, y + h);
+        }
+        previewRect.set(0, 0, width, height);
+        backdropPaint.setAlpha(alpha);
+        canvas.drawBitmap(bitmap, backdropSrc, previewRect, backdropPaint);
     }
 
     private void drawBackdrop(Canvas canvas, int width, int height) {
@@ -2332,21 +2372,13 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         final boolean ios = Md3Player.isIosPlayer();
         int mode = ios ? (backdrop != null ? PlayerStyle.BACKGROUND_BLUR : PlayerStyle.BACKGROUND_GRADIENT) : PlayerStyle.background();
         if (mode == PlayerStyle.BACKGROUND_BLUR && backdrop != null && !backdrop.isRecycled()) {
-            int bw = backdrop.getWidth();
-            int bh = backdrop.getHeight();
-            float ratio = width / (float) Math.max(1, height);
-            if (bw / (float) bh > ratio) {
-                int w = Math.max(1, (int) (bh * ratio));
-                int x = (bw - w) / 2;
-                backdropSrc.set(x, 0, x + w, bh);
+            if (prevBackdrop != null && !prevBackdrop.isRecycled() && backdropFade < 1f) {
+                drawBackdropBitmap(canvas, prevBackdrop, width, height, 255);
+                drawBackdropBitmap(canvas, backdrop, width, height, Math.round(255 * backdropFade));
             } else {
-                int h = Math.max(1, (int) (bw / ratio));
-                int y = (bh - h) / 2;
-                backdropSrc.set(0, y, bw, y + h);
+                drawBackdropBitmap(canvas, backdrop, width, height, 255);
             }
             previewRect.set(0, 0, width, height);
-            backdropPaint.setAlpha(255);
-            canvas.drawBitmap(backdrop, backdropSrc, previewRect, backdropPaint);
             overlayPaint.setShader(null);
             overlayPaint.setColor(ColorUtils.setAlphaComponent(colors.surface, ios ? (colors.dark ? 0x70 : 0x80) : (colors.dark ? 0xa8 : 0xb4)));
             canvas.drawRect(previewRect, overlayPaint);
