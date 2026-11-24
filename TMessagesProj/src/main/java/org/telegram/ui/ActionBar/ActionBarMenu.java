@@ -763,6 +763,21 @@ public class ActionBarMenu extends LinearLayout {
         return 0;
     }
 
+    /** Left and right margins of the search container in the menu, null without one. */
+    public int[] getSearchItemMargins() {
+        for (int a = 0, N = getChildCount(); a < N; a++) {
+            final View child = getChildAt(a);
+            if (child instanceof ActionBarMenuItem) {
+                final View searchContainer = ((ActionBarMenuItem) child).getSearchContainer();
+                if (searchContainer != null && searchContainer.getLayoutParams() instanceof MarginLayoutParams) {
+                    final MarginLayoutParams lp = (MarginLayoutParams) searchContainer.getLayoutParams();
+                    return new int[]{lp.leftMargin, lp.rightMargin};
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * Левый край раскрытого поля поиска в координатах меню. По нему ActionBar подтягивает
      * пилюлю, пока та растёт пружиной: поле раскрывается вместе со стеклом.

@@ -2044,12 +2044,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 menuWidth = MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST);
                 menu.measure(menuWidth, actionBarHeightSpec);
                 int itemsWidth = menu.getItemsMeasuredWidth(true);
-                menuWidth = MeasureSpec.makeMeasureSpec(width - dp(menuOccupyBack ? 0 : AndroidUtilities.isTablet() ? 74 : 66) + menu.getItemsMeasuredWidth(true), MeasureSpec.EXACTLY);
+                menuWidth = MeasureSpec.makeMeasureSpec(width - searchMenuStart() + menu.getItemsMeasuredWidth(true), MeasureSpec.EXACTLY);
                 if (!isMenuOffsetSuppressed) {
                     menu.translateXItems(-itemsWidth);
                 }
             } else if (isSearchFieldVisible) {
-                menuWidth = MeasureSpec.makeMeasureSpec(width - dp(menuOccupyBack ? 0 : AndroidUtilities.isTablet() ? 74 : 66), MeasureSpec.EXACTLY);
+                menuWidth = MeasureSpec.makeMeasureSpec(width - searchMenuStart(), MeasureSpec.EXACTLY);
                 if (!isMenuOffsetSuppressed) {
                     menu.translateXItems(0);
                 }
@@ -2174,7 +2174,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int titleCenterX = centeredTitleX(getMeasuredWidth());
 
         if (menu != null && menu.getVisibility() != GONE) {
-            int menuLeft = menu.searchFieldVisible() ? dp(menuOccupyBack ? 0 : AndroidUtilities.isTablet() ? 74 : 66) : (getMeasuredWidth()) - menu.getMeasuredWidth();
+            int menuLeft = menu.searchFieldVisible() ? searchMenuStart() : (getMeasuredWidth()) - menu.getMeasuredWidth();
             menu.layout(menuLeft, additionalTop, menuLeft + menu.getMeasuredWidth(), additionalTop + menu.getMeasuredHeight());
         }
 
@@ -3383,6 +3383,27 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private boolean hasSearchItemInMenu() {
         return glassMode && chatAvatarContainer == null && menu != null
                 && menu.getSearchItemWidth() > 0;
+    }
+
+    private boolean searchHugsBack;
+
+    /** The search pill of a glass header grows to just after the back button instead of leaving an empty stretch of the former title. */
+    public void setSearchHugsBack(boolean hugs) {
+        searchHugsBack = hugs;
+    }
+
+    /** Where the menu starts while the search field is open. */
+    private int searchMenuStart() {
+        final int normal = dp(menuOccupyBack ? 0 : AndroidUtilities.isTablet() ? 74 : 66);
+        if (!searchHugsBack || !glassMode || menuOccupyBack || chatAvatarContainer != null || menu == null) {
+            return normal;
+        }
+        final int[] margins = menu.getSearchItemMargins();
+        if (margins == null) {
+            return normal;
+        }
+        // the pill is the field plus 6dp on each side and ends 6dp after the back circle (which ends at 52dp)
+        return Math.min(normal, Math.max(dp(54) - margins[0], dp(70) - margins[0] - margins[1]));
     }
 
     public void checkMenuItemsWidth() {
