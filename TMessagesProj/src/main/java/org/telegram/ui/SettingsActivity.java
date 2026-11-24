@@ -1566,8 +1566,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
             public Background() {
                 strokePaint.setStyle(Paint.Style.STROKE);
-                strokeGradient = new LinearGradient(0, 0, 0, dp(28), new int[] { 0x4dffffff, 0, 0x1affffff }, new float[] { 0, 0.5f, 1 }, Shader.TileMode.CLAMP);
-                strokePaint.setShader(strokeGradient);
+                strokePaint.setColor(0x38ffffff);
                 GlassOutlineStyle.addListener(this);
             }
 
@@ -1622,7 +1621,14 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 matrix.reset();
                 matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
-                // no rim: Telegram-iOS draws these tiles as a plain gradient fill (PresentationResourcesSettings)
+
+                if (!monet && GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
+                    // Telegram-iOS "Item List/Icons/Backdrop": a ~0.5pt white inner edge, ~20-28% alpha, no gradient
+                    final float sw = dp(0.5f);
+                    strokePaint.setStrokeWidth(sw);
+                    AndroidUtilities.rectTmp.inset(sw / 2.0f, sw / 2.0f);
+                    canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, strokePaint);
+                }
             }
 
             @Override
