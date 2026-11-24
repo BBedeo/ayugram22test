@@ -159,8 +159,19 @@ public class BaseFragmentSimpleGlass {
 
     /** The colour the fades and the glass go over: the screen's own while the page behind it is not the themed one. */
     public void setBackgroundColor(int color) {
+        if (glassBackgroundSourceColor.getColor() == color) {
+            return;
+        }
         glassBackgroundSourceColor.setColor(color);
+        // the fades keep their overlay colour until told: a theme change does it, this is a change of the page's colour
+        for (GlassFadeBlurredDrawable d : fadeDrawables) {
+            d.updateColors();
+            d.invalidateSelf();
+        }
+        glassEngine.invalidate();
     }
+
+    private final java.util.ArrayList<GlassFadeBlurredDrawable> fadeDrawables = new java.util.ArrayList<>();
 
     @NonNull
     public Drawable createActionBarFadeDrawable(View view) {
@@ -185,6 +196,7 @@ public class BaseFragmentSimpleGlass {
         glassBlurredFadeDrawable.setSuppressInM3Opaque(true);
 
         glassEngine.registerDrawable(view, glassBlurredFadeDrawable);
+        fadeDrawables.add(glassBlurredFadeDrawable);
         return glassBlurredFadeDrawable;
     }
 
