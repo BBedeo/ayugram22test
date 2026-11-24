@@ -356,7 +356,11 @@ public class ProfileActionsView extends View {
                 );
             }
             if (action.key == hiddenKey) {
-                continue; // its menu's glass is drawn over it, grown out of the circle
+                // its menu's glass is drawn over it, grown out of the circle; the circle itself comes back under the closing menu
+                if (hiddenReveal > 0.001f && glassFactory != null) {
+                    drawGlass(canvas, AndroidUtilities.rectTmp, rr, action.getAlpha() * alphaFraction1 * hiddenReveal);
+                }
+                continue;
             }
             if (glassFactory != null) {
                 drawGlass(canvas, AndroidUtilities.rectTmp, rr, action.getAlpha() * alphaFraction1);
@@ -538,9 +542,20 @@ public class ProfileActionsView extends View {
     /** The action whose circle and icon the glass of its menu draws instead (-1: none). */
     private int hiddenKey = -1;
 
+    private float hiddenReveal;
+
     public void setHiddenKey(int key) {
         if (hiddenKey != key) {
             hiddenKey = key;
+            hiddenReveal = 0f;
+            invalidate();
+        }
+    }
+
+    /** How much of the hidden action's glass shows again (its menu is closing over it). */
+    public void setHiddenReveal(float reveal) {
+        if (hiddenReveal != reveal) {
+            hiddenReveal = reveal;
             invalidate();
         }
     }

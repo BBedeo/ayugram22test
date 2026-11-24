@@ -635,7 +635,12 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         final int p = dp(6);
         // an action mode button has no glass of its own: the menu's glass appears over its pill
         final boolean ownStart = bar.ownsMenuStartButton();
-        final float glassAlpha = startFromPill || ownStart ? 1f : Utilities.clamp01(m / 0.25f);
+        // a closing menu of a button the host draws itself hands over by a cross-fade: the button's own glass has another look
+        final float reveal = ownStart && !opened ? 1f - Utilities.clamp01(m / 0.4f) : 0f;
+        if (ownStart) {
+            bar.setMenuStartReveal(reveal);
+        }
+        final float glassAlpha = ownStart ? 1f - reveal : startFromPill ? 1f : Utilities.clamp01(m / 0.25f);
         if (glass != null) {
             // from the color of the button's glass (a tinted header) to the menu's
             glassColorsFactor = startFromPill || ownStart ? Utilities.clamp01(m) : 1f;

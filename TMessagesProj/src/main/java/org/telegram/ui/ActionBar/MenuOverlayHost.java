@@ -85,6 +85,13 @@ public interface MenuOverlayHost {
         return false;
     }
 
+    /**
+     * How much of the host's own start button glass is back under the closing menu (0..1): the menu's glass fades out as
+     * it grows, so the two looks cross-fade instead of the button blinking in at the end.
+     */
+    default void setMenuStartReveal(float reveal) {
+    }
+
     /** The icon of the host's own start button, centred on {@code rect} (in the overlay), faded and scaled by the overlay. */
     default void drawMenuStartIcon(android.graphics.Canvas canvas, RectF rect, float alpha, float scale) {
     }

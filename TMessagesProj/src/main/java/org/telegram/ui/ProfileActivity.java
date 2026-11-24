@@ -8716,6 +8716,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
 
             @Override
+            public void setMenuStartReveal(float reveal) {
+                if (actionsView != null) {
+                    actionsView.setHiddenReveal(reveal);
+                }
+            }
+
+            @Override
             public boolean ownsMenuStartButton() {
                 return moreOverlayFromActions && actionsView != null;
             }
