@@ -53,6 +53,7 @@ import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -1510,6 +1511,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (fading) {
                 canvas.restore();
             }
+            drawProfileAura(canvas, y1);
             // below y1 the header of the media is glass: headerFadeView, over the pages. Leaving the media the header
             // grows back from the top while the media are already lower: the screen's background between them
             if (mediaHeaderAnimationProgress > 0 && y1 < v && sharedMediaLayout != null && sharedMediaLayout.isAttachedToWindow()) {
@@ -1524,6 +1526,51 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         private final Paint gapPaint = new Paint();
         private final RectF previousMenuRect = new RectF();
+
+        private final AnimatedFloat auraAnimated = new AnimatedFloat(this, 450, CubicBezierInterpolator.EASE_OUT_QUINT);
+        private final Paint auraPaint = new Paint();
+        private LinearGradient auraGradient;
+        private int auraGradientColor, auraGradientHeight;
+        private long auraPollUntil;
+
+        /** Liquid Glass: below the photo the page is tinted with its colour, fading out down the screen. */
+        private void drawProfileAura(Canvas canvas, int top) {
+            final int color = getProfileAuraColor();
+            final float t = auraAnimated.set(color != 0 ? 1f : 0f);
+            if (color == 0 && glassPhotoHeader() && app.exteraless.appearance.AppearanceConfig.profileAura()) {
+                // the photo is not loaded yet: look again for a few seconds
+                final long now = SystemClock.uptimeMillis();
+                if (auraPollUntil == 0) {
+                    auraPollUntil = now + 4000;
+                }
+                if (now < auraPollUntil) {
+                    postInvalidateDelayed(250);
+                }
+            }
+            if (t <= 0.001f || top <= 0 || color == 0 && auraGradient == null) {
+                return;
+            }
+            final int height = Math.min(dp(640), Math.max(0, getMeasuredHeight() - top));
+            if (height <= 0) {
+                return;
+            }
+            if (color != 0 && (auraGradientColor != color || auraGradientHeight != height)) {
+                auraGradientColor = color;
+                auraGradientHeight = height;
+                auraGradient = new LinearGradient(0, 0, 0, height,
+                        new int[]{color, Theme.multAlpha(color, 0.70f), Theme.multAlpha(color, 0.38f), Theme.multAlpha(color, 0.14f), color & 0x00FFFFFF},
+                        new float[]{0f, 0.18f, 0.45f, 0.75f, 1f}, Shader.TileMode.CLAMP);
+                auraPaint.setShader(auraGradient);
+            }
+            if (auraGradient == null) {
+                return;
+            }
+            auraPaint.setAlpha((int) (255 * t));
+            canvas.save();
+            canvas.translate(0, top);
+            canvas.drawRect(0, 0, getMeasuredWidth(), height, auraPaint);
+            canvas.restore();
+        }
 
         /** Drawn into the glass capture: without the pattern of the gift, it barely shows through the blur. */
         private boolean capturing;
@@ -1692,7 +1739,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             canvas.drawRect(bottomOverlayRect, backgroundPaint);
             if (glassPhotoHeader()) {
                 // fades from the top of the buttons row into the page, so the row sits on the page colour
-                final int color = getThemedColor(Theme.key_windowBackgroundGray) | 0xFF000000;
+                final int auraColor = getProfileAuraColor();
+                final int color = auraColor != 0 ? auraColor : getThemedColor(Theme.key_windowBackgroundGray) | 0xFF000000;
                 if (glassFadeGradient == null || glassFadeColor != color) {
                     glassFadeColor = color;
                     glassFadeGradient = new GradientDrawable(
@@ -11359,6 +11407,41 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         AndroidUtilities.runOnUIThread(animatorSet::start, 50);
         return animatorSet;
+    }
+
+    private Object auraSource;
+    private int auraPageColor, auraColor;
+
+    /**
+     * Liquid Glass: the opaque colour the photo of the profile pours into the page below it, the main colour of the
+     * photo set on the page's own colour; 0 without a photo or with the setting off.
+     */
+    private int getProfileAuraColor() {
+        if (!glassPhotoHeader() || !app.exteraless.appearance.AppearanceConfig.profileAura() || avatarImage == null) {
+            return 0;
+        }
+        final ImageReceiver receiver = avatarImage.getImageReceiver();
+        final Object source = receiver.getDrawable() instanceof VectorAvatarThumbDrawable ? receiver.getDrawable() : receiver.getBitmap();
+        if (source == null) {
+            return 0;
+        }
+        final int page = getThemedColor(Theme.key_windowBackgroundGray) | 0xFF000000;
+        if (source != auraSource || page != auraPageColor) {
+            auraSource = source;
+            auraPageColor = page;
+            final int raw = getAverageColor(receiver);
+            if (raw == 0) {
+                auraColor = 0;
+            } else {
+                final boolean dark = AndroidUtilities.computePerceivedBrightness(page) < 0.5f;
+                final float[] hsv = new float[3];
+                Color.colorToHSV(raw | 0xFF000000, hsv);
+                hsv[1] = Math.min(1f, hsv[1] * 1.15f);
+                hsv[2] = dark ? Math.min(hsv[2], 0.62f) : Math.max(hsv[2], 0.78f);
+                auraColor = ColorUtils.blendARGB(page, Color.HSVToColor(hsv), dark ? 0.62f : 0.5f) | 0xFF000000;
+            }
+        }
+        return auraColor;
     }
 
     private int getAverageColor(ImageReceiver imageReceiver) {

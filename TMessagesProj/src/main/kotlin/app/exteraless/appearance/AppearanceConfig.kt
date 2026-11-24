@@ -487,6 +487,17 @@ object AppearanceConfig {
         return profileGroupedCard.Bool()
     }
 
+    /** Liquid Glass profile: the main colour of the photo pours from it into the page below. */
+    @JvmField
+    val profileAura =
+        addConfig("OEAppearanceProfileAura", ConfigItem.configTypeBool, true)
+
+    @JvmStatic
+    fun profileAura(): Boolean {
+        ensureLoaded()
+        return profileAura.Bool()
+    }
+
     @JvmStatic
     fun iosChatHeader(): Boolean {
         ensureLoaded()

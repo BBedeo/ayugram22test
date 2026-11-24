@@ -161,6 +161,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int iosSwitchRow;
     private int iosChatHeaderRow;
     private int iosProfileCardRow;
+    private int iosProfileAuraRow;
     private int iosNavBarRow;
     private int iosListItemsRow;
     private int iosPlayerRow;
@@ -285,12 +286,13 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             iosSwitchRow = addRow("iosSwitch");
             iosChatHeaderRow = addRow("iosChatHeader");
             iosProfileCardRow = addRow("iosProfileCard");
+            iosProfileAuraRow = addRow("iosProfileAura");
             iosNavBarRow = addRow("iosNavBar");
             iosListItemsRow = addRow("iosListItems");
             iosPlayerRow = addRow("iosPlayer");
             iosMiniPlayerRow = addRow("iosMiniPlayer");
         } else {
-            iosLoadingRow = iosSliderRow = iosSwitchRow = iosChatHeaderRow = iosProfileCardRow = -1;
+            iosLoadingRow = iosSliderRow = iosSwitchRow = iosChatHeaderRow = iosProfileCardRow = iosProfileAuraRow = -1;
             iosNavBarRow = iosListItemsRow = iosPlayerRow = iosMiniPlayerRow = -1;
         }
         gooeyAvatarRow = addRow("gooeyAvatar");
@@ -956,6 +958,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             AppearanceConfig.profileGroupedCard.setConfigBool(!AppearanceConfig.profileGroupedCard.Bool());
             notifyRow(iosProfileCardRow);
             return;
+        } else if (position == iosProfileAuraRow) {
+            AppearanceConfig.profileAura.setConfigBool(!AppearanceConfig.profileAura.Bool());
+            notifyRow(iosProfileAuraRow);
+            return;
         } else if (position == iosNavBarRow) {
             boolean enable = !AppearanceConfig.iosNavigationBarStyle.Bool();
             AppearanceConfig.iosNavigationBarStyle.setConfigBool(enable);
@@ -1543,6 +1549,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == iosProfileCardRow) {
                         cell.setText(getString(R.string.OEAppearanceProfileGroupedCard), "",
                                 AppearanceConfig.profileGroupedCard.Bool(), true, true);
+                    } else if (position == iosProfileAuraRow) {
+                        cell.setText(getString(R.string.OEAppearanceProfileAura), "",
+                                AppearanceConfig.profileAura.Bool(), true, true);
                     } else if (position == iosNavBarRow) {
                         cell.setText(getString(R.string.OEAppearanceIosNavigationBarStyle), "",
                                 AppearanceConfig.iosNavigationBarStyle.Bool(), true, true);
@@ -1718,7 +1727,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     || position == md3PlayerRow || position == md3MiniPlayerRow
                     || position == iosLoadingRow || position == iosSliderRow
                     || position == iosSwitchRow || position == iosChatHeaderRow
-                    || position == iosProfileCardRow
+                    || position == iosProfileCardRow || position == iosProfileAuraRow
                     || position == iosNavBarRow || position == iosListItemsRow
                     || position == iosPlayerRow || position == iosMiniPlayerRow) {
                 return TYPE_ROUND_CHECK;
