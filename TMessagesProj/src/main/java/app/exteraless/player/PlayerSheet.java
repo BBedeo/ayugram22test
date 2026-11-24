@@ -1879,9 +1879,20 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         controls.shuffle.setColors(0, c.onSurfaceVariant, c.secondaryContainer, c.onSecondaryContainer);
         controls.repeat.setColors(0, c.onSurfaceVariant, c.secondaryContainer, c.onSecondaryContainer);
         controls.repeat.setBadgeColors(c.primary, c.onPrimary);
-        controls.prev.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
-        controls.next.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
-        controls.play.setColors(c.primary, c.onPrimary, c.primary, c.onPrimary);
+        if (Md3Player.isIosPlayer()) {
+            // iOS: flat glyphs, no tonal circles; progress and toggles in plain white-on-tint
+            seekBar.setColors(c.onSurface, ColorUtils.setAlphaComponent(c.onSurface, 0x38));
+            controls.shuffle.setColors(0, c.onSurfaceVariant, ColorUtils.setAlphaComponent(c.onSurface, 0x2E), c.onSurface);
+            controls.repeat.setColors(0, c.onSurfaceVariant, ColorUtils.setAlphaComponent(c.onSurface, 0x2E), c.onSurface);
+            controls.prev.setColors(0, c.onSurface, 0, c.onSurface);
+            controls.next.setColors(0, c.onSurface, 0, c.onSurface);
+            controls.play.setColors(0, c.onSurface, 0, c.onSurface);
+            likeButton.setColors(0, c.onSurfaceVariant, 0, c.onSurface);
+        } else {
+            controls.prev.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
+            controls.next.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
+            controls.play.setColors(c.primary, c.onPrimary, c.primary, c.onPrimary);
+        }
         bindActionColors(c);
         applySystemBars(false);
     }
@@ -2121,7 +2132,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             cover.setRotation(0);
         }
         if (style == PlayerStyle.COVER_CARD) {
-            cover.setRadius(dp(PlayerStyle.coverRadiusDp()));
+            cover.setRadius(dp(Md3Player.isIosPlayer() ? 12 : PlayerStyle.coverRadiusDp()));
         } else if (style != PlayerStyle.COVER_DISC) {
             cover.setRadius(0);
         }
@@ -2202,8 +2213,17 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
 
     private void bindActionColors(PlayerColors c) {
         islandBackground.setCornerRadius(dp(28));
-        islandBackground.setColor(c.surfaceHigh);
-        int background = islandActions ? 0 : c.surfaceHigh;
+        final boolean ios = Md3Player.isIosPlayer();
+        final int glass = ColorUtils.setAlphaComponent(c.onSurface, 0x1F);
+        islandBackground.setColor(ios ? glass : c.surfaceHigh);
+        int background = islandActions ? 0 : (ios ? glass : c.surfaceHigh);
+        if (ios) {
+            speedButton.setColors(background, c.onSurface, background, c.onSurface);
+            speedButton.setBadgeColors(c.onSurface, c.surface);
+            lyricsButton.setColors(background, c.onSurface, c.onSurface, c.surface);
+            queueButton.setColors(background, c.onSurface, background, c.onSurface);
+            return;
+        }
         speedButton.setColors(background, c.onSurface, background, c.onSurface);
         speedButton.setBadgeColors(c.primary, c.onPrimary);
         lyricsButton.setColors(background, c.onSurface, c.primary, c.onPrimary);
