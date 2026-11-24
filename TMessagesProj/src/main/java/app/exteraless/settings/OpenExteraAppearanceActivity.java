@@ -1495,7 +1495,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     if (position == iosGroupRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceIosDesign),
                                 iosSelectedCount() > 0, true);
-                        cell.setCollapseArrow(iosSelectedCount() + "/" + IOS_STYLE_COUNT, !iosExpanded,
+                        cell.setCollapseArrow(iosSelectedCount() + "/" + iosStyles().size(), !iosExpanded,
                                 OpenExteraAppearanceActivity.this::toggleAllIosStyles);
                         break;
                     }
@@ -1503,7 +1503,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                             md3SelectedCount() > 0, true);
                     // Правая зона (76 dp за разделителем) — сам переключатель, как у exteraGram:
                     // туда уходит клик по мастер-тумблеру. Тело строки сворачивает группу.
-                    cell.setCollapseArrow(md3SelectedCount() + "/" + MD3_STYLE_COUNT, !md3Expanded,
+                    cell.setCollapseArrow(md3SelectedCount() + "/" + md3Styles().size(), !md3Expanded,
                             OpenExteraAppearanceActivity.this::toggleAllMd3StylesFromCell);
                     break;
                 }
@@ -1742,8 +1742,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    /** Сколько стилей MD3 включено. Счётчик «N/8» рядом с шевроном. */
-    private static final int MD3_STYLE_COUNT = 8;
     /** Значение селектора NagramX, соответствующее Material Design 3. */
     private static final int STYLE_MD3 = 2;
 
@@ -1757,16 +1755,23 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         return styleValue == STYLE_MD3 || styleValue == SWITCH_STYLE_M3;
     }
 
+    /** One entry per style row of the group: the counter "N/total" follows this list, so a new row only needs adding here. */
+    private java.util.List<java.util.function.BooleanSupplier> md3Styles() {
+        return java.util.Arrays.asList(
+                AppearanceConfig.newLoadingStyle::Bool,
+                () -> isMd3(NaConfig.INSTANCE.getSliderStyle().Int()),
+                () -> isMd3Switch(NaConfig.INSTANCE.getSwitchStyle().Int()),
+                AppearanceConfig.newChatHeaderStyle::Bool,
+                AppearanceConfig.newNavigationBarStyle::Bool,
+                AppearanceConfig.m3ListItems::Bool,
+                AppearanceConfig.md3Player::Bool,
+                AppearanceConfig.md3MiniPlayer::Bool
+        );
+    }
+
     private int md3SelectedCount() {
         int n = 0;
-        if (AppearanceConfig.newLoadingStyle.Bool()) n++;
-        if (isMd3(NaConfig.INSTANCE.getSliderStyle().Int())) n++;
-        if (isMd3Switch(NaConfig.INSTANCE.getSwitchStyle().Int())) n++;
-        if (AppearanceConfig.newChatHeaderStyle.Bool()) n++;
-        if (AppearanceConfig.newNavigationBarStyle.Bool()) n++;
-        if (AppearanceConfig.m3ListItems.Bool()) n++;
-        if (AppearanceConfig.md3Player.Bool()) n++;
-        if (AppearanceConfig.md3MiniPlayer.Bool()) n++;
+        for (java.util.function.BooleanSupplier style : md3Styles()) if (style.getAsBoolean()) n++;
         return n;
     }
 
@@ -1795,7 +1800,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    private static final int IOS_STYLE_COUNT = 10;
     private static final int SLIDER_STYLE_IOS = org.telegram.ui.Components.SeekBarView.SLIDER_STYLE_IOS;
     private static final int SWITCH_STYLE_IOS = org.telegram.ui.Components.Switch.SWITCH_STYLE_IOS;
 
@@ -1807,18 +1811,24 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         return styleValue == SWITCH_STYLE_IOS;
     }
 
+    private java.util.List<java.util.function.BooleanSupplier> iosStyles() {
+        return java.util.Arrays.asList(
+                AppearanceConfig.iosLoadingStyle::Bool,
+                () -> isIosSlider(NaConfig.INSTANCE.getSliderStyle().Int()),
+                () -> isIosSwitch(NaConfig.INSTANCE.getSwitchStyle().Int()),
+                AppearanceConfig.iosChatHeader::Bool,
+                AppearanceConfig.profileGroupedCard::Bool,
+                AppearanceConfig.profileAura::Bool,
+                AppearanceConfig.iosNavigationBarStyle::Bool,
+                AppearanceConfig.iosListItems::Bool,
+                AppearanceConfig.iosPlayer::Bool,
+                AppearanceConfig.iosMiniPlayer::Bool
+        );
+    }
+
     private int iosSelectedCount() {
         int n = 0;
-        if (AppearanceConfig.iosLoadingStyle.Bool()) n++;
-        if (isIosSlider(NaConfig.INSTANCE.getSliderStyle().Int())) n++;
-        if (isIosSwitch(NaConfig.INSTANCE.getSwitchStyle().Int())) n++;
-        if (AppearanceConfig.iosChatHeader.Bool()) n++;
-        if (AppearanceConfig.profileGroupedCard.Bool()) n++;
-        if (AppearanceConfig.profileAura.Bool()) n++;
-        if (AppearanceConfig.iosNavigationBarStyle.Bool()) n++;
-        if (AppearanceConfig.iosListItems.Bool()) n++;
-        if (AppearanceConfig.iosPlayer.Bool()) n++;
-        if (AppearanceConfig.iosMiniPlayer.Bool()) n++;
+        for (java.util.function.BooleanSupplier style : iosStyles()) if (style.getAsBoolean()) n++;
         return n;
     }
 
