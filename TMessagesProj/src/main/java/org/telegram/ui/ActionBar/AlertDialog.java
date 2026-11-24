@@ -272,6 +272,9 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
     private boolean topAnimationAutoRepeat = true;
     private boolean blurredBackground;
     private boolean blurredNativeBackground;
+    private Drawable glassLiteBackground;
+    private boolean glassLensWanted;
+    private app.exteraless.appearance.glass.GlassWindowBackdrop glassBackdrop;
     private int backgroundColor;
     float blurAlpha = 0.8f;
     private boolean blurBehind;
@@ -403,6 +406,9 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         if (!AndroidUtilities.isSafeToShow(getContext())) return;
         dismissed = false;
         super.show();
+        if (glassLensWanted) {
+            startGlassLens();
+        }
         if (progressViewContainer != null && progressViewStyle == ALERT_TYPE_SPINNER) {
             progressViewContainer.setScaleX(0);
             progressViewContainer.setScaleY(0);
@@ -413,6 +419,48 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 .start();
         }
         shownAt = System.currentTimeMillis();
+    }
+
+    private void startGlassLens() {
+        final Window window = getWindow();
+        if (dismissed || window == null || containerView == null || glassLiteBackground == null) {
+            return;
+        }
+        if (glassBackdrop != null) {
+            // shown again: back to the lite look until the new snapshot is ready
+            glassBackdrop.release();
+            window.setBackgroundDrawable(glassLiteBackground);
+            window.setBackgroundBlurRadius(50);
+        }
+        final app.exteraless.appearance.glass.GlassWindowBackdrop backdrop =
+                new app.exteraless.appearance.glass.GlassWindowBackdrop(window.getDecorView());
+        glassBackdrop = backdrop;
+        backdrop.captureWhenLaidOut(containerView,
+                // the window background is part of the window's own draw: keep it out of the snapshot
+                () -> window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)),
+                ok -> {
+                    if (!ok) {
+                        window.setBackgroundDrawable(glassLiteBackground);
+                        return;
+                    }
+                    try {
+                        final Drawable lens = backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimMenuBackgroundFill(resourcesProvider))
+                                .setRadius(dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG));
+                        final Drawable rim = new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
+                                app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
+                                app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG)
+                                .setFillAlpha(0f)
+                                .setShadow(false);
+                        window.setBackgroundDrawable(new android.graphics.drawable.LayerDrawable(new Drawable[]{lens, rim}));
+                        // the lens samples the snapshot itself: the system blur behind it would double up
+                        window.setBackgroundBlurRadius(0);
+                        backdrop.animateIn();
+                    } catch (Throwable t) {
+                        FileLog.e(t);
+                        window.setBackgroundDrawable(glassLiteBackground);
+                        window.setBackgroundBlurRadius(50);
+                    }
+                });
     }
 
     public void setCancelDialog(boolean enable) {
@@ -1491,11 +1539,14 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     if (LiquidGlassTuning.isActive()) {
                         // Translucent native blurred window backdrop with the Liquid Glass rim and bevel
                         // highlight; tier-3 dialog radius (the blur follows the drawable's outline).
-                        window.setBackgroundDrawable(new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
+                        glassLiteBackground = new app.exteraless.appearance.glass.GlassSurfaceDrawable(backgroundColor,
                                 app.exteraless.appearance.glass.GlassTokens.TIER_THICK,
                                 app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG)
                                 .setFillAlpha(blurAlpha)
-                                .setShadow(false));
+                                .setShadow(false);
+                        window.setBackgroundDrawable(glassLiteBackground);
+                        // a full-screen window (stars balance) has no panel-sized backdrop to sample
+                        glassLensWanted = !needStarsBalance && app.exteraless.appearance.glass.GlassWindowBackdrop.supported();
                     } else {
                         float rad = dp(12);
                         ShapeDrawable shapeDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
@@ -1767,6 +1818,10 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
 
         }
         AndroidUtilities.cancelRunOnUIThread(showRunnable);
+        if (glassBackdrop != null) {
+            glassBackdrop.release();
+            glassBackdrop = null;
+        }
 
         if (blurShader != null && blurBitmap != null) {
             blurBitmap.recycle();

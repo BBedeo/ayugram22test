@@ -230,6 +230,10 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     protected boolean allowNestedScroll = true;
 
     protected Drawable shadowDrawable;
+    private LayerDrawable glassMaterial;
+    private int glassShadowAlpha;
+    private boolean glassLensApplied;
+    private app.exteraless.appearance.glass.GlassWindowBackdrop glassBackdrop;
 
     /**
      * NinePatchDrawable does not report the color filter it was given (getColorFilter() returns null), which made the
@@ -1551,10 +1555,20 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                         .setFillAlpha(0f)
                         .setShadow(false)
                         .setTopCornersOnly(true);
-                LayerDrawable material = new LayerDrawable(new Drawable[]{shadowDrawable, rim});
-                material.setLayerInset(1, backgroundPaddingLeft, backgroundPaddingTop,
-                        backgroundPaddingLeft, 0);
+                final boolean lensSlot = app.exteraless.appearance.glass.GlassWindowBackdrop.supported();
+                // with the lens the slot at index 1 is filled once the snapshot is ready
+                LayerDrawable material = new LayerDrawable(lensSlot
+                        ? new Drawable[]{shadowDrawable, new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT), rim}
+                        : new Drawable[]{shadowDrawable, rim});
+                for (int i = 1; i < material.getNumberOfLayers(); i++) {
+                    material.setLayerInset(i, backgroundPaddingLeft, backgroundPaddingTop,
+                            backgroundPaddingLeft, 0);
+                }
                 containerView.setBackgroundDrawable(material);
+                if (lensSlot) {
+                    glassMaterial = material;
+                    glassShadowAlpha = Math.round(LiquidGlassTuning.tintAlphaMenu(dark, .8f) * 255f);
+                }
                 if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
                         && LaunchActivity.systemBlurEnabled) {
                     window.setBackgroundBlurRadius(Math.round(dp(24) * LiquidGlassTuning.blurScale()));
@@ -1791,6 +1805,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             getWindow().setSoftInputMode(focusableSoftInputMode);
         }
         dismissed = false;
+        startGlassLens();
         cancelSheetAnimation();
         containerView.measure(
             View.MeasureSpec.makeMeasureSpec(AndroidUtilities.displaySize.x + backgroundPaddingLeft * 2, View.MeasureSpec.AT_MOST),
@@ -1820,6 +1835,47 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 startOpenAnimation();
             }
         }, delay);
+    }
+
+    private void startGlassLens() {
+        final LayerDrawable material = glassMaterial;
+        // a subclass that put its own background on the container keeps the lite look
+        if (material == null || containerView == null || containerView.getBackground() != material) {
+            return;
+        }
+        final Window window = attachedFragment == null ? getWindow() : null;
+        if (glassBackdrop != null) {
+            glassBackdrop.release();
+        }
+        if (glassLensApplied) {
+            // shown again: back to the lite look until the new snapshot is ready
+            glassLensApplied = false;
+            material.setDrawable(1, new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            shadowDrawable.setAlpha(glassShadowAlpha);
+            if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && LaunchActivity.systemBlurEnabled) {
+                window.setBackgroundBlurRadius(Math.round(dp(24) * LiquidGlassTuning.blurScale()));
+            }
+        }
+        final app.exteraless.appearance.glass.GlassWindowBackdrop backdrop =
+                new app.exteraless.appearance.glass.GlassWindowBackdrop(containerView);
+        glassBackdrop = backdrop;
+        backdrop.captureWhenLaidOut(containerView, null, ok -> {
+            if (!ok || containerView.getBackground() != material) {
+                return;
+            }
+            final org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable lens =
+                    backdrop.createDrawable(app.exteraless.appearance.GlassMenuHelper.scrimMenuBackgroundFill(resourcesProvider));
+            final float radius = dp(18);
+            lens.setRadius(radius, radius, 0f, 0f, false);
+            material.setDrawable(1, lens);
+            glassLensApplied = true;
+            // the lens samples the snapshot itself: the fill under it would hide it and the system blur would double up
+            shadowDrawable.setAlpha(0);
+            if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                window.setBackgroundBlurRadius(0);
+            }
+            backdrop.animateIn();
+        });
     }
 
     public Drawable getBackDrawable() {
@@ -2525,6 +2581,10 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
 
     public void dismissInternal() {
+        if (glassBackdrop != null) {
+            glassBackdrop.release();
+            glassBackdrop = null;
+        }
         org.telegram.ui.Wallet.WalletPluginFreeze.leave(this);
         if (attachedFragment != null) {
             attachedFragment.removeSheet(this);
