@@ -1795,7 +1795,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    private static final int IOS_STYLE_COUNT = 8;
+    private static final int IOS_STYLE_COUNT = 10;
     private static final int SLIDER_STYLE_IOS = org.telegram.ui.Components.SeekBarView.SLIDER_STYLE_IOS;
     private static final int SWITCH_STYLE_IOS = org.telegram.ui.Components.Switch.SWITCH_STYLE_IOS;
 
@@ -1813,6 +1813,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (isIosSlider(NaConfig.INSTANCE.getSliderStyle().Int())) n++;
         if (isIosSwitch(NaConfig.INSTANCE.getSwitchStyle().Int())) n++;
         if (AppearanceConfig.iosChatHeader.Bool()) n++;
+        if (AppearanceConfig.profileGroupedCard.Bool()) n++;
+        if (AppearanceConfig.profileAura.Bool()) n++;
         if (AppearanceConfig.iosNavigationBarStyle.Bool()) n++;
         if (AppearanceConfig.iosListItems.Bool()) n++;
         if (AppearanceConfig.iosPlayer.Bool()) n++;
@@ -1824,6 +1826,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         boolean enable = iosSelectedCount() == 0;
         AppearanceConfig.iosLoadingStyle.setConfigBool(enable);
         AppearanceConfig.iosChatHeader.setConfigBool(enable);
+        AppearanceConfig.profileGroupedCard.setConfigBool(enable);
+        AppearanceConfig.profileAura.setConfigBool(enable);
         AppearanceConfig.iosNavigationBarStyle.setConfigBool(enable);
         AppearanceConfig.iosListItems.setConfigBool(enable);
         AppearanceConfig.iosPlayer.setConfigBool(enable);
