@@ -188,6 +188,7 @@ import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
+import org.telegram.ui.ActionBar.MenuDragSelect;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BackDrawable;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -281,6 +282,7 @@ import org.telegram.ui.Components.Premium.boosts.UserSelectorBottomSheet;
 import org.telegram.ui.Components.ProfileGalleryView;
 import org.telegram.ui.Components.ProfileGooeyView;
 import org.telegram.ui.Components.ProfileMusicView;
+import app.exteraless.appearance.LiquidGlassTuning;
 import app.exteraless.appearance.glass.GlassTokens;
 import app.exteraless.components.ProfileMusicCard;
 import com.exteragram.messenger.api.dto.BadgeDTO;
@@ -4126,16 +4128,61 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         openChatSearch();
                         break;
                     case ProfileActionsView.KEY_MORE:
-                        if (otherItem != null) {
-                            if (simpleActionBar != null && simpleActionBar.getOpenMenuOverlay() == null && getSimpleMenuOverlay() != null) {
-                                moreOverlayFromActions = true;
-                            }
-                            otherItem.toggleSubMenu();
-                            if (simpleActionBar == null || simpleActionBar.getOpenMenuOverlay() == null) {
-                                moreOverlayFromActions = false;
-                            }
-                        }
+                        toggleMoreFromActions();
                         break;
+                }
+            });
+            actionsView.setDragMenuHandler(new ProfileActionsView.DragMenuHandler() {
+                @Override
+                public boolean canDrag(int key) {
+                    if (otherItem == null || simpleActionBar == null || getSimpleMenuOverlay() == null || simpleActionBar.getOpenMenuOverlay() != null) {
+                        return false;
+                    }
+                    if (key == ProfileActionsView.KEY_MORE) {
+                        return true;
+                    }
+                    return key == ProfileActionsView.KEY_NOTIFICATION && LiquidGlassTuning.isActive() && !isTopic
+                            && !getMessagesController().isDialogMuted(dialogId != 0 ? dialogId : userId != 0 ? userId : -chatId, topicId);
+                }
+
+                @Override
+                public boolean open(int key) {
+                    if (key == ProfileActionsView.KEY_MORE) {
+                        toggleMoreFromActions();
+                    } else {
+                        onNotificationsClicked(true, 0, 0, actionsView);
+                    }
+                    final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+                    if (simpleActionBar == null || simpleActionBar.getOpenMenuOverlay() == null || overlay == null || overlay.getContent() == null) {
+                        return false;
+                    }
+                    actionsDragSelect = new MenuDragSelect(overlay.getContent());
+                    return true;
+                }
+
+                @Override
+                public void move(int key, float rawX, float rawY) {
+                    if (actionsDragSelect != null) {
+                        actionsDragSelect.move(rawX, rawY);
+                    }
+                }
+
+                @Override
+                public void release(int key, float rawX, float rawY) {
+                    final MenuDragSelect select = actionsDragSelect;
+                    actionsDragSelect = null;
+                    if (select != null) {
+                        // released over a row: it runs; released elsewhere: the menu stays for a tap
+                        select.release(rawX, rawY);
+                    }
+                }
+
+                @Override
+                public void cancel(int key) {
+                    if (actionsDragSelect != null) {
+                        actionsDragSelect.cancel();
+                        actionsDragSelect = null;
+                    }
                 }
             });
         }
@@ -7254,8 +7301,16 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 notifySettings.setExceptions(notificationsExceptionTopics);
                 presentFragment(notifySettings);
             }
+
+            @Override
+            public void dismiss() {
+                closeNotificationsOverlay();
+            }
         }, getResourceProvider());
         chatNotificationsPopupWrapper.update(did, topicId, notificationsExceptionTopics);
+        if (fromActions && openNotificationsInOverlay(chatNotificationsPopupWrapper)) {
+            return;
+        }
         if (AndroidUtilities.isTablet()) {
             final View v = parentLayout.getView();
             x += v.getX() + v.getPaddingLeft();
@@ -8498,6 +8553,56 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
      * While the media fill the screen {@link SharedMediaLayout} puts its search, options and selection there.
      */
     private boolean moreOverlayFromActions;
+    /** The button of the action row the menu of the header grows out of. */
+    private int overlayActionKey = ProfileActionsView.KEY_MORE;
+    private MenuDragSelect actionsDragSelect;
+    private ChatNotificationsPopupWrapper notificationsOverlayWrapper;
+
+    private void toggleMoreFromActions() {
+        if (otherItem == null) {
+            return;
+        }
+        if (simpleActionBar != null && simpleActionBar.getOpenMenuOverlay() == null && getSimpleMenuOverlay() != null) {
+            overlayActionKey = ProfileActionsView.KEY_MORE;
+            moreOverlayFromActions = true;
+        }
+        otherItem.toggleSubMenu();
+        if (simpleActionBar == null || simpleActionBar.getOpenMenuOverlay() == null) {
+            moreOverlayFromActions = false;
+        }
+    }
+
+    /** The menu of the bell grows out of its button in the glass, as the one of the "more" button. */
+    private boolean openNotificationsInOverlay(ChatNotificationsPopupWrapper wrapper) {
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (!LiquidGlassTuning.isActive() || simpleActionBar == null || otherItem == null || overlay == null
+                || simpleActionBar.getOpenMenuOverlay() != null || wrapper.windowLayout == null) {
+            return false;
+        }
+        overlayActionKey = ProfileActionsView.KEY_NOTIFICATION;
+        moreOverlayFromActions = true;
+        notificationsOverlayWrapper = wrapper;
+        overlay.setOnClosed(() -> notificationsOverlayWrapper = null);
+        overlay.open(simpleActionBar, otherItem, wrapper.windowLayout);
+        if (simpleActionBar.getOpenMenuOverlay() == null) {
+            moreOverlayFromActions = false;
+            notificationsOverlayWrapper = null;
+            return false;
+        }
+        return true;
+    }
+
+    private void closeNotificationsOverlay() {
+        if (notificationsOverlayWrapper == null) {
+            return;
+        }
+        notificationsOverlayWrapper = null;
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (overlay != null) {
+            overlay.close(true);
+        }
+    }
+
     private final RectF moreCircleRect = new RectF(), moreActionsRect = new RectF(), moreBarRect = new RectF();
 
     private void createHeaderBar(Context context) {
@@ -8528,7 +8633,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         && item == otherItem
                         && actionsView != null
                         && fragmentView instanceof ViewGroup
-                        && actionsView.getActionCircleBounds(ProfileActionsView.KEY_MORE, moreCircleRect)
+                        && actionsView.getActionCircleBounds(overlayActionKey, moreCircleRect)
                         && ViewPositionWatcher.computeRectInParent(actionsView, (ViewGroup) fragmentView, moreActionsRect)
                         && ViewPositionWatcher.computeRectInParent(this, (ViewGroup) fragmentView, moreBarRect)) {
                     out.set(moreCircleRect);

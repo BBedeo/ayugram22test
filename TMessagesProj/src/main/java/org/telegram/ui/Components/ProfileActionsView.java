@@ -185,6 +185,36 @@ public class ProfileActionsView extends View {
         this.onActionClickListener = onActionClickListener;
     }
 
+    /** Buttons that open a menu: hold one and slide over its rows, lift the finger to pick one. */
+    public interface DragMenuHandler {
+        boolean canDrag(int key);
+
+        /** Opens the menu of the button by the hold; false when it did not open. */
+        boolean open(int key);
+
+        void move(int key, float rawX, float rawY);
+
+        void release(int key, float rawX, float rawY);
+
+        void cancel(int key);
+    }
+
+    private DragMenuHandler dragMenuHandler;
+    private int dragKey = -1;
+    private boolean dragActive;
+    private Runnable dragOpenRunnable;
+
+    public void setDragMenuHandler(DragMenuHandler handler) {
+        this.dragMenuHandler = handler;
+    }
+
+    private void cancelDragOpen() {
+        if (dragOpenRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(dragOpenRunnable);
+            dragOpenRunnable = null;
+        }
+    }
+
     public void setParentExpanded(float expanded) {
         if (parentExpanded != expanded) {
             parentExpanded = expanded;
@@ -556,8 +586,23 @@ public class ProfileActionsView extends View {
         float y = event.getY();
         int eventAction = event.getAction();
 
+        if (dragActive) {
+            // the menu opened by the hold follows the finger until it is lifted
+            if (eventAction == MotionEvent.ACTION_MOVE) {
+                dragMenuHandler.move(dragKey, event.getRawX(), event.getRawY());
+            } else if (eventAction == MotionEvent.ACTION_UP) {
+                dragActive = false;
+                dragMenuHandler.release(dragKey, event.getRawX(), event.getRawY());
+            } else if (eventAction == MotionEvent.ACTION_CANCEL) {
+                dragActive = false;
+                dragMenuHandler.cancel(dragKey);
+            }
+            return true;
+        }
+
         if (eventAction == MotionEvent.ACTION_DOWN) {
             hit = null;
+            cancelDragOpen();
             int c = actions.size();
             for (int i = 0; i < c; i++) {
                 Action a = actions.get(i);
@@ -567,6 +612,27 @@ public class ProfileActionsView extends View {
                     downY = y;
                     downTime = System.currentTimeMillis();
                     hit.bounce.setPressed(true);
+                    if (dragMenuHandler != null && dragMenuHandler.canDrag(a.key)) {
+                        final Action held = a;
+                        dragOpenRunnable = () -> {
+                            dragOpenRunnable = null;
+                            if (hit != held || dragMenuHandler == null || !dragMenuHandler.open(held.key)) {
+                                return;
+                            }
+                            dragKey = held.key;
+                            dragActive = true;
+                            held.bounce.setPressed(false);
+                            hit = null;
+                            if (getParent() != null) {
+                                getParent().requestDisallowInterceptTouchEvent(true);
+                            }
+                            try {
+                                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
+                            } catch (Exception ignore) {
+                            }
+                        };
+                        AndroidUtilities.runOnUIThread(dragOpenRunnable, 200);
+                    }
 //                    try {
 //                        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
 //                    } catch (Exception ignore) {}
@@ -581,6 +647,7 @@ public class ProfileActionsView extends View {
                 }
             }
         } else if (eventAction == MotionEvent.ACTION_UP || eventAction == MotionEvent.ACTION_CANCEL) {
+            cancelDragOpen();
             if (hit != null) {
                 hit.bounce.setPressed(false);
                 if (eventAction == MotionEvent.ACTION_UP && hit.rect.contains(x, y)) {
