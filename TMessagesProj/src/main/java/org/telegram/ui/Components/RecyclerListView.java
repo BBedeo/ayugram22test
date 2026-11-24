@@ -3263,8 +3263,12 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             final float stretch = captureStretch();
             if (stretch != 0f) {
                 // the rows themselves do not move while the list stretches: follow the system stretch, as the glass shows it
+                // the system's stretch pulls the edge that is overscrolled and leaves the far side where it is: the top moves
+                // by its share of the pull, the bottom (the nav pill) stays; the unmoved rows fill what the pull uncovers
+                captureChildren(canvas, position, drawingTime);
+                final float h = getHeight();
                 final int saveCount = canvas.save();
-                canvas.scale(1f, 1f + stretch, 0f, 0f);
+                canvas.scale(1f, 1f - STRETCH_TOP_SHARE * stretch, 0f, h);
                 captureChildren(canvas, position, drawingTime);
                 canvas.restoreToCount(saveCount);
             } else {
@@ -3272,6 +3276,9 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             }
         }
     }
+
+    /** How far the top of the captured rows follows the pull (of the list's height per unit of the edge effect's distance). */
+    private static final float STRETCH_TOP_SHARE = 0.35f;
 
     /** The top stretch of the list captured without its own render node (approximate), 0 when there is none. */
     private float captureStretch() {
