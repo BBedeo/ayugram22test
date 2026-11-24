@@ -2310,6 +2310,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         @Override
+        public void setOverScrollMode(int overScrollMode) {
+            // under the glass header the system's stretch of the list darkens the glass that samples it: no stretch there
+            super.setOverScrollMode(LiquidGlassTuning.isActive() ? View.OVER_SCROLL_NEVER : overScrollMode);
+        }
+
+        @Override
         public boolean onTouchEvent(MotionEvent e) {
             if (fastScrollAnimationRunning || waitingForScrollFinished || rightFragmentTransitionInProgress) {
                 return false;
