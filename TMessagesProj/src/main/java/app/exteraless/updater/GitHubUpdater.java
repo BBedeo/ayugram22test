@@ -207,7 +207,10 @@ public final class GitHubUpdater {
                 if (!force && !found.resign && !found.backupFirst && autoDownloadAllowed()) {
                     autoDownload(found);
                 } else {
-                    show(found, null);
+                    // an update downloaded earlier is installed from its file, not downloaded again
+                    final boolean sameReady = TextUtils.equals(found.tag, prefs().getString(KEY_READY_TAG, null))
+                            && currentBase().equals(prefs().getString(KEY_READY_BASE, null));
+                    show(found, sameReady ? readyFile() : null);
                 }
             } else if (force) {
                 bulletin(failed
@@ -479,7 +482,13 @@ public final class GitHubUpdater {
         return UPSTREAM_BRAND.matcher(text).replaceAll("ExFullGram");
     }
 
+    /** The update sheet on screen: re-entering the app or checking again must not stack a second one over it. */
+    private static UpdateSheet activeSheet;
+
     private static void show(Release release, File ready) {
+        if (activeSheet != null && activeSheet.isShowing()) {
+            return;
+        }
         BaseFragment fragment = LaunchActivity.getSafeLastFragment();
         Activity activity = fragment == null ? null : fragment.getParentActivity();
         if (activity == null) {
@@ -601,6 +610,7 @@ public final class GitHubUpdater {
             liveSheet = shown;
             removePill();
         }
+        activeSheet = shown;
         shown.show();
     }
 
