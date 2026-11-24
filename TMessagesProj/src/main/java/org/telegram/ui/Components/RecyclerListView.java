@@ -4139,6 +4139,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     private boolean glassSections;
+    private final app.exteraless.appearance.glass.GlassRim glassRim = new app.exteraless.appearance.glass.GlassRim();
 
     /** Opt-in (the profile): while Liquid Glass is active the section cards are translucent tier-2 glass with a 1px rim. */
     public void setGlassSections(boolean glassSections) {
@@ -4163,7 +4164,8 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         radii[4] = radii[5] = radii[6] = radii[7] = bottomRadius;
         sectionBackgroundPath.addRoundRect(rect, radii, Path.Direction.CW);
         canvas.drawPath(sectionBackgroundPath, sectionBackgroundPaint);
-        // iOS grouped cards have no outline: the fill alone separates the card (a double rim read as a harsh border)
+        // the same hairline catchlights as every other glass surface of the profile (one single rim, not a double one)
+        glassRim.draw(canvas, rect, topRadius, bottomRadius, alpha);
     }
 
     private final Path clipPath = new Path();

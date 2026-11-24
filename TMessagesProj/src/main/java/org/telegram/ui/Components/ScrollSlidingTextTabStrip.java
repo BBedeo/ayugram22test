@@ -446,6 +446,15 @@ public class ScrollSlidingTextTabStrip extends HorizontalScrollView implements T
     }
 
     BlurredBackgroundDrawable backgroundDrawable;
+    private boolean glassRim;
+    private final RectF rimRect = new RectF();
+    private final app.exteraless.appearance.glass.GlassRim glassRimDrawer = new app.exteraless.appearance.glass.GlassRim();
+
+    /** Liquid Glass: the strip's glass pill gets the same hairline rim as the other surfaces. */
+    public void setGlassRim(boolean glassRim) {
+        this.glassRim = glassRim;
+        invalidate();
+    }
     public void setBlurredBackground(BlurredBackgroundDrawable background) {
         backgroundDrawable = background;
         backgroundDrawable.setCallback(this);
@@ -719,6 +728,12 @@ public class ScrollSlidingTextTabStrip extends HorizontalScrollView implements T
             canvas.translate(getScrollX(), 0);
             backgroundDrawable.setShadowAlpha(this.open.set(isOpen));
             backgroundDrawable.draw(canvas);
+            if (glassRim) {
+                final android.graphics.Rect b = backgroundDrawable.getBounds();
+                rimRect.set(b);
+                rimRect.inset(AndroidUtilities.dpf2(6.666f), AndroidUtilities.dpf2(6.666f));
+                glassRimDrawer.draw(canvas, rimRect, rimRect.height() / 2f, rimRect.height() / 2f, 1f);
+            }
             canvas.clipPath(clipPath);
             canvas.translate(-getScrollX(), 0);
             canvas.translate(left.set(0), 0);

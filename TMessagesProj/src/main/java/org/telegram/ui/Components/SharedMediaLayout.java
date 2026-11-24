@@ -3557,6 +3557,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
             scrollSlidingTextTabStrip.setClipToPadding(false);
             scrollSlidingTextTabStrip.setBackground(null);
             scrollSlidingTextTabStrip.setBlurredBackground(filterTabsViewBackground);
+            scrollSlidingTextTabStrip.setGlassRim(viewType == VIEW_TYPE_PROFILE_ACTIVITY && app.exteraless.appearance.glass.GlassTokens.isActive());
             scrollSlidingTextTabStrip.setOpen(false);
             // the glass of the tabs (inset by its padding) 6dp from the sides of the screen
             addView(scrollSlidingTextTabStrip, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 50, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 6 - TABS_GLASS_INSET_DP, 0, 6 - TABS_GLASS_INSET_DP, 0));
