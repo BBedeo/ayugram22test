@@ -476,6 +476,17 @@ object AppearanceConfig {
     val iosChatHeader =
         addConfig("OEAppearanceIosChatHeader", ConfigItem.configTypeBool, false)
 
+    /** Liquid Glass profile: the info rows are one grouped card, ignoring the "Segments" divider style. */
+    @JvmField
+    val profileGroupedCard =
+        addConfig("OEAppearanceProfileGroupedCard", ConfigItem.configTypeBool, true)
+
+    @JvmStatic
+    fun profileGroupedCard(): Boolean {
+        ensureLoaded()
+        return profileGroupedCard.Bool()
+    }
+
     @JvmStatic
     fun iosChatHeader(): Boolean {
         ensureLoaded()

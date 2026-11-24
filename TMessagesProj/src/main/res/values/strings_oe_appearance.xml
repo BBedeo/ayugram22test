@@ -181,6 +181,7 @@
     <string name="OEAppearanceIosDesign" translatable="false">iOS Design</string>
     <string name="OEAppearanceIosNavigationBarStyle">Navigation Bar</string>
     <string name="OEAppearanceIosChatHeader">iOS Chat Header</string>
+    <string name="OEAppearanceProfileGroupedCard">Profile as one card</string>
     <string name="OEAppearanceHideAi">Hide AI</string>
     <string name="OEAppearanceHideAiEditor">AI Editor</string>
     <string name="OEAppearanceHideAiSummary">Message Summary</string>

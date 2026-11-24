@@ -340,6 +340,7 @@ public final class EtgBackup {
         bool(list, "newNavigationBarStyle", AppearanceConfig.newNavigationBarStyle);
         bool(list, "iosNavigationBarStyle", AppearanceConfig.iosNavigationBarStyle);
         bool(list, "iosChatHeader", AppearanceConfig.iosChatHeader);
+        bool(list, "profileGroupedCard", AppearanceConfig.profileGroupedCard);
         bool(list, "profileMusicCard", AppearanceConfig.profileMusicCard);
         bool(list, "useSystemFonts", NekoConfig.typeface);
         bool(list, "gooeyAvatarAnimation", AppearanceConfig.gooeyAvatarAnimation);

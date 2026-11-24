@@ -3789,6 +3789,11 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
      * общей карточкой.
      */
     boolean useSegmentedSections() {
+        // iOS: the rows of the profile are one grouped card with dividers, never separate tiles
+        if (glassSections && app.exteraless.appearance.glass.GlassTokens.isActive()
+                && app.exteraless.appearance.AppearanceConfig.profileGroupedCard()) {
+            return false;
+        }
         return segmentedSectionsEnabled
                 && (sectionsItemDecoration != null || bitmapSectionsItemDecoration != null)
                 && (app.exteraless.appearance.AppearanceConfig.dividerStyle()
