@@ -116,8 +116,17 @@ public final class GlassWindowBackdrop {
 
     /** The window's dim over the screen, 0..1: the snapshot is taken without it, so the lens darkens it the same way. */
     public void setDim(float amount) {
+        if (released || amount == dim) {
+            return;
+        }
+        dim = amount;
         source.setDim(amount);
+        if (drawable != null) {
+            drawable.invalidateDisplayList();
+        }
     }
+
+    private float dim = -1f;
 
     /** Call after a successful capture; the caller composes the result under its rim. */
     public BlurredBackgroundDrawable createDrawable(BlurredBackgroundColorProvider colorProvider) {

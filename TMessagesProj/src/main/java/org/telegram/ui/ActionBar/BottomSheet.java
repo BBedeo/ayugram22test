@@ -175,10 +175,16 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             canvas.drawRect(boundsWithInsets, bgPaint);
         }
 
+        /** Follows the dim as it fades, for a glass lens whose snapshot was taken without it. */
+        @Nullable Utilities.Callback<Integer> onAlphaChanged;
+
         @Override
         public void setAlpha(int alpha) {
             bgPaint.setAlpha(alpha);
             invalidateSelf();
+            if (onAlphaChanged != null) {
+                onAlphaChanged.run(alpha);
+            }
         }
 
         @Override
@@ -1859,7 +1865,8 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         final app.exteraless.appearance.glass.GlassWindowBackdrop backdrop =
                 new app.exteraless.appearance.glass.GlassWindowBackdrop(containerView);
         glassBackdrop = backdrop;
-        backdrop.setDim(dimBehind ? dimBehindAlpha / 255f : 0f);
+        backdrop.setDim(backDrawable.getAlpha() / 255f);
+        backDrawable.onAlphaChanged = alpha -> backdrop.setDim(alpha / 255f);
         backdrop.captureWhenLaidOut(containerView, null, ok -> {
             if (!ok || containerView.getBackground() != material) {
                 return;
@@ -2585,6 +2592,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         if (glassBackdrop != null) {
             glassBackdrop.release();
             glassBackdrop = null;
+            backDrawable.onAlphaChanged = null;
         }
         org.telegram.ui.Wallet.WalletPluginFreeze.leave(this);
         if (attachedFragment != null) {
