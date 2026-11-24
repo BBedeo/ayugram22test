@@ -1268,7 +1268,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         }
         boolean saved = PlayerActions.isSavedToProfile(mo);
         likeButton.setActive(saved, animated);
-        likeButton.setRadius(dp(saved ? 14 : 24), animated);
+        likeButton.setRadius(dp(saved && !Md3Player.isIosPlayer() ? 14 : 24), animated);
         heartIcon.setFillStroke(saved);
         likeButton.setContentDescription(getString(saved ? R.string.ProfilePlaylistRemoveFromProfile : R.string.AudioSaveToMyProfile));
     }
@@ -1280,7 +1280,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         }
         boolean save = !PlayerActions.isSavedToProfile(mo);
         likeButton.setActive(save, true);
-        likeButton.setRadius(dp(save ? 14 : 24), true);
+        likeButton.setRadius(dp(save && !Md3Player.isIosPlayer() ? 14 : 24), true);
         heartIcon.setFillStroke(save);
         PlayerActions.saveToProfile(mo, save, error -> {
             Theme.ResourcesProvider rp = colors.provider(resourcesProvider);
@@ -1887,7 +1887,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             controls.prev.setColors(0, c.onSurface, 0, c.onSurface);
             controls.next.setColors(0, c.onSurface, 0, c.onSurface);
             controls.play.setColors(0, c.onSurface, 0, c.onSurface);
-            likeButton.setColors(0, c.onSurfaceVariant, 0, c.onSurface);
+            int glassCircle = ColorUtils.setAlphaComponent(c.onSurface, 0x26);
+            likeButton.setColors(glassCircle, c.onSurface, glassCircle, c.onSurface);
         } else {
             controls.prev.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
             controls.next.setColors(c.primaryContainer, c.onPrimaryContainer, c.primaryContainer, c.onPrimaryContainer);
@@ -2193,6 +2194,16 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         speedButton.setRadius(dp(26), dp(islandActions ? 26 : 8), false);
         queueButton.setRadius(dp(islandActions ? 26 : 8), dp(26), false);
         lyricsButton.setRadius(lyricsRadius(lyricsMode), false);
+        if (Md3Player.isIosPlayer()) {
+            // iOS: bare icons spread over the row, no plates and no captions
+            lyricsButton.setText(null);
+            queueButton.setText(null);
+            group.setBackground(null);
+            group.setElevation(0);
+            speedButton.setRadius(dp(26), dp(26), false);
+            queueButton.setRadius(dp(26), dp(26), false);
+            lyricsButton.setRadius(dp(26), false);
+        }
         updateSpeed();
         bindActionColors(colors);
     }
@@ -2218,10 +2229,11 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         islandBackground.setColor(ios ? glass : c.surfaceHigh);
         int background = islandActions ? 0 : (ios ? glass : c.surfaceHigh);
         if (ios) {
-            speedButton.setColors(background, c.onSurface, background, c.onSurface);
+            islandBackground.setColor(0);
+            speedButton.setColors(0, c.onSurface, 0, c.onSurface);
             speedButton.setBadgeColors(c.onSurface, c.surface);
-            lyricsButton.setColors(background, c.onSurface, c.onSurface, c.surface);
-            queueButton.setColors(background, c.onSurface, background, c.onSurface);
+            lyricsButton.setColors(0, c.onSurface, glass, c.onSurface);
+            queueButton.setColors(0, c.onSurface, 0, c.onSurface);
             return;
         }
         speedButton.setColors(background, c.onSurface, background, c.onSurface);
