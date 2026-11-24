@@ -251,6 +251,85 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
     private boolean twoRowsButtonsWhenNeeded;
     private boolean buttonsInTwoRows;
 
+    // iOS-style alert (Liquid Glass only): decided once in inflateContent() so build, measure and layout agree
+    private boolean iosAlert;
+    private Paint iosDividerPaint;
+
+    private boolean iosAlertLayout() {
+        return LiquidGlassTuning.isActive() && progressViewStyle == ALERT_TYPE_MESSAGE;
+    }
+
+    private Drawable buttonSelector(int color) {
+        return Theme.getRoundRectSelectorDrawable(iosAlert ? 0 : dp(20), color);
+    }
+
+    private void styleIosButton(TextView button, boolean positive) {
+        button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 17);
+        button.setTypeface(positive ? AndroidUtilities.bold() : AndroidUtilities.regular());
+        button.setSingleLine(true);
+        button.setEllipsize(TextUtils.TruncateAt.END);
+    }
+
+    // equal columns: stack the buttons when the longest label does not fit its column
+    private boolean iosButtonsDoNotFit() {
+        final CharSequence[] texts = {positiveButtonText, negativeButtonText, negative2ButtonText, neutralButtonText};
+        int n = 0;
+        for (CharSequence t : texts) {
+            if (t != null) n++;
+        }
+        if (n < 2) {
+            return false;
+        }
+        final int panel = customWidth > 0 ? customWidth : getDialogWidth() - backgroundPaddings.left - backgroundPaddings.right;
+        final float column = panel / (float) n;
+        final TextPaint paint = new TextPaint();
+        paint.setTextSize(dp(17));
+        paint.setTypeface(AndroidUtilities.bold());
+        for (CharSequence t : texts) {
+            if (t != null && paint.measureText(t, 0, t.length()) + dp(24) > column) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // visual left-to-right order of the tagged buttons
+    private ArrayList<View> iosButtonsInOrder(ViewGroup layout) {
+        final ArrayList<View> list = new ArrayList<>(4);
+        final int[] tags = {BUTTON_NEUTRAL, BUTTON_NEGATIVE_2, BUTTON_NEGATIVE, BUTTON_POSITIVE};
+        for (int tag : tags) {
+            final View v = layout.findViewWithTag(tag);
+            if (v != null) {
+                list.add(v);
+            }
+        }
+        if (LocaleController.isRTL) {
+            java.util.Collections.reverse(list);
+        }
+        return list;
+    }
+
+    private void drawIosAlertDividers(Canvas canvas, ViewGroup layout, boolean vertical) {
+        if (iosDividerPaint == null) {
+            iosDividerPaint = new Paint();
+        }
+        final boolean dark = AndroidUtilities.computePerceivedBrightness(backgroundColor) < 0.721f;
+        iosDividerPaint.setColor(dark ? 0x29FFFFFF : 0x24000000);
+        final int thick = Math.max(1, dp(0.5f));
+        canvas.drawRect(0, 0, layout.getWidth(), thick, iosDividerPaint);
+        for (int a = 0, count = layout.getChildCount(); a < count; a++) {
+            final View child = layout.getChildAt(a);
+            if (child.getTag() == null || child.getVisibility() == View.GONE) {
+                continue;
+            }
+            if (vertical && child.getTop() > 0) {
+                canvas.drawRect(0, child.getTop(), layout.getWidth(), child.getTop() + thick, iosDividerPaint);
+            } else if (!vertical && child.getLeft() > 0) {
+                canvas.drawRect(child.getLeft(), 0, child.getLeft() + thick, layout.getHeight(), iosDividerPaint);
+            }
+        }
+    }
+
     private Runnable dismissRunnable = this::dismiss;
     private Runnable showRunnable = () -> {
         if (isShowing()) {
@@ -579,12 +658,12 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
 
                     if (customView != null) {
                         layoutParams.topMargin = titleTextView == null && messageTextView.getVisibility() == GONE && items == null ? dp(16) : 0;
-                        layoutParams.bottomMargin = buttonsLayout == null ? dp(8) : 0;
+                        layoutParams.bottomMargin = buttonsLayout == null ? dp(8) : (iosAlert ? dp(12) : 0);
                     } else if (items != null) {
                         layoutParams.topMargin = titleTextView == null && messageTextView.getVisibility() == GONE ? dp(8) : 0;
                         layoutParams.bottomMargin = dp(8);
                     } else if (messageTextView.getVisibility() == VISIBLE) {
-                        layoutParams.topMargin = titleTextView == null ? dp(19) : 0;
+                        layoutParams.topMargin = titleTextView == null ? dp(iosAlert ? 20 : 19) : 0;
                         layoutParams.bottomMargin = dp(20);
                     }
 
@@ -836,6 +915,9 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     if (containerView != null) {
                         containerView.invalidate();
                     }
+                    if (iosAlert && buttonsLayout != null) {
+                        buttonsLayout.invalidate();
+                    }
                 }
             }
             if (lineProgressView != null) {
@@ -868,6 +950,9 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
     }
 
     protected View inflateContent(boolean setContent) {
+        iosAlert = iosAlertLayout();
+        // the standard title/message are centered unless the dialog has its own top image/view
+        final boolean iosCenterText = iosAlert && topResId == 0 && topAnimationId == 0 && topDrawable == null && topView == null;
         containerView = new AlertDialogView(getContext());
         containerView.setOrientation(LinearLayout.VERTICAL);
         if ((blurredBackground || progressViewStyle == ALERT_TYPE_SPINNER) && progressViewStyle != ALERT_TYPE_LOADING) {
@@ -876,10 +961,10 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             if (blurredBackground && !blurredNativeBackground) {
                 containerView.setWillNotDraw(false);
             }
-            if (blurredNativeBackground && LiquidGlassTuning.isActive()) {
+            if (iosAlert) {
                 // The glass window background is rounded to the dialog radius: clip the content
                 // (buttons and their ripples) to the same corners.
-                final float radius = dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG);
+                final float radius = blurredNativeBackground ? dp(app.exteraless.appearance.glass.GlassTokens.RADIUS_DIALOG) : dp(20);
                 containerView.setOutlineProvider(new android.view.ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, android.graphics.Outline outline) {
@@ -1008,7 +1093,13 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             titleTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
             titleTextView.setTypeface(AndroidUtilities.bold());
             titleTextView.setGravity((topAnimationIsNew ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);
-            titleContainer.addView(titleTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (topAnimationIsNew ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 0, 19, 0, topAnimationIsNew ? 4 : (subtitle != null ? 2 : (items != null ? 14 : 10))));
+            if (iosCenterText) {
+                titleTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 17);
+                titleTextView.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+                titleContainer.addView(titleTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 20, 0, subtitle != null ? 2 : (items != null ? 14 : (TextUtils.isEmpty(message) ? 20 : 6))));
+            } else {
+                titleContainer.addView(titleTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (topAnimationIsNew ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 0, 19, 0, topAnimationIsNew ? 4 : (subtitle != null ? 2 : (items != null ? 14 : 10))));
+            }
         }
 
         if (secondTitle != null && title != null) {
@@ -1026,7 +1117,10 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             ThemeBind.textColor(subtitleTextView, Theme.key_dialogIcon, themedColors);
             subtitleTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
             subtitleTextView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);
-            containerView.addView(subtitleTextView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 0, 24, items != null ? 14 : 10));
+            if (iosCenterText) {
+                subtitleTextView.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+            }
+            containerView.addView(subtitleTextView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (iosCenterText ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 0, 24, items != null ? 14 : 10));
         }
 
         if (progressViewStyle == ALERT_TYPE_MESSAGE) {
@@ -1071,7 +1165,10 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             messageTextView.setClickable(false);
             messageTextView.setEnabled(false);
         }
-        messageTextView.setGravity((topAnimationIsNew ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);
+        messageTextView.setGravity((topAnimationIsNew || iosCenterText ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);
+        if (iosCenterText) {
+            messageTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        }
         if (progressViewStyle == ALERT_TYPE_LOADING) {
             setCanceledOnTouchOutside(false);
             setCancelable(false);
@@ -1109,7 +1206,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             if (aboveMessageView != null) {
                 scrollContainer.addView(aboveMessageView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 22, 4, 22, 12));
             }
-            scrollContainer.addView(messageTextView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (topAnimationIsNew ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 0, 24, customView != null || items != null ? customViewOffset : 0));
+            scrollContainer.addView(messageTextView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (topAnimationIsNew || iosCenterText ? Gravity.CENTER_HORIZONTAL : LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 0, 24, customView != null || items != null ? customViewOffset : 0));
             if (bottomView != null) {
                 scrollContainer.addView(bottomView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 22, 12, 22, 0));
             }
@@ -1147,7 +1244,11 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             scrollContainer.addView(customView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, customViewHeight));
         }
         if (hasButtons) {
-            if (!verticalButtons) {
+            if (iosAlert) {
+                if (!verticalButtons && iosButtonsDoNotFit()) {
+                    verticalButtons = true;
+                }
+            } else if (!verticalButtons) {
                 int buttonsWidth = 0;
                 TextPaint paint = new TextPaint();
                 paint.setTextSize(dp(16));
@@ -1179,13 +1280,37 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 }
             }
             if (verticalButtons) {
-                LinearLayout linearLayout = new LinearLayout(getContext());
+                LinearLayout linearLayout = new LinearLayout(getContext()) {
+                    @Override
+                    protected void dispatchDraw(Canvas canvas) {
+                        super.dispatchDraw(canvas);
+                        if (iosAlert) {
+                            drawIosAlertDividers(canvas, this, true);
+                        }
+                    }
+                };
                 linearLayout.setOrientation(LinearLayout.VERTICAL);
                 buttonsLayout = linearLayout;
             } else {
                 buttonsLayout = new FrameLayout(getContext()) {
                     @Override
+                    protected void dispatchDraw(Canvas canvas) {
+                        super.dispatchDraw(canvas);
+                        if (iosAlert) {
+                            drawIosAlertDividers(canvas, this, false);
+                        }
+                    }
+
+                    @Override
                     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+                        if (iosAlert) {
+                            int x = 0;
+                            for (View child : iosButtonsInOrder(this)) {
+                                child.layout(x, 0, x + child.getMeasuredWidth(), child.getMeasuredHeight());
+                                x += child.getMeasuredWidth();
+                            }
+                            return;
+                        }
                         int count = getChildCount();
                         View positiveButton = null;
                         int width = right - left;
@@ -1270,6 +1395,18 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
 
                     @Override
                     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                        if (iosAlert) {
+                            // equal-width columns, the last one takes the rounding remainder
+                            final int width = MeasureSpec.getSize(widthMeasureSpec);
+                            final ArrayList<View> buttons = iosButtonsInOrder(this);
+                            final int n = buttons.size();
+                            for (int a = 0; a < n; a++) {
+                                final int w = a == n - 1 ? width - (width / n) * (n - 1) : width / n;
+                                buttons.get(a).measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(48), MeasureSpec.EXACTLY));
+                            }
+                            setMeasuredDimension(width, resolveSize(dp(48), heightMeasureSpec));
+                            return;
+                        }
                         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
                         int totalWidth = 0;
@@ -1314,7 +1451,9 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     }
                 };
             }
-            if (bottomView != null) {
+            if (iosAlert) {
+                buttonsLayout.setPadding(0, 0, 0, 0);
+            } else if (bottomView != null) {
                 buttonsLayout.setPadding(dp(16), 0, dp(16), dp(4));
                 buttonsLayout.setTranslationY(-dp(6));
             } else {
@@ -1337,7 +1476,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     @Override
                     public void setTextColor(int color) {
                         super.setTextColor(color);
-                        setBackground(Theme.getRoundRectSelectorDrawable(dp(20), color));
+                        setBackground(buttonSelector(color));
                     }
                 };
                 textView.setMinWidth(dp(64));
@@ -1347,10 +1486,11 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 textView.setGravity(Gravity.CENTER);
                 textView.setTypeface(AndroidUtilities.bold());
                 textView.setText(positiveButtonText);
-                textView.setBackground(Theme.getRoundRectSelectorDrawable(dp(20), getThemedColor(dialogButtonColorKey)));
+                if (iosAlert) styleIosButton(textView, true);
+                textView.setBackground(buttonSelector(getThemedColor(dialogButtonColorKey)));
                 textView.setPadding(dp(12), 0, dp(12), 0);
                 if (verticalButtons) {
-                    buttonsLayout.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, Gravity.FILL_HORIZONTAL));
+                    buttonsLayout.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, iosAlert ? 48 : 40, Gravity.FILL_HORIZONTAL));
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.RIGHT));
                 }
@@ -1376,7 +1516,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     @Override
                     public void setTextColor(int color) {
                         super.setTextColor(color);
-                        setBackground(Theme.getRoundRectSelectorDrawable(dp(20), color));
+                        setBackground(buttonSelector(color));
                     }
                 };
                 textView.setMinWidth(dp(64));
@@ -1388,10 +1528,11 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 textView.setEllipsize(TextUtils.TruncateAt.END);
                 textView.setSingleLine(true);
                 textView.setText(negativeButtonText.toString());
-                textView.setBackground(Theme.getRoundRectSelectorDrawable(dp(20), getThemedColor(dialogButtonColorKey)));
+                if (iosAlert) styleIosButton(textView, false);
+                textView.setBackground(buttonSelector(getThemedColor(dialogButtonColorKey)));
                 textView.setPadding(dp(12), 0, dp(12), 0);
                 if (verticalButtons) {
-                    buttonsLayout.addView(textView, 0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, Gravity.FILL_HORIZONTAL));
+                    buttonsLayout.addView(textView, 0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, iosAlert ? 48 : 40, Gravity.FILL_HORIZONTAL));
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.RIGHT));
                 }
@@ -1417,7 +1558,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     @Override
                     public void setTextColor(int color) {
                         super.setTextColor(color);
-                        setBackground(Theme.getRoundRectSelectorDrawable(dp(20), color));
+                        setBackground(buttonSelector(color));
                     }
                 };
                 textView.setMinWidth(dp(64));
@@ -1429,10 +1570,11 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 textView.setEllipsize(TextUtils.TruncateAt.END);
                 textView.setSingleLine(true);
                 textView.setText(neutralButtonText.toString());
-                textView.setBackground(Theme.getRoundRectSelectorDrawable(dp(20), getThemedColor(dialogButtonColorKey)));
+                if (iosAlert) styleIosButton(textView, false);
+                textView.setBackground(buttonSelector(getThemedColor(dialogButtonColorKey)));
                 textView.setPadding(dp(12), 0, dp(12), 0);
                 if (verticalButtons) {
-                    buttonsLayout.addView(textView, 1, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, Gravity.FILL_HORIZONTAL));
+                    buttonsLayout.addView(textView, 1, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, iosAlert ? 48 : 40, Gravity.FILL_HORIZONTAL));
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.LEFT));
                 }
@@ -1458,7 +1600,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                     @Override
                     public void setTextColor(int color) {
                         super.setTextColor(color);
-                        setBackgroundDrawable(Theme.getRoundRectSelectorDrawable(dp(20), color));
+                        setBackgroundDrawable(buttonSelector(color));
                     }
                 };
                 textView.setMinWidth(dp(64));
@@ -1470,10 +1612,11 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 textView.setEllipsize(TextUtils.TruncateAt.END);
                 textView.setSingleLine(true);
                 textView.setText(negative2ButtonText.toString());
-                textView.setBackground(Theme.getRoundRectSelectorDrawable(dp(20), getThemedColor(dialogButtonColorKey)));
+                if (iosAlert) styleIosButton(textView, false);
+                textView.setBackground(buttonSelector(getThemedColor(dialogButtonColorKey)));
                 textView.setPadding(dp(12), 0, dp(12), 0);
                 if (verticalButtons) {
-                    buttonsLayout.addView(textView, 0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, Gravity.FILL_HORIZONTAL));
+                    buttonsLayout.addView(textView, 0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, iosAlert ? 48 : 40, Gravity.FILL_HORIZONTAL));
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.RIGHT));
                 }
@@ -1488,7 +1631,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 });
             }
 
-            if (verticalButtons) {
+            if (verticalButtons && !iosAlert) {
                 for (int i = 1; i < buttonsLayout.getChildCount(); i++) {
                     ((ViewGroup.MarginLayoutParams) buttonsLayout.getChildAt(i).getLayoutParams()).topMargin = dp(6);
                 }
