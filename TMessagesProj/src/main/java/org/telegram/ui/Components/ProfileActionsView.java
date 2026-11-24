@@ -169,12 +169,7 @@ public class ProfileActionsView extends View {
         drawable.setBounds((int) rect.left, (int) rect.top, (int) Math.ceil(rect.right), (int) Math.ceil(rect.bottom));
         drawable.setAlpha((int) (0xFF * alpha));
         drawable.draw(canvas);
-        if (GlassTokens.isActive()) {
-            glassRim.draw(canvas, rect, radius, radius, alpha);
-        }
     }
-
-    private final app.exteraless.appearance.glass.GlassRim glassRim = new app.exteraless.appearance.glass.GlassRim();
 
     /** The glass of the buttons that are not drawn any more is out of the capture. */
     private void hideUnusedGlass() {

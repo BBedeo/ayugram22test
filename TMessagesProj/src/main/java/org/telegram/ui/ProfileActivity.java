@@ -11441,7 +11441,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
         }
         final int top = getProfileAuraTop();
-        if (t <= 0.001f || top <= 0 || color == 0 && auraGradient == null) {
+        if (t <= 0.001f || color == 0 && auraGradient == null) {
             return;
         }
         final int height = host.getMeasuredHeight();

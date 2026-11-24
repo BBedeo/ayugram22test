@@ -523,6 +523,8 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
 
         /** The opaque background of a fullscreen page whose list has no sections to draw it. */
         private boolean drawPageBackground;
+        /** The profile paints the page under this one itself (the aura): this page draws no background of its own. */
+        public boolean auraPage;
         private final Paint backgroundPaint = new Paint();
         private Theme.ResourcesProvider resourcesProvider;
 
@@ -591,7 +593,10 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
 
         @Override
         protected void dispatchDraw(Canvas canvas) {
-            drawPageBackground(canvas);
+            // Liquid Glass profile with the aura: the page under the list is painted by the profile itself, with the aura
+            if (!auraPage) {
+                drawPageBackground(canvas);
+            }
             super.dispatchDraw(canvas);
             if (fastScrollHintView != null && fastScrollHintView.getVisibility() == View.VISIBLE) {
                 boolean isVisible = false;
@@ -2552,6 +2557,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
                 mediaPage.setTranslationX(AndroidUtilities.displaySize.x);
             }
             mediaPages[a] = mediaPage;
+            mediaPage.auraPage = viewType == VIEW_TYPE_PROFILE_ACTIVITY && app.exteraless.appearance.glass.GlassTokens.isActive() && app.exteraless.appearance.AppearanceConfig.profileAura();
             mediaPage.resourcesProvider = resourcesProvider;
 
             final ExtendedGridLayoutManager layoutManager = mediaPages[a].layoutManager = new ExtendedGridLayoutManager(context, 100) {
