@@ -1464,6 +1464,10 @@ public class ItemOptions {
 
         prepareItemsForShow();
 
+        if (LiquidGlassTuning.isActive()) {
+            // the glass menu is enough: the interface behind it is not darkened
+            dimAlpha = 0;
+        }
         if (LiquidGlassTuning.isActive()
                 && Build.VERSION.SDK_INT >= 31
                 && !blur
