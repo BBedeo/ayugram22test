@@ -3260,7 +3260,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 canvas.restoreToCount(saveCount);
             }
         } else {
-            final float stretch = captureStretch();
+            final float stretch = captureStretch(position);
             if (stretch != 0f) {
                 // the rows themselves do not move while the list stretches: follow the system stretch, as the glass shows it
                 // the system's stretch pulls the edge that is overscrolled and leaves the far side where it is: the top moves
@@ -3324,6 +3324,14 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     private static final float STRETCH_TOP_SHARE = 0.35f;
 
     /** The top stretch of the list captured without its own render node (approximate), 0 when there is none. */
+    /**
+     * The same for one captured strip: the lower half barely moves under the pull (the far side stays), so the strip
+     * under the nav pill is captured plain. Re-recording it every frame of the pull made the pill flash raw rows.
+     */
+    private float captureStretch(RectF position) {
+        return position.top > getHeight() * 0.5f ? 0f : captureStretch();
+    }
+
     private float captureStretch() {
         if (captureThroughEdgeEffects() || getOverScrollMode() == OVER_SCROLL_NEVER || !hasActiveEdgeEffects()) {
             return 0f;
@@ -3377,7 +3385,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             builder.unsupported();
             return;
         }
-        builder.addF(captureStretch());
+        builder.addF(captureStretch(position));
 
         for (int a = 0, N = getItemDecorationCount(); a < N; a++) {
             ItemDecoration itemDecoration = getItemDecorationAt(a);
