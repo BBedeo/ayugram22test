@@ -4451,7 +4451,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         listView.applyPaddingToSections = false;
         // the rows above the list's top go under the header's blur, with their cards
         listView.setSectionsOverscanTop(AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight());
-        ThemeBind.backgroundColor(listView, Theme.key_windowBackgroundGray, resourcesProvider);
+        if (!profileAuraOwnsPage()) {
+            ThemeBind.backgroundColor(listView, Theme.key_windowBackgroundGray, resourcesProvider);
+        }
         listView.setVerticalScrollBarEnabled(false);
         final IBlur3Capture listViewCapture = new ViewGroupPartRenderer(listView, (ViewGroup) fragmentView, (canvas, child, drawingTime) -> {
             if (child == sharedMediaLayout) {
@@ -11380,6 +11382,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int auraGradientColor, auraGradientHeight;
     private long auraPollUntil;
 
+    /** Liquid Glass with the aura: the list is see-through and {@link #drawProfileAura} paints the page under it. */
+    private boolean profileAuraOwnsPage() {
+        return glassPhotoHeader() && app.exteraless.appearance.AppearanceConfig.profileAura();
+    }
+
     /** Where the photo ends and the page starts, in the screen's coordinates. */
     private int getProfileAuraTop() {
         final int height = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
@@ -11397,6 +11404,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
      * the photo itself fades into it (see {@link OverlaysView}).
      */
     private void drawProfileAura(Canvas canvas, View host) {
+        if (!profileAuraOwnsPage()) {
+            return;
+        }
+        final int pageTop = Math.max(0, getProfileAuraTop());
+        auraPaint.setShader(null);
+        auraPaint.setColor(getThemedColor(Theme.key_windowBackgroundGray) | 0xFF000000);
+        canvas.drawRect(0, pageTop, host.getMeasuredWidth(), host.getMeasuredHeight(), auraPaint);
+        auraPaint.setShader(auraGradient);
         final int color = getProfileAuraColor();
         if (auraAnimated == null) {
             auraAnimated = new AnimatedFloat(host, 450, CubicBezierInterpolator.EASE_OUT_QUINT);
