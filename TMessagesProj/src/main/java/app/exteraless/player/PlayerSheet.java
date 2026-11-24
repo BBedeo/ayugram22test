@@ -2243,10 +2243,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             android.graphics.drawable.Drawable lens = glassLenses[slot];
             if (lens == null) {
                 final View[] hosts = {likeButton, collapseButton, moreButton, group};
-                lens = glass.attach(hosts[slot], base);
+                lens = glass.attach(hosts[slot]);
                 glassLenses[slot] = lens;
             }
-            glass.setTint(base);
             return lens;
         }
         app.exteraless.appearance.glass.GlassSurfaceDrawable d = glassPlates[slot];

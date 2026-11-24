@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.LayerDrawable;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
@@ -18,8 +17,6 @@ import org.telegram.utils.glass.source.GlassSourceBitmap;
 import java.util.ArrayList;
 
 import app.exteraless.appearance.GlassMenuHelper;
-import app.exteraless.appearance.glass.GlassSurfaceDrawable;
-import app.exteraless.appearance.glass.GlassTokens;
 import app.exteraless.appearance.glass.GlassWindowBackdrop;
 
 /**
@@ -47,19 +44,16 @@ final class PlayerGlass {
     private final int[] hostLocation = new int[2];
     private Bitmap bitmap;
     private Canvas bitmapCanvas;
-    private int tint;
     private boolean released;
 
     private static final class Entry {
         final View host;
         final BlurredBackgroundDrawable lens;
-        final GlassSurfaceDrawable rim;
         float radius = -1f;
 
-        Entry(View host, BlurredBackgroundDrawable lens, GlassSurfaceDrawable rim) {
+        Entry(View host, BlurredBackgroundDrawable lens) {
             this.host = host;
             this.lens = lens;
-            this.rim = rim;
         }
     }
 
@@ -92,26 +86,16 @@ final class PlayerGlass {
         });
     }
 
-    /** A capsule/circle lens plus a fill-less rim as the host's background. */
-    Drawable attach(View host, int tintColor) {
-        tint = tintColor;
+    /**
+     * A capsule/circle lens as the host's background. The header lens already draws its own Fresnel catchlights
+     * (top-left and bottom-right), so no second rim goes on top of it: two different highlights on one glass
+     * read as a double border.
+     */
+    Drawable attach(View host) {
         final BlurredBackgroundDrawable lens = factory.create(null, GlassMenuHelper.scrimMenuBackgroundFill(resourcesProvider));
         lens.setHeaderGlassLens(true);
-        final GlassSurfaceDrawable rim = new GlassSurfaceDrawable(tintColor, GlassTokens.TIER_THIN, GlassTokens.RADIUS_CAPSULE);
-        rim.setFillAlpha(0f);
-        entries.add(new Entry(host, lens, rim));
-        return new LayerDrawable(new Drawable[]{lens, rim});
-    }
-
-    void setTint(int tintColor) {
-        if (tint == tintColor) {
-            return;
-        }
-        tint = tintColor;
-        for (Entry e : entries) {
-            e.rim.setBaseColor(tintColor);
-            e.rim.setFillAlpha(0f);
-        }
+        entries.add(new Entry(host, lens));
+        return lens;
     }
 
     /** Re-renders the background into the sampled bitmap (colours or cover changed). */
