@@ -173,15 +173,10 @@ public class GlassSurfaceDrawable extends Drawable {
         }
 
         final float half = rimPaint.getStrokeWidth() / 2f;
-        rimPaint.setAlpha(a);
+        // one soft hairline: a second bright line inside it reads as a cheap double border
+        rimPaint.setAlpha(Math.round(a * 0.6f));
         rect.inset(half, half);
         canvas.drawRoundRect(rect, r - half, r - half, rimPaint);
-
-        final float inset = rimPaint.getStrokeWidth() + highlightPaint.getStrokeWidth() / 2f;
-        highlightPaint.setAlpha(a);
-        setArea(b);
-        rect.inset(inset, inset);
-        canvas.drawRoundRect(rect, Math.max(0, r - inset), Math.max(0, r - inset), highlightPaint);
         if (clipSave != -1) {
             canvas.restoreToCount(clipSave);
         }

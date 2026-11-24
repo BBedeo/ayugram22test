@@ -17260,13 +17260,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 glassPaint.setStyle(Paint.Style.FILL);
                 glassPaint.setColor(Theme.multAlpha(0x2EFFFFFF, alpha));
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(20), dp(20), glassPaint);
-                glassPaint.setStyle(Paint.Style.STROKE);
-                glassPaint.setStrokeWidth(Math.max(1f, dpf2(0.75f)));
-                glassPaint.setColor(Theme.multAlpha(GlassTokens.rimLight(Color.WHITE), 0.4f * alpha));
-                final float inset = glassPaint.getStrokeWidth() / 2f;
-                AndroidUtilities.rectTmp.inset(inset, inset);
-                canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(20), dp(20), glassPaint);
-                AndroidUtilities.rectTmp.inset(-inset, -inset);
             }
             textDrawable.setTextColor(textColor);
             textDrawable.setAlpha((int) (0xFF * alpha));
