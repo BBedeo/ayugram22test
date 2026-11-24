@@ -3697,7 +3697,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 }
                 // In a chat the search field lives in the menu pill and takes the title's room: what is left of the
                 // title pill is a stub, so it fades out as the search opens
-                final float searchHide = chatAvatarContainer != null ? Math.min(1f, searchFactor * 2.5f) : 0f;
+                // searchFactor only follows the chat's own animator; the menu's search field sets isSearchFieldVisible
+                final float searchHide = chatAvatarContainer != null
+                        ? (isSearchFieldVisible ? 1f : Math.min(1f, searchFactor * 2.5f)) : 0f;
                 glassDrawable.setAlpha(Math.round(customHeaderAlpha * (1f - searchHide)));
                 if (!doNotDrawCenterGlass && !m3OpaqueBar && searchHide < 0.99f) {
                     glassDrawable.draw(canvas);
