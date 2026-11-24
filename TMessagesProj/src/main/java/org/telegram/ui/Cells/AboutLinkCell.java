@@ -276,6 +276,9 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
     }
 
     private Paint backgroundPaint = new Paint();
+    private final Paint fadePaint = new Paint();
+    private android.graphics.LinearGradient fadeShader;
+    private float fadeTop, fadeBottom;
     @Override
     public void draw(Canvas canvas) {
         super.draw(canvas);
@@ -283,7 +286,25 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
         View parent = (View) getParent();
         float alpha = parent == null ? 1f : (float) Math.pow(parent.getAlpha(), 2f);
 
-        drawText(canvas);
+        final boolean glassFade = app.exteraless.appearance.glass.GlassTokens.isActive() && bottomShadow.getAlpha() > 0;
+        if (glassFade) {
+            // Liquid Glass: the card is translucent, so the collapsed text fades out itself (no page-coloured overlay)
+            final int layer = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
+            drawText(canvas);
+            final float top = bottomShadow.getTop(), bottom = bottomShadow.getBottom();
+            if (fadeShader == null || fadeTop != top || fadeBottom != bottom) {
+                fadeTop = top;
+                fadeBottom = bottom;
+                fadeShader = new android.graphics.LinearGradient(0, top, 0, bottom, 0x00000000, 0xFF000000, android.graphics.Shader.TileMode.CLAMP);
+                fadePaint.setShader(fadeShader);
+                fadePaint.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+            }
+            fadePaint.setAlpha((int) (bottomShadow.getAlpha() * 255));
+            canvas.drawRect(0, top, getWidth(), bottom, fadePaint);
+            canvas.restoreToCount(layer);
+        } else {
+            drawText(canvas);
+        }
 
         float viewAlpha = showMoreTextBackgroundView.getAlpha();
         if (viewAlpha > 0) {
@@ -295,7 +316,7 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
             canvas.restore();
         }
         viewAlpha = bottomShadow.getAlpha();
-        // Liquid Glass: the card is translucent, the page-coloured fade of the collapsed text would show as a dark band
+        // Liquid Glass: the text fades out itself above (a page-coloured overlay would show as a dark band on the translucent card)
         if (viewAlpha > 0 && !app.exteraless.appearance.glass.GlassTokens.isActive()) {
             canvas.save();
             canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), (int) (viewAlpha * 255), Canvas.ALL_SAVE_FLAG);
