@@ -74,15 +74,15 @@ public final class VoIPCallGlass {
             face.setAlpha(Math.round(255 * alpha));
             canvas.drawCircle(cx, cy, radius, face);
 
-            rim.setStrokeWidth(AndroidUtilities.dpf2(1.05f));
+            rim.setStrokeWidth(AndroidUtilities.dpf2(.75f));
             rim.setAlpha(Math.round(255 * alpha));
             canvas.drawCircle(cx, cy, radius - AndroidUtilities.dpf2(.65f), rim);
 
             final float shine = LiquidGlassTuning.shine();
             if (shine > .01f) {
                 glint.setColor(0xFFFFFFFF);
-                glint.setAlpha(Math.round(Math.min(255, 210 * shine * alpha)));
-                glint.setStrokeWidth(AndroidUtilities.dpf2(1.4f + pressed * .9f));
+                glint.setAlpha(Math.round(Math.min(255, 80 * shine * alpha)));
+                glint.setStrokeWidth(AndroidUtilities.dpf2(1f + pressed * .6f));
                 final float inset = AndroidUtilities.dpf2(2.0f);
                 arcRect.set(cx - radius + inset, cy - radius + inset,
                         cx + radius - inset, cy + radius - inset);
@@ -100,14 +100,14 @@ public final class VoIPCallGlass {
             gradientMatrix.setRotate(angle, 0, 0);
             gradientMatrix.postTranslate(cx, cy);
             rimGradient.setLocalMatrix(gradientMatrix);
-            rim.setStrokeWidth(AndroidUtilities.dpf2(1.15f));
+            rim.setStrokeWidth(AndroidUtilities.dpf2(.75f));
             rim.setAlpha(255);
             canvas.drawCircle(cx, cy, radius - AndroidUtilities.dpf2(.7f), rim);
             final float shine = LiquidGlassTuning.shine();
             if (shine > .01f) {
                 glint.setColor(0xFFFFFFFF);
-                glint.setAlpha(Math.round(Math.min(255, 186 * shine)));
-                glint.setStrokeWidth(AndroidUtilities.dpf2(1.6f));
+                glint.setAlpha(Math.round(Math.min(255, 70 * shine)));
+                glint.setStrokeWidth(AndroidUtilities.dpf2(1.1f));
                 arcRect.set(cx - radius + AndroidUtilities.dpf2(2f),
                         cy - radius + AndroidUtilities.dpf2(2f),
                         cx + radius - AndroidUtilities.dpf2(2f),
@@ -130,7 +130,7 @@ public final class VoIPCallGlass {
             faceGradient = new LinearGradient(-radius, -radius, radius, radius,
                     top, bottom, Shader.TileMode.CLAMP);
             rimGradient = new LinearGradient(-radius, -radius, radius, radius,
-                    0xF0FFFFFF, 0x29FFFFFF, Shader.TileMode.CLAMP);
+                    0x66FFFFFF, 0x14FFFFFF, Shader.TileMode.CLAMP);
             face.setShader(faceGradient);
             rim.setShader(rimGradient);
         }
