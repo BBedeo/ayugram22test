@@ -6799,7 +6799,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (userId != 0) {
             TLRPC.User user = getMessagesController().getUser(userId);
             if (user != null) {
-                VoIPHelper.startCall(user, isVideoCall, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo, getAccountInstance());
+                final boolean canVideo = userInfo != null && userInfo.video_calls_available;
+                if (tw.nekomimi.nekogram.NekoConfig.askBeforeCall.Bool() && openCallConfirmInOverlay(user, isVideoCall, canVideo)) {
+                    return;
+                }
+                VoIPHelper.startCall(user, isVideoCall, canVideo, getParentActivity(), userInfo, getAccountInstance());
             }
         } else if (chatId != 0) {
             ChatObject.Call call = getMessagesController().getGroupCall(chatId, false);
@@ -8627,7 +8631,36 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             updateExceptions();
             updateNotifications(true);
         });
-        overlayActionKey = ProfileActionsView.KEY_NOTIFICATION;
+        return openActionMenuInOverlay(ProfileActionsView.KEY_NOTIFICATION, io);
+    }
+
+    /**
+     * The confirmation of a call is the call (video) button itself changing its shape: it grows into the glass menu and
+     * pours back into the button, as the bell's and the "more" menus do. False without the glass: the dialog is shown.
+     */
+    private boolean openCallConfirmInOverlay(TLRPC.User user, boolean video, boolean canVideo) {
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (!LiquidGlassTuning.isActive() || simpleActionBar == null || otherItem == null || overlay == null
+                || simpleActionBar.getOpenMenuOverlay() != null || actionsView == null) {
+            return false;
+        }
+        final ItemOptions io = ItemOptions.makeOptions(this, actionsView);
+        io.addText(AndroidUtilities.replaceTags(LocaleController.formatString("CallTo", R.string.CallTo,
+                ContactsController.formatName(user.first_name, user.last_name))), 13, dp(220));
+        io.add(video ? R.drawable.msg_videocall : R.drawable.msg_calls,
+                LocaleController.getString(video ? R.string.VideoCall : R.string.Call),
+                () -> VoIPHelper.startCall(user, video, canVideo, getParentActivity(), userInfo, getAccountInstance(), true));
+        io.add(R.drawable.msg_close, LocaleController.getString(R.string.Cancel), () -> {});
+        return openActionMenuInOverlay(video ? ProfileActionsView.KEY_VIDEO : ProfileActionsView.KEY_CALL, io);
+    }
+
+    /** Opens {@code io} in the glass grown out of the action row's button {@code key}: the button is the menu meanwhile. */
+    private boolean openActionMenuInOverlay(int key, ItemOptions io) {
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        if (overlay == null || simpleActionBar == null || otherItem == null) {
+            return false;
+        }
+        overlayActionKey = key;
         moreOverlayFromActions = true;
         if (!io.openInOverlay(simpleActionBar, otherItem, overlay, () -> moreOverlayFromActions = false)
                 || simpleActionBar.getOpenMenuOverlay() == null) {
