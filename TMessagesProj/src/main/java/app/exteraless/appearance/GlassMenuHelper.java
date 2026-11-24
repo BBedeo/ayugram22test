@@ -62,8 +62,8 @@ public abstract class GlassMenuHelper {
                         ? 0xFF1C1D20
                         : ColorUtils.blendARGB(colorSubmenu, 0xFFFFFFFF, 0.80f);
                     if (dense) {
-                        // readable over a busy chat: the text behind must not show through the panel
-                        return ColorUtils.setAlphaComponent(tinted, isDark ? 214 : 224);
+                        // firmer than a menu for the text, but still see-through like the menus
+                        return ColorUtils.setAlphaComponent(tinted, isDark ? 150 : 170);
                     }
                     return ColorUtils.setAlphaComponent(tinted, MathUtils.clamp(Math.round(255f * alpha), isDark ? 28 : 36, isDark ? 120 : 150));
                 }

@@ -383,7 +383,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
         if (optionalGlass) {
             blurAlpha = LiquidGlassTuning.tintAlphaMenu(isDark, blurAlpha);
             // as light a dim as behind the glass menus
-            dimAlpha = 0.12f;
+            dimAlpha = 0x1A / 255f;
         }
 
         backgroundPaddings = new Rect();

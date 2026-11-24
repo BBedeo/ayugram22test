@@ -627,7 +627,9 @@ public class SimpleActionBarMenuOverlay extends FrameLayout {
         shapeRadii[4] = shapeRadii[5] = shapeRadii[6] = shapeRadii[7] = radius;
         bulgedRect.set(shapeRect.left, shapeRect.top - bulge, shapeRect.right, shapeRect.bottom);
 
-        // no dim of the screen: the menu's glass is enough, the interface stays as it is
+        // a light dim of the screen, the same as behind the glass dialogs
+        dimPaint.setAlpha((int) (0x1A * m));
+        canvas.drawRect(0, 0, getWidth(), getHeight(), dimPaint);
 
         // the one glass shape: the button's pill stretched into the menu
         final int p = dp(6);
