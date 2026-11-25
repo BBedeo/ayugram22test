@@ -2052,9 +2052,99 @@ public class VideoPlayer implements Player.Listener, VideoListener, AnalyticsLis
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(new AudioProcessor[]{
-                            new TeeAudioProcessor(new VisualizerBufferSink())
+                            new TeeAudioProcessor(new VisualizerBufferSink()),
+                            new TeeAudioProcessor(new SpectrumSink())
                     })
                     .build();
+        }
+    }
+
+    public interface SpectrumListener {
+        /** Called on the main thread with {@link SpectrumSink#BANDS} log-spaced levels in 0..1. */
+        void onSpectrum(float[] bands);
+    }
+
+    /** Set by the music player UI while it shows a frequency visualizer; null otherwise (the FFT is then skipped). */
+    public static volatile SpectrumListener spectrumListener;
+
+    private class SpectrumSink implements TeeAudioProcessor.AudioBufferSink {
+
+        static final int BANDS = 28;
+        private static final int N = 1024;
+        private final FourierTransform.FFT fft = new FourierTransform.FFT(N, 44100);
+        private final float[] samples = new float[N];
+        private int fill;
+        private int rate = 44100;
+        private int channels = 2;
+        private int encoding = C.ENCODING_PCM_16BIT;
+        private long lastPost;
+
+        @Override
+        public void flush(int sampleRateHz, int channelCount, int encoding) {
+            rate = sampleRateHz > 0 ? sampleRateHz : 44100;
+            channels = Math.max(1, channelCount);
+            this.encoding = encoding;
+            fill = 0;
+        }
+
+        @Override
+        public void handleBuffer(ByteBuffer buffer) {
+            if (spectrumListener == null || buffer == AudioProcessor.EMPTY_BUFFER) {
+                return;
+            }
+            final boolean pcm16 = encoding == C.ENCODING_PCM_16BIT;
+            if (!pcm16 && encoding != C.ENCODING_PCM_FLOAT) {
+                return;
+            }
+            final ByteBuffer b = buffer.duplicate().order(java.nio.ByteOrder.nativeOrder());
+            final int bytes = pcm16 ? 2 : 4;
+            while (b.remaining() >= bytes * channels) {
+                float v = 0;
+                for (int c = 0; c < channels; c++) {
+                    v += pcm16 ? b.getShort() / 32768f : b.getFloat();
+                }
+                samples[fill++] = v / channels;
+                if (fill == N) {
+                    fill = 0;
+                    analyse();
+                }
+            }
+        }
+
+        private void analyse() {
+            final long now = android.os.SystemClock.elapsedRealtime();
+            if (now - lastPost < 30) {
+                return;
+            }
+            lastPost = now;
+            final float[] w = new float[N];
+            for (int i = 0; i < N; i++) {
+                w[i] = samples[i] * (0.5f - 0.5f * (float) Math.cos(2 * Math.PI * i / (N - 1)));
+            }
+            fft.forward(w);
+            final float[] re = fft.getSpectrumReal();
+            final float[] im = fft.getSpectrumImaginary();
+            final float[] out = new float[BANDS];
+            final double lo = Math.log(45), hi = Math.log(Math.min(14000, rate / 2.0 - 1));
+            for (int i = 0; i < BANDS; i++) {
+                final double f0 = Math.exp(lo + (hi - lo) * i / BANDS);
+                final double f1 = Math.exp(lo + (hi - lo) * (i + 1) / BANDS);
+                final int b0 = Math.max(1, (int) Math.floor(f0 * N / rate));
+                final int b1 = Math.max(b0, Math.min(N / 2 - 1, (int) Math.ceil(f1 * N / rate)));
+                float peak = 0;
+                for (int k = b0; k <= b1; k++) {
+                    peak = Math.max(peak, (float) Math.sqrt(re[k] * re[k] + im[k] * im[k]));
+                }
+                // a full-scale sine gives about N/4 after the Hann window
+                final double db = 20 * Math.log10(Math.max(1e-6, peak / (N / 4f)));
+                out[i] = (float) Math.max(0, Math.min(1, (db + 62) / 52));
+            }
+            AndroidUtilities.runOnUIThread(() -> {
+                final SpectrumListener l = spectrumListener;
+                if (l != null) {
+                    l.onSpectrum(out);
+                }
+            });
         }
     }
 

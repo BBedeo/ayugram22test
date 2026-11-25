@@ -12,6 +12,7 @@ import android.view.View;
 import androidx.annotation.NonNull;
 
 import org.telegram.messenger.LiteMode;
+import org.telegram.ui.Components.VideoPlayer;
 
 /**
  * Soft frequency bars under the collapsed control capsule. Telegram gives no spectrum for music files, so the bands are a
@@ -29,6 +30,23 @@ final class PlayerVisualizer extends View {
     private float bass;
     private long last;
     private float time;
+    private final float[] real = new float[BARS];
+    private long lastReal;
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        VideoPlayer.spectrumListener = bands -> {
+            System.arraycopy(bands, 0, real, 0, Math.min(bands.length, BARS));
+            lastReal = SystemClock.elapsedRealtime();
+        };
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        VideoPlayer.spectrumListener = null;
+    }
 
     PlayerVisualizer(Context context) {
         super(context);
@@ -77,8 +95,11 @@ final class PlayerVisualizer extends View {
             final float beat = 0.5f + 0.5f * (float) Math.sin(time * 2.1f - f * 1.5f);
             final float wob = 0.5f + 0.5f * (float) Math.sin(time * (1.1f + f * 1.7f) + i * 1.9f);
             final float wob2 = 0.5f + 0.5f * (float) Math.sin(time * 0.7f + i * 0.6f);
-            final float target = energy * tilt * (0.18f + 0.82f * (0.45f * beat * (1f - f) + 0.35f * wob + 0.2f * wob2));
-            level[i] += (target - level[i]) * (1f - (float) Math.pow(0.8f, dt / 0.04f));
+            final boolean fresh = now - lastReal < 300;
+            // shortcut: synthetic motion only when the decoder gives no samples (e.g. unsupported encoding)
+            final float target = fresh ? energy * real[i] : energy * tilt * (0.18f + 0.82f * (0.45f * beat * (1f - f) + 0.35f * wob + 0.2f * wob2));
+            final float k = target > level[i] ? 0.55f : 0.85f;
+            level[i] += (target - level[i]) * (1f - (float) Math.pow(k, dt / 0.04f));
             if (i < 5) {
                 bassSum += level[i];
             }
