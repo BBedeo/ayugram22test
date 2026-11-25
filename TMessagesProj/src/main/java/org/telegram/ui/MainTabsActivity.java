@@ -345,9 +345,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     final int stripTop = tabsCapturePosition.bottom > tabsCapturePosition.top
                             ? Math.max(0, (int) tabsCapturePosition.top - dp(24))
                             : Math.max(0, height - dp(120));
-                    final int stripBottom = tabsCapturePosition.bottom > tabsCapturePosition.top
-                            ? Math.min(height, (int) tabsCapturePosition.bottom + dp(24))
-                            : height;
+                    // down to the screen edge: while a chat opens the bar slides down (tabsViewWrapper translationY)
+                    // and the lens must not run off the strip onto the flat background colour
+                    final int stripBottom = height;
                     canvas.save();
                     canvas.clipRect(0, stripTop, width, stripBottom);
                     for (int a = 0, N = fragmentsArr.size(); a < N; a++) {
