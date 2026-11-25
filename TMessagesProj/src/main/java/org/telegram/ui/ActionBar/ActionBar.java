@@ -3797,12 +3797,45 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
 
+        clipSearchFieldToMenuPill(hasMenuPill ? menuLeft + p : Integer.MIN_VALUE);
+
         isAnimationsAllowed = true;
         if (doNotDrawChild) {
             return;
         }
 
         super.dispatchDraw(canvas);
+    }
+
+    private View clippedSearchContainer;
+
+    /**
+     * The search field of a chat header is laid out at its full width at once while the glass pill under it
+     * still springs out of the avatar: the text stood on bare background left of the pill. Clip the field to
+     * the pill's left edge while it grows; {@code pillLeft == MIN_VALUE} lifts the clip.
+     */
+    private void clipSearchFieldToMenuPill(int pillLeft) {
+        View container = null;
+        if (menu != null && glassMode && chatAvatarContainer == null && pillLeft != Integer.MIN_VALUE && !isSearchPill()) {
+            for (int i = 0, n = menu.getChildCount(); i < n && container == null; i++) {
+                final View child = menu.getChildAt(i);
+                if (child instanceof ActionBarMenuItem) {
+                    final View candidate = ((ActionBarMenuItem) child).getSearchContainer();
+                    if (candidate != null && candidate.getVisibility() == VISIBLE && candidate.getWidth() > 0) {
+                        container = candidate;
+                        final View item = child;
+                        final float absLeft = menu.getLeft() + menu.getTranslationX() + item.getLeft() + item.getTranslationX()
+                                + candidate.getLeft() + candidate.getTranslationX();
+                        final int cut = Math.max(0, Math.round(pillLeft - absLeft));
+                        candidate.setClipBounds(cut > 0 ? new android.graphics.Rect(cut, 0, candidate.getWidth(), candidate.getHeight()) : null);
+                    }
+                }
+            }
+        }
+        if (clippedSearchContainer != null && clippedSearchContainer != container) {
+            clippedSearchContainer.setClipBounds(null);
+        }
+        clippedSearchContainer = container;
     }
 
     private int customHeaderAlpha = 255;
