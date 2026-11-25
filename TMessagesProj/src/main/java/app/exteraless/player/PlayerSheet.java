@@ -1987,6 +1987,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
 
     private void animateEditor(float target) {
         if (editorAnimator != null) {
+            // cancel() also delivers onAnimationEnd: its listener would jump the fraction to the old target and, for a
+            // closing editor, hide the panel that is being reopened
+            editorAnimator.removeAllListeners();
             editorAnimator.cancel();
         }
         editorAnimator = ValueAnimator.ofFloat(editorFraction, target);
