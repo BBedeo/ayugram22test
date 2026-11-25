@@ -17,7 +17,7 @@ import android.view.View;
 
 import org.telegram.messenger.AndroidUtilities;
 
-import tw.nekomimi.nekogram.helpers.NaConfig;
+import xyz.nextalone.nagram.NaConfig;
 
 public class PhotoEditorSeekBar extends View {
 
