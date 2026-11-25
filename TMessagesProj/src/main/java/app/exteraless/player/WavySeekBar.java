@@ -175,6 +175,25 @@ public class WavySeekBar extends View {
         return super.onTouchEvent(event);
     }
 
+    private app.exteraless.appearance.glass.GlassSurfaceDrawable glassThumb;
+
+    /** iOS 26 style glass drop that grows out of the bar under the finger while seeking. */
+    private void drawGlassThumb(Canvas canvas, float x, float cy, float left, float right) {
+        if (glassThumb == null) {
+            glassThumb = new app.exteraless.appearance.glass.GlassSurfaceDrawable(0xFFFFFFFF,
+                    app.exteraless.appearance.glass.GlassTokens.TIER_THIN, app.exteraless.appearance.glass.GlassTokens.RADIUS_CAPSULE);
+            glassThumb.setShadow(true);
+            glassThumb.setFillAlpha(0.42f);
+        }
+        final float e = iosExpand;
+        final float w = dpf2(40f) * e;
+        final float h = Math.min(getHeight(), dpf2(26f)) * e;
+        final float cx = Math.max(left, Math.min(right, x));
+        glassThumb.setBounds(Math.round(cx - w / 2f), Math.round(cy - h / 2f), Math.round(cx + w / 2f), Math.round(cy + h / 2f));
+        glassThumb.setAlpha(Math.round(255 * e));
+        glassThumb.draw(canvas);
+    }
+
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
         long now = SystemClock.elapsedRealtime();
@@ -206,6 +225,9 @@ public class WavySeekBar extends View {
             if (p > 0.001f) {
                 rect.set(left, cy - r, activeRight, cy + r);
                 canvas.drawRoundRect(rect, r, r, fillPaint);
+            }
+            if (iosExpand > 0.01f) {
+                drawGlassThumb(canvas, x, cy, left, right);
             }
             if (iosExpand != targetExpand && !frozen) {
                 postInvalidateOnAnimation();
