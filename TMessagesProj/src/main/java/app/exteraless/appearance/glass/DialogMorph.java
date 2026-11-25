@@ -45,10 +45,13 @@ public final class DialogMorph {
     private static @Nullable DialogMorph current;
 
     // a content that is not a dialog (a card in a list): the glass blob is seen for longer, the content comes late
+    private boolean followShape;
     private float duration = DURATION, fadeFrom = 0.08f, fadeLen = 0.3f, handoffAt = HANDOFF_AT;
 
     /** The glass shape grows bare and the panel fades in only once it is nearly there. */
     public DialogMorph setLateReveal() {
+        // the panel's corner goes with the shape's: it is not a window over the screen, it sits where the shape ends
+        followShape = true;
         duration = 0.62f;
         fadeFrom = 0.42f;
         fadeLen = 0.36f;
@@ -201,6 +204,10 @@ public final class DialogMorph {
             startTime = now;
         }
         panel.getLocationOnScreen(panelLoc);
+        if (followShape) {
+            panelLoc[0] -= Math.round(panel.getTranslationX());
+            panelLoc[1] -= Math.round(panel.getTranslationY());
+        }
         target.set(panelLoc[0], panelLoc[1], panelLoc[0] + panel.getWidth(), panelLoc[1] + panel.getHeight());
 
         final float t = (now - startTime) / 1000f;
@@ -213,7 +220,12 @@ public final class DialogMorph {
         final float radius = Math.min(Math.min(shape.width(), shape.height()) / 2f,
                 lerp(originRadius, dp(GlassTokens.RADIUS_DIALOG), Utilities.clamp01(ph)));
 
-        reveal.set(shape.left - panelLoc[0], shape.top - panelLoc[1], shape.right - panelLoc[0], shape.bottom - panelLoc[1]);
+        final float shiftX = followShape ? shape.left - target.left : 0f, shiftY = followShape ? shape.top - target.top : 0f;
+        if (followShape) {
+            panel.setTranslationX(shiftX);
+            panel.setTranslationY(shiftY);
+        }
+        reveal.set(shape.left - panelLoc[0] - shiftX, shape.top - panelLoc[1] - shiftY, shape.right - panelLoc[0] - shiftX, shape.bottom - panelLoc[1] - shiftY);
         revealRadius = radius;
         if (!panelClipped) {
             panelClipped = true;
@@ -274,6 +286,10 @@ public final class DialogMorph {
             return;
         }
         done = true;
+        if (followShape) {
+            panel.setTranslationX(0f);
+            panel.setTranslationY(0f);
+        }
         if (panelClipped) {
             panelClipped = false;
             panel.setClipToOutline(panelClipToOutline);
