@@ -99,12 +99,25 @@ public final class CustomFonts {
             cachedName = name;
             try {
                 cachedBase = Typeface.createFromFile(new File(dir(), name));
+                applyAsDefault(cachedBase);
             } catch (Exception e) {
                 FileLog.e(e);
                 cachedBase = null;
             }
         }
         return cachedBase;
+    }
+
+    /** Views that never set a typeface draw with the platform default: swap it too (hidden API, Android 9+). */
+    private static void applyAsDefault(Typeface base) {
+        if (base == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return;
+        }
+        try {
+            org.lsposed.hiddenapibypass.HiddenApiBypass.invoke(Typeface.class, null, "setDefault", base);
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
     }
 
     private static Typeface weight(Typeface base, int weight, boolean italic) {
