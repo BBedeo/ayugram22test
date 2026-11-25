@@ -105,7 +105,8 @@ public abstract class GlassMenuHelper {
                                                                   View view) {
         return factory.create(view, true)
             .setColorProvider(scrimMenuBackground(resourcesProvider))
-            .setRadius(AndroidUtilities.dp(12.0f))
+            // same radius as ItemOptions' glass menu (20) so every menu reads as one family
+            .setRadius(AndroidUtilities.dp(LiquidGlassTuning.isActive() ? 20.0f : 12.0f))
             .setPadding(AndroidUtilities.dp(8.0f))
             .setHasPadding(true);
     }

@@ -1138,6 +1138,20 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             spinAnimator.cancel();
             spinAnimator = null;
         }
+        // listeners off first: cancel() would run their end handlers on a dead sheet
+        if (lyricsAnimator != null) {
+            lyricsAnimator.removeAllListeners();
+            lyricsAnimator.removeAllUpdateListeners();
+            lyricsAnimator.cancel();
+        }
+        if (backdropFader != null) {
+            backdropFader.removeAllListeners();
+            backdropFader.removeAllUpdateListeners();
+            backdropFader.cancel();
+        }
+        if (glass != null) {
+            glass.release();
+        }
     }
 
     public static void onModesChanged() {

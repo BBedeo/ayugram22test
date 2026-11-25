@@ -75,6 +75,7 @@ final class PlayerGlass {
             @Override
             public void onViewAttachedToWindow(@NonNull View v) {
                 if (!released) {
+                    v.getViewTreeObserver().removeOnPreDrawListener(preDraw);
                     v.getViewTreeObserver().addOnPreDrawListener(preDraw);
                 }
             }
