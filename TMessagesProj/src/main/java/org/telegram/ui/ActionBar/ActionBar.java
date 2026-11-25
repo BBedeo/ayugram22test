@@ -3395,7 +3395,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     /** Where the menu starts while the search field is open. */
     private int searchMenuStart() {
         final int normal = dp(menuOccupyBack ? 0 : AndroidUtilities.isTablet() ? 74 : 66);
-        if (!searchHugsBack || !glassMode || menuOccupyBack || chatAvatarContainer != null || menu == null) {
+        if (!searchHugsBack || !glassMode || menuOccupyBack || menu == null) {
             return normal;
         }
         final int[] margins = menu.getSearchItemMargins();
