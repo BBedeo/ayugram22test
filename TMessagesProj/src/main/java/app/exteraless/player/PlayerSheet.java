@@ -1520,9 +1520,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         if (!framed || (p == 0f && collapseCoverShift == 0f)) {
             return;
         }
-        final float full = Math.min((layout.getWidth() - dp(24)) / (float) size, 1.1f);
+        final float full = Math.min((layout.getWidth() - dp(48)) / (float) size, 1.06f);
         final float grow = size * (full - 1f) / 2f;
-        final float pulse = 0.014f * (visualizer != null ? visualizer.getBass() : 0f) * p;
+        final float pulse = 0.01f * (visualizer != null ? visualizer.getBass() : 0f) * p;
         final float scale = (1f + (full - 1f) * p) + pulse;
         // shortcut: assumes a playing cover (scale 1) while collapsed; pausing expands first
         cover.setScaleX(scale);
