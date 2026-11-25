@@ -52,7 +52,9 @@ public final class GlassRim {
                     new float[]{0f, 0.30f, 0.70f, 1f}, Shader.TileMode.CLAMP);
             paint.setShader(unit);
         }
-        matrix.setScale(rect.width(), rect.height());
+        // 45deg axis (see GlassSurfaceDrawable): corners lit at the same angle as on the lens, for any aspect
+        final float diag = (rect.width() + rect.height()) / 2f;
+        matrix.setScale(diag, diag);
         matrix.postTranslate(rect.left, rect.top);
         unit.setLocalMatrix(matrix);
         paint.setAlpha(Math.round(255 * Math.max(0f, Math.min(1f, alpha))));

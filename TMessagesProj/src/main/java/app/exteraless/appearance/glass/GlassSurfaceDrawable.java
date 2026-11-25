@@ -125,15 +125,18 @@ public class GlassSurfaceDrawable extends Drawable {
         }
         // Light from the top-left: the rim is bright there and fades into shade at the bottom-right. A dark surface also
         // catches the light again at the bottom-right, like the lens' rim (lit at both diagonal ends).
+        // a true 45deg axis whose end projects onto the far corner: the catchlights sit in the corners whatever the aspect
+        // (a corner-to-corner axis of a wide capsule is near-horizontal and made the rim lit on the vertical ends)
+        final float diag = (b.width() + b.height()) / 2f;
         final int light = GlassTokens.rimLight(baseColor);
         final int shade = GlassTokens.rimShade(baseColor);
         final int opposite = GlassTokens.rimOpposite(baseColor);
         if (opposite == shade) {
-            rimPaint.setShader(new LinearGradient(b.left, b.top, b.right, b.bottom,
+            rimPaint.setShader(new LinearGradient(b.left, b.top, b.left + diag, b.top + diag,
                     new int[]{light, shade, shade},
                     new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         } else {
-            rimPaint.setShader(new LinearGradient(b.left, b.top, b.right, b.bottom,
+            rimPaint.setShader(new LinearGradient(b.left, b.top, b.left + diag, b.top + diag,
                     new int[]{light, shade, shade, opposite},
                     new float[]{0f, 0.40f, 0.65f, 1f}, Shader.TileMode.CLAMP));
         }
