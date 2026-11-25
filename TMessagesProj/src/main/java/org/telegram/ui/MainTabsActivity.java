@@ -460,9 +460,32 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         updateLayout();
     }
 
+    private int tabLensBurstFrames;
+    private final Runnable tabLensBurst = new Runnable() {
+        @Override
+        public void run() {
+            invalidateTabsGlass();
+            if (--tabLensBurstFrames > 0) {
+                AndroidUtilities.runOnUIThread(this, 16);
+            }
+        }
+    };
+
+    /**
+     * The lens under the tabs shows the strip of the page behind it. Coming back from a chat the page is not drawn
+     * yet when the first capture is made, so the lens first shows flat colour and only jumps to the real picture on
+     * a later invalidation: re-capture every frame while the page settles.
+     */
+    private void refreshTabLensBurst() {
+        AndroidUtilities.cancelRunOnUIThread(tabLensBurst);
+        tabLensBurstFrames = 32;
+        AndroidUtilities.runOnUIThread(tabLensBurst);
+    }
+
     @Override
     public void onResume() {
         super.onResume();
+        refreshTabLensBurst();
         if (miniPlayer != null) {
             miniPlayer.update(true);
         }
@@ -490,6 +513,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     @Override
     public void onPause() {
         super.onPause();
+        AndroidUtilities.cancelRunOnUIThread(tabLensBurst);
         if (accountSwitchHint != null) {
             accountSwitchHint.hide();
         }
@@ -1304,6 +1328,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     @Override
     public void onBecomeFullyVisible() {
         super.onBecomeFullyVisible();
+        refreshTabLensBurst();
         final BaseFragment fragment = getCurrentVisibleFragment();
         if (fragment instanceof TabFragmentDelegate) {
             ((TabFragmentDelegate) fragment).onParentBecomeFullyVisible();
