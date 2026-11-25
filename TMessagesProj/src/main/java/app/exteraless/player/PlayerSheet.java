@@ -1520,7 +1520,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         if (!framed || (p == 0f && collapseCoverShift == 0f)) {
             return;
         }
-        final float full = Math.min((layout.getWidth() - dp(48)) / (float) size, 1.06f);
+        final float full = Math.min((layout.getWidth() - dp(24)) / (float) size, 1.2f);
         final float grow = size * (full - 1f) / 2f;
         final float pulse = 0.01f * (visualizer != null ? visualizer.getBass() : 0f) * p;
         final float scale = (1f + (full - 1f) * p) + pulse;
@@ -3184,7 +3184,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             }
             int available = bottomY - headerBottom - lower;
             int coverAvail = available - dp(16) - dp(26) - titleH;
-            int size = Math.max(dp(96), Math.min(Math.round(contentW * PlayerStyle.coverSize()), coverAvail));
+            // iOS player: a smaller resting cover leaves room for it to grow when the controls collapse
+            final float restScale = Md3Player.isIosPlayer() && !previewMode ? 0.86f : 1f;
+            int size = Math.max(dp(96), Math.min(Math.round(contentW * PlayerStyle.coverSize() * restScale), coverAvail));
             stageHeight = dp(16) + size + dp(26) + titleH;
             int free = available - stageHeight;
             stageTop = headerBottom + Math.max(0, free / 2);
