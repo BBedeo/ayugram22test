@@ -841,7 +841,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         final int[] at = new int[2];
         card.getLocationOnScreen(at);
         final float cardW = card.getWidth(), cardH = card.getHeight();
-        final float side = dp(12), fullRadius = dpf2(AppearanceConfig.sectionRadius());
+        final float side = dp(12), fullRadius = AndroidUtilities.dpf2(app.exteraless.appearance.AppearanceConfig.sectionRadius());
         final float pillW = musicPillBounds.width(), pillH = musicPillBounds.height();
         final float tx0 = musicPillBounds.centerX() - (at[0] + cardW / 2f);
         final float ty0 = musicPillBounds.top - at[1];
