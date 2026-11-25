@@ -827,13 +827,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         });
     }
 
-    private static androidx.dynamicanimation.animation.SpringAnimation meltSpring(View v, androidx.dynamicanimation.animation.DynamicAnimation.ViewProperty property, float target, float stiffness, float damping) {
-        final androidx.dynamicanimation.animation.SpringAnimation a = new androidx.dynamicanimation.animation.SpringAnimation(v, property);
-        a.setSpring(new androidx.dynamicanimation.animation.SpringForce(target).setStiffness(stiffness).setDampingRatio(damping));
-        return a;
-    }
-
-    /** The card melts out of the music pill (or back into it) with springy overshoot, like the glass buttons do. */
+    /** The card melts out of the music pill (or back into it): a rounded clip grows from the pill's rect to the card, as the menus do from the header's buttons. */
     private void meltMusicCard(boolean in, Runnable end) {
         final RecyclerView.ViewHolder holder = musicCardRow >= 0 && listView != null ? listView.findViewHolderForAdapterPosition(musicCardRow) : null;
         if (holder == null || musicView == null || musicView.getWidth() == 0 || holder.itemView.getWidth() == 0) {
@@ -846,37 +840,51 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         musicView.getButtonBoundsOnScreen(musicPillBounds);
         final int[] at = new int[2];
         card.getLocationOnScreen(at);
-        final float dx = musicPillBounds.centerX() - (at[0] + card.getWidth() / 2f);
-        final float dy = musicPillBounds.centerY() - (at[1] + card.getHeight() / 2f);
-        final float sx = Math.max(0.05f, musicPillBounds.width() / card.getWidth());
-        final float sy = Math.max(0.05f, musicPillBounds.height() / card.getHeight());
-        card.setPivotX(card.getWidth() / 2f);
-        card.setPivotY(card.getHeight() / 2f);
-        final androidx.dynamicanimation.animation.DynamicAnimation.ViewProperty[] props = {
-            androidx.dynamicanimation.animation.DynamicAnimation.TRANSLATION_X,
-            androidx.dynamicanimation.animation.DynamicAnimation.TRANSLATION_Y,
-            androidx.dynamicanimation.animation.DynamicAnimation.SCALE_X,
-            androidx.dynamicanimation.animation.DynamicAnimation.SCALE_Y
+        final float cardW = card.getWidth(), cardH = card.getHeight();
+        final float side = dp(12), fullRadius = dpf2(AppearanceConfig.sectionRadius());
+        final float pillW = musicPillBounds.width(), pillH = musicPillBounds.height();
+        final float tx0 = musicPillBounds.centerX() - (at[0] + cardW / 2f);
+        final float ty0 = musicPillBounds.top - at[1];
+        final android.graphics.RectF clip = new android.graphics.RectF();
+        final float[] radius = {pillH / 2f};
+        card.setClipToOutline(true);
+        card.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(Math.round(clip.left), Math.round(clip.top), Math.round(clip.right), Math.round(clip.bottom), radius[0]);
+            }
+        });
+        final androidx.dynamicanimation.animation.FloatValueHolder value = new androidx.dynamicanimation.animation.FloatValueHolder();
+        final Runnable apply = () -> {
+            final float p = value.getValue();
+            final float c = Math.max(0f, Math.min(1f, p));
+            clip.set(AndroidUtilities.lerp(cardW / 2f - pillW / 2f, side, p), 0, AndroidUtilities.lerp(cardW / 2f + pillW / 2f, cardW - side, p), AndroidUtilities.lerp(pillH, cardH, p));
+            radius[0] = AndroidUtilities.lerp(pillH / 2f, fullRadius, c);
+            card.setTranslationX(tx0 * (1f - p));
+            card.setTranslationY(ty0 * (1f - p));
+            card.setAlpha(Math.min(1f, c * 4f));
+            card.invalidateOutline();
         };
-        final float[] pill = {dx, dy, sx, sy};
-        final float[] rest = {0f, 0f, 1f, 1f};
-        if (in) {
-            card.setTranslationX(dx);
-            card.setTranslationY(dy);
-            card.setScaleX(sx);
-            card.setScaleY(sy);
-            for (int i = 0; i < 4; i++) {
-                meltSpring(card, props[i], rest[i], i < 2 ? 380f : 300f, i < 2 ? 0.8f : 0.68f).start();
+        value.setValue(in ? 0f : 1f);
+        apply.run();
+        final androidx.dynamicanimation.animation.SpringAnimation spring = new androidx.dynamicanimation.animation.SpringAnimation(value);
+        spring.setSpring(new androidx.dynamicanimation.animation.SpringForce(in ? 1f : 0f)
+                .setStiffness(in ? 320f : 520f).setDampingRatio(in ? 0.78f : 1f));
+        spring.setMinimumVisibleChange(0.002f);
+        spring.addUpdateListener((animation, v, velocity) -> apply.run());
+        spring.addEndListener((animation, canceled, v, velocity) -> {
+            if (in) {
+                card.setClipToOutline(false);
+                card.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
+                card.setTranslationX(0f);
+                card.setTranslationY(0f);
+                card.setAlpha(1f);
+            } else if (end != null) {
+                end.run();
             }
-        } else {
-            card.animate().alpha(0f).setDuration(200).start();
-            for (int i = 0; i < 4; i++) {
-                final androidx.dynamicanimation.animation.SpringAnimation a = meltSpring(card, props[i], pill[i], 520f, 1f);
-                if (i == 3 && end != null) {
-                    a.addEndListener((animation, canceled, value, velocity) -> end.run());
-                }
-                a.start();
-            }
+        });
+        spring.start();
+    }
         }
     }
     private boolean hasBalance;
@@ -15708,8 +15716,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                     holder.itemView.setTranslationX(0f);
                     holder.itemView.setTranslationY(0f);
-                    holder.itemView.setScaleX(1f);
-                    holder.itemView.setScaleY(1f);
+                    holder.itemView.setAlpha(1f);
+                    holder.itemView.setClipToOutline(false);
                     break;
                 case VIEW_TYPE_VERSION:
                     ((TextInfoPrivacyCell) holder.itemView).setText(AndroidUtil.getVersionText());

@@ -49,7 +49,12 @@ public final class ProfileButtonsGlass {
     static {
         final ColorMatrix matrix = new ColorMatrix();
         AndroidUtilities.adjustSaturationColorMatrix(matrix, PHOTO_SATURATION);
-        AndroidUtilities.multiplyBrightnessColorMatrix(matrix, PHOTO_BRIGHTNESS);
+        // darker whites for the icons, but the blacks are lifted: glass over a dark photo must not read as a black blot
+        matrix.postConcat(new ColorMatrix(new float[]{
+                .55f, 0, 0, 0, 34,
+                0, .55f, 0, 0, 34,
+                0, 0, .55f, 0, 34,
+                0, 0, 0, 1, 0}));
         PHOTO_MATRIX = matrix.getArray();
     }
 
