@@ -2441,7 +2441,38 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             overlayPaint.setAlpha(255);
             canvas.drawRect(0, 0, width, height * (ios ? 1f : 0.7f), overlayPaint);
             overlayPaint.setShader(null);
+            if (ios) {
+                drawAurora(canvas, width, height);
+            }
         }
+    }
+
+    private android.graphics.RadialGradient[] auroraShaders;
+    private int auroraKey;
+
+    /** Soft colour blobs (iOS 26 style) so the glass lenses have something to refract on a cover without art. */
+    private void drawAurora(Canvas canvas, int width, int height) {
+        final int key = (colors.primary * 31 + colors.primaryContainer) * 31 + width * 7 + height;
+        if (auroraShaders == null || auroraKey != key) {
+            auroraKey = key;
+            final float[] hsv = new float[3];
+            Color.colorToHSV(colors.primary, hsv);
+            final float h0 = hsv[0];
+            final int[] tints = {colors.primary, Color.HSVToColor(new float[]{(h0 + 40f) % 360f, Math.max(0.45f, hsv[1]), Math.max(0.7f, hsv[2])}),
+                    Color.HSVToColor(new float[]{(h0 + 320f) % 360f, Math.max(0.45f, hsv[1]), Math.max(0.7f, hsv[2])})};
+            final float[][] spots = {{0.18f, 0.22f, 0.75f}, {0.9f, 0.5f, 0.7f}, {0.3f, 0.88f, 0.8f}};
+            auroraShaders = new android.graphics.RadialGradient[3];
+            for (int i = 0; i < 3; i++) {
+                final float r = Math.max(width, height * 0.6f) * spots[i][2];
+                auroraShaders[i] = new android.graphics.RadialGradient(width * spots[i][0], height * spots[i][1], r,
+                        ColorUtils.setAlphaComponent(tints[i], colors.dark ? 0x70 : 0x58), ColorUtils.setAlphaComponent(tints[i], 0), Shader.TileMode.CLAMP);
+            }
+        }
+        for (android.graphics.RadialGradient g : auroraShaders) {
+            overlayPaint.setShader(g);
+            canvas.drawRect(0, 0, width, height, overlayPaint);
+        }
+        overlayPaint.setShader(null);
     }
 
     private class CoverScrim extends View {
