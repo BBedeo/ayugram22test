@@ -3575,7 +3575,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                         }
                     }
                 }
-                if (!menuHasVisibleItems) {
+                // While the search field is open the menu items are hidden by design: hugging the avatar then snapped
+                // the pill to a bare circle and it vanished for a moment before the spring grew it again
+                if (!menuHasVisibleItems && !isSearchFieldVisible && searchFactor == 0f) {
                     // Только круглая аватарка без пунктов меню: пилюля строго по размеру иконки,
                     // без лишнего хвоста справа.
                     menuHugsAvatar = true;
