@@ -845,6 +845,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         final float doneSpace = getDoneButtonSpace(true);
         final int titleSide = Math.max(hasBack ? dp(64) : dp(18), menuWidth > 0 || doneSpace > 0 ? (int) (menuWidth + doneSpace) + dp(6 + 12) : 0);
         titleLayout.setSideInset(titleSide);
+        // same span the glass title pill is clamped to when drawn (see computeTitlePill)
+        titleLayout.setSafeSpan(hasBack ? dp(58) : dp(6),
+                width - (menuWidth > 0 ? Math.max((int) menuWidth, dp(46)) + (int) doneSpace + dp(12) : (int) doneSpace + dp(6)));
         setMargins(titleLayout, 0, rowTop, 0);
         titleLayout.getLayoutParams().height = rowHeight;
 
@@ -1997,11 +2000,51 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             setClipChildren(false);
         }
 
+        private int safeLeft;
+        private int safeRight = -1;
+
         void setSideInset(int value) {
             if (sideInset != value) {
                 sideInset = value;
                 requestLayout();
             }
+        }
+
+        /** The span the glass title pill may occupy (between the back button and the menu pill), or -1 for none. */
+        void setSafeSpan(int left, int right) {
+            if (safeLeft != left || safeRight != right) {
+                safeLeft = left;
+                safeRight = right;
+                requestLayout();
+            }
+        }
+
+        /**
+         * Centre of the title: the middle of the row, moved only as far as the pill around the text needs to
+         * stay inside the safe span. The pill is clamped the same way when it is drawn, so text and pill stay concentric.
+         */
+        private int titleCenterX(int width) {
+            float center = width / 2f;
+            if (safeRight < 0) {
+                return Math.round(center);
+            }
+            int contentWidth = 0;
+            for (SimpleTextView view : titleViews) {
+                if (view != null && view.getVisibility() != GONE) {
+                    contentWidth = Math.max(contentWidth, view.getMeasuredWidth());
+                }
+            }
+            if (hasSubtitle()) {
+                contentWidth = Math.max(contentWidth, subtitleView.getMeasuredWidth());
+            }
+            final float pill = Math.min(safeRight - safeLeft, contentWidth + dp(36));
+            if (center + pill / 2f > safeRight) {
+                center = safeRight - pill / 2f;
+            }
+            if (center - pill / 2f < safeLeft) {
+                center = safeLeft + pill / 2f;
+            }
+            return Math.round(center);
         }
 
         void createTitleView(int i) {
@@ -2166,6 +2209,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
             final int width = right - left;
             final int rowHeight = bottom - top;
             final boolean hasSubtitle = hasSubtitle();
+            final int centerX = titleCenterX(width);
             for (SimpleTextView view : titleViews) {
                 if (view == null || view.getVisibility() == GONE) {
                     continue;
@@ -2173,7 +2217,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
                 final int textTop = hasSubtitle
                     ? (rowHeight / 2 - view.getTextHeight()) / 2 + dp(5)
                     : (rowHeight - view.getTextHeight()) / 2;
-                final int l = (width - view.getMeasuredWidth()) / 2;
+                final int l = centerX - view.getMeasuredWidth() / 2;
                 final int t = textTop - view.getPaddingTop();
                 view.layout(l, t, l + view.getMeasuredWidth(), t + view.getMeasuredHeight());
             }
@@ -2183,7 +2227,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
                         continue;
                     }
                     final int textTop = rowHeight / 2 + (rowHeight / 2 - view.getTextHeight()) / 2 - dp(2);
-                    final int l = (width - view.getMeasuredWidth()) / 2;
+                    final int l = centerX - view.getMeasuredWidth() / 2;
                     view.layout(l, textTop, l + view.getMeasuredWidth(), textTop + view.getTextHeight());
                 }
             }
