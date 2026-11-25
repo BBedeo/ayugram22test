@@ -1238,6 +1238,19 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     blurFadePaint.setShader(new LinearGradient(0, stripH * 0.3f, 0, stripH, 0xFFFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
                 }
                 canvas.drawRect(-dp(8), stripH * 0.3f, thisWidth + dp(8), stripH, blurFadePaint);
+                // and its sides below the photo: they continue the photo's straight edges into the header
+                final float sideW = dp(28);
+                if (blurSideFadeWidth != sideW) {
+                    blurSideFadeWidth = sideW;
+                    blurSideFadePaint.setShader(new LinearGradient(0, 0, sideW, 0, 0x00FFFFFF, 0xFFFFFFFF, Shader.TileMode.CLAMP));
+                }
+                canvas.save();
+                canvas.clipRect(0, 0, thisWidth, stripH);
+                canvas.drawRect(0, 0, sideW, stripH, blurSideFadePaint);
+                canvas.translate(thisWidth, 0);
+                canvas.scale(-1f, 1f);
+                canvas.drawRect(0, 0, sideW, stripH, blurSideFadePaint);
+                canvas.restore();
                 canvas.restoreToCount(layer);
             }
 
@@ -1246,9 +1259,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         private final Paint blurFadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float blurFadeHeight;
+        private final Paint blurSideFadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float blurSideFadeWidth;
 
         {
             blurFadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            blurSideFadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
         }
 
         public void setProgressToStoriesInsets(float progressToInsets) {
