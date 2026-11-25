@@ -1446,6 +1446,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     private PlayerCollapsedBar collapsedBar;
     private PlayerVisualizer visualizer;
     private float collapseCoverShift;
+    private int baseCoverRadius;
     private float collapseTitleShift;
     private boolean controlsCollapsed;
     private ValueAnimator collapseAnimator;
@@ -1519,13 +1520,19 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         if (!framed || (p == 0f && collapseCoverShift == 0f)) {
             return;
         }
-        final float full = Math.min(layout.getWidth() / (float) size, 1.2f);
+        final float full = Math.min((layout.getWidth() - dp(24)) / (float) size, 1.1f);
         final float grow = size * (full - 1f) / 2f;
         final float pulse = 0.014f * (visualizer != null ? visualizer.getBass() : 0f) * p;
         final float scale = (1f + (full - 1f) * p) + pulse;
         // shortcut: assumes a playing cover (scale 1) while collapsed; pausing expands first
         cover.setScaleX(scale);
         cover.setScaleY(scale);
+        if (baseCoverRadius == 0) {
+            baseCoverRadius = cover.getRadius();
+        }
+        // keep the on-screen corners soft (about 40dp) however far the cover grows
+        cover.setRadius(Math.round(baseCoverRadius + (dp(40) / scale - baseCoverRadius) * p));
+        cover.invalidateOutline();
         collapseCoverShift = grow * 0.6f * p;
         collapseTitleShift = (grow * 1.6f + dp(8)) * p;
         cover.setTranslationY(collapseCoverShift);
@@ -3256,7 +3263,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             if (collapsedBar != null) {
                 final int barTop = controlsTop + (controls.getMeasuredHeight() - collapsedBar.getMeasuredHeight()) / 2;
                 collapsedBar.layout(x + dp(8), barTop, x + dp(8) + collapsedBar.getMeasuredWidth(), barTop + collapsedBar.getMeasuredHeight());
-                final int visTop = barTop + collapsedBar.getMeasuredHeight() + dp(14);
+                final int visTop = barTop + collapsedBar.getMeasuredHeight() + dp(8);
                 visualizer.layout(x + dp(16), visTop, x + dp(16) + visualizer.getMeasuredWidth(), visTop + visualizer.getMeasuredHeight());
             }
             if (group.getVisibility() != GONE) {

@@ -105,7 +105,7 @@ final class PlayerVisualizer extends View {
             }
             final float bh = Math.max(dp(3), level[i] * h);
             final float cx = step * (i + 0.5f);
-            rect.set(cx - bw / 2f, h - bh, cx + bw / 2f, h);
+            rect.set(cx - bw / 2f, 0, cx + bw / 2f, bh);
             canvas.drawRoundRect(rect, bw / 2f, bw / 2f, paint);
         }
         bass = Math.min(1f, bassSum / 5f);
