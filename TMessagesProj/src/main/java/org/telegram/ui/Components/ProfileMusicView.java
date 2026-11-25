@@ -76,6 +76,47 @@ public class ProfileMusicView extends View {
         bounds.offset(location[0], location[1]);
     }
 
+    private float menuReveal = 1f;
+
+    /** 0 while the pill is the glass of the card's menu (the menu overlay draws it), 1 when the pill is on its own. */
+    public void setMenuReveal(float reveal) {
+        if (menuReveal != reveal) {
+            menuReveal = reveal;
+            invalidate();
+        }
+    }
+
+    /** The pill's rect in this view. */
+    public void getPillRect(RectF out) {
+        out.set(rect);
+    }
+
+    /** The pill's content centred on {@code at}, for the menu growing out of the pill. */
+    public void drawPillContent(Canvas canvas, RectF at, float alpha, float scale) {
+        if (author == null || title == null) {
+            return;
+        }
+        canvas.save();
+        canvas.translate(at.centerX() - rect.centerX(), at.centerY() - rect.centerY());
+        canvas.scale(scale, scale, rect.centerX(), rect.centerY());
+        canvas.saveLayerAlpha(rect.left, rect.top, rect.right, rect.bottom, (int) (0xFF * alpha));
+        canvas.translate(rect.left + dp(8), 0);
+        drawContent(canvas, 1f);
+        canvas.restore();
+        canvas.restore();
+    }
+
+    @Override
+    public void draw(@NonNull Canvas canvas) {
+        if (menuReveal >= 1f) {
+            super.draw(canvas);
+        } else if (menuReveal > 0f) {
+            canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), (int) (0xFF * menuReveal));
+            super.draw(canvas);
+            canvas.restore();
+        }
+    }
+
     private final Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path clipPath = new Path();
 

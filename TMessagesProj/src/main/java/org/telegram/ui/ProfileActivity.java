@@ -729,8 +729,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int versionRow;
     private int emptyRow;
     private int emptyRow2;
-    private int musicCardRow;
-    private int musicCardSectionRow;
     private int bottomPaddingRow;
     private int infoHeaderRow;
     private int infoHeaderRowEmpty;
@@ -804,119 +802,60 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int membersSectionRow;
     private boolean hasMusic;
     private boolean hasMusicCard;
-    private boolean musicCardExpanded;
-    private final Runnable collapseMusicCard = this::foldMusicCard;
-    private final android.graphics.RectF musicPillBounds = new android.graphics.RectF();
+    private boolean moreOverlayFromMusic;
+    private ItemOptions musicCardMenu;
+    private final Runnable closeMusicCard = () -> {
+        if (musicCardMenu != null) {
+            musicCardMenu.dismiss();
+        }
+    };
 
-    private void unfoldMusicCard() {
-        musicCardExpanded = true;
-        AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
-        AndroidUtilities.runOnUIThread(collapseMusicCard, 6000);
-        // the rows jump at once, the card grows into the space they leave
-        final RecyclerView.ItemAnimator animator = listView.getItemAnimator();
-        listView.setItemAnimator(null);
-        updateListAnimated(false);
-        listView.post(() -> listView.post(() -> {
-            listView.setItemAnimator(animator);
-            growMusicCard();
-        }));
-    }
-
-    private void foldMusicCard() {
-        AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
-        if (!musicCardExpanded) {
+    /**
+     * The track pill grows into the full card the way the call button grows into its confirmation: the same glass overlay.
+     * It closes on a tap or a swipe outside, or by itself.
+     */
+    private void openMusicCard() {
+        if (getParentActivity() == null || musicView == null || userInfo == null || userInfo.saved_music == null) {
             return;
         }
-        meltMusicCard(false, () -> {
-            musicCardExpanded = false;
-            final RecyclerView.ItemAnimator animator = listView.getItemAnimator();
-            listView.setItemAnimator(null);
-            updateListAnimated(false);
-            listView.post(() -> listView.setItemAnimator(animator));
-        });
-    }
-
-    /** The card comes out of the pill as the glass menus come out of the header's buttons: a glass lens grows under it while it fades in. */
-    private void growMusicCard() {
-        final RecyclerView.ViewHolder holder = musicCardRow >= 0 && listView != null ? listView.findViewHolderForAdapterPosition(musicCardRow) : null;
-        final android.app.Activity activity = getParentActivity();
-        if (holder == null || musicView == null || activity == null || !(listView.getParent() instanceof ViewGroup)
-                || !app.exteraless.appearance.glass.GlassWindowBackdrop.supported()) {
-            meltMusicCard(true, null);
-            return;
-        }
-        final View card = holder.itemView;
-        card.setAlpha(0f);
-        musicView.getButtonBoundsOnScreen(musicPillBounds);
-        final ViewGroup parent = (ViewGroup) listView.getParent();
-        final app.exteraless.appearance.glass.DialogMorph morph = app.exteraless.appearance.glass.DialogMorph.start(
-                activity, parent, parent.indexOfChild(listView), new android.graphics.RectF(musicPillBounds), card,
-                resourcesProvider, getThemedColor(Theme.key_dialogBackground), bitmap -> {});
-        if (morph == null) {
-            card.setAlpha(1f);
-            meltMusicCard(true, null);
-        } else {
-            morph.setLateReveal();
-        }
-    }
-
-    /** The card melts out of the music pill (or back into it): a rounded clip grows from the pill's rect to the card, as the menus do from the header's buttons. */
-    private void meltMusicCard(boolean in, Runnable end) {
-        final RecyclerView.ViewHolder holder = musicCardRow >= 0 && listView != null ? listView.findViewHolderForAdapterPosition(musicCardRow) : null;
-        if (holder == null || musicView == null || musicView.getWidth() == 0 || holder.itemView.getWidth() == 0) {
-            if (end != null) {
-                end.run();
-            }
-            return;
-        }
-        final View card = holder.itemView;
-        musicView.getButtonBoundsOnScreen(musicPillBounds);
-        final int[] at = new int[2];
-        card.getLocationOnScreen(at);
-        final float cardW = card.getWidth(), cardH = card.getHeight();
-        final float side = dp(12), fullRadius = AndroidUtilities.dpf2(app.exteraless.appearance.AppearanceConfig.sectionRadius());
-        final float pillW = musicPillBounds.width(), pillH = musicPillBounds.height();
-        final float tx0 = musicPillBounds.centerX() - (at[0] + cardW / 2f);
-        final float ty0 = musicPillBounds.top - at[1];
-        final android.graphics.RectF clip = new android.graphics.RectF();
-        final float[] radius = {pillH / 2f};
-        card.setClipToOutline(true);
-        card.setOutlineProvider(new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, android.graphics.Outline outline) {
-                outline.setRoundRect(Math.round(clip.left), Math.round(clip.top), Math.round(clip.right), Math.round(clip.bottom), radius[0]);
-            }
-        });
-        final androidx.dynamicanimation.animation.FloatValueHolder value = new androidx.dynamicanimation.animation.FloatValueHolder();
-        final Runnable apply = () -> {
-            final float p = value.getValue();
-            final float c = Math.max(0f, Math.min(1f, p));
-            clip.set(AndroidUtilities.lerp(cardW / 2f - pillW / 2f, side, p), 0, AndroidUtilities.lerp(cardW / 2f + pillW / 2f, cardW - side, p), AndroidUtilities.lerp(pillH, cardH, p));
-            radius[0] = AndroidUtilities.lerp(pillH / 2f, fullRadius, c);
-            card.setTranslationX(in ? tx0 * (1f - p) : 0f);
-            card.setTranslationY(in ? ty0 * (1f - p) : 0f);
-            card.setAlpha(Math.min(1f, c * (in ? 4f : 2f)));
-            card.invalidateOutline();
+        final ProfileMusicCard card = new ProfileMusicCard(getParentActivity(), resourcesProvider);
+        final TLRPC.User user = getMessagesController().getUser(userId);
+        card.set(userInfo.saved_music, user != null && user.profile_color != null ? user.profile_color.background_emoji_id : 0);
+        card.setPadding(dp(5), 0, dp(5), 0); // the same rim of glass around the card as above and below it
+        final ItemOptions io = ItemOptions.makeOptions(this, musicView);
+        io.addView(card, new LinearLayout.LayoutParams(AndroidUtilities.displaySize.x - dp(16), LayoutHelper.WRAP_CONTENT));
+        final Runnable onClosed = () -> {
+            AndroidUtilities.cancelRunOnUIThread(closeMusicCard);
+            moreOverlayFromMusic = false;
+            musicCardMenu = null;
         };
-        value.setValue(in ? 0f : 1f);
-        apply.run();
-        final androidx.dynamicanimation.animation.SpringAnimation spring = new androidx.dynamicanimation.animation.SpringAnimation(value);
-        spring.setSpring(new androidx.dynamicanimation.animation.SpringForce(in ? 1f : 0f)
-                .setStiffness(in ? 320f : 520f).setDampingRatio(in ? 0.78f : 1f));
-        spring.setMinimumVisibleChange(0.002f);
-        spring.addUpdateListener((animation, v, velocity) -> apply.run());
-        spring.addEndListener((animation, canceled, v, velocity) -> {
-            if (in) {
-                card.setClipToOutline(false);
-                card.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
-                card.setTranslationX(0f);
-                card.setTranslationY(0f);
-                card.setAlpha(1f);
-            } else if (end != null) {
-                end.run();
+        final Runnable dismiss = () -> {
+            io.dismiss();
+            if (moreOverlayFromMusic && simpleActionBar != null) {
+                simpleActionBar.closeMenuOverlay(false);
             }
+        };
+        card.setOnCardClickListener(() -> {
+            dismiss.run();
+            openSavedMusic();
         });
-        spring.start();
+        card.setOnCardLongClickListener(() -> {
+            dismiss.run();
+            showProfileMusicDesignDialog();
+        });
+        final SimpleActionBarMenuOverlay overlay = getSimpleMenuOverlay();
+        boolean inGlass = false;
+        if (LiquidGlassTuning.isActive() && simpleActionBar != null && overlay != null) {
+            overlay.close(false); // a menu still pouring back
+            moreOverlayFromMusic = true;
+            inGlass = io.openInOverlay(simpleActionBar, null, overlay, onClosed);
+            moreOverlayFromMusic = inGlass;
+        }
+        if (!inGlass) {
+            io.setOnDismiss(onClosed).show();
+        }
+        musicCardMenu = io;
+        AndroidUtilities.runOnUIThread(closeMusicCard, 6000);
     }
 
     private boolean hasBalance;
@@ -2678,7 +2617,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public void onFragmentDestroy() {
-        AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
+        AndroidUtilities.cancelRunOnUIThread(closeMusicCard);
         super.onFragmentDestroy();
         if (sharedMediaLayout != null) {
             sharedMediaLayout.onDestroy();
@@ -4186,14 +4125,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 musicView.setMusicDocument(userInfo.saved_music);
             }
             musicView.setOnClickListener(v -> {
-                if (!hasMusicCard) {
-                    openSavedMusic();
-                    return;
-                }
-                if (musicCardExpanded) {
-                    foldMusicCard();
+                if (hasMusicCard) {
+                    openMusicCard();
                 } else {
-                    unfoldMusicCard();
+                    openSavedMusic();
                 }
             });
             musicView.setOnLongClickListener(v -> {
@@ -6302,31 +6237,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
         }
 
-        // an open music card folds on a tap anywhere else and on a scroll
-        listView.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
-            @Override
-            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
-                if (musicCardExpanded && e.getAction() == MotionEvent.ACTION_DOWN) {
-                    if (musicView != null) {
-                        musicView.getButtonBoundsOnScreen(musicPillBounds);
-                    }
-                    final View child = rv.findChildViewUnder(e.getX(), e.getY());
-                    final boolean onCard = child != null && rv.getChildAdapterPosition(child) == musicCardRow;
-                    if (!onCard && !musicPillBounds.contains(e.getRawX(), e.getRawY())) {
-                        foldMusicCard();
-                    }
-                }
-                return false;
-            }
-        });
-        listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                if (newState == RecyclerView.SCROLL_STATE_DRAGGING && musicCardExpanded) {
-                    foldMusicCard();
-                }
-            }
-        });
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
 
             @Override
@@ -8892,11 +8802,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             public void setMenuOverlay(@Nullable SimpleActionBarMenuOverlay overlay, @Nullable ActionBarMenuItem item) {
                 if (overlay == null) {
                     moreOverlayFromActions = false;
+                    moreOverlayFromMusic = false;
                     if (actionsView != null) {
                         actionsView.setHiddenKey(-1);
                     }
+                    if (musicView != null) {
+                        musicView.setMenuReveal(1f);
+                    }
                     super.setMenuOverlay(null, null);
                 } else {
+                    if (musicView != null) {
+                        musicView.setMenuReveal(moreOverlayFromMusic ? 0f : 1f);
+                    }
                     if (actionsView != null) {
                         actionsView.setHiddenKey(moreOverlayFromActions ? overlayActionKey : -1);
                     }
@@ -8906,25 +8823,43 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             @Override
             public void setMenuStartReveal(float reveal) {
-                if (actionsView != null) {
+                if (moreOverlayFromMusic) {
+                    if (musicView != null) {
+                        musicView.setMenuReveal(reveal);
+                    }
+                } else if (actionsView != null) {
                     actionsView.setHiddenReveal(reveal);
                 }
             }
 
             @Override
             public boolean ownsMenuStartButton() {
-                return moreOverlayFromActions && actionsView != null;
+                return moreOverlayFromMusic || moreOverlayFromActions && actionsView != null;
             }
 
             @Override
             public void drawMenuStartIcon(Canvas canvas, RectF rect, float alpha, float scale) {
-                if (actionsView != null) {
+                if (moreOverlayFromMusic) {
+                    if (musicView != null) {
+                        musicView.drawPillContent(canvas, rect, alpha, scale);
+                    }
+                } else if (actionsView != null) {
                     actionsView.drawActionIconAt(overlayActionKey, canvas, rect.centerX(), rect.centerY(), alpha, scale);
                 }
             }
 
             @Override
             public boolean getMenuItemGlassRect(ActionBarMenuItem item, RectF out) {
+                if (moreOverlayFromMusic) {
+                    // there is no header item: the menu starts as the pill
+                    if (musicView != null && fragmentView instanceof ViewGroup
+                            && ViewPositionWatcher.computeRectInParent(musicView, (ViewGroup) fragmentView, moreActionsRect)
+                            && ViewPositionWatcher.computeRectInParent(this, (ViewGroup) fragmentView, moreBarRect)) {
+                        musicView.getPillRect(out);
+                        out.offset(moreActionsRect.left - moreBarRect.left, moreActionsRect.top - moreBarRect.top);
+                    }
+                    return false;
+                }
                 if (moreOverlayFromActions
                         && item == otherItem
                         && actionsView != null
@@ -11981,8 +11916,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         addToContactsRow = -1;
         emptyRow = -1;
         emptyRow2 = -1;
-        musicCardRow = -1;
-        musicCardSectionRow = -1;
         infoHeaderRow = -1;
         infoHeaderRowEmpty = -1;
         infoEndRowEmpty = -1;
@@ -12077,14 +12010,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (userId != 0) {
             TLRPC.User user = getMessagesController().getUser(userId);
             if (userInfo != null && userInfo.saved_music != null && (imageUpdater == null || myProfile)) {
-                if (app.exteraless.appearance.AppearanceConfig.profileMusicCard()
-                        && app.exteraless.nowplaying.NowPlayingController.shouldShowCard(userInfo.saved_music)) {
-                    // the track sits in the pill by the balance; a tap unfolds the full card, which folds back by itself
-                    hasMusicCard = true;
-                    hasMusic = true;
-                } else {
-                    hasMusic = true;
-                }
+                // the track sits in the pill by the balance; with the card design a tap grows the full card out of it
+                hasMusic = true;
+                hasMusicCard = app.exteraless.appearance.AppearanceConfig.profileMusicCard()
+                        && app.exteraless.nowplaying.NowPlayingController.shouldShowCard(userInfo.saved_music);
             }
 
             if (emptyRow < 0 && emptyRow2 < 0) {
@@ -12093,11 +12022,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 } else {
                     emptyRow = rowCount++;
                 }
-            }
-
-            if (hasMusicCard && musicCardExpanded) {
-                musicCardRow = rowCount++;
-                musicCardSectionRow = rowCount++;
             }
 
             if (UserObject.isUserSelf(user) && !myProfile) {
@@ -14651,7 +14575,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 VIEW_TYPE_SHADOW_TEXT = 26,
                 VIEW_TYPE_COLORFUL_TEXT = 27,
                 VIEW_TYPE_HEADER_EMPTY = 28,
-                VIEW_TYPE_MUSIC = 29,
                 VIEW_TYPE_TEXT_DETAIL_MULTILINE_2 = 30,
                 VIEW_TYPE_EMPTY2 = 31,
                 VIEW_TYPE_TEXT2 = 32,
@@ -14757,14 +14680,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
                 case VIEW_TYPE_USER: {
                     view = new UserCell(mContext, addMemberRow == -1 ? 9 : 6, 0, true, resourcesProvider);
-                    break;
-                }
-                case VIEW_TYPE_MUSIC: {
-                    ProfileMusicCard card = new ProfileMusicCard(mContext, resourcesProvider);
-                    card.setOnCardClickListener(ProfileActivity.this::openSavedMusic);
-                    card.setOnCardLongClickListener(ProfileActivity.this::showProfileMusicDesignDialog);
-                    view = card;
-                    view.setTag(RecyclerListView.TAG_NOT_SECTION);
                     break;
                 }
                 case VIEW_TYPE_EMPTY:
@@ -15765,17 +15680,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     break;
                 case VIEW_TYPE_BOT_APP:
                     break;
-                case VIEW_TYPE_MUSIC:
-                    if (userInfo != null && userInfo.saved_music != null) {
-                        TLRPC.User musicUser = getMessagesController().getUser(userId);
-                        long emojiId = musicUser != null && musicUser.profile_color != null ? musicUser.profile_color.background_emoji_id : 0;
-                        ((ProfileMusicCard) holder.itemView).set(userInfo.saved_music, emojiId);
-                    }
-                    holder.itemView.setTranslationX(0f);
-                    holder.itemView.setTranslationY(0f);
-                    holder.itemView.setAlpha(1f);
-                    holder.itemView.setClipToOutline(false);
-                    break;
                 case VIEW_TYPE_VERSION:
                     ((TextInfoPrivacyCell) holder.itemView).setText(AndroidUtil.getVersionText());
                     break;
@@ -15909,7 +15813,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             int type = holder.getItemViewType();
             return type != VIEW_TYPE_HEADER && type != VIEW_TYPE_DIVIDER && type != VIEW_TYPE_SHADOW &&
                     type != VIEW_TYPE_EMPTY && type != VIEW_TYPE_EMPTY2 && type != VIEW_TYPE_HEADER_EMPTY && type != VIEW_TYPE_BOTTOM_PADDING && type != VIEW_TYPE_SHARED_MEDIA &&
-                    type != 9 && type != 10 && type != VIEW_TYPE_BOT_APP && type != VIEW_TYPE_TEXT2 && type != VIEW_TYPE_MUSIC; // These are legacy ones, left for compatibility
+                    type != 9 && type != 10 && type != VIEW_TYPE_BOT_APP && type != VIEW_TYPE_TEXT2; // These are legacy ones, left for compatibility
         }
 
         @Override
@@ -15954,13 +15858,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     position == helpSectionCell || position == setAvatarSectionRow || position == passwordSuggestionSectionRow ||
                     position == phoneSuggestionSectionRow || position == premiumSectionsRow || position == reportDividerRow ||
                     position == channelDividerRow || position == graceSuggestionSectionRow || position == balanceDividerRow ||
-                    position == botPermissionsDivider || position == channelBalanceSectionRow || position == unofficialSecurityRiskDividerRow || position == musicCardSectionRow
+                    position == botPermissionsDivider || position == channelBalanceSectionRow || position == unofficialSecurityRiskDividerRow
             ) {
                 return VIEW_TYPE_SHADOW;
             } else if (position >= membersStartRow && position < membersEndRow) {
                 return VIEW_TYPE_USER;
-            } else if (position == musicCardRow) {
-                return VIEW_TYPE_MUSIC;
             } else if (position == emptyRow) {
                 return VIEW_TYPE_EMPTY;
             } else if (position == emptyRow2) {
@@ -17421,8 +17323,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             put(++pointer, clearLogsRow, sparseIntArray);
             put(++pointer, switchBackendRow, sparseIntArray);
             put(++pointer, versionRow, sparseIntArray);
-            put(++pointer, musicCardRow, sparseIntArray);
-            put(++pointer, musicCardSectionRow, sparseIntArray);
             put(++pointer, emptyRow, sparseIntArray);
             put(++pointer, emptyRow2, sparseIntArray);
             put(++pointer, bottomPaddingRow, sparseIntArray);

@@ -44,21 +44,6 @@ public final class DialogMorph {
 
     private static @Nullable DialogMorph current;
 
-    // a content that is not a dialog (a card in a list): the glass blob is seen for longer, the content comes late
-    private boolean followShape;
-    private float duration = DURATION, fadeFrom = 0.08f, fadeLen = 0.3f, handoffAt = HANDOFF_AT;
-
-    /** The glass shape grows bare and the panel fades in only once it is nearly there. */
-    public DialogMorph setLateReveal() {
-        // the panel's corner goes with the shape's: it is not a window over the screen, it sits where the shape ends
-        followShape = true;
-        duration = 0.62f;
-        fadeFrom = 0.42f;
-        fadeLen = 0.36f;
-        handoffAt = 0.86f;
-        return this;
-    }
-
     private final Ghost host;
     private final View panel;
     private final GlassWindowBackdrop backdrop;
@@ -116,16 +101,8 @@ public final class DialogMorph {
     public static @Nullable DialogMorph start(@NonNull Activity activity, @NonNull RectF originScreen, @NonNull View panel,
                                               @Nullable Theme.ResourcesProvider resourcesProvider, int rimColor,
                                               @NonNull Utilities.Callback<Bitmap> handoff) {
-        return start(activity, null, -1, originScreen, panel, resourcesProvider, rimColor, handoff);
-    }
-
-    /** As above, with the ghost in {@code parent} at {@code index} (under the panel, when the panel is not a window of its own). */
-    public static @Nullable DialogMorph start(@NonNull Activity activity, @Nullable ViewGroup parent, int index, @NonNull RectF originScreen, @NonNull View panel,
-                                              @Nullable Theme.ResourcesProvider resourcesProvider, int rimColor,
-                                              @NonNull Utilities.Callback<Bitmap> handoff) {
         final View decor = activity.getWindow().getDecorView();
-        final ViewGroup container = parent != null ? parent : decor instanceof ViewGroup ? (ViewGroup) decor : null;
-        if (container == null || originScreen.isEmpty()) {
+        if (!(decor instanceof ViewGroup) || originScreen.isEmpty()) {
             return null;
         }
         if (current != null) {
@@ -134,7 +111,7 @@ public final class DialogMorph {
         final DialogMorph morph = new DialogMorph(activity, originScreen, panel, resourcesProvider, rimColor, handoff);
         current = morph;
         try {
-            container.addView(morph.host, index, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            ((ViewGroup) decor).addView(morph.host, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         } catch (Throwable t) {
             FileLog.e(t);
             current = null;
@@ -204,14 +181,10 @@ public final class DialogMorph {
             startTime = now;
         }
         panel.getLocationOnScreen(panelLoc);
-        if (followShape) {
-            panelLoc[0] -= Math.round(panel.getTranslationX());
-            panelLoc[1] -= Math.round(panel.getTranslationY());
-        }
         target.set(panelLoc[0], panelLoc[1], panelLoc[0] + panel.getWidth(), panelLoc[1] + panel.getHeight());
 
         final float t = (now - startTime) / 1000f;
-        final float u = Utilities.clamp01(t / duration);
+        final float u = Utilities.clamp01(t / DURATION);
         // the same springs as the glass menus
         final float pw = t > 0.5f ? 1f : (float) springStep(t, 0.78, 0.30);
         final float ph = t > 0.5f ? 1f : (float) springStep(t - 0.02, 0.80, 0.34);
@@ -220,12 +193,7 @@ public final class DialogMorph {
         final float radius = Math.min(Math.min(shape.width(), shape.height()) / 2f,
                 lerp(originRadius, dp(GlassTokens.RADIUS_DIALOG), Utilities.clamp01(ph)));
 
-        final float shiftX = followShape ? shape.left - target.left : 0f, shiftY = followShape ? shape.top - target.top : 0f;
-        if (followShape) {
-            panel.setTranslationX(shiftX);
-            panel.setTranslationY(shiftY);
-        }
-        reveal.set(shape.left - panelLoc[0] - shiftX, shape.top - panelLoc[1] - shiftY, shape.right - panelLoc[0] - shiftX, shape.bottom - panelLoc[1] - shiftY);
+        reveal.set(shape.left - panelLoc[0], shape.top - panelLoc[1], shape.right - panelLoc[0], shape.bottom - panelLoc[1]);
         revealRadius = radius;
         if (!panelClipped) {
             panelClipped = true;
@@ -235,7 +203,7 @@ public final class DialogMorph {
             panel.setClipToOutline(true);
         }
         panel.invalidateOutline();
-        panel.setAlpha(Utilities.clamp01((u - fadeFrom) / fadeLen));
+        panel.setAlpha(Utilities.clamp01((u - 0.08f) / 0.3f));
         host.getLocationOnScreen(hostLoc);
         lens.setRadius(radius);
         rim.setRadius(radius / AndroidUtilities.density);
@@ -243,13 +211,13 @@ public final class DialogMorph {
                 Math.round(shape.right) - hostLoc[0], Math.round(shape.bottom) - hostLoc[1]);
         // the lens starts lifted and settles as the shape grows
         lens.setElasticPressProgress(1f - Utilities.clamp01(Math.max(pw, ph)));
-        final int alpha = Math.round(255 * (1f - Utilities.clamp01((u - handoffAt) / (1f - handoffAt))));
+        final int alpha = Math.round(255 * (1f - Utilities.clamp01((u - HANDOFF_AT) / (1f - HANDOFF_AT))));
         if (alpha != lastAlpha) {
             lastAlpha = alpha;
             layer.setAlpha(alpha);
         }
 
-        if (!handedOff && u >= handoffAt) {
+        if (!handedOff && u >= HANDOFF_AT) {
             handedOff = true;
             handoff.run(snapshot);
         }
@@ -286,10 +254,6 @@ public final class DialogMorph {
             return;
         }
         done = true;
-        if (followShape) {
-            panel.setTranslationX(0f);
-            panel.setTranslationY(0f);
-        }
         if (panelClipped) {
             panelClipped = false;
             panel.setClipToOutline(panelClipToOutline);
