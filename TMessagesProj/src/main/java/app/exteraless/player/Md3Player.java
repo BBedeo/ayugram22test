@@ -22,7 +22,7 @@ public final class Md3Player {
     }
 
     public static boolean isIosPlayer() {
-        return AppearanceConfig.isIosPlayer() && !AppearanceConfig.md3Player();
+        return AppearanceConfig.isIosPlayer();
     }
 
     public static boolean miniEnabled() {
@@ -30,7 +30,7 @@ public final class Md3Player {
     }
 
     public static boolean isIosMiniPlayer() {
-        return AppearanceConfig.isIosMiniPlayer() && !AppearanceConfig.md3MiniPlayer();
+        return AppearanceConfig.isIosMiniPlayer();
     }
 
     private static boolean handles(MessageObject messageObject) {

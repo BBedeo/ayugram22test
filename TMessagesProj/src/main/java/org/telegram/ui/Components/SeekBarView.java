@@ -419,6 +419,9 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
     }
 
     private int getInnerTrackColor() {
+        if (!hasCustomInnerColor && effectiveStyle == SLIDER_STYLE_IOS) {
+            return getThemedColor(Theme.key_switchTrack);
+        }
         return hasCustomInnerColor ? customInnerColor : getThemedColor(Theme.key_player_progressBackground);
     }
 
@@ -769,8 +772,8 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
                 final float half = Math.max(AndroidUtilities.dp(4), thumbSize / 2f)
                         + Math.abs(elasticThumbStretch);
                 final float height = AndroidUtilities.dp(MD3_THUMB_HEIGHT_DP) / 2f;
-                rect.set(center - half, getMeasuredHeight() / 2f - height,
-                        center + half, getMeasuredHeight() / 2f + height);
+                rect.set(Math.max(0f, center - half), getMeasuredHeight() / 2f - height,
+                        Math.min(getMeasuredWidth(), center + half), getMeasuredHeight() / 2f + height);
                 canvas.drawRoundRect(rect, height, height, outerPaint1);
             } else {
                 rect.set(thumbX + selectorWidth / 2f, top - thumbOverflow,
@@ -805,12 +808,15 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         final float stretch = ElasticPillGesture.enabled() ? Math.abs(elasticThumbStretch) * 0.7f : 0f;
         iosThumbPaint.setStyle(Paint.Style.FILL);
         iosThumbPaint.setColor(0x28000000);
-        rect.set(cx - thumbR - stretch, cy - thumbR + AndroidUtilities.dpf2(1.4f),
-                cx + thumbR + stretch, cy + thumbR + AndroidUtilities.dpf2(1.4f));
+        // the stretch must not push the pill out of the view: it would be cut flat at the edge
+        final float pillLeft = Math.max(0f, cx - thumbR - stretch);
+        final float pillRight = Math.min(getMeasuredWidth(), cx + thumbR + stretch);
+        rect.set(pillLeft, cy - thumbR + AndroidUtilities.dpf2(1.4f),
+                pillRight, cy + thumbR + AndroidUtilities.dpf2(1.4f));
         canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
 
         iosThumbPaint.setColor(0xFFFFFFFF);
-        rect.set(cx - thumbR - stretch, cy - thumbR, cx + thumbR + stretch, cy + thumbR);
+        rect.set(pillLeft, cy - thumbR, pillRight, cy + thumbR);
         canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
 
         iosThumbPaint.setStyle(Paint.Style.STROKE);
