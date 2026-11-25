@@ -26,12 +26,21 @@ public final class GlassMagnifier {
     }
 
     public static Magnifier create(View view) {
-        return new Magnifier.Builder(view)
+        final Magnifier.Builder builder = new Magnifier.Builder(view)
                 .setSize(dp(150), dp(56))
                 .setInitialZoom(1.3f)
                 .setCornerRadius(dp(28))
-                .setElevation(dp(8))
-                .build();
+                .setElevation(dp(8));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // hairline rim like the glass pills, drawn over the magnified content
+            final android.graphics.drawable.GradientDrawable rim = new android.graphics.drawable.GradientDrawable();
+            rim.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            rim.setCornerRadius(dp(28));
+            rim.setColor(0x14ffffff);
+            rim.setStroke(Math.max(1, dp(1)), 0x99ffffff);
+            builder.setOverlay(rim);
+        }
+        return builder.build();
     }
 
     /** Puts the capsule loupe into the field's Editor in place of the stock one. Best effort: on failure the stock loupe stays. */
