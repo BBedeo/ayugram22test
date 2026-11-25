@@ -1227,7 +1227,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (shouldDrawBlur) {
                 canvas.translate(inset, inset + thisHeight);
                 float fraction = !isPulledDown && !blurView.isUsingRenderNode() && avatarsViewPager.getRealPosition() != 0 ? 1f : (1f - blurSizeFraction);
-                blurView.draw(canvas, this, thisWidth - inset * 2f, thisHeight - inset * 2f, true, fraction, alpha);
+                // fades out early while the photo collapses, otherwise a hard-edged blurred strip lingers behind the buttons
+                blurView.draw(canvas, this, thisWidth - inset * 2f, thisHeight - inset * 2f, true, fraction, alpha * Math.min(1f, blurSizeFraction * 1.6f));
             }
 
             canvas.restore();
