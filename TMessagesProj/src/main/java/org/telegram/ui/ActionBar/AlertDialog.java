@@ -1431,6 +1431,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.RIGHT));
                 }
+                app.exteraless.appearance.glass.GlassMotion.attachPress(textView);
                 textView.setOnClickListener(v -> {
                     if (textView.isLoading()) return;
                     if (positiveButtonListener != null) {
@@ -1472,6 +1473,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.RIGHT));
                 }
+                app.exteraless.appearance.glass.GlassMotion.attachPress(textView);
                 textView.setOnClickListener(v -> {
                     if (textView.isLoading()) return;
                     if (negativeButtonListener != null) {
@@ -1513,6 +1515,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.LEFT));
                 }
+                app.exteraless.appearance.glass.GlassMotion.attachPress(textView);
                 textView.setOnClickListener(v -> {
                     if (textView.isLoading()) return;
                     if (neutralButtonListener != null) {
@@ -1554,6 +1557,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
                 } else {
                     buttonsLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.TOP | Gravity.RIGHT));
                 }
+                app.exteraless.appearance.glass.GlassMotion.attachPress(textView);
                 textView.setOnClickListener(v -> {
                     if (textView.isLoading()) return;
                     if (negative2ButtonListener != null) {

@@ -214,6 +214,7 @@ public class ActionBarPopupWindow extends PopupWindow {
 
             if (resId != 0) {
                 backgroundDrawable = getResources().getDrawable(resId).mutate();
+                defaultBackground = true;
                 setPadding(dp(8), dp(8), dp(8), dp(8));
             }
             if (backgroundDrawable != null) {
@@ -353,7 +354,25 @@ public class ActionBarPopupWindow extends PopupWindow {
             return backgroundColor;
         }
 
+        // Legacy popups only set a plain colour; with Liquid Glass on they get the house static glass instead of a flat plate.
+        private boolean defaultBackground;
+        private app.exteraless.appearance.glass.GlassSurfaceDrawable glassFill;
+
         public void setBackgroundColor(int color) {
+            if (backgroundDrawable != null && defaultBackground && color != Color.TRANSPARENT
+                    && app.exteraless.appearance.LiquidGlassTuning.isActive()) {
+                if (glassFill == null) {
+                    glassFill = new app.exteraless.appearance.glass.GlassSurfaceDrawable(color,
+                            app.exteraless.appearance.glass.GlassTokens.TIER_THICK, 20f);
+                    // the 8dp inset keeps the shadow room the 9-patch had
+                    backgroundDrawable = new android.graphics.drawable.InsetDrawable(glassFill, dp(8));
+                    backgroundDrawable.getPadding(bgPaddings);
+                } else {
+                    glassFill.setBaseColor(color);
+                }
+                backgroundColor = color;
+                return;
+            }
             if (backgroundDrawable != null) {
                 int resolved = color;
                 if (app.exteraless.appearance.LiquidGlassTuning.isActive()
@@ -442,6 +461,8 @@ public class ActionBarPopupWindow extends PopupWindow {
         @Override
         public void setBackgroundDrawable(Drawable drawable) {
             backgroundColor = Color.WHITE;
+            defaultBackground = false;
+            glassFill = null;
             backgroundDrawable = drawable;
             if (backgroundDrawable != null) {
                 backgroundDrawable.getPadding(bgPaddings);
