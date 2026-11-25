@@ -805,12 +805,80 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private boolean hasMusic;
     private boolean hasMusicCard;
     private boolean musicCardExpanded;
-    private final Runnable collapseMusicCard = () -> {
-        if (musicCardExpanded) {
+    private final Runnable collapseMusicCard = this::foldMusicCard;
+    private final android.graphics.RectF musicPillBounds = new android.graphics.RectF();
+
+    private void unfoldMusicCard() {
+        musicCardExpanded = true;
+        AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
+        AndroidUtilities.runOnUIThread(collapseMusicCard, 6000);
+        updateListAnimated(false);
+        listView.post(() -> listView.post(() -> meltMusicCard(true, null)));
+    }
+
+    private void foldMusicCard() {
+        AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
+        if (!musicCardExpanded) {
+            return;
+        }
+        meltMusicCard(false, () -> {
             musicCardExpanded = false;
             updateListAnimated(false);
+        });
+    }
+
+    private static androidx.dynamicanimation.animation.SpringAnimation meltSpring(View v, androidx.dynamicanimation.animation.DynamicAnimation.ViewProperty property, float target, float stiffness, float damping) {
+        final androidx.dynamicanimation.animation.SpringAnimation a = new androidx.dynamicanimation.animation.SpringAnimation(v, property);
+        a.setSpring(new androidx.dynamicanimation.animation.SpringForce(target).setStiffness(stiffness).setDampingRatio(damping));
+        return a;
+    }
+
+    /** The card melts out of the music pill (or back into it) with springy overshoot, like the glass buttons do. */
+    private void meltMusicCard(boolean in, Runnable end) {
+        final RecyclerView.ViewHolder holder = musicCardRow >= 0 && listView != null ? listView.findViewHolderForAdapterPosition(musicCardRow) : null;
+        if (holder == null || musicView == null || musicView.getWidth() == 0 || holder.itemView.getWidth() == 0) {
+            if (end != null) {
+                end.run();
+            }
+            return;
         }
-    };
+        final View card = holder.itemView;
+        musicView.getButtonBoundsOnScreen(musicPillBounds);
+        final int[] at = new int[2];
+        card.getLocationOnScreen(at);
+        final float dx = musicPillBounds.centerX() - (at[0] + card.getWidth() / 2f);
+        final float dy = musicPillBounds.centerY() - (at[1] + card.getHeight() / 2f);
+        final float sx = Math.max(0.05f, musicPillBounds.width() / card.getWidth());
+        final float sy = Math.max(0.05f, musicPillBounds.height() / card.getHeight());
+        card.setPivotX(card.getWidth() / 2f);
+        card.setPivotY(card.getHeight() / 2f);
+        final androidx.dynamicanimation.animation.DynamicAnimation.ViewProperty[] props = {
+            androidx.dynamicanimation.animation.DynamicAnimation.TRANSLATION_X,
+            androidx.dynamicanimation.animation.DynamicAnimation.TRANSLATION_Y,
+            androidx.dynamicanimation.animation.DynamicAnimation.SCALE_X,
+            androidx.dynamicanimation.animation.DynamicAnimation.SCALE_Y
+        };
+        final float[] pill = {dx, dy, sx, sy};
+        final float[] rest = {0f, 0f, 1f, 1f};
+        if (in) {
+            card.setTranslationX(dx);
+            card.setTranslationY(dy);
+            card.setScaleX(sx);
+            card.setScaleY(sy);
+            for (int i = 0; i < 4; i++) {
+                meltSpring(card, props[i], rest[i], i < 2 ? 380f : 300f, i < 2 ? 0.8f : 0.68f).start();
+            }
+        } else {
+            card.animate().alpha(0f).setDuration(200).start();
+            for (int i = 0; i < 4; i++) {
+                final androidx.dynamicanimation.animation.SpringAnimation a = meltSpring(card, props[i], pill[i], 520f, 1f);
+                if (i == 3 && end != null) {
+                    a.addEndListener((animation, canceled, value, velocity) -> end.run());
+                }
+                a.start();
+            }
+        }
+    }
     private boolean hasBalance;
 
     private int sharedMediaRow;
@@ -4082,12 +4150,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     openSavedMusic();
                     return;
                 }
-                AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
-                musicCardExpanded = !musicCardExpanded;
                 if (musicCardExpanded) {
-                    AndroidUtilities.runOnUIThread(collapseMusicCard, 6000);
+                    foldMusicCard();
+                } else {
+                    unfoldMusicCard();
                 }
-                updateListAnimated(false);
             });
             musicView.setOnLongClickListener(v -> {
                 showProfileMusicDesignDialog();
@@ -15639,6 +15706,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         long emojiId = musicUser != null && musicUser.profile_color != null ? musicUser.profile_color.background_emoji_id : 0;
                         ((ProfileMusicCard) holder.itemView).set(userInfo.saved_music, emojiId);
                     }
+                    holder.itemView.setTranslationX(0f);
+                    holder.itemView.setTranslationY(0f);
+                    holder.itemView.setScaleX(1f);
+                    holder.itemView.setScaleY(1f);
                     break;
                 case VIEW_TYPE_VERSION:
                     ((TextInfoPrivacyCell) holder.itemView).setText(AndroidUtil.getVersionText());
