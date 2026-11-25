@@ -85,7 +85,7 @@ public final class ProfileButtonsGlass {
     private final Source actionsSource;
     private final Source headerSource;
 
-    /** The action buttons and the music pills: no lens, the buttons are flat. */
+    /** The action buttons and the music pills: the same lens as the header's buttons. */
     public final BlurredBackgroundDrawableViewFactory actionsFactory;
     /** The header's buttons: the lens of the simple screens, their glass once the header is one. */
     public final BlurredBackgroundDrawableViewFactory headerFactory;
@@ -115,6 +115,7 @@ public final class ProfileButtonsGlass {
         headerSource = new Source(new SettingsSource(simpleGlass.factory));
 
         actionsFactory = createFactory(engine, actionsSource);
+        actionsFactory.setLiquidGlassEffectAllowed(true);
         headerFactory = createFactory(engine, headerSource);
         headerFactory.setLiquidGlassEffectAllowed(true);
 

@@ -804,6 +804,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int membersSectionRow;
     private boolean hasMusic;
     private boolean hasMusicCard;
+    private boolean musicCardExpanded;
+    private final Runnable collapseMusicCard = () -> {
+        if (musicCardExpanded) {
+            musicCardExpanded = false;
+            updateListAnimated(false);
+        }
+    };
     private boolean hasBalance;
 
     private int sharedMediaRow;
@@ -2563,6 +2570,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public void onFragmentDestroy() {
+        AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
         super.onFragmentDestroy();
         if (sharedMediaLayout != null) {
             sharedMediaLayout.onDestroy();
@@ -4069,7 +4077,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (userInfo != null && userInfo.saved_music != null) {
                 musicView.setMusicDocument(userInfo.saved_music);
             }
-            musicView.setOnClickListener(v -> openSavedMusic());
+            musicView.setOnClickListener(v -> {
+                if (!hasMusicCard) {
+                    openSavedMusic();
+                    return;
+                }
+                AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
+                musicCardExpanded = !musicCardExpanded;
+                if (musicCardExpanded) {
+                    AndroidUtilities.runOnUIThread(collapseMusicCard, 6000);
+                }
+                updateListAnimated(false);
+            });
             musicView.setOnLongClickListener(v -> {
                 showProfileMusicDesignDialog();
                 return true;
@@ -11928,7 +11947,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (userInfo != null && userInfo.saved_music != null && (imageUpdater == null || myProfile)) {
                 if (app.exteraless.appearance.AppearanceConfig.profileMusicCard()
                         && app.exteraless.nowplaying.NowPlayingController.shouldShowCard(userInfo.saved_music)) {
+                    // the track sits in the pill by the balance; a tap unfolds the full card, which folds back by itself
                     hasMusicCard = true;
+                    hasMusic = true;
                 } else {
                     hasMusic = true;
                 }
@@ -11942,7 +11963,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
             }
 
-            if (hasMusicCard) {
+            if (hasMusicCard && musicCardExpanded) {
                 musicCardRow = rowCount++;
                 musicCardSectionRow = rowCount++;
             }
