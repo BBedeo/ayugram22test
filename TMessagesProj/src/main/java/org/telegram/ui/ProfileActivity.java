@@ -885,8 +885,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         });
         spring.start();
     }
-        }
-    }
+
     private boolean hasBalance;
 
     private int sharedMediaRow;
