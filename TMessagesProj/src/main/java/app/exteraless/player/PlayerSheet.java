@@ -1060,7 +1060,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
 
     private void drawMorphBackdrop(Canvas canvas) {
         float alpha = layout.getAlpha();
-        if (alpha <= 0f || coverStyle == PlayerStyle.COVER_FULL || PlayerStyle.background() == PlayerStyle.BACKGROUND_SOLID) {
+        // the same rule as drawBackdrop(): the iOS player ignores the stored background mode (it is always blur or gradient)
+        if (alpha <= 0f || coverStyle == PlayerStyle.COVER_FULL
+                || (!Md3Player.isIosPlayer() && PlayerStyle.background() == PlayerStyle.BACKGROUND_SOLID)) {
             return;
         }
         int w = layout.getWidth();
