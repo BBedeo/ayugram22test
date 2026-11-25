@@ -43,6 +43,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.DialogObject;
@@ -537,23 +539,21 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
                 @Override
                 public void onStart() {
                     seeking = true;
+                    showBarBubble();
                 }
 
                 @Override
                 public void onMove(float progress) {
                     seekProgress = progress;
-                    final MessageObject mo = current;
-                    if (mo != null) {
-                        final int d = (int) Math.round(mo.getDuration());
-                        collapsedBar.setTimeText(formatTime((int) (d * progress)) + " / " + formatTime(d));
-                    }
                     collapsedBar.setProgress(progress);
                     updateTimes();
+                    moveBarBubble(progress);
                 }
 
                 @Override
                 public void onEnd(float progress) {
                     seeking = false;
+                    hideBarBubble();
                     final MessageObject mo = current;
                     if (mo != null) {
                         MediaController.getInstance().seekToProgress(mo, progress);
@@ -1657,6 +1657,68 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             return String.format(Locale.US, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60);
         }
         return String.format(Locale.US, "%d:%02d", seconds / 60, seconds % 60);
+    }
+
+    private SpringAnimation bubbleSpringX, bubbleSpringSx, bubbleSpringSy;
+
+    private static SpringAnimation spring(View v, androidx.dynamicanimation.animation.DynamicAnimation.ViewProperty p, float stiffness, float damping, float target) {
+        SpringAnimation a = new SpringAnimation(v, p);
+        a.setSpring(new SpringForce(target).setStiffness(stiffness).setDampingRatio(damping));
+        return a;
+    }
+
+    /** The time pill pops up above the collapsed capsule with a springy overshoot and trails the thumb. */
+    private void showBarBubble() {
+        bubble.animate().cancel();
+        bubble.setPivotX(bubble.getWidth() / 2f);
+        bubble.setPivotY(bubble.getHeight());
+        bubble.setScaleX(0.3f);
+        bubble.setScaleY(0.3f);
+        bubble.setAlpha(0f);
+        bubble.setVisibility(View.VISIBLE);
+        bubble.animate().alpha(1f).setDuration(120).start();
+        bubbleSpringSx = spring(bubble, androidx.dynamicanimation.animation.DynamicAnimation.SCALE_X, 380f, 0.5f, 1f);
+        bubbleSpringSy = spring(bubble, androidx.dynamicanimation.animation.DynamicAnimation.SCALE_Y, 380f, 0.5f, 1f);
+        bubbleSpringSx.start();
+        bubbleSpringSy.start();
+        bubbleSpringX = null;
+    }
+
+    private void moveBarBubble(float progress) {
+        if (bubble.getWidth() == 0) {
+            bubble.post(() -> moveBarBubble(progress));
+            return;
+        }
+        bubble.setPivotX(bubble.getWidth() / 2f);
+        bubble.setPivotY(bubble.getHeight());
+        bubble.setTranslationY(collapsedBar.getTop() + collapsedBar.getTranslationY() - bubble.getTop() - bubble.getHeight() - dp(10));
+        float x = collapsedBar.getLeft() + collapsedBar.trackX(progress);
+        float tx = x - bubble.getLeft() - bubble.getWidth() / 2f;
+        float min = -bubble.getLeft() + dp(8);
+        float max = layout.getWidth() - bubble.getLeft() - bubble.getWidth() - dp(8);
+        tx = Math.max(min, Math.min(max, tx));
+        if (bubbleSpringX == null) {
+            bubble.setTranslationX(tx);
+            bubbleSpringX = spring(bubble, androidx.dynamicanimation.animation.DynamicAnimation.TRANSLATION_X, 700f, 0.72f, tx);
+        } else {
+            bubbleSpringX.animateToFinalPosition(tx);
+        }
+    }
+
+    private void hideBarBubble() {
+        if (bubbleSpringX != null) {
+            bubbleSpringX.cancel();
+            bubbleSpringX = null;
+        }
+        if (bubbleSpringSx != null) {
+            bubbleSpringSx.cancel();
+            bubbleSpringSy.cancel();
+        }
+        bubble.animate().cancel();
+        bubble.animate().alpha(0f).scaleX(0.6f).scaleY(0.6f).setDuration(160).withEndAction(() -> {
+            bubble.setVisibility(View.GONE);
+            bubble.setTranslationY(0f);
+        }).start();
     }
 
     private void layoutBubble() {

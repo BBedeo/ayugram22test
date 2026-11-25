@@ -6,7 +6,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.text.TextPaint;
 import android.view.ViewConfiguration;
 import android.view.MotionEvent;
 import android.view.View;
@@ -35,8 +34,6 @@ final class PlayerCollapsedBar extends View {
     private boolean downOnButton;
     private boolean scrubbing;
     private float downX;
-    private String timeText = "";
-    private final TextPaint timePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
 
     interface Seek {
@@ -53,16 +50,14 @@ final class PlayerCollapsedBar extends View {
         seek = value;
     }
 
-    void setTimeText(String value) {
-        timeText = value;
-        invalidate();
+    /** Where the track position {@code p} sits in this view's own coordinates, so a bubble can follow the thumb. */
+    float trackX(float p) {
+        final float left = getHeight();
+        return left + (getWidth() - dp(20) - left) * p;
     }
 
     PlayerCollapsedBar(Context context) {
         super(context);
-        timePaint.setTextSize(dp(13));
-        timePaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        timePaint.setTextAlign(Paint.Align.CENTER);
         glass.setShadow(true);
         glass.setFillAlpha(0.42f);
     }
@@ -78,7 +73,6 @@ final class PlayerCollapsedBar extends View {
         pause.setColor(onSurface);
         trackPaint.setColor((onSurface & 0x00FFFFFF) | 0x38000000);
         fillPaint.setColor(onSurface);
-        timePaint.setColor(onSurface);
         invalidate();
     }
 
@@ -110,10 +104,7 @@ final class PlayerCollapsedBar extends View {
         final float left = button;
         final float right = w - dp(20);
         final float th = scrubbing ? dp(6) : dp(4);
-        final float cy = scrubbing ? h - dp(14) : h / 2f;
-        if (scrubbing) {
-            canvas.drawText(timeText, (left + right) / 2f, cy - dp(8), timePaint);
-        }
+        final float cy = h / 2f;
         rect.set(left, cy - th / 2f, right, cy + th / 2f);
         canvas.drawRoundRect(rect, th / 2f, th / 2f, trackPaint);
         rect.right = Math.max(left + th, left + (right - left) * progress);
