@@ -157,7 +157,7 @@ public class ProfileActionsView extends View {
 
     private void drawGlass(Canvas canvas, RectF rect, float radius, float alpha) {
         if (glassUsed == glass.size()) {
-            glass.add(glassFactory.create(this, ProfileButtonsGlass.NO_COLORS).setRadius(radius));
+            glass.add(glassFactory.create(this, ProfileButtonsGlass.RIM_COLORS).setRadius(radius).setHeaderGlassLens(true));
             glassRadius.add(radius);
         }
         final BlurredBackgroundDrawable drawable = glass.get(glassUsed);

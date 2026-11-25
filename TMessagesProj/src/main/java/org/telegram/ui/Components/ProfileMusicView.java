@@ -253,7 +253,7 @@ public class ProfileMusicView extends View {
     /** The pill on glass, see {@link ProfileButtonsGlass#actionsFactory}. */
     public void setGlassFactory(@Nullable BlurredBackgroundDrawableViewFactory factory) {
         if (trailingView != null) trailingView.setGlassFactory(factory);
-        glass = factory != null ? factory.create(this, ProfileButtonsGlass.NO_COLORS) : null;
+        glass = factory != null ? factory.create(this, ProfileButtonsGlass.RIM_COLORS).setHeaderGlassLens(true) : null;
         glassRadius = 0;
         invalidate();
     }

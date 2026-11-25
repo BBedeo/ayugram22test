@@ -76,6 +76,29 @@ public final class ProfileButtonsGlass {
         }
     };
 
+    /** As {@link #NO_COLORS} with the hairline rim of the header's buttons, so the lens has its edge. */
+    public static final BlurredBackgroundColorProvider RIM_COLORS = new BlurredBackgroundColorProvider() {
+        @Override
+        public int getShadowColor() {
+            return 0;
+        }
+
+        @Override
+        public int getBackgroundColor() {
+            return 0;
+        }
+
+        @Override
+        public int getStrokeColorTop() {
+            return 0x20FFFFFF;
+        }
+
+        @Override
+        public int getStrokeColorBottom() {
+            return 0x14FFFFFF;
+        }
+    };
+
     /** {@link GlassCaptureSourceCanvas} (Android 12+), null without a capture. */
     @Nullable
     private final Object captureCanvas;
