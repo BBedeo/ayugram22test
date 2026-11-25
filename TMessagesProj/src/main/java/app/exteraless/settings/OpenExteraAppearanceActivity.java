@@ -38,6 +38,7 @@ import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.MainTabsLayout;
 
 import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.appearance.CustomFonts;
 import app.exteraless.appearance.AppearancePresets;
 import app.exteraless.appearance.AvatarCornersPreviewCell;
 import app.exteraless.appearance.AvatarCornersSeekBar;
@@ -96,6 +97,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int appearanceHeaderRow;
     private int fabShapeRow;
     private int useSystemFontsRow;
+    private int customFontRow;
     private int gooeyAvatarRow;
     private int elasticDragPillsRow;
     private int customThemesRow;
@@ -263,6 +265,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         appearanceHeaderRow = addRow("appearanceHeader");
         fabShapeRow = addRow("fabShape");
         useSystemFontsRow = addRow("useSystemFonts");
+        customFontRow = addRow("customFont");
         // Material Design 3 — сворачиваемая группа, как у exteraGram
         // (AppearancePreferencesActivity: asExteraExpandableSwitch + пять asRoundCheckbox).
         // Прежние отдельные селекторы «стиль переключателей» и «стиль слайдеров»
@@ -552,6 +555,86 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }
         }
         rebuildAll();
+    }
+
+    private static final int REQUEST_CODE_IMPORT_FONT = 7421;
+
+    private void showCustomFontDialog() {
+        Activity activity = getParentActivity();
+        if (activity == null) {
+            return;
+        }
+        java.util.List<String> fonts = CustomFonts.list();
+        java.util.List<CharSequence> items = new java.util.ArrayList<>();
+        items.add(getString(R.string.OEAppearanceCustomFontDefault));
+        items.addAll(fonts);
+        items.add(getString(R.string.OEAppearanceCustomFontImport));
+        String active = CustomFonts.active();
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
+                .setTitle(getString(R.string.OEAppearanceCustomFont))
+                .setItems(items.toArray(new CharSequence[0]), (d, which) -> {
+                    if (which == items.size() - 1) {
+                        pickFontFile();
+                    } else {
+                        CustomFonts.select(which == 0 ? "" : fonts.get(which - 1));
+                        notifyRow(customFontRow);
+                        showRestartHint();
+                    }
+                })
+                .setNegativeButton(getString(R.string.Cancel), null);
+        if (!active.isEmpty()) {
+            builder.setNeutralButton(getString(R.string.OEAppearanceCustomFontDelete), (d, w) -> {
+                CustomFonts.delete(active);
+                notifyRow(customFontRow);
+                showRestartHint();
+            });
+        }
+        showDialog(builder.create());
+    }
+
+    private void pickFontFile() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            startActivityForResult(intent, REQUEST_CODE_IMPORT_FONT);
+        } catch (Exception e) {
+            org.telegram.messenger.FileLog.e(e);
+        }
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQUEST_CODE_IMPORT_FONT || resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Activity activity = getParentActivity();
+        if (activity == null) {
+            return;
+        }
+        android.net.Uri uri = data.getData();
+        String name = null;
+        try (android.database.Cursor c = activity.getContentResolver().query(uri, new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                name = c.getString(0);
+            }
+        } catch (Exception ignore) {
+        }
+        String stored = null;
+        try (java.io.InputStream in = activity.getContentResolver().openInputStream(uri)) {
+            if (in != null) {
+                stored = CustomFonts.importFont(in, name);
+            }
+        } catch (Exception e) {
+            org.telegram.messenger.FileLog.e(e);
+        }
+        if (stored == null) {
+            BulletinFactory.of(this).createErrorBulletin(getString(R.string.OEAppearanceCustomFontInvalid)).show();
+            return;
+        }
+        CustomFonts.select(stored);
+        notifyRow(customFontRow);
+        showRestartHint();
     }
 
     private void showRestartHint() {
@@ -1101,6 +1184,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     getString(R.string.OEAppearanceGlassOutlineHidden)
             }, AppearanceConfig.glassOutlineStyle, this::notifyPresetRows);
             return;
+        } else if (position == customFontRow) {
+            showCustomFontDialog();
+            return;
         } else if (position == startupFolderRow) {
             showStartupFolderDialog(position);
             return;
@@ -1631,6 +1717,10 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == glassOutlineRow) {
                         String[] v = {getString(R.string.OEAppearanceGlassOutlineGlare), getString(R.string.OEAppearanceGlassOutlineSolid), getString(R.string.OEAppearanceGlassOutlineHidden)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceGlassOutline), v[clamp(AppearanceConfig.glassOutlineStyle.Int(), v.length)], true);
+                    } else if (position == customFontRow) {
+                        String font = CustomFonts.active();
+                        cell.setTextAndValue(getString(R.string.OEAppearanceCustomFont),
+                                font.isEmpty() ? getString(R.string.OEAppearanceCustomFontDefault) : font, true);
                     } else if (position == startupFolderRow) {
                         cell.setTextAndValue(getString(R.string.OEStartupFolder), startupFolderValue(), true);
                     } else if (position == tabTitleStyleRow) {
@@ -1773,7 +1863,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             } else if (position == designPresetRow || position == dividerStyleRow || position == glassOutlineRow
                     || (position == segmentGapRow && segmentGapRow >= 0)
                     || position == liquidGlassMaterialRow || position == tabTitleStyleRow
-                    || position == startupFolderRow
+                    || position == startupFolderRow || position == customFontRow
                     || position == tabCounterRow || position == titleTextRow) {
                 return TYPE_SETTINGS;
             }

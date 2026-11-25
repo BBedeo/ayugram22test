@@ -213,4 +213,9 @@
     <string name="OEStartupFolderDontOpen">Don\'t Open at Startup</string>
     <string name="OEStartupFolderSet">**%1$s** will open at startup</string>
     <string name="OEStartupFolderReset">The first folder will open at startup</string>
+    <string name="OEAppearanceCustomFont">Font</string>
+    <string name="OEAppearanceCustomFontDefault">Default</string>
+    <string name="OEAppearanceCustomFontImport">Add your own font…</string>
+    <string name="OEAppearanceCustomFontDelete">Delete</string>
+    <string name="OEAppearanceCustomFontInvalid">This file is not a usable font (TTF, OTF or TTC)</string>
 </resources>

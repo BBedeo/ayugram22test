@@ -487,6 +487,10 @@ object AppearanceConfig {
         return profileGroupedCard.Bool()
     }
 
+    /** File name (in files/fonts) of the font the user imported; empty means the stock font. */
+    @JvmField
+    val customFont = addConfig("OEAppearanceCustomFont", ConfigItem.configTypeString, "")
+
     /** Material 3 counterpart of [profileGroupedCard]: the profile rows are separate tonal tiles. */
     @JvmField
     val md3ProfileCard =

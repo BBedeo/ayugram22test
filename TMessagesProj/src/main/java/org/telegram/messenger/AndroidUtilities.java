@@ -2561,6 +2561,10 @@ public class AndroidUtilities {
     public static Typeface getTypeface(String assetPath) {
         return typefaceCache.computeIfAbsent(assetPath, path -> {
             try {
+                Typeface custom = app.exteraless.appearance.CustomFonts.create(path);
+                if (custom != null) {
+                    return custom;
+                }
                 if (NekoConfig.typeface.Bool()) {
                     return TypefaceHelper.createTypeface(path);
                 }
