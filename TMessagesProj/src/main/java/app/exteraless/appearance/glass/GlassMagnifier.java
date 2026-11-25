@@ -3,6 +3,7 @@ package app.exteraless.appearance.glass;
 import static org.telegram.messenger.AndroidUtilities.dp;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
@@ -91,6 +92,7 @@ public final class GlassMagnifier {
             springX.animateToFinalPosition(tx);
             springY.animateToFinalPosition(ty);
         }
+        pill.capture();
         pill.invalidate();
     }
 
@@ -136,6 +138,7 @@ public final class GlassMagnifier {
         final ViewGroup root;
         float focusX, focusY;
         private boolean capturing;
+        private Bitmap shot;
         private final GlassSurfaceDrawable glass;
         private final Path clip = new Path();
         private final RectF rect = new RectF();
@@ -146,6 +149,31 @@ public final class GlassMagnifier {
             glass = new GlassSurfaceDrawable(Theme.getColor(Theme.key_windowBackgroundWhite), GlassTokens.TIER_THICK, HEIGHT_DP / 2f);
             glass.setShadow(true);
             glass.setFillAlpha(0.18f);
+        }
+
+        /**
+         * Magnified copy of the window around the focus, drawn into a software bitmap: drawing the live tree from onDraw
+         * re-enters the display list that is being recorded and crashes.
+         */
+        void capture() {
+            final int w = getLayoutParams().width;
+            final int h = getLayoutParams().height;
+            if (shot == null) {
+                shot = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            }
+            shot.eraseColor(0);
+            final Canvas c = new Canvas(shot);
+            c.translate(w / 2f, h / 2f);
+            c.scale(ZOOM, ZOOM);
+            c.translate(-focusX, -focusY);
+            capturing = true;
+            try {
+                root.draw(c);
+            } catch (Throwable e) {
+                FileLog.e(e);
+            } finally {
+                capturing = false;
+            }
         }
 
         @Override
@@ -160,19 +188,12 @@ public final class GlassMagnifier {
             clip.addRoundRect(rect, h / 2f, h / 2f, Path.Direction.CW);
             canvas.save();
             canvas.clipPath(clip);
-            canvas.translate(w / 2f, h / 2f);
-            canvas.scale(ZOOM, ZOOM);
-            canvas.translate(-focusX, -focusY);
-            capturing = true;
-            try {
-                root.draw(canvas);
-            } finally {
-                capturing = false;
+            if (shot != null) {
+                canvas.drawBitmap(shot, 0, 0, null);
             }
             canvas.restore();
             glass.setBounds(0, 0, w, h);
             glass.draw(canvas);
-            postInvalidateOnAnimation();
         }
     }
 
