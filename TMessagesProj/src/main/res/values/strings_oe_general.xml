@@ -203,6 +203,8 @@
     <string name="OEUpdatesPostponed">Postponed update</string>
     <string name="OEUpdatesPostponedNone">None</string>
     <string name="OEUpdatesPostponedReset">Reminders are back on</string>
+    <string name="OEUpdatesReleaseHistory">Version history</string>
+    <string name="OEUpdatesReleaseHistoryInfo">Release notes are loaded from GitHub and written in Russian; tap a version to read it, or translate it.</string>
     <string name="OEUpdatesAllReleases">All releases</string>
     <string name="OEUpdatesInfo">With automatic download the new version is fetched in the background while the app is open, and a notification asks you to install it. Android always asks you to confirm the installation. A postponed update is offered again when the next version comes out.</string>
     <string name="OEUpdateReadyTitle">Update ready</string>

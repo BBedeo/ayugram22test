@@ -220,6 +220,53 @@ public final class GitHubUpdater {
         });
     }
 
+    public interface ListCallback {
+        void onLoaded(java.util.List<Release> releases, boolean failed);
+    }
+
+    /** All version releases (no CI pre-releases, no drafts), newest first; up to 5 pages of 100. */
+    public static void fetchAll(ListCallback callback) {
+        new Thread(() -> {
+            final java.util.ArrayList<Release> result = new java.util.ArrayList<>();
+            boolean failed = false;
+            try {
+                for (int page = 1; page <= 5; page++) {
+                    JSONObject wrapper = getJson(API + "/releases?per_page=100&page=" + page);
+                    JSONArray items = wrapper == null ? null : wrapper.optJSONArray("items");
+                    if (items == null || items.length() == 0) {
+                        break;
+                    }
+                    for (int i = 0; i < items.length(); i++) {
+                        JSONObject item = items.optJSONObject(i);
+                        if (item != null && !item.optBoolean("draft")) {
+                            Release release = parseRelease(item);
+                            if (release != null) {
+                                result.add(release);
+                            }
+                        }
+                    }
+                    if (items.length() < 100) {
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                failed = true;
+                FileLog.e("GitHubUpdater: release list failed", e);
+            }
+            final boolean error = failed;
+            AndroidUtilities.runOnUIThread(() -> callback.onLoaded(result, error));
+        }, "gh-releases").start();
+    }
+
+    /** Release notes as people read them: no app markers, no foreign brand, bounded length. */
+    public static String notesOf(Release release) {
+        String body = release.body == null ? "" : release.body.replaceAll("(?s)<!--.*?(-->|$)", "").trim();
+        if (body.length() > NOTES_LIMIT) {
+            body = body.substring(0, NOTES_LIMIT) + "…";
+        }
+        return body.isEmpty() ? release.tag : stripUpstreamBrand(body);
+    }
+
     public static void fetch(CheckCallback callback) {
         final boolean prerelease = NaConfig.INSTANCE.getAutoUpdateChannel().Int() == UpdateHelper.UPDATE_CHANNEL_BETA;
         new Thread(() -> {

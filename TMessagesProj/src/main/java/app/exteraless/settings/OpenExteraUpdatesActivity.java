@@ -40,6 +40,7 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
     private int autoUpdateRow;
     private int wifiOnlyRow;
     private int postponedRow;
+    private int releaseHistoryRow;
     private int allReleasesRow;
     private int dividerRow;
 
@@ -64,6 +65,7 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
         autoUpdateRow = addRow("autoUpdate");
         wifiOnlyRow = addRow("wifiOnly");
         postponedRow = addRow("postponed");
+        releaseHistoryRow = addRow("releaseHistory");
         allReleasesRow = addRow("allReleases");
         dividerRow = addRow();
     }
@@ -185,6 +187,8 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
                 BulletinFactory.of(this).createSimpleBulletin(R.raw.done,
                         getString(R.string.OEUpdatesPostponedReset)).show();
             }
+        } else if (position == releaseHistoryRow) {
+            presentFragment(new OpenExteraReleaseHistoryActivity());
         } else if (position == allReleasesRow) {
             org.telegram.messenger.browser.Browser.openUrl(getParentActivity(), GitHubUpdater.RELEASES_URL);
         }
@@ -237,6 +241,8 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
                                 postponed == null ? getString(R.string.OEUpdatesPostponedNone)
                                         : (postponed.startsWith("v") ? postponed.substring(1) : postponed),
                                 R.drawable.msg_reset, true);
+                    } else if (position == releaseHistoryRow) {
+                        cell.setTextAndIcon(getString(R.string.OEUpdatesReleaseHistory), R.drawable.msg_reset, true);
                     } else if (position == allReleasesRow) {
                         cell.setTextAndIcon(getString(R.string.OEUpdatesAllReleases), R.drawable.msg_link, false);
                     }
@@ -268,7 +274,7 @@ public class OpenExteraUpdatesActivity extends BaseNekoSettingsActivity {
             if (position == updatesHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == checkRow || position == channelRow || position == intervalRow || position == postponedRow
-                    || position == allReleasesRow) {
+                    || position == releaseHistoryRow || position == allReleasesRow) {
                 return TYPE_TEXT;
             } else if (position == dividerRow) {
                 return TYPE_INFO_PRIVACY;

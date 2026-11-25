@@ -200,6 +200,8 @@
     <string name="OEUpdatesPostponed">Отложенное обновление</string>
     <string name="OEUpdatesPostponedNone">Нет</string>
     <string name="OEUpdatesPostponedReset">Напоминания снова включены</string>
+    <string name="OEUpdatesReleaseHistory">История версий</string>
+    <string name="OEUpdatesReleaseHistoryInfo">Описания версий загружаются с GitHub. Нажмите на версию, чтобы прочитать её описание.</string>
     <string name="OEUpdatesAllReleases">Все релизы</string>
     <string name="OEUpdatesInfo">При автоматической загрузке новая версия скачивается заранее, пока приложение открыто, а уведомление предлагает её установить. Установку Android всегда подтверждает сам. Отложенное обновление снова предложат, когда выйдет следующая версия.</string>
     <string name="OEUpdateReadyTitle">Обновление готово</string>
