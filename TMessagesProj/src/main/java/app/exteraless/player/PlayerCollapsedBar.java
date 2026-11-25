@@ -6,6 +6,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.text.TextPaint;
+import android.view.ViewConfiguration;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -31,9 +33,36 @@ final class PlayerCollapsedBar extends View {
     private Runnable onToggle;
     private Runnable onExpand;
     private boolean downOnButton;
+    private boolean scrubbing;
+    private float downX;
+    private String timeText = "";
+    private final TextPaint timePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private final int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+
+    interface Seek {
+        void onStart();
+
+        void onMove(float progress);
+
+        void onEnd(float progress);
+    }
+
+    private Seek seek;
+
+    void setSeek(Seek value) {
+        seek = value;
+    }
+
+    void setTimeText(String value) {
+        timeText = value;
+        invalidate();
+    }
 
     PlayerCollapsedBar(Context context) {
         super(context);
+        timePaint.setTextSize(dp(13));
+        timePaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        timePaint.setTextAlign(Paint.Align.CENTER);
         glass.setShadow(true);
         glass.setFillAlpha(0.42f);
     }
@@ -49,6 +78,7 @@ final class PlayerCollapsedBar extends View {
         pause.setColor(onSurface);
         trackPaint.setColor((onSurface & 0x00FFFFFF) | 0x38000000);
         fillPaint.setColor(onSurface);
+        timePaint.setColor(onSurface);
         invalidate();
     }
 
@@ -79,11 +109,21 @@ final class PlayerCollapsedBar extends View {
         icon.draw(canvas);
         final float left = button;
         final float right = w - dp(20);
-        final float th = dp(4);
-        rect.set(left, h / 2f - th / 2f, right, h / 2f + th / 2f);
+        final float th = scrubbing ? dp(6) : dp(4);
+        final float cy = scrubbing ? h - dp(14) : h / 2f;
+        if (scrubbing) {
+            canvas.drawText(timeText, (left + right) / 2f, cy - dp(8), timePaint);
+        }
+        rect.set(left, cy - th / 2f, right, cy + th / 2f);
         canvas.drawRoundRect(rect, th / 2f, th / 2f, trackPaint);
         rect.right = Math.max(left + th, left + (right - left) * progress);
         canvas.drawRoundRect(rect, th / 2f, th / 2f, fillPaint);
+    }
+
+    private float fraction(float x) {
+        final float left = getHeight();
+        final float right = getWidth() - dp(20);
+        return Math.max(0f, Math.min(1f, (x - left) / Math.max(1f, right - left)));
     }
 
     @Override
@@ -91,8 +131,35 @@ final class PlayerCollapsedBar extends View {
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 downOnButton = event.getX() < getHeight();
+                downX = event.getX();
+                scrubbing = false;
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (!downOnButton && seek != null) {
+                    if (!scrubbing && Math.abs(event.getX() - downX) > slop) {
+                        scrubbing = true;
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                        seek.onStart();
+                    }
+                    if (scrubbing) {
+                        seek.onMove(fraction(event.getX()));
+                    }
+                }
+                return true;
+            case MotionEvent.ACTION_CANCEL:
+                if (scrubbing) {
+                    scrubbing = false;
+                    seek.onEnd(progress);
+                    invalidate();
+                }
                 return true;
             case MotionEvent.ACTION_UP:
+                if (scrubbing) {
+                    scrubbing = false;
+                    seek.onEnd(fraction(event.getX()));
+                    invalidate();
+                    return true;
+                }
                 if (downOnButton && event.getX() < getHeight()) {
                     if (onToggle != null) {
                         onToggle.run();

@@ -533,7 +533,42 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             collapsedBar.setAlpha(0f);
             collapsedBar.setVisibility(View.INVISIBLE);
             collapsedBar.setActions(this::togglePlay, () -> setControlsCollapsed(false));
+            collapsedBar.setSeek(new PlayerCollapsedBar.Seek() {
+                @Override
+                public void onStart() {
+                    seeking = true;
+                }
+
+                @Override
+                public void onMove(float progress) {
+                    seekProgress = progress;
+                    final MessageObject mo = current;
+                    if (mo != null) {
+                        final int d = (int) Math.round(mo.getDuration());
+                        collapsedBar.setTimeText(formatTime((int) (d * progress)) + " / " + formatTime(d));
+                    }
+                    collapsedBar.setProgress(progress);
+                    updateTimes();
+                }
+
+                @Override
+                public void onEnd(float progress) {
+                    seeking = false;
+                    final MessageObject mo = current;
+                    if (mo != null) {
+                        MediaController.getInstance().seekToProgress(mo, progress);
+                        mo.audioProgress = progress;
+                        mo.audioProgressSec = (int) (mo.getDuration() * progress);
+                    }
+                    updateProgress();
+                }
+            });
             layout.addView(collapsedBar);
+            visualizer = new PlayerVisualizer(context);
+            visualizer.setAlpha(0f);
+            visualizer.setVisibility(View.INVISIBLE);
+            visualizer.setFrameListener(this::applyCollapseCover);
+            layout.addView(visualizer);
         }
 
         group = new LinearLayout(context);
@@ -1409,6 +1444,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     }
 
     private PlayerCollapsedBar collapsedBar;
+    private PlayerVisualizer visualizer;
+    private float collapseCoverShift;
+    private float collapseTitleShift;
     private boolean controlsCollapsed;
     private ValueAnimator collapseAnimator;
     private float collapseFraction;
@@ -1443,6 +1481,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             collapseAnimator.cancel();
         }
         collapsedBar.setVisibility(View.VISIBLE);
+        visualizer.setVisibility(View.VISIBLE);
         setCollapsedViewsVisible(true);
         collapseAnimator = ValueAnimator.ofFloat(collapseFraction, collapse ? 1f : 0f);
         collapseAnimator.setDuration(420);
@@ -1463,12 +1502,34 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
                 }
                 setCollapsedViewsVisible(!controlsCollapsed);
                 collapsedBar.setVisibility(controlsCollapsed ? View.VISIBLE : View.INVISIBLE);
+                visualizer.setVisibility(controlsCollapsed ? View.VISIBLE : View.INVISIBLE);
                 if (!controlsCollapsed) {
                     controlsTouched();
                 }
             }
         });
         collapseAnimator.start();
+    }
+
+    /** Collapsed: the cover grows towards the screen edges (and breathes with the bass), the title block slides down. */
+    private void applyCollapseCover() {
+        final float p = collapseFraction;
+        final int size = cover.getWidth();
+        final boolean framed = coverStyle == PlayerStyle.COVER_CARD && size > 0 && lyricsFraction == 0f;
+        if (!framed || (p == 0f && collapseCoverShift == 0f)) {
+            return;
+        }
+        final float full = Math.min(layout.getWidth() / (float) size, 1.2f);
+        final float grow = size * (full - 1f) / 2f;
+        final float pulse = 0.014f * (visualizer != null ? visualizer.getBass() : 0f) * p;
+        final float scale = (1f + (full - 1f) * p) + pulse;
+        // shortcut: assumes a playing cover (scale 1) while collapsed; pausing expands first
+        cover.setScaleX(scale);
+        cover.setScaleY(scale);
+        collapseCoverShift = grow * 0.6f * p;
+        collapseTitleShift = (grow * 1.6f + dp(8)) * p;
+        cover.setTranslationY(collapseCoverShift);
+        titleRow.setTranslationY(collapseTitleShift);
     }
 
     private void setCollapsedViewsVisible(boolean visible) {
@@ -1490,6 +1551,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             view.setTranslationY(shift);
         }
         collapsedBar.setAlpha(p);
+        visualizer.setAlpha(p);
+        applyCollapseCover();
         collapsedBar.setScaleX(0.7f + 0.3f * p);
         collapsedBar.setScaleY(0.85f + 0.15f * p);
     }
@@ -1512,6 +1575,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         controls.setPlaying(playing, animated);
         if (collapsedBar != null) {
             collapsedBar.setPlaying(playing);
+            visualizer.setPlaying(playing);
             if (playing) {
                 controlsTouched();
             } else {
@@ -1654,8 +1718,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         boolean backdropCover = coverStyle == PlayerStyle.COVER_FULL;
         cover.setAlpha(backdropCover ? 1f : playerAlpha);
         titleRow.setAlpha(playerAlpha);
-        cover.setTranslationY(backdropCover ? 0 : -dp(24) * f);
-        titleRow.setTranslationY(-dp(24) * f);
+        cover.setTranslationY((backdropCover ? 0 : -dp(24) * f) + collapseCoverShift);
+        titleRow.setTranslationY(-dp(24) * f + collapseTitleShift);
         lyricsPanel.setAlpha(lyricsAlpha);
         lyricsPanel.setTranslationY(dp(24) * (1f - f));
         cover.setVisibility(f >= 1f && !backdropCover ? View.INVISIBLE : View.VISIBLE);
@@ -2027,6 +2091,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             controls.play.setColors(0, c.onSurface, 0, c.onSurface);
             likeButton.setColors(0, c.onSurface, 0, c.onSurface);
             if (collapsedBar != null) {
+                visualizer.setColor(ColorUtils.setAlphaComponent(c.onSurface, 150));
                 collapsedBar.setColors(c.onSurface, ColorUtils.blendARGB(c.surface, c.onSurface, c.dark ? 0.18f : 0.05f));
             }
             likeButton.setBackground(glassPlate(0, c));
@@ -3143,6 +3208,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             timeRow.measure(exactW, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             controls.measure(exactW, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             if (collapsedBar != null) {
+                visualizer.measure(MeasureSpec.makeMeasureSpec(Math.max(0, columnWidth - dp(32)), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(44), MeasureSpec.EXACTLY));
                 collapsedBar.measure(MeasureSpec.makeMeasureSpec(Math.max(0, columnWidth - dp(16)), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(48), MeasureSpec.EXACTLY));
             }
             group.measure(islandActions ? MeasureSpec.makeMeasureSpec(columnWidth, MeasureSpec.AT_MOST) : exactW,
@@ -3190,6 +3256,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             if (collapsedBar != null) {
                 final int barTop = controlsTop + (controls.getMeasuredHeight() - collapsedBar.getMeasuredHeight()) / 2;
                 collapsedBar.layout(x + dp(8), barTop, x + dp(8) + collapsedBar.getMeasuredWidth(), barTop + collapsedBar.getMeasuredHeight());
+                final int visTop = barTop + collapsedBar.getMeasuredHeight() + dp(14);
+                visualizer.layout(x + dp(16), visTop, x + dp(16) + visualizer.getMeasuredWidth(), visTop + visualizer.getMeasuredHeight());
             }
             if (group.getVisibility() != GONE) {
                 int groupTop = blockY[PlayerStyle.BLOCK_ACTIONS];

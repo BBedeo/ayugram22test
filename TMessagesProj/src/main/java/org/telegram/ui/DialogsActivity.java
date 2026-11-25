@@ -10853,14 +10853,35 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             };
 
             FrameLayout.LayoutParams lp = LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.LEFT, 8, 0, 8, 8);
-            lp.bottomMargin += navigationBarHeight + additionNavigationBarHeight;
+            lp.bottomMargin += navigationBarHeight + additionNavigationBarHeight + undoPillLift();
             ((ContentView) fragmentView).addView(undoView[a], ++undoViewIndex, lp);
+        }
+    }
+
+    /** Floating tab pill overlays the list: lift the undo bar above it while the pill is shown. */
+    private int undoPillLift() {
+        final boolean shown = !searching && !mainTabsHiddenByScroll && MainTabsLayout.isBottomNavigationVisible() && MainTabsLayout.isBottomNavigationFloating();
+        return shown ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+    }
+
+    private void updateUndoPillLift() {
+        for (int a = 0; a < 2; a++) {
+            if (undoView[a] == null || !(undoView[a].getLayoutParams() instanceof FrameLayout.LayoutParams)) {
+                continue;
+            }
+            final FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) undoView[a].getLayoutParams();
+            final int m = dp(8) + navigationBarHeight + additionNavigationBarHeight + undoPillLift();
+            if (lp.bottomMargin != m) {
+                lp.bottomMargin = m;
+                undoView[a].setLayoutParams(lp);
+            }
         }
     }
 
     @Nullable
     public UndoView getUndoView() {
         createUndoView();
+        updateUndoPillLift();
         if (undoView[0] != null && undoView[0].getVisibility() == View.VISIBLE) {
             UndoView old = undoView[0];
             undoView[0] = undoView[1];
@@ -14918,6 +14939,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (mainTabsActivityController != null) {
             mainTabsActivityController.setTabsVisible(mainTabsVisible);
         }
+        updateUndoPillLift();
     }
 
     private void checkUi_searchFieldVisibility() {

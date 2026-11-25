@@ -214,7 +214,7 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
 
         prevButton = addButton(context, prevIcon, R.string.AccDescrPrevious, () -> MediaController.getInstance().playPreviousMessage());
 
-        playButton = new RingPlayButton(context, 20, 3, 22, 1.3f, 12);
+        playButton = Md3Player.isIosMiniPlayer() ? new RingPlayButton(context, 20, 2.2f, 22, 0f, 12) : new RingPlayButton(context, 20, 3, 22, 1.3f, 12);
         if (!preview) {
             playButton.setOnClickListener(v -> {
                 MediaController mc = MediaController.getInstance();
