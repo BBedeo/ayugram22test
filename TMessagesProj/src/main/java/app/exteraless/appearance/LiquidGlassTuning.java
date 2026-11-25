@@ -126,6 +126,8 @@ public final class LiquidGlassTuning {
      */
     public static int sanitizeRimStroke(int color, boolean hasGpuGlass, boolean isDark) {
         if (color == 0) return 0;
+        // optional effect off: the provider's own strokes stay exactly as upstream draws them
+        if (!isActive()) return color;
         final int r = Color.red(color);
         final int g = Color.green(color);
         final int b = Color.blue(color);
@@ -133,7 +135,7 @@ public final class LiquidGlassTuning {
         if (isWhiteStroke && (isDark || hasGpuGlass)) {
             return 0;
         }
-        return isActive() ? adaptHighlight(color) : color;
+        return adaptHighlight(color);
     }
 
     private static float tuneTransparency(float base, float min) {
