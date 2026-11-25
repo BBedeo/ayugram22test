@@ -52,6 +52,7 @@ import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.RadialGradient;
@@ -1228,10 +1229,26 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 canvas.translate(inset, inset + thisHeight);
                 float fraction = !isPulledDown && !blurView.isUsingRenderNode() && avatarsViewPager.getRealPosition() != 0 ? 1f : (1f - blurSizeFraction);
                 // fades out early while the photo collapses, otherwise a hard-edged blurred strip lingers behind the buttons
+                // the blurred strip under the photo ends in a hard edge: melt its lower half into the header
+                final float stripH = Math.max(1f, actionsSize / Math.max(0.01f, avatarScale));
+                final int layer = canvas.saveLayer(-dp(8), -thisHeight, thisWidth + dp(8), stripH, null);
                 blurView.draw(canvas, this, thisWidth - inset * 2f, thisHeight - inset * 2f, true, fraction, alpha * Math.min(1f, blurSizeFraction * 1.6f));
+                if (blurFadeHeight != stripH) {
+                    blurFadeHeight = stripH;
+                    blurFadePaint.setShader(new LinearGradient(0, stripH * 0.3f, 0, stripH, 0xFFFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+                }
+                canvas.drawRect(-dp(8), stripH * 0.3f, thisWidth + dp(8), stripH, blurFadePaint);
+                canvas.restoreToCount(layer);
             }
 
             canvas.restore();
+        }
+
+        private final Paint blurFadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float blurFadeHeight;
+
+        {
+            blurFadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
         }
 
         public void setProgressToStoriesInsets(float progressToInsets) {
