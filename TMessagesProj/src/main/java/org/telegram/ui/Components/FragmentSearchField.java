@@ -158,6 +158,7 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
         closeIcon = new ImageView(context);
         closeIcon.setScaleType(ImageView.ScaleType.CENTER);
         closeIcon.setImageResource(R.drawable.miniplayer_close);
+        closeIcon.setContentDescription(LocaleController.getString(R.string.Close));
         closeIcon.setVisibility(GONE);
         closeIcon.setOnClickListener(v -> {
             if (hasRemovableFilters()) {
