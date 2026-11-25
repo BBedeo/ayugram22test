@@ -15,7 +15,7 @@ and had four read-only sub-audits cover headers/nav, menus/dialogs/toasts, the p
 profile/search/chat/providers. **Every finding below was re-checked by me against the code before a fix**; sub-audit claims
 I could not confirm, or that would change tuned golden looks, are in section 2 and were not touched.
 
-## 1. Fixes (7 commits, one fix each)
+## 1. Fixes (9 commits, one fix each)
 
 | # | Fix | File:line | Why it was wrong | Commit |
 |---|-----|-----------|------------------|--------|
@@ -26,6 +26,8 @@ I could not confirm, or that would change tuned golden looks, are in section 2 a
 | 5 | Liquid Glass OFF: `sanitizeRimStroke` no longer deletes upstream's white rims | `app/exteraless/appearance/LiquidGlassTuning.java:130` | Every other `LiquidGlassTuning` helper returns its input untouched when the effect is inactive; `sanitizeRimStroke` removed white top/bottom strokes first (dark theme, or any native GPU glass) and only then checked `isActive()`. With the setting OFF the chat composer, top panel, emoji button, hints etc. lost the white rim stock Telegram draws — breaking "OFF is identical to upstream". Behaviour with the setting ON is unchanged. | `4173447b` |
 | 6 | iOS player: open/close morph draws the same backdrop as the settled sheet | `PlayerSheet.java:1065` (`drawMorphBackdrop`) | `drawBackdrop()` ignores the stored background mode for the iOS player (always blur/gradient) but `drawMorphBackdrop()` still returned on a stored `BACKGROUND_SOLID` (left over from the Material player). The blurred cover background was missing for the whole ~380 ms morph and then popped in. | `203ed796` |
 | 7 | Dark glass surfaces: rim also catches the light at the bottom-right | `GlassTokens.java:130` (`rimOpposite`), `GlassSurfaceDrawable.java:126-139`, `DESIGN_SYSTEM.md` §2 | `GlassSurfaceDrawable` (dialogs, sheets, toasts, hints, dialog morph) was lit top-left and faded to ~3% white; the AGSL lens and the profile's `GlassRim` are lit at both diagonal ends (`memory/glass-rim-uniformity.md` points at this "older one-sided rim"). Dark surfaces now get an opposite catchlight (~0.9× the top-left, scaled by the Highlight setting). **Light surfaces keep their exact previous gradient** (the dark shade defines the edge there). | `62bc21d6` |
+| 8 | Search pill clear/close icon gets an accessible name | `FragmentSearchField.java:161` | Icon-only clickable control had no `contentDescription` (existing string `Close`; layout untouched). | `afbbc2a9` |
+| 9 | Hint close icon gets an accessible name | `HintView.java` (`createCloseButton`) | Same. | `878123e7` |
 
 ## 2. Suspected, not fixed (and why)
 
@@ -75,7 +77,16 @@ meniscus), `BaseFragment.isActionBarCrossfadeEnabled` / `ActionBarLayout.isActio
 centring via `getFullContentWidth()`, `BlurredBackgroundProviderImpl` dark/light branches, `ProfileButtonsGlass`, profile aura
 caching, iOS switch/slider geometry, search pill press handling, BottomSheet lens/rim radius (18, as the design doc says).
 
-## 3. Could not verify
+## 3. Not finished
+
+A second wave of four read-only audits (capture/source pipeline, chat composer/attach, profile cards + settings headers, and an
+adversarial review of my diff) was cut off by the account's 5-hour rate limit before reporting. So **these areas are not
+audited in depth**: `GlassFadeBlurredDrawable`, `GlassCaptureSourceCanvas`, `GlassSourceBitmap` (one agent noted a possible
+height issue in `GlassSourceBitmap.beginRecording`, unverified), `ChatActivityEnterView` glass, `ChatAttachAlert`, profile
+info cards / top fade, settings-header base classes. My diff also did **not** get its independent adversarial review; I
+re-read each diff and parse-checked it myself instead.
+
+## 3b. Could not verify
 
 - **No build.** `dl.google.com` is not reachable from this environment, so the Android SDK cannot be installed and
   `./gradlew :TMessagesProj:compileReleaseJavaWithJavac` cannot run. Every edited file was parse-checked with `javac`'s parser
