@@ -11,16 +11,22 @@ package org.telegram.ui.Components;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
 
 import org.telegram.messenger.AndroidUtilities;
 
+import tw.nekomimi.nekogram.helpers.NaConfig;
+
 public class PhotoEditorSeekBar extends View {
 
     private Paint innerPaint = new Paint();
     private Paint outerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private int thumbSize = AndroidUtilities.dp(16);
+    private final boolean ios = NaConfig.INSTANCE.getSliderStyle().Int() == SeekBarView.SLIDER_STYLE_IOS;
+    private final RectF rect = new RectF();
+    private final Paint thumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int thumbSize = AndroidUtilities.dp(ios ? 24 : 16);
     private int thumbDX = 0;
     private float progress = 0;
     private boolean pressed = false;
@@ -35,8 +41,14 @@ public class PhotoEditorSeekBar extends View {
     public PhotoEditorSeekBar(Context context) {
         super(context);
 
-        innerPaint.setColor(0xff4d4d4d);
+        innerPaint.setColor(ios ? 0x59ffffff : 0xff4d4d4d);
+        innerPaint.setAntiAlias(true);
         outerPaint.setColor(0xffffffff);
+        thumbPaint.setColor(0xffffffff);
+        if (ios) {
+            thumbPaint.setShadowLayer(AndroidUtilities.dp(3), 0, AndroidUtilities.dp(1), 0x40000000);
+            setLayerType(LAYER_TYPE_SOFTWARE, null);
+        }
     }
 
     public void setDelegate(PhotoEditorSeekBarDelegate delegate) {
@@ -111,8 +123,27 @@ public class PhotoEditorSeekBar extends View {
         maxValue = max;
     }
 
+    private void drawIos(Canvas canvas) {
+        int w = getMeasuredWidth();
+        int cy = getMeasuredHeight() / 2;
+        int thumbX = (int) ((w - thumbSize) * progress);
+        float half = AndroidUtilities.dp(2);
+        float r = half;
+        rect.set(thumbSize / 2f, cy - half, w - thumbSize / 2f, cy + half);
+        canvas.drawRoundRect(rect, r, r, innerPaint);
+        float from = minValue == 0 ? thumbSize / 2f : w / 2f;
+        float cx = thumbX + thumbSize / 2f;
+        rect.set(Math.min(from, cx), cy - half, Math.max(from, cx), cy + half);
+        canvas.drawRoundRect(rect, r, r, outerPaint);
+        canvas.drawCircle(cx, cy, thumbSize / 2f - AndroidUtilities.dp(2), thumbPaint);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (ios) {
+            drawIos(canvas);
+            return;
+        }
         int y = (getMeasuredHeight() - thumbSize) / 2;
         int thumbX = (int)((getMeasuredWidth() - thumbSize) * progress);
         canvas.drawRect(thumbSize / 2, getMeasuredHeight() / 2 - AndroidUtilities.dp(1), getMeasuredWidth() - thumbSize / 2, getMeasuredHeight() / 2 + AndroidUtilities.dp(1), innerPaint);

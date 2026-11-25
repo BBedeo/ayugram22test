@@ -1,16 +1,15 @@
 package app.exteraless.plugins.ui;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.SeekBarView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -20,7 +19,8 @@ import app.exteraless.plugins.PluginsController;
 final class PluginSliderCell extends LinearLayout {
     private final TextView title;
     private final TextView subtitle;
-    private final SeekBar slider;
+    private final SeekBarView slider;
+    private int steps;
     private JSONObject row;
     private double minimum, maximum, step;
     private boolean tracking;
@@ -36,44 +36,47 @@ final class PluginSliderCell extends LinearLayout {
         subtitle = new TextView(context);
         subtitle.setTextSize(13);
         addView(subtitle, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        slider = new SeekBar(context);
+        slider = new SeekBarView(context);
         addView(slider, new LayoutParams(LayoutParams.MATCH_PARENT, AndroidUtilities.dp(40)));
-        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        slider.setDelegate(new SeekBarView.SeekBarViewDelegate() {
             @Override
-            public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                if (row == null || !fromUser) return;
-                double value = Math.min(maximum, minimum + progress * step);
-                try {
-                    row.put("value", value);
-                } catch (org.json.JSONException ignored) {
-                }
-                String json = row.optBoolean("integral") ? Long.toString(Math.round(value)) : Double.toString(value);
-                showValue(json);
-                if (tracking) {
-                    pendingValue = json;
-                } else {
-                    PluginsController.getInstance().notifySettingChanged(row.optString("plugin_id"), row.optString("key"), json);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar bar) {
-                tracking = true;
-                pendingValue = null;
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar bar) {
-                tracking = false;
-                String value = pendingValue;
-                pendingValue = null;
+            public void onSeekBarDrag(boolean stop, float progress) {
                 if (row == null) return;
-                if (value != null) {
-                    PluginsController.getInstance().notifySettingChanged(row.optString("plugin_id"), row.optString("key"), value);
+                if (!stop) {
+                    double value = Math.min(maximum, minimum + Math.round(progress * steps) * step);
+                    try {
+                        row.put("value", value);
+                    } catch (org.json.JSONException ignored) {
+                    }
+                    String json = row.optBoolean("integral") ? Long.toString(Math.round(value)) : Double.toString(value);
+                    showValue(json);
+                    pendingValue = json;
+                    if (!tracking) {
+                        flush();
+                    }
+                    return;
                 }
+                tracking = false;
+                flush();
                 PluginsController.getInstance().reloadSettingsScreen(row.optString("plugin_id"));
             }
+
+            @Override
+            public void onSeekBarPressed(boolean pressed) {
+                if (pressed) {
+                    tracking = true;
+                    pendingValue = null;
+                }
+            }
         });
+    }
+
+    private void flush() {
+        String value = pendingValue;
+        pendingValue = null;
+        if (value != null && row != null) {
+            PluginsController.getInstance().notifySettingChanged(row.optString("plugin_id"), row.optString("key"), value);
+        }
     }
 
     private void showValue(String value) {
@@ -89,16 +92,13 @@ final class PluginSliderCell extends LinearLayout {
         subtitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
         subtitle.setText(row.optString("subtext", ""));
         subtitle.setVisibility(subtitle.length() == 0 ? GONE : VISIBLE);
-        ColorStateList tint = ColorStateList.valueOf(Theme.getColor(Theme.key_switchTrackChecked));
-        slider.setProgressTintList(tint);
-        slider.setThumbTintList(tint);
         boolean valid = Double.isFinite(minimum) && Double.isFinite(maximum) && Double.isFinite(step)
                 && maximum > minimum && step > 0 && Math.ceil((maximum - minimum) / step) <= Integer.MAX_VALUE;
         slider.setEnabled(valid);
         if (!valid) return;
         double value = Math.max(minimum, Math.min(maximum, row.optDouble("value", minimum)));
-        slider.setMax((int) Math.ceil((maximum - minimum) / step));
-        slider.setProgress((int) Math.round((value - minimum) / step));
+        steps = (int) Math.ceil((maximum - minimum) / step);
+        slider.setProgress((float) Math.round((value - minimum) / step) / steps);
         showValue(row.optBoolean("integral") ? Long.toString(Math.round(value)) : Double.toString(value));
     }
 
