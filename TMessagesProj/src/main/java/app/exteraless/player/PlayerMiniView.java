@@ -97,7 +97,7 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
     private final CharacterStyle artistSpan = new CharacterStyle() {
         @Override
         public void updateDrawState(TextPaint tp) {
-            tp.setColor(ColorUtils.setAlphaComponent(colors.onPrimaryContainer, 0xcc));
+            tp.setColor(ColorUtils.setAlphaComponent(fg(), 0xcc));
         }
     };
     private MessageObject current;
@@ -396,10 +396,10 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
         float inset = Math.max(dp(16), cardRadius);
         float y = h - (ios ? AndroidUtilities.dpf2(3f) : dp(4));
         float right = w - inset;
-        linePaint.setColor(ColorUtils.setAlphaComponent(colors.onPrimaryContainer, ios ? 36 : 46));
+        linePaint.setColor(ColorUtils.setAlphaComponent(fg(), ios ? 36 : 46));
         canvas.drawLine(inset, y, right, y, linePaint);
         if (progress > 0f) {
-            linePaint.setColor(colors.onPrimaryContainer);
+            linePaint.setColor(fg());
             canvas.drawLine(inset, y, inset + (right - inset) * progress, y, linePaint);
         }
     }
@@ -413,12 +413,12 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
             borderMeasure.setPath(borderPath, false);
             borderLength = borderMeasure.getLength();
         }
-        linePaint.setColor(ColorUtils.setAlphaComponent(colors.onPrimaryContainer, 46));
+        linePaint.setColor(ColorUtils.setAlphaComponent(fg(), 46));
         canvas.drawPath(borderPath, linePaint);
         if (progress > 0f) {
             borderSegment.rewind();
             borderMeasure.getSegment(0, borderLength * progress, borderSegment, true);
-            linePaint.setColor(colors.onPrimaryContainer);
+            linePaint.setColor(fg());
             canvas.drawPath(borderSegment, linePaint);
         }
     }
@@ -887,6 +887,11 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
         showAnimator.start();
     }
 
+    /** Foreground of the card: the theme's own label colour in the iOS mini player, the album palette in Material. */
+    private int fg() {
+        return Md3Player.isIosMiniPlayer() ? Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider) : colors.onPrimaryContainer;
+    }
+
     private void applyColors(PlayerColors c) {
         colors = c;
         if (Md3Player.isIosMiniPlayer() && glassBg == null) {
@@ -899,17 +904,17 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
             card.setOutlineAmbientShadowColor(c.shadow());
         }
         cover.setColors(c.secondaryContainer, c.onSecondaryContainer);
-        titleView.setTextColor(c.onPrimaryContainer);
-        artistView.setTextColor(c.onPrimaryContainer);
-        prevIcon.setColor(c.onPrimaryContainer);
-        nextIcon.setColor(c.onPrimaryContainer);
-        closeIcon.setColor(c.onPrimaryContainer);
-        int ripple = ColorUtils.setAlphaComponent(c.onPrimaryContainer, 0x1f);
+        titleView.setTextColor(fg());
+        artistView.setTextColor(fg());
+        prevIcon.setColor(fg());
+        nextIcon.setColor(fg());
+        closeIcon.setColor(fg());
+        int ripple = ColorUtils.setAlphaComponent(fg(), 0x1f);
         prevButton.setBackground(Theme.createSelectorDrawable(ripple, Theme.RIPPLE_MASK_CIRCLE_20DP));
         nextButton.setBackground(Theme.createSelectorDrawable(ripple, Theme.RIPPLE_MASK_CIRCLE_20DP));
         closeButton.setBackground(Theme.createSelectorDrawable(ripple, Theme.RIPPLE_MASK_CIRCLE_20DP));
         playButton.setBackground(Theme.createSelectorDrawable(ripple, Theme.RIPPLE_MASK_CIRCLE_20DP));
-        playButton.setColors(c.onPrimaryContainer, ColorUtils.setAlphaComponent(c.onPrimaryContainer, 46), c.onPrimaryContainer);
+        playButton.setColors(fg(), ColorUtils.setAlphaComponent(fg(), 46), fg());
         card.setForeground(Theme.createSelectorDrawable(ripple, Theme.RIPPLE_MASK_ALL));
         card.invalidate();
     }
