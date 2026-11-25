@@ -123,10 +123,20 @@ public class GlassSurfaceDrawable extends Drawable {
         if (b.isEmpty()) {
             return;
         }
-        // Light from the top-left: the rim is bright there and fades into shade at the bottom-right.
-        rimPaint.setShader(new LinearGradient(b.left, b.top, b.right, b.bottom,
-                new int[]{GlassTokens.rimLight(baseColor), GlassTokens.rimShade(baseColor), GlassTokens.rimShade(baseColor)},
-                new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        // Light from the top-left: the rim is bright there and fades into shade at the bottom-right. A dark surface also
+        // catches the light again at the bottom-right, like the lens' rim (lit at both diagonal ends).
+        final int light = GlassTokens.rimLight(baseColor);
+        final int shade = GlassTokens.rimShade(baseColor);
+        final int opposite = GlassTokens.rimOpposite(baseColor);
+        if (opposite == shade) {
+            rimPaint.setShader(new LinearGradient(b.left, b.top, b.right, b.bottom,
+                    new int[]{light, shade, shade},
+                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        } else {
+            rimPaint.setShader(new LinearGradient(b.left, b.top, b.right, b.bottom,
+                    new int[]{light, shade, shade, opposite},
+                    new float[]{0f, 0.40f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+        }
         // The bevel highlight lives only in the top third of the surface.
         final float h = Math.max(1, Math.min(b.height(), dp(28)));
         highlightPaint.setShader(new LinearGradient(0, b.top, 0, b.top + h,

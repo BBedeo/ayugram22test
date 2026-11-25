@@ -122,6 +122,20 @@ public final class GlassTokens {
         return dark ? 0x0FFFFFFF : 0x14000000;
     }
 
+    /**
+     * Color of the opposite (bottom-right) end of the rim. The lens and the profile's hairline rim are lit at both diagonal
+     * ends (key and catch arcs, about 0.9 : 1), so a dark surface gets a catchlight there too instead of fading out; a light
+     * surface keeps its shade, where a white catchlight would vanish and the dark hairline gives the edge.
+     */
+    public static int rimOpposite(int baseColor) {
+        final boolean dark = AndroidUtilities.computePerceivedBrightness(baseColor | 0xFF000000) < 0.5f;
+        if (!dark) {
+            return rimShade(baseColor);
+        }
+        final float shine = 0.6f + 0.4f * Math.min(1f, LiquidGlassTuning.shine());
+        return Color.argb(Math.round(0x2A * shine), 255, 255, 255);
+    }
+
     /** Inner specular highlight just under the top edge (the polished bevel). */
     public static int innerHighlight(int baseColor) {
         final boolean dark = AndroidUtilities.computePerceivedBrightness(baseColor | 0xFF000000) < 0.5f;

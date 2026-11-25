@@ -39,7 +39,10 @@ Liquid Glass bends and intensifies what is under it; it is not a grey frosted ca
 Every glass surface has:
 
 - a **1px rim** (`0.9dp`): a linear gradient from the top-left (light) to the
-  bottom-right (shade). Light from `GlassTokens.rimLight`, shade from `rimShade`;
+  bottom-right (shade). Light from `GlassTokens.rimLight`, shade from `rimShade`.
+  On dark surfaces the bottom-right end catches the light again (`rimOpposite`,
+  about 0.9x the top-left), like the lens' rim, which is lit at both diagonal
+  ends; light surfaces keep the shade there;
 - an **inner highlight** just under the top edge (`innerHighlight`), fading out
   over 28dp: the polished bevel.
 
