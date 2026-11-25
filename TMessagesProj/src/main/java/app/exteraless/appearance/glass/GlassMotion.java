@@ -87,11 +87,12 @@ public final class GlassMotion {
         final SpringAnimation sx = new SpringAnimation(view, DynamicAnimation.SCALE_X, 1f);
         final SpringAnimation sy = new SpringAnimation(view, DynamicAnimation.SCALE_Y, 1f);
         view.setOnTouchListener((v, event) -> {
-            if (!GlassTokens.motionEnabled() || !v.isEnabled()) {
-                return false;
-            }
+            // the gate guards only the press: release must always spring back, or a view stays shrunk
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    if (!GlassTokens.motionEnabled() || !v.isEnabled()) {
+                        return false;
+                    }
                     spring(sx, pressedScale, PRESS_STIFFNESS, SpringForce.DAMPING_RATIO_NO_BOUNCY);
                     spring(sy, pressedScale, PRESS_STIFFNESS, SpringForce.DAMPING_RATIO_NO_BOUNCY);
                     break;
