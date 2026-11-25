@@ -193,4 +193,12 @@
     <string name="OEChatsDismissMenuOnDragOutInfo">Если зажать меню и отпустить палец за его пределами без выбранного пункта, меню закроется.</string>
     <string name="OEChatsLiveTypingPreview">Живое превью печати</string>
     <string name="OEChatsLiveTypingPreviewInfo">Показывает текст, который собеседник печатает прямо сейчас, и делится вашим черновиком с ним в личных чатах.</string>
+    <string name="OEChatsArchiveFolders">Папки в архиве</string>
+    <string name="OEChatsArchiveFoldersInfo">Раскладывайте архивные чаты по своим папкам (например, «Мониторинг», «Новости»). Папки хранятся только на этом устройстве.</string>
+    <string name="OEArchiveFolderAll">Все</string>
+    <string name="OEArchiveFolderNew">Новая папка</string>
+    <string name="OEArchiveFolderName">Название папки</string>
+    <string name="OEArchiveFolderRename">Переименовать</string>
+    <string name="OEArchiveFolderMoveTo">Переместить в папку</string>
+    <string name="OEArchiveFolderNone">Без папки</string>
 </resources>

@@ -164,6 +164,16 @@ object ChatsConfig {
      * Живое превью печати (live drafts): собеседник видит, что именно вы печатаете в личном чате,
      * а вы видите его черновик над полем ввода.
      */
+    /** Local named folders inside the archive (device only, not synced with Telegram). */
+    @JvmField
+    val archiveFolders = addConfig("OEChatsArchiveFolders", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun archiveFolders(): Boolean {
+        ensureLoaded()
+        return archiveFolders.Bool()
+    }
+
     @JvmField
     val liveTypingPreview = addConfig("OEChatsLiveTypingPreview", ConfigItem.configTypeBool, false)
 

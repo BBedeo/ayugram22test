@@ -780,6 +780,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private final static int add_to_folder = 109;
     private final static int remove_from_folder = 110;
     private final static int community_ungroup = 111;
+    private final static int archive_folder = 112;
 
     private final static int select_all = 1000;
 
@@ -3490,7 +3491,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             animatorSet.start();
             */
         });
-        if (initialDialogsType == DIALOGS_TYPE_ADD_USERS_TO || isArchive() && getDialogsArray(currentAccount, initialDialogsType, folderId, false).isEmpty()) {
+        if (initialDialogsType == DIALOGS_TYPE_ADD_USERS_TO || isArchive() && getDialogsArrayRaw(currentAccount, initialDialogsType, folderId, false).isEmpty()) {
             searchItem.setVisibility(View.GONE);
         }
         searchItem.setVisibility(View.GONE);
@@ -4353,6 +4354,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     if (undoView != null) {
                         undoView.showWithAction(did, UndoView.ACTION_REMOVED_FROM_FOLDER, neverShow.size(), filter, null, null);
                     }
+                    hideActionMode(false);
+                } else if (id == archive_folder) {
+                    app.exteraless.chats.ArchiveFolders.showMoveDialog(DialogsActivity.this, currentAccount, new ArrayList<>(selectedDialogs));
                     hideActionMode(false);
                 } else if (id == pin || id == read || id == delete || id == clear || id == mute || id == archive || id == block || id == archive2 || id == pin2) {
                     if (shouldUseDialogsHeaderGlass() && actionBar != null && !selectedDialogs.isEmpty()) {
@@ -5251,6 +5255,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 updateDialogsHint();
             });
             topPanelLayout.addView(dialogsHintCell);
+            if (isArchive() && app.exteraless.chats.ArchiveFolders.enabled()) {
+                final View archiveFoldersBar = new app.exteraless.chats.ArchiveFolders.Bar(context, this, currentAccount);
+                topPanelLayout.addView(archiveFoldersBar);
+                topPanelLayout.setViewVisible(archiveFoldersBar, true, false);
+            }
 
 
             if (communityId != 0) {
@@ -7203,6 +7212,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         ActionBarMenuItem otherItem = actionMode.addItemWithWidth(0, R.drawable.ic_ab_other, dp(48), LocaleController.getString(R.string.AccDescrMoreOptions));
         actionMode.addView(new View(getContext()), LayoutHelper.createLinear(5, LayoutHelper.MATCH_PARENT));
         archiveItem = otherItem.addSubItem(archive, R.drawable.msg_archive, LocaleController.getString(R.string.Archive));
+        if (isArchive() && app.exteraless.chats.ArchiveFolders.enabled()) {
+            otherItem.addSubItem(archive_folder, R.drawable.msg_addfolder, LocaleController.getString(R.string.OEArchiveFolderMoveTo));
+        }
         pin2Item = otherItem.addSubItem(pin2, R.drawable.msg_pin, LocaleController.getString(R.string.DialogPin));
         addToFolderItem = otherItem.addSubItem(add_to_folder, R.drawable.msg_addfolder, LocaleController.getString(R.string.FilterAddTo));
         removeFromFolderItem = otherItem.addSubItem(remove_from_folder, R.drawable.msg_removefolder, LocaleController.getString(R.string.FilterRemoveFrom));
@@ -9947,7 +9959,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                 performSelectedDialogsAction(didsCopy, action, false, false, param ? dialogsIdsPossibleToRevoke : null);
                                 getMessagesController().setDialogsInTransaction(false);
                                 getMessagesController().checkIfFolderEmpty(folderId);
-                                if (folderId != 0 && getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 0) {
+                                if (folderId != 0 && getDialogsArrayRaw(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 0) {
                                     viewPages[0].listView.setEmptyView(null);
                                     viewPages[0].progressView.setVisibility(View.INVISIBLE);
                                     finishFragment();
@@ -10070,7 +10082,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             if (action == clear && ChatObject.isChannel(chat) && (!chat.megagroup || ChatObject.isPublic(chat))) {
                                 getMessagesController().deleteDialog(selectedDialog, 2, param);
                             } else {
-                                if (action == delete && folderId != 0 && getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 1) {
+                                if (action == delete && folderId != 0 && getDialogsArrayRaw(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 1) {
                                     viewPages[0].progressView.setVisibility(View.INVISIBLE);
                                 }
 
@@ -11703,6 +11715,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private ArrayList<TLRPC.Dialog> botShareDialogs;
 
+    private boolean rawDialogsArray;
+
+    /** The archive list without the local-folder filter: emptiness checks must see the whole archive, not one folder. */
+    private ArrayList<TLRPC.Dialog> getDialogsArrayRaw(int currentAccount, int dialogsType, int folderId, boolean frozen) {
+        rawDialogsArray = true;
+        try {
+            return getDialogsArray(currentAccount, dialogsType, folderId, frozen);
+        } finally {
+            rawDialogsArray = false;
+        }
+    }
+
     @NonNull
     public ArrayList<TLRPC.Dialog> getDialogsArray(int currentAccount, int dialogsType, int folderId, boolean frozen) {
         if (frozen && frozenDialogsList != null) {
@@ -11710,6 +11734,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         MessagesController messagesController = AccountInstance.getInstance(currentAccount).getMessagesController();
         if (dialogsType == DIALOGS_TYPE_DEFAULT) {
+            if (folderId == 1 && !rawDialogsArray && app.exteraless.chats.ArchiveFolders.enabled()) {
+                return app.exteraless.chats.ArchiveFolders.filter(currentAccount, messagesController.getDialogs(folderId));
+            }
             return messagesController.getDialogs(folderId);
         } else if (dialogsType == DIALOGS_TYPE_WIDGET || dialogsType == DIALOGS_TYPE_IMPORT_HISTORY) {
             return messagesController.dialogsServerOnly;
@@ -14344,7 +14371,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     performSelectedDialogsAction(didsCopy, delete, false, false, revokeIds);
                     getMessagesController().setDialogsInTransaction(false);
                     getMessagesController().checkIfFolderEmpty(folderId);
-                    if (folderId != 0 && getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 0) {
+                    if (folderId != 0 && getDialogsArrayRaw(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 0) {
                         viewPages[0].listView.setEmptyView(null);
                         viewPages[0].progressView.setVisibility(View.INVISIBLE);
                         finishFragment();
@@ -14365,7 +14392,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         final boolean revoke = revokeIds != null && revokeIds.contains(selectedDialog);
         hideActionMode(false);
-        if (folderId != 0 && getDialogsArray(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 1) {
+        if (folderId != 0 && getDialogsArrayRaw(currentAccount, viewPages[0].dialogsType, folderId, false).size() == 1) {
             viewPages[0].progressView.setVisibility(View.INVISIBLE);
         }
         debugLastUpdateAction = 3;

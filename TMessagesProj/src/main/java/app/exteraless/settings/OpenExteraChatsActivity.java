@@ -182,6 +182,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int forwardMultiSelectRow = -1;
     private int dismissMenuOnDragOutRow = -1;
     private int liveTypingPreviewRow = -1;
+    private int archiveFoldersRow = -1;
     private int disableGlobalSearchRow = -1;
     private int searchHashtagChatRow = -1;
     private int searchHashtagChannelRow = -1;
@@ -488,6 +489,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         hideKeyboardOnScrollRow = addRow("hideKeyboardOnScroll");
         forwardMultiSelectRow = addRow("forwardMultiSelect");
         dismissMenuOnDragOutRow = addRow("dismissMenuOnDragOut");
+        archiveFoldersRow = addRow("archiveFolders");
         chatsDividerRow = addRow();
 
         inputHeaderRow = addRow("inputHeader");
@@ -2106,6 +2108,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == hideKeyboardOnScrollRow) return NekoConfig.hideKeyboardOnChatScroll;
         if (position == forwardMultiSelectRow) return NekoConfig.forwardMultiSelectByTap;
         if (position == dismissMenuOnDragOutRow) return ChatsConfig.dismissMenuOnDragOut;
+        if (position == archiveFoldersRow) return ChatsConfig.archiveFolders;
         if (position == liveTypingPreviewRow) return ChatsConfig.liveTypingPreview;
         if (position == disableGlobalSearchRow) return NaConfig.INSTANCE.getDisableGlobalSearch();
         if (position == addCommaRow) return OpenExteraConfig.addCommaAfterMention;
@@ -2824,6 +2827,11 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                         getString(R.string.OEChatsLiveTypingPreview),
                         getString(R.string.OEChatsLiveTypingPreviewInfo),
                         ChatsConfig.liveTypingPreview.Bool(), false, false);
+            } else if (position == archiveFoldersRow) {
+                cell.setTextAndValueAndCheck(
+                        getString(R.string.OEChatsArchiveFolders),
+                        getString(R.string.OEChatsArchiveFoldersInfo),
+                        ChatsConfig.archiveFolders.Bool(), false, false);
             } else if (position == dismissMenuOnDragOutRow) {
                 cell.setTextAndValueAndCheck(
                         getString(R.string.OEChatsDismissMenuOnDragOut),
