@@ -63,6 +63,8 @@ public final class DialogMorph {
     private float revealRadius;
     private ViewOutlineProvider panelOutline;
     private boolean panelClipped;
+    // the panel's own outline clip (a glass dialog clips its content to the window's rounded corners)
+    private boolean panelClipToOutline;
     private final ViewOutlineProvider revealOutline = new ViewOutlineProvider() {
         @Override
         public void getOutline(View view, Outline outline) {
@@ -196,6 +198,7 @@ public final class DialogMorph {
         if (!panelClipped) {
             panelClipped = true;
             panelOutline = panel.getOutlineProvider();
+            panelClipToOutline = panel.getClipToOutline();
             panel.setOutlineProvider(revealOutline);
             panel.setClipToOutline(true);
         }
@@ -253,7 +256,7 @@ public final class DialogMorph {
         done = true;
         if (panelClipped) {
             panelClipped = false;
-            panel.setClipToOutline(false);
+            panel.setClipToOutline(panelClipToOutline);
             panel.setOutlineProvider(panelOutline);
         }
         if (current == this) {
