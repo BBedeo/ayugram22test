@@ -855,6 +855,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (morph == null) {
             card.setAlpha(1f);
             meltMusicCard(true, null);
+        } else {
+            morph.setLateReveal();
         }
     }
 
@@ -891,9 +893,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             final float c = Math.max(0f, Math.min(1f, p));
             clip.set(AndroidUtilities.lerp(cardW / 2f - pillW / 2f, side, p), 0, AndroidUtilities.lerp(cardW / 2f + pillW / 2f, cardW - side, p), AndroidUtilities.lerp(pillH, cardH, p));
             radius[0] = AndroidUtilities.lerp(pillH / 2f, fullRadius, c);
-            card.setTranslationX(tx0 * (1f - p));
-            card.setTranslationY(ty0 * (1f - p));
-            card.setAlpha(Math.min(1f, c * 4f));
+            card.setTranslationX(in ? tx0 * (1f - p) : 0f);
+            card.setTranslationY(in ? ty0 * (1f - p) : 0f);
+            card.setAlpha(Math.min(1f, c * (in ? 4f : 2f)));
             card.invalidateOutline();
         };
         value.setValue(in ? 0f : 1f);
@@ -6300,6 +6302,31 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
         }
 
+        // an open music card folds on a tap anywhere else and on a scroll
+        listView.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
+            @Override
+            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+                if (musicCardExpanded && e.getAction() == MotionEvent.ACTION_DOWN) {
+                    if (musicView != null) {
+                        musicView.getButtonBoundsOnScreen(musicPillBounds);
+                    }
+                    final View child = rv.findChildViewUnder(e.getX(), e.getY());
+                    final boolean onCard = child != null && rv.getChildAdapterPosition(child) == musicCardRow;
+                    if (!onCard && !musicPillBounds.contains(e.getRawX(), e.getRawY())) {
+                        foldMusicCard();
+                    }
+                }
+                return false;
+            }
+        });
+        listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING && musicCardExpanded) {
+                    foldMusicCard();
+                }
+            }
+        });
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
 
             @Override

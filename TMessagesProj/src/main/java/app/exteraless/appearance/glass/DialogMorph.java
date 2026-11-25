@@ -44,6 +44,18 @@ public final class DialogMorph {
 
     private static @Nullable DialogMorph current;
 
+    // a content that is not a dialog (a card in a list): the glass blob is seen for longer, the content comes late
+    private float duration = DURATION, fadeFrom = 0.08f, fadeLen = 0.3f, handoffAt = HANDOFF_AT;
+
+    /** The glass shape grows bare and the panel fades in only once it is nearly there. */
+    public DialogMorph setLateReveal() {
+        duration = 0.62f;
+        fadeFrom = 0.42f;
+        fadeLen = 0.36f;
+        handoffAt = 0.86f;
+        return this;
+    }
+
     private final Ghost host;
     private final View panel;
     private final GlassWindowBackdrop backdrop;
@@ -192,7 +204,7 @@ public final class DialogMorph {
         target.set(panelLoc[0], panelLoc[1], panelLoc[0] + panel.getWidth(), panelLoc[1] + panel.getHeight());
 
         final float t = (now - startTime) / 1000f;
-        final float u = Utilities.clamp01(t / DURATION);
+        final float u = Utilities.clamp01(t / duration);
         // the same springs as the glass menus
         final float pw = t > 0.5f ? 1f : (float) springStep(t, 0.78, 0.30);
         final float ph = t > 0.5f ? 1f : (float) springStep(t - 0.02, 0.80, 0.34);
@@ -211,7 +223,7 @@ public final class DialogMorph {
             panel.setClipToOutline(true);
         }
         panel.invalidateOutline();
-        panel.setAlpha(Utilities.clamp01((u - 0.08f) / 0.3f));
+        panel.setAlpha(Utilities.clamp01((u - fadeFrom) / fadeLen));
         host.getLocationOnScreen(hostLoc);
         lens.setRadius(radius);
         rim.setRadius(radius / AndroidUtilities.density);
@@ -219,13 +231,13 @@ public final class DialogMorph {
                 Math.round(shape.right) - hostLoc[0], Math.round(shape.bottom) - hostLoc[1]);
         // the lens starts lifted and settles as the shape grows
         lens.setElasticPressProgress(1f - Utilities.clamp01(Math.max(pw, ph)));
-        final int alpha = Math.round(255 * (1f - Utilities.clamp01((u - HANDOFF_AT) / (1f - HANDOFF_AT))));
+        final int alpha = Math.round(255 * (1f - Utilities.clamp01((u - handoffAt) / (1f - handoffAt))));
         if (alpha != lastAlpha) {
             lastAlpha = alpha;
             layer.setAlpha(alpha);
         }
 
-        if (!handedOff && u >= HANDOFF_AT) {
+        if (!handedOff && u >= handoffAt) {
             handedOff = true;
             handoff.run(snapshot);
         }
