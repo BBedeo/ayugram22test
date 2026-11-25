@@ -812,8 +812,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         musicCardExpanded = true;
         AndroidUtilities.cancelRunOnUIThread(collapseMusicCard);
         AndroidUtilities.runOnUIThread(collapseMusicCard, 6000);
+        // the rows jump at once, the card grows into the space they leave
+        final RecyclerView.ItemAnimator animator = listView.getItemAnimator();
+        listView.setItemAnimator(null);
         updateListAnimated(false);
-        listView.post(() -> listView.post(() -> meltMusicCard(true, null)));
+        listView.post(() -> listView.post(() -> {
+            listView.setItemAnimator(animator);
+            meltMusicCard(true, null);
+        }));
     }
 
     private void foldMusicCard() {
@@ -823,7 +829,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
         meltMusicCard(false, () -> {
             musicCardExpanded = false;
+            final RecyclerView.ItemAnimator animator = listView.getItemAnimator();
+            listView.setItemAnimator(null);
             updateListAnimated(false);
+            listView.post(() -> listView.setItemAnimator(animator));
         });
     }
 
