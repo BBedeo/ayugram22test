@@ -219,6 +219,7 @@ public class HintView extends FrameLayout {
         hasCloseButton = true;
         imageView = new ImageView(getContext());
         imageView.setImageResource(R.drawable.msg_mini_close_tooltip);
+        imageView.setContentDescription(LocaleController.getString(R.string.Close));
         imageView.setScaleType(ImageView.ScaleType.CENTER);
         ThemeBind.colorFilter(imageView, ThemeBind.alpha(Theme.key_chat_gifSaveHintText, 125), resourcesProvider, PorterDuff.Mode.MULTIPLY);
         addView(imageView, LayoutHelper.createFrame(34, 34, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 0, isTopArrow ? 3 : 0, 0, isTopArrow ? 0 : 3));
