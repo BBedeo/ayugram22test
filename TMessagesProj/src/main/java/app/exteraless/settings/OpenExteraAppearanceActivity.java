@@ -154,6 +154,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int md3ListItemsRow;
     private int md3PlayerRow;
     private int md3MiniPlayerRow;
+    private int md3ProfileCardRow;
+    private int md3ProfileAuraRow;
     private boolean md3Expanded;
     private int iosGroupRow;
     private int iosLoadingRow;
@@ -271,13 +273,15 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             md3SliderRow = addRow("md3Slider");
             md3SwitchRow = addRow("md3Switch");
             md3ChatHeaderRow = addRow("md3ChatHeader");
+            md3ProfileCardRow = addRow("md3ProfileCard");
+            md3ProfileAuraRow = addRow("md3ProfileAura");
             md3NavBarRow = addRow("md3NavBar");
             md3ListItemsRow = addRow("md3ListItems");
             md3PlayerRow = addRow("md3Player");
             md3MiniPlayerRow = addRow("md3MiniPlayer");
         } else {
             md3LoadingRow = md3SliderRow = md3SwitchRow = md3ChatHeaderRow = md3NavBarRow = md3ListItemsRow = -1;
-            md3PlayerRow = md3MiniPlayerRow = -1;
+            md3PlayerRow = md3MiniPlayerRow = md3ProfileCardRow = md3ProfileAuraRow = -1;
         }
         iosGroupRow = addRow("iosStyles");
         if (iosExpanded) {
@@ -908,6 +912,24 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }
             rebuildAllAndSelf(view, enable);
             return;
+        } else if (position == md3ProfileCardRow) {
+            boolean enable = !AppearanceConfig.md3ProfileCard.Bool();
+            AppearanceConfig.md3ProfileCard.setConfigBool(enable);
+            if (enable) {
+                AppearanceConfig.profileGroupedCard.setConfigBool(false);
+                notifyRow(iosProfileCardRow);
+            }
+            notifyRow(md3ProfileCardRow);
+            return;
+        } else if (position == md3ProfileAuraRow) {
+            boolean enable = !AppearanceConfig.md3ProfileAura.Bool();
+            AppearanceConfig.md3ProfileAura.setConfigBool(enable);
+            if (enable) {
+                AppearanceConfig.profileAura.setConfigBool(false);
+                notifyRow(iosProfileAuraRow);
+            }
+            notifyRow(md3ProfileAuraRow);
+            return;
         } else if (position == md3MiniPlayerRow) {
             boolean enable = !AppearanceConfig.md3MiniPlayer.Bool();
             AppearanceConfig.md3MiniPlayer.setConfigBool(enable);
@@ -955,11 +977,21 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             rebuildAllAndSelf(view, enable);
             return;
         } else if (position == iosProfileCardRow) {
-            AppearanceConfig.profileGroupedCard.setConfigBool(!AppearanceConfig.profileGroupedCard.Bool());
+            boolean enable = !AppearanceConfig.profileGroupedCard.Bool();
+            AppearanceConfig.profileGroupedCard.setConfigBool(enable);
+            if (enable) {
+                AppearanceConfig.md3ProfileCard.setConfigBool(false);
+                notifyRow(md3ProfileCardRow);
+            }
             notifyRow(iosProfileCardRow);
             return;
         } else if (position == iosProfileAuraRow) {
-            AppearanceConfig.profileAura.setConfigBool(!AppearanceConfig.profileAura.Bool());
+            boolean enable = !AppearanceConfig.profileAura.Bool();
+            AppearanceConfig.profileAura.setConfigBool(enable);
+            if (enable) {
+                AppearanceConfig.md3ProfileAura.setConfigBool(false);
+                notifyRow(md3ProfileAuraRow);
+            }
             notifyRow(iosProfileAuraRow);
             return;
         } else if (position == iosNavBarRow) {
@@ -1522,6 +1554,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == md3ChatHeaderRow) {
                         cell.setText(getString(R.string.OEAppearanceNewChatHeaderStyle), "",
                                 AppearanceConfig.newChatHeaderStyle.Bool(), true, true);
+                    } else if (position == md3ProfileCardRow) {
+                        cell.setText(getString(R.string.OEAppearanceProfileGroupedCard), "",
+                                AppearanceConfig.md3ProfileCard.Bool(), true, true);
+                    } else if (position == md3ProfileAuraRow) {
+                        cell.setText(getString(R.string.OEAppearanceProfileAura), "",
+                                AppearanceConfig.md3ProfileAura.Bool(), true, true);
                     } else if (position == md3NavBarRow) {
                         cell.setText(getString(R.string.OEAppearanceNewNavigationBarStyle), "",
                                 AppearanceConfig.newNavigationBarStyle.Bool(), true, true);
@@ -1725,6 +1763,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     || position == md3SwitchRow || position == md3ChatHeaderRow
                     || position == md3NavBarRow || position == md3ListItemsRow
                     || position == md3PlayerRow || position == md3MiniPlayerRow
+                    || position == md3ProfileCardRow || position == md3ProfileAuraRow
                     || position == iosLoadingRow || position == iosSliderRow
                     || position == iosSwitchRow || position == iosChatHeaderRow
                     || position == iosProfileCardRow || position == iosProfileAuraRow
@@ -1762,6 +1801,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 () -> isMd3(NaConfig.INSTANCE.getSliderStyle().Int()),
                 () -> isMd3Switch(NaConfig.INSTANCE.getSwitchStyle().Int()),
                 AppearanceConfig.newChatHeaderStyle::Bool,
+                AppearanceConfig.md3ProfileCard::Bool,
+                AppearanceConfig.md3ProfileAura::Bool,
                 AppearanceConfig.newNavigationBarStyle::Bool,
                 AppearanceConfig.m3ListItems::Bool,
                 AppearanceConfig.md3Player::Bool,
@@ -1845,6 +1886,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (enable) {
             AppearanceConfig.newLoadingStyle.setConfigBool(false);
             AppearanceConfig.newChatHeaderStyle.setConfigBool(false);
+            AppearanceConfig.md3ProfileCard.setConfigBool(false);
+            AppearanceConfig.md3ProfileAura.setConfigBool(false);
             AppearanceConfig.newNavigationBarStyle.setConfigBool(false);
             AppearanceConfig.m3ListItems.setConfigBool(false);
             AppearanceConfig.md3Player.setConfigBool(false);
@@ -1871,6 +1914,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         boolean enable = md3SelectedCount() == 0;
         AppearanceConfig.newLoadingStyle.setConfigBool(enable);
         AppearanceConfig.newChatHeaderStyle.setConfigBool(enable);
+        AppearanceConfig.md3ProfileCard.setConfigBool(enable);
+        AppearanceConfig.md3ProfileAura.setConfigBool(enable);
         AppearanceConfig.newNavigationBarStyle.setConfigBool(enable);
         AppearanceConfig.m3ListItems.setConfigBool(enable);
         AppearanceConfig.md3Player.setConfigBool(enable);
@@ -1878,6 +1923,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (enable) {
             AppearanceConfig.iosLoadingStyle.setConfigBool(false);
             AppearanceConfig.iosChatHeader.setConfigBool(false);
+            AppearanceConfig.profileGroupedCard.setConfigBool(false);
+            AppearanceConfig.profileAura.setConfigBool(false);
             AppearanceConfig.iosNavigationBarStyle.setConfigBool(false);
             AppearanceConfig.iosListItems.setConfigBool(false);
             AppearanceConfig.iosPlayer.setConfigBool(false);

@@ -100,6 +100,8 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosChatHeader", "OEAppearanceIosChatHeader");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosProfileCard", "OEAppearanceProfileGroupedCard");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosProfileAura", "OEAppearanceProfileAura");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:md3ProfileCard", "OEAppearanceProfileGroupedCard");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:md3ProfileAura", "OEAppearanceProfileAura");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosNavBar", "OEAppearanceIosNavigationBarStyle");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosListItems", "OEAppearanceM3ListItems");
         SEARCH_TITLE_ALIASES.put("OEAppearance:iosPlayer", "OEAppearanceMd3Player");

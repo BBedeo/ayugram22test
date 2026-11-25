@@ -342,6 +342,8 @@ public final class EtgBackup {
         bool(list, "iosChatHeader", AppearanceConfig.iosChatHeader);
         bool(list, "profileGroupedCard", AppearanceConfig.profileGroupedCard);
         bool(list, "profileAura", AppearanceConfig.profileAura);
+        bool(list, "md3ProfileCard", AppearanceConfig.md3ProfileCard);
+        bool(list, "md3ProfileAura", AppearanceConfig.md3ProfileAura);
         bool(list, "profileMusicCard", AppearanceConfig.profileMusicCard);
         bool(list, "useSystemFonts", NekoConfig.typeface);
         bool(list, "gooeyAvatarAnimation", AppearanceConfig.gooeyAvatarAnimation);

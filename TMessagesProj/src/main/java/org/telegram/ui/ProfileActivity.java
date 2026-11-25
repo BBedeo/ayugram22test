@@ -11442,7 +11442,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     /** Liquid Glass with the aura: the list is see-through and {@link #drawProfileAura} paints the page under it. */
     private boolean profileAuraOwnsPage() {
-        return glassPhotoHeader() && app.exteraless.appearance.AppearanceConfig.profileAura();
+        return glassPhotoHeader() && profileAuraOn();
+    }
+    private static boolean profileAuraOn() {
+        return app.exteraless.appearance.AppearanceConfig.profileAura() || app.exteraless.appearance.AppearanceConfig.md3ProfileAura();
     }
 
     /** Where the photo ends and the page starts, in the screen's coordinates. */
@@ -11475,7 +11478,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             auraAnimated = new AnimatedFloat(host, 450, CubicBezierInterpolator.EASE_OUT_QUINT);
         }
         final float t = auraAnimated.set(color != 0 ? 1f : 0f);
-        if (color == 0 && glassPhotoHeader() && app.exteraless.appearance.AppearanceConfig.profileAura()) {
+        if (color == 0 && glassPhotoHeader() && profileAuraOn()) {
             // the photo is not loaded yet: look again for a few seconds
             final long now = SystemClock.uptimeMillis();
             if (auraPollUntil == 0) {
@@ -11531,12 +11534,16 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
      * photo set on the page's own colour; 0 without a photo or with the setting off.
      */
     private int getProfileAuraColor() {
-        if (!glassPhotoHeader() || !app.exteraless.appearance.AppearanceConfig.profileAura() || avatarImage == null) {
+        if (!glassPhotoHeader() || !profileAuraOn() || avatarImage == null) {
             return 0;
         }
         if (topView != null && topView.hasColorById && topView.color1 != 0) {
             // a profile colour paints the header itself: the page pours out of that very colour, not the photo's
             return topView.color1 | 0xFF000000;
+        }
+        if (!app.exteraless.appearance.AppearanceConfig.profileAura()) {
+            // Material 3: the page is tinted with the theme's primary colour, not the photo's
+            return ColorUtils.blendARGB(getThemedColor(Theme.key_windowBackgroundGray), getThemedColor(Theme.key_featuredStickers_addButton), 0.16f) | 0xFF000000;
         }
         final ImageReceiver receiver = avatarImage.getImageReceiver();
         final Object source = receiver.getDrawable() instanceof VectorAvatarThumbDrawable ? receiver.getDrawable() : receiver.getBitmap();

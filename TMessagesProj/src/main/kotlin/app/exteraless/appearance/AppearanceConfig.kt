@@ -487,6 +487,26 @@ object AppearanceConfig {
         return profileGroupedCard.Bool()
     }
 
+    /** Material 3 counterpart of [profileGroupedCard]: the profile rows are separate tonal tiles. */
+    @JvmField
+    val md3ProfileCard =
+        addConfig("OEAppearanceMd3ProfileCard", ConfigItem.configTypeBool, false)
+    @JvmStatic
+    fun md3ProfileCard(): Boolean {
+        ensureLoaded()
+        return md3ProfileCard.Bool()
+    }
+
+    /** Material 3 counterpart of [profileAura]: the page under the photo is tinted with the theme's primary colour. */
+    @JvmField
+    val md3ProfileAura =
+        addConfig("OEAppearanceMd3ProfileAura", ConfigItem.configTypeBool, false)
+    @JvmStatic
+    fun md3ProfileAura(): Boolean {
+        ensureLoaded()
+        return md3ProfileAura.Bool()
+    }
+
     /** Liquid Glass profile: the main colour of the photo pours from it into the page below. */
     @JvmField
     val profileAura =
