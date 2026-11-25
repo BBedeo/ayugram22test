@@ -744,6 +744,7 @@ public class EditTextBoldCursor extends EditTextEffects {
     @Override
     protected void onTextChanged(CharSequence text, int start, int lengthBefore, int lengthAfter) {
         super.onTextChanged(text, start, lengthBefore, lengthAfter);
+        lastTextChange = SystemClock.uptimeMillis();
         if (transformHintToHeader && !transformHintToHeaderOnFocus) {
             checkHeaderVisibility(true);
         }
@@ -1200,6 +1201,10 @@ public class EditTextBoldCursor extends EditTextEffects {
             FileLog.e(e);
         }
         attachedToWindow = getRootView();
+        if (!systemMagnifierSuppressed && app.exteraless.appearance.glass.GlassMagnifier.enabled()) {
+            systemMagnifierSuppressed = true;
+            app.exteraless.appearance.glass.GlassMagnifier.suppressSystem(this);
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             Choreographer60FpsContent.getInstance().addFrameCallback(invalidateCallback, 2);
         }
@@ -1209,9 +1214,47 @@ public class EditTextBoldCursor extends EditTextEffects {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         attachedToWindow = null;
+        removeCallbacks(hideGlassMagnifier);
+        if (glassMagnifier != null) {
+            glassMagnifier.dismiss();
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             Choreographer60FpsContent.getInstance().removeFrameCallback(invalidateCallback);
         }
+    }
+
+    private app.exteraless.appearance.glass.GlassMagnifier glassMagnifier;
+    private long lastTextChange;
+    private int prevSelStart = -1, prevSelEnd = -1;
+    private boolean systemMagnifierSuppressed;
+    private final Runnable hideGlassMagnifier = () -> {
+        if (glassMagnifier != null) {
+            glassMagnifier.dismiss();
+        }
+    };
+
+    @Override
+    protected void onSelectionChanged(int selStart, int selEnd) {
+        super.onSelectionChanged(selStart, selEnd);
+        final int moved = selStart != prevSelStart ? selStart : selEnd;
+        prevSelStart = selStart;
+        prevSelEnd = selEnd;
+        if (!app.exteraless.appearance.glass.GlassMagnifier.enabled() || !isFocused() || getLayout() == null
+                || SystemClock.uptimeMillis() - lastTextChange < 120 || moved < 0 || moved > length()) {
+            return;
+        }
+        if (glassMagnifier == null) {
+            glassMagnifier = new app.exteraless.appearance.glass.GlassMagnifier(this);
+        }
+        final Layout layout = getLayout();
+        final int line = layout.getLineForOffset(moved);
+        final float x = layout.getPrimaryHorizontal(moved) + getCompoundPaddingLeft() - getScrollX();
+        final float y = (layout.getLineTop(line) + layout.getLineBottom(line)) / 2f + getExtendedPaddingTop() - getScrollY();
+        final int[] at = new int[2];
+        getLocationOnScreen(at);
+        glassMagnifier.show(at[0] + x, at[1] + y);
+        removeCallbacks(hideGlassMagnifier);
+        postDelayed(hideGlassMagnifier, 700);
     }
 
     private static final String BLINK_CLASS = "android.widget.Editor$Blink";

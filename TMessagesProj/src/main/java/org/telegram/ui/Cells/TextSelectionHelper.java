@@ -418,7 +418,13 @@ public abstract class TextSelectionHelper<Cell extends TextSelectionHelper.Selec
     }
 
 
+    private app.exteraless.appearance.glass.GlassMagnifier glassMagnifier;
+
     private void hideMagnifier() {
+        if (glassMagnifier != null) {
+            glassMagnifier.dismiss();
+            glassMagnifier = null;
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             if (magnifier != null) {
                 magnifier.dismiss();
@@ -471,7 +477,13 @@ public abstract class TextSelectionHelper<Cell extends TextSelectionHelper.Selec
                 magnifierDx = (x - magnifierXanimated) / 100f;
             }
 
-            if (magnifier == null) {
+            if (app.exteraless.appearance.glass.GlassMagnifier.enabled()) {
+                if (glassMagnifier == null) {
+                    glassMagnifier = new app.exteraless.appearance.glass.GlassMagnifier(textSelectionOverlay);
+                    magnifierYanimated = magnifierY;
+                    magnifierXanimated = magnifierX;
+                }
+            } else if (magnifier == null) {
                 magnifier = new Magnifier(textSelectionOverlay);
                 magnifierYanimated = magnifierY;
                 magnifierXanimated = magnifierX;
@@ -497,6 +509,12 @@ public abstract class TextSelectionHelper<Cell extends TextSelectionHelper.Selec
                 magnifierXanimated = magnifierX;
             }
 
+            if (glassMagnifier != null) {
+                final int[] at = new int[2];
+                textSelectionOverlay.getLocationOnScreen(at);
+                glassMagnifier.show(at[0] + magnifierXanimated, at[1] + magnifierYanimated + lineHeight * 1.5f + dp(8));
+                return;
+            }
             magnifier.show(
                 magnifierXanimated, magnifierYanimated + lineHeight * 1.5f + dp(8)
             );
