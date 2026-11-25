@@ -818,7 +818,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         updateListAnimated(false);
         listView.post(() -> listView.post(() -> {
             listView.setItemAnimator(animator);
-            meltMusicCard(true, null);
+            growMusicCard();
         }));
     }
 
@@ -834,6 +834,28 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             updateListAnimated(false);
             listView.post(() -> listView.setItemAnimator(animator));
         });
+    }
+
+    /** The card comes out of the pill as the glass menus come out of the header's buttons: a glass lens grows under it while it fades in. */
+    private void growMusicCard() {
+        final RecyclerView.ViewHolder holder = musicCardRow >= 0 && listView != null ? listView.findViewHolderForAdapterPosition(musicCardRow) : null;
+        final android.app.Activity activity = getParentActivity();
+        if (holder == null || musicView == null || activity == null || !(listView.getParent() instanceof ViewGroup)
+                || !app.exteraless.appearance.glass.GlassWindowBackdrop.supported()) {
+            meltMusicCard(true, null);
+            return;
+        }
+        final View card = holder.itemView;
+        card.setAlpha(0f);
+        musicView.getButtonBoundsOnScreen(musicPillBounds);
+        final ViewGroup parent = (ViewGroup) listView.getParent();
+        final app.exteraless.appearance.glass.DialogMorph morph = app.exteraless.appearance.glass.DialogMorph.start(
+                activity, parent, parent.indexOfChild(listView), new android.graphics.RectF(musicPillBounds), card,
+                resourcesProvider, getThemedColor(Theme.key_dialogBackground), bitmap -> {});
+        if (morph == null) {
+            card.setAlpha(1f);
+            meltMusicCard(true, null);
+        }
     }
 
     /** The card melts out of the music pill (or back into it): a rounded clip grows from the pill's rect to the card, as the menus do from the header's buttons. */

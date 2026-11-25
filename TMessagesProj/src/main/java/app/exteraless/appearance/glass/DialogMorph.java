@@ -101,8 +101,16 @@ public final class DialogMorph {
     public static @Nullable DialogMorph start(@NonNull Activity activity, @NonNull RectF originScreen, @NonNull View panel,
                                               @Nullable Theme.ResourcesProvider resourcesProvider, int rimColor,
                                               @NonNull Utilities.Callback<Bitmap> handoff) {
+        return start(activity, null, -1, originScreen, panel, resourcesProvider, rimColor, handoff);
+    }
+
+    /** As above, with the ghost in {@code parent} at {@code index} (under the panel, when the panel is not a window of its own). */
+    public static @Nullable DialogMorph start(@NonNull Activity activity, @Nullable ViewGroup parent, int index, @NonNull RectF originScreen, @NonNull View panel,
+                                              @Nullable Theme.ResourcesProvider resourcesProvider, int rimColor,
+                                              @NonNull Utilities.Callback<Bitmap> handoff) {
         final View decor = activity.getWindow().getDecorView();
-        if (!(decor instanceof ViewGroup) || originScreen.isEmpty()) {
+        final ViewGroup container = parent != null ? parent : decor instanceof ViewGroup ? (ViewGroup) decor : null;
+        if (container == null || originScreen.isEmpty()) {
             return null;
         }
         if (current != null) {
@@ -111,7 +119,7 @@ public final class DialogMorph {
         final DialogMorph morph = new DialogMorph(activity, originScreen, panel, resourcesProvider, rimColor, handoff);
         current = morph;
         try {
-            ((ViewGroup) decor).addView(morph.host, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            container.addView(morph.host, index, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         } catch (Throwable t) {
             FileLog.e(t);
             current = null;
