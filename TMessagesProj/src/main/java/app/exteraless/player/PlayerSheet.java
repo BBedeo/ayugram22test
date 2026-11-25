@@ -1492,6 +1492,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             }
         }
         if (lyricsAnimator != null) {
+            // cancel() also delivers onAnimationEnd: without dropping the listener the fraction would first snap to the old target
+            lyricsAnimator.removeAllListeners();
             lyricsAnimator.cancel();
         }
         float target = value ? 1f : 0f;
