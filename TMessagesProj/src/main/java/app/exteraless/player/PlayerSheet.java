@@ -528,6 +528,13 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         controls.prev.setContentDescription(getString(R.string.AccDescrPrevious));
         controls.next.setContentDescription(getString(R.string.Next));
         layout.addView(controls);
+        if (Md3Player.isIosPlayer() && !previewMode) {
+            collapsedBar = new PlayerCollapsedBar(context);
+            collapsedBar.setAlpha(0f);
+            collapsedBar.setVisibility(View.INVISIBLE);
+            collapsedBar.setActions(this::togglePlay, () -> setControlsCollapsed(false));
+            layout.addView(collapsedBar);
+        }
 
         group = new LinearLayout(context);
         group.setOrientation(LinearLayout.HORIZONTAL);
@@ -1131,6 +1138,10 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         nc.removeObserver(this, NotificationCenter.audioInfoLoaded);
         nc.removeObserver(this, NotificationCenter.musicIdsLoaded);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.messagePlayingSpeedChanged);
+        AndroidUtilities.cancelRunOnUIThread(collapseRunnable);
+        if (collapseAnimator != null) {
+            collapseAnimator.cancel();
+        }
         if (colorAnimator != null) {
             colorAnimator.cancel();
         }
@@ -1397,6 +1408,92 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         updateSpeed();
     }
 
+    private PlayerCollapsedBar collapsedBar;
+    private boolean controlsCollapsed;
+    private ValueAnimator collapseAnimator;
+    private float collapseFraction;
+    private final Runnable collapseRunnable = () -> setControlsCollapsed(true);
+
+    private boolean canCollapse() {
+        return collapsedBar != null && !detached && !lyricsMode && !editing && !seeking
+                && !MediaController.getInstance().isMessagePaused();
+    }
+
+    /** Re-arms the idle timer: called on every touch of the sheet and whenever playback starts. */
+    private void controlsTouched() {
+        if (collapsedBar == null) {
+            return;
+        }
+        AndroidUtilities.cancelRunOnUIThread(collapseRunnable);
+        if (!controlsCollapsed && canCollapse()) {
+            AndroidUtilities.runOnUIThread(collapseRunnable, 6000);
+        }
+    }
+
+    private void setControlsCollapsed(boolean collapse) {
+        if (collapsedBar == null || controlsCollapsed == collapse) {
+            return;
+        }
+        if (collapse && !canCollapse()) {
+            return;
+        }
+        controlsCollapsed = collapse;
+        AndroidUtilities.cancelRunOnUIThread(collapseRunnable);
+        if (collapseAnimator != null) {
+            collapseAnimator.cancel();
+        }
+        collapsedBar.setVisibility(View.VISIBLE);
+        setCollapsedViewsVisible(true);
+        collapseAnimator = ValueAnimator.ofFloat(collapseFraction, collapse ? 1f : 0f);
+        collapseAnimator.setDuration(420);
+        collapseAnimator.setInterpolator(EMPHASIZED);
+        collapseAnimator.addUpdateListener(a -> applyCollapse((float) a.getAnimatedValue()));
+        collapseAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override
+            public void onAnimationCancel(android.animation.Animator animation) {
+                cancelled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                if (cancelled) {
+                    return;
+                }
+                setCollapsedViewsVisible(!controlsCollapsed);
+                collapsedBar.setVisibility(controlsCollapsed ? View.VISIBLE : View.INVISIBLE);
+                if (!controlsCollapsed) {
+                    controlsTouched();
+                }
+            }
+        });
+        collapseAnimator.start();
+    }
+
+    private void setCollapsedViewsVisible(boolean visible) {
+        final int v = visible ? View.VISIBLE : View.INVISIBLE;
+        seekBar.setVisibility(v);
+        timeRow.setVisibility(v);
+        controls.setVisibility(v);
+        if (group.getVisibility() != View.GONE) {
+            group.setVisibility(v);
+        }
+    }
+
+    private void applyCollapse(float p) {
+        collapseFraction = p;
+        final float a = 1f - p;
+        final float shift = dp(10) * p;
+        for (View view : new View[]{seekBar, timeRow, controls, group}) {
+            view.setAlpha(a);
+            view.setTranslationY(shift);
+        }
+        collapsedBar.setAlpha(p);
+        collapsedBar.setScaleX(0.7f + 0.3f * p);
+        collapsedBar.setScaleY(0.85f + 0.15f * p);
+    }
+
     private void togglePlay() {
         MediaController mc = MediaController.getInstance();
         if (mc.isDownloadingCurrentMessage()) {
@@ -1413,6 +1510,15 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     private void updatePlayState(boolean animated) {
         boolean playing = previewMode || !MediaController.getInstance().isMessagePaused();
         controls.setPlaying(playing, animated);
+        if (collapsedBar != null) {
+            collapsedBar.setPlaying(playing);
+            if (playing) {
+                controlsTouched();
+            } else {
+                setControlsCollapsed(false);
+                AndroidUtilities.cancelRunOnUIThread(collapseRunnable);
+            }
+        }
         controls.play.setContentDescription(getString(playing ? R.string.AccActionPause : R.string.AccActionPlay));
         seekBar.setPlaying(playing);
         updateSpin();
@@ -1447,6 +1553,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         }
         if (!seeking) {
             seekBar.setProgress(mo.audioProgress);
+        }
+        if (collapsedBar != null) {
+            collapsedBar.setProgress(displayProgress());
         }
         updateTimes();
         if (lyricsMode) {
@@ -1498,6 +1607,11 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             return;
         }
         lyricsMode = value;
+        if (value) {
+            setControlsCollapsed(false);
+        } else {
+            controlsTouched();
+        }
         lyricsButton.setActive(value, animated);
         lyricsButton.setRadius(lyricsRadius(value), animated);
         if (value) {
@@ -1912,6 +2026,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             controls.next.setColors(0, c.onSurface, 0, c.onSurface);
             controls.play.setColors(0, c.onSurface, 0, c.onSurface);
             likeButton.setColors(0, c.onSurface, 0, c.onSurface);
+            if (collapsedBar != null) {
+                collapsedBar.setColors(c.onSurface, ColorUtils.blendARGB(c.surface, c.onSurface, c.dark ? 0.18f : 0.05f));
+            }
             likeButton.setBackground(glassPlate(0, c));
             collapseButton.setBackground(glassPlate(1, c));
             moreButton.setBackground(glassPlate(2, c));
@@ -2764,6 +2881,18 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             if (editing || editorFraction > 0f || (previewMode && !isEnabled())) {
                 return false;
             }
+            if (collapsedBar != null && ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                final boolean onBar = controlsCollapsed
+                        && ev.getX() >= collapsedBar.getLeft() && ev.getX() <= collapsedBar.getRight()
+                        && ev.getY() >= collapsedBar.getTop() && ev.getY() <= collapsedBar.getBottom();
+                if (!onBar) {
+                    if (controlsCollapsed) {
+                        setControlsCollapsed(false);
+                    } else {
+                        controlsTouched();
+                    }
+                }
+            }
             return super.dispatchTouchEvent(ev);
         }
 
@@ -3013,6 +3142,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             seekBar.measure(exactW, MeasureSpec.makeMeasureSpec(dp(40), MeasureSpec.EXACTLY));
             timeRow.measure(exactW, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             controls.measure(exactW, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            if (collapsedBar != null) {
+                collapsedBar.measure(MeasureSpec.makeMeasureSpec(Math.max(0, columnWidth - dp(16)), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(48), MeasureSpec.EXACTLY));
+            }
             group.measure(islandActions ? MeasureSpec.makeMeasureSpec(columnWidth, MeasureSpec.AT_MOST) : exactW,
                     MeasureSpec.makeMeasureSpec(heightOf(PlayerStyle.BLOCK_ACTIONS), MeasureSpec.EXACTLY));
             titleRow.measure(exactW, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
@@ -3055,6 +3187,10 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             timeRow.layout(x, timeTop, x + w, timeTop + timeRow.getMeasuredHeight());
             int controlsTop = blockY[PlayerStyle.BLOCK_CONTROLS];
             controls.layout(x, controlsTop, x + w, controlsTop + controls.getMeasuredHeight());
+            if (collapsedBar != null) {
+                final int barTop = controlsTop + (controls.getMeasuredHeight() - collapsedBar.getMeasuredHeight()) / 2;
+                collapsedBar.layout(x + dp(8), barTop, x + dp(8) + collapsedBar.getMeasuredWidth(), barTop + collapsedBar.getMeasuredHeight());
+            }
             if (group.getVisibility() != GONE) {
                 int groupTop = blockY[PlayerStyle.BLOCK_ACTIONS];
                 int groupLeft = x + (w - group.getMeasuredWidth()) / 2;
