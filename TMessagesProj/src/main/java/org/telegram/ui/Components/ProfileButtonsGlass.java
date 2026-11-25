@@ -41,7 +41,7 @@ import me.vkryl.core.reference.ReferenceList;
 public final class ProfileButtonsGlass {
     /** What the photo under the buttons goes through, as the blur of the photo under the action buttons had it. */
     private static final float PHOTO_SATURATION = .65f;
-    private static final float PHOTO_BRIGHTNESS = .5f;
+    private static final float PHOTO_BRIGHTNESS = .7f;
 
     private static final float[] IDENTITY = new ColorMatrix().getArray();
     private static final float[] PHOTO_MATRIX;
