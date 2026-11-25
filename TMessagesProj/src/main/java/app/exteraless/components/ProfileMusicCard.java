@@ -70,6 +70,7 @@ public class ProfileMusicCard extends FrameLayout {
     private final GradientDrawable background;
 
     private boolean hasCover;
+    private boolean onGlass;
     private int backgroundColor;
     private int accentColor;
     private long currentEmojiId = -1;
@@ -99,8 +100,10 @@ public class ProfileMusicCard extends FrameLayout {
         cardLayout = new FrameLayout(context) {
             @Override
             protected void dispatchDraw(@NonNull Canvas canvas) {
-                emoji.setColor(accentColor);
-                drawPattern(canvas, emoji, getWidth(), getHeight(), hasCover ? 1f : 0.4f);
+                if (!onGlass) {
+                    emoji.setColor(accentColor);
+                    drawPattern(canvas, emoji, getWidth(), getHeight(), hasCover ? 1f : 0.4f);
+                }
                 super.dispatchDraw(canvas);
             }
         };
@@ -158,11 +161,16 @@ public class ProfileMusicCard extends FrameLayout {
         artistView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         artistView.setSingleLine(true);
         artistView.setEllipsize(TextUtils.TruncateAt.END);
-        artistView.setAlpha(0.6f);
         NotificationCenter.listenEmojiLoading(artistView);
         texts.addView(artistView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
 
         applyThemeColors();
+    }
+
+    /** On the glass of a menu the card has no surface of its own: the glass is the surface. */
+    public void setOnGlass(boolean onGlass) {
+        this.onGlass = onGlass;
+        applyColors();
     }
 
     public void setOnCardClickListener(Runnable listener) {
@@ -289,9 +297,13 @@ public class ProfileMusicCard extends FrameLayout {
     private void applyColors() {
         background.mutate();
         background.setColors(new int[]{backgroundColor, hasCover ? adjustHsl(backgroundColor, 1.5f) : backgroundColor});
-        int textColor = hasCover ? Color.WHITE : getThemedColor(Theme.key_windowBackgroundWhiteBlackText);
+        // transparent, not removed: the card's rounded clip is this drawable's outline
+        background.setAlpha(onGlass ? 0 : 255);
+        int textColor = onGlass ? getThemedColor(Theme.key_actionBarDefaultSubmenuItem)
+                : hasCover ? Color.WHITE : getThemedColor(Theme.key_windowBackgroundWhiteBlackText);
         nameView.setTextColor(textColor);
         artistView.setTextColor(textColor);
+        artistView.setAlpha(onGlass ? 0.75f : 0.6f);
         cardLayout.invalidate();
     }
 

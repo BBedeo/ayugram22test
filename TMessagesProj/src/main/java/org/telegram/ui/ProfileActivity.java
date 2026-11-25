@@ -854,6 +854,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (!inGlass) {
             io.setOnDismiss(onClosed).show();
         }
+        card.setOnGlass(inGlass);
         musicCardMenu = io;
         AndroidUtilities.runOnUIThread(closeMusicCard, 6000);
     }
@@ -8819,6 +8820,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                     super.setMenuOverlay(overlay, moreOverlayFromActions ? null : item);
                 }
+            }
+
+            @Override
+            public void setMenuGlassFrostedProgress(float progress) {
+                // the clear music card needs more frost than menu rows to keep its text readable
+                super.setMenuGlassFrostedProgress(moreOverlayFromMusic ? progress * 3f : progress);
             }
 
             @Override
