@@ -65,6 +65,7 @@ public class SlideChooseView extends View {
 
     private Path materialPath;
     private RectF materialRect;
+    private app.exteraless.appearance.glass.IosSliderThumb iosThumb;
 
     public SlideChooseView(Context context) {
         this(context, null);
@@ -354,7 +355,7 @@ public class SlideChooseView extends View {
             return;
         }
         if (iosSlider) {
-            drawIosSteppedSlider(canvas, cx, cy);
+            drawIosSteppedSlider(canvas, cx, cy, movingAnimated);
             return;
         }
         paint.setColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_switchTrackChecked), 80));
@@ -432,34 +433,38 @@ public class SlideChooseView extends View {
         canvas.drawRoundRect(materialRect, thumbWidth / 2f, thumbWidth / 2f, paint);
     }
 
-    private void drawIosSteppedSlider(Canvas canvas, float thumbCx, int cy) {
+    private void drawIosSteppedSlider(Canvas canvas, float thumbCx, int cy, float press) {
         if (materialRect == null) {
             materialRect = new RectF();
         }
         final float left = sideSide + circleSize / 2f;
         final float right = getMeasuredWidth() - sideSide - circleSize / 2f;
-        final float halfTrack = AndroidUtilities.dp(2.5f);
+        final float halfTrack = AndroidUtilities.dpf2(3);
         final float r = halfTrack;
 
-        paint.setColor(getThemedColor(Theme.key_switchTrack));
-        materialRect.set(left, cy - halfTrack, right, cy + halfTrack);
-        canvas.drawRoundRect(materialRect, r, r, paint);
-
-        paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
-        materialRect.set(left, cy - halfTrack, Math.max(left, thumbCx), cy + halfTrack);
-        canvas.drawRoundRect(materialRect, r, r, paint);
-
-        for (int a = 0; a < optionsStr.length; a++) {
-            float tickCx = left + (right - left) * a / (float) (optionsStr.length - 1);
-            paint.setColor(tickCx <= thumbCx ? 0x99FFFFFF : 0x55FFFFFF);
-            canvas.drawCircle(tickCx, cy, AndroidUtilities.dpf2(1.5f), paint);
+        if (iosThumb == null) {
+            iosThumb = new app.exteraless.appearance.glass.IosSliderThumb(this);
         }
+        final app.exteraless.appearance.glass.IosSliderThumb.Track track = c -> {
+            paint.setColor(getThemedColor(Theme.key_switchTrack));
+            materialRect.set(left, cy - halfTrack, right, cy + halfTrack);
+            c.drawRoundRect(materialRect, r, r, paint);
 
-        final float thumbR = AndroidUtilities.dp(10);
-        paint.setColor(0x28000000);
-        canvas.drawCircle(thumbCx, cy + AndroidUtilities.dpf2(1.4f), thumbR, paint);
-        paint.setColor(0xFFFFFFFF);
-        canvas.drawCircle(thumbCx, cy, thumbR, paint);
+            paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
+            materialRect.set(left, cy - halfTrack, Math.max(left, thumbCx), cy + halfTrack);
+            c.drawRoundRect(materialRect, r, r, paint);
+
+            for (int a = 0; a < optionsStr.length; a++) {
+                float tickCx = left + (right - left) * a / (float) (optionsStr.length - 1);
+                paint.setColor(tickCx <= thumbCx ? 0x99FFFFFF : 0x55FFFFFF);
+                c.drawCircle(tickCx, cy, AndroidUtilities.dpf2(1.5f), paint);
+            }
+        };
+        canvas.save();
+        iosThumb.clipTrack(canvas, thumbCx, cy, press, getMeasuredWidth());
+        track.draw(canvas);
+        canvas.restore();
+        iosThumb.draw(canvas, thumbCx, cy, getMeasuredWidth(), track);
     }
 
     private void drawIosSegmentedControl(Canvas canvas, float selectedIndexAnimated) {

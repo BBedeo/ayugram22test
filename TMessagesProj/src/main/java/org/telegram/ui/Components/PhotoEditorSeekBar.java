@@ -25,7 +25,8 @@ public class PhotoEditorSeekBar extends View {
     private Paint outerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final boolean ios = NaConfig.INSTANCE.getSliderStyle().Int() == SeekBarView.SLIDER_STYLE_IOS;
     private final RectF rect = new RectF();
-    private final Paint thumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final app.exteraless.appearance.glass.IosSliderThumb iosThumb = new app.exteraless.appearance.glass.IosSliderThumb(this);
+    private final AnimatedFloat pressAnimated = new AnimatedFloat(this, 0, 150, CubicBezierInterpolator.DEFAULT);
     private int thumbSize = AndroidUtilities.dp(ios ? 24 : 16);
     private int thumbDX = 0;
     private float progress = 0;
@@ -44,11 +45,6 @@ public class PhotoEditorSeekBar extends View {
         innerPaint.setColor(ios ? 0x59ffffff : 0xff4d4d4d);
         innerPaint.setAntiAlias(true);
         outerPaint.setColor(0xffffffff);
-        thumbPaint.setColor(0xffffffff);
-        if (ios) {
-            thumbPaint.setShadowLayer(AndroidUtilities.dp(3), 0, AndroidUtilities.dp(1), 0x40000000);
-            setLayerType(LAYER_TYPE_SOFTWARE, null);
-        }
     }
 
     public void setDelegate(PhotoEditorSeekBarDelegate delegate) {
@@ -127,15 +123,21 @@ public class PhotoEditorSeekBar extends View {
         int w = getMeasuredWidth();
         int cy = getMeasuredHeight() / 2;
         int thumbX = (int) ((w - thumbSize) * progress);
-        float half = AndroidUtilities.dp(2);
+        float half = AndroidUtilities.dp(3);
         float r = half;
-        rect.set(thumbSize / 2f, cy - half, w - thumbSize / 2f, cy + half);
-        canvas.drawRoundRect(rect, r, r, innerPaint);
-        float from = minValue == 0 ? thumbSize / 2f : w / 2f;
         float cx = thumbX + thumbSize / 2f;
-        rect.set(Math.min(from, cx), cy - half, Math.max(from, cx), cy + half);
-        canvas.drawRoundRect(rect, r, r, outerPaint);
-        canvas.drawCircle(cx, cy, thumbSize / 2f - AndroidUtilities.dp(2), thumbPaint);
+        float from = minValue == 0 ? thumbSize / 2f : w / 2f;
+        final app.exteraless.appearance.glass.IosSliderThumb.Track track = c -> {
+            rect.set(thumbSize / 2f, cy - half, w - thumbSize / 2f, cy + half);
+            c.drawRoundRect(rect, r, r, innerPaint);
+            rect.set(Math.min(from, cx), cy - half, Math.max(from, cx), cy + half);
+            c.drawRoundRect(rect, r, r, outerPaint);
+        };
+        canvas.save();
+        iosThumb.clipTrack(canvas, cx, cy, pressAnimated.set(pressed ? 1f : 0f), w);
+        track.draw(canvas);
+        canvas.restore();
+        iosThumb.draw(canvas, cx, cy, w, track);
     }
 
     @Override

@@ -86,6 +86,8 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
     private FrameLayout showMoreTextBackgroundView;
     private FrameLayout bottomShadow;
     private Drawable showMoreBackgroundDrawable;
+    private boolean seeThrough;
+    private final Paint erasePaint = new Paint();
 
     private LinkSpanDrawable pressedLink;
     private float pressedLinkYOffset;
@@ -206,6 +208,18 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
 
     private int lastRippleColor;
 
+    /**
+     * For a see-through card: no opaque patch behind "more" (the text under it is erased instead) and a
+     * {@code labelColor} caption.
+     */
+    public void setSeeThrough(int labelColor) {
+        seeThrough = true;
+        erasePaint.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        valueTextView.setTextColor(labelColor);
+        showMoreTextBackgroundView.setBackground(null);
+        invalidate();
+    }
+
     @Override
     public void updateColors() {
         Theme.profile_aboutTextPaint.linkColor = processColor(Theme.getColor(Theme.key_chat_messageLinkIn, resourcesProvider));
@@ -287,20 +301,31 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
         float alpha = parent == null ? 1f : (float) Math.pow(parent.getAlpha(), 2f);
 
         final boolean glassFade = app.exteraless.appearance.glass.GlassTokens.isActive() && bottomShadow.getAlpha() > 0;
-        if (glassFade) {
+        final float moreAlpha = showMoreTextBackgroundView.getAlpha();
+        if (glassFade || seeThrough && moreAlpha > 0) {
             // Liquid Glass: the card is translucent, so the collapsed text fades out itself (no page-coloured overlay)
             final int layer = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
             drawText(canvas);
-            final float top = bottomShadow.getTop(), bottom = bottomShadow.getBottom();
-            if (fadeShader == null || fadeTop != top || fadeBottom != bottom) {
-                fadeTop = top;
-                fadeBottom = bottom;
-                fadeShader = new android.graphics.LinearGradient(0, top, 0, bottom, 0x00000000, 0xFF000000, android.graphics.Shader.TileMode.CLAMP);
-                fadePaint.setShader(fadeShader);
-                fadePaint.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+            if (glassFade) {
+                final float top = bottomShadow.getTop(), bottom = bottomShadow.getBottom();
+                if (fadeShader == null || fadeTop != top || fadeBottom != bottom) {
+                    fadeTop = top;
+                    fadeBottom = bottom;
+                    fadeShader = new android.graphics.LinearGradient(0, top, 0, bottom, 0x00000000, 0xFF000000, android.graphics.Shader.TileMode.CLAMP);
+                    fadePaint.setShader(fadeShader);
+                    fadePaint.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+                }
+                fadePaint.setAlpha((int) (bottomShadow.getAlpha() * 255));
+                canvas.drawRect(0, top, getWidth(), bottom, fadePaint);
             }
-            fadePaint.setAlpha((int) (bottomShadow.getAlpha() * 255));
-            canvas.drawRect(0, top, getWidth(), bottom, fadePaint);
+            if (seeThrough && moreAlpha > 0) {
+                final View more = showMoreTextBackgroundView;
+                final int erase = canvas.saveLayer(more.getLeft(), more.getTop(), more.getRight(), more.getBottom(), erasePaint);
+                showMoreBackgroundDrawable.setBounds(more.getLeft(), more.getTop(), more.getRight(), more.getBottom());
+                showMoreBackgroundDrawable.setAlpha((int) (moreAlpha * 255));
+                showMoreBackgroundDrawable.draw(canvas);
+                canvas.restoreToCount(erase);
+            }
             canvas.restoreToCount(layer);
         } else {
             drawText(canvas);

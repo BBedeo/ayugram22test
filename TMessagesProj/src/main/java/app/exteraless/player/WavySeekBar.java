@@ -45,6 +45,8 @@ public class WavySeekBar extends View {
     private boolean frozen;
     private float maxAmplitude = dp(4);
     private float iosExpand;
+    private final org.telegram.ui.Components.AnimatedFloat iosThumbPop = new org.telegram.ui.Components.AnimatedFloat(
+            this, 0, 320, org.telegram.ui.Components.CubicBezierInterpolator.EASE_OUT_BACK);
 
     public WavySeekBar(Context context) {
         super(context);
@@ -176,6 +178,7 @@ public class WavySeekBar extends View {
     }
 
     private app.exteraless.appearance.glass.GlassSurfaceDrawable glassThumb;
+    private final app.exteraless.appearance.glass.IosSliderThumb iosThumb = new app.exteraless.appearance.glass.IosSliderThumb(this);
 
     /** iOS 26 style glass drop that grows out of the bar under the finger while seeking. */
     private void drawGlassThumb(Canvas canvas, float x, float cy, float left, float right) {
@@ -216,17 +219,47 @@ public class WavySeekBar extends View {
             }
             float h = dpf2(5f) + dpf2(4f) * iosExpand;
             float r = h / 2f;
-            rect.set(left, cy - r, right, cy + r);
-            fillPaint.setColor(trackPaint.getColor());
-            canvas.drawRoundRect(rect, r, r, fillPaint);
+            final float cx = Math.max(left, Math.min(right, x));
+            final boolean glass = app.exteraless.appearance.glass.GlassTokens.isActive();
+            // the glass thumb pops out of the bar with a bounce, the bar itself thickens evenly
+            final boolean still = android.os.Build.VERSION.SDK_INT >= 26
+                    && !android.animation.ValueAnimator.areAnimatorsEnabled();
+            // a frozen bar keeps the thumb as it is, like its thickness
+            final float pop = Math.max(0f, frozen ? iosThumbPop.get() : iosThumbPop.set(targetExpand, still));
+            final boolean liquid = glass && pop > 0.01f;
+            final app.exteraless.appearance.glass.IosSliderThumb.Track track = c -> {
+                rect.set(left, cy - r, right, cy + r);
+                fillPaint.setColor(trackPaint.getColor());
+                c.drawRoundRect(rect, r, r, fillPaint);
 
-            fillPaint.setColor(wavePaint.getColor());
-            float activeRight = Math.max(left + h, Math.min(right, x));
-            if (p > 0.001f) {
-                rect.set(left, cy - r, activeRight, cy + r);
-                canvas.drawRoundRect(rect, r, r, fillPaint);
+                fillPaint.setColor(wavePaint.getColor());
+                float activeRight = Math.max(left + h, Math.min(right, x));
+                if (p > 0.001f) {
+                    rect.set(left, cy - r, activeRight, cy + r);
+                    c.drawRoundRect(rect, r, r, fillPaint);
+                }
+            };
+            canvas.save();
+            if (liquid) {
+                // the clip has to match the thumb, which grows out of the bar by scaling
+                canvas.scale(pop, pop, cx, cy);
+                iosThumb.clipTrack(canvas, cx, cy, 1f, getWidth());
+                canvas.scale(1f / pop, 1f / pop, cx, cy);
             }
-            if (iosExpand > 0.01f) {
+            track.draw(canvas);
+            canvas.restore();
+            if (liquid) {
+                canvas.save();
+                canvas.scale(pop, pop, cx, cy);
+                iosThumb.draw(canvas, cx, cy, getWidth(), c -> {
+                    // the thumb is drawn scaled; its lens has to see the track at the real size
+                    c.save();
+                    c.scale(1f / pop, 1f / pop, cx, cy);
+                    track.draw(c);
+                    c.restore();
+                });
+                canvas.restore();
+            } else if (!glass && iosExpand > 0.01f) {
                 drawGlassThumb(canvas, x, cy, left, right);
             }
             if (iosExpand != targetExpand && !frozen) {

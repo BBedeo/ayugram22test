@@ -4369,6 +4369,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             // Liquid Glass: the text capsule of the header instead of the icon
             editItem = menu.addItem(edit_channel, LocaleController.getString(R.string.Edit));
             editItem.setContentDescription(LocaleController.getString(R.string.Edit));
+            if (simpleActionBar != null) {
+                simpleActionBar.setCompactTextMenu();
+            }
         } else {
             editItem = menu.addItem(edit_channel, R.drawable.group_edit_profile);
             editItem.setContentDescription(LocaleController.getString(R.string.Edit));
@@ -4540,6 +4543,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             listView.setLegacySections(true);
             listView.setSections(dp(12), dp(GlassTokens.RADIUS_CARD), false);
             listView.setGlassSections(true);
+            listView.setGlassSectionsSeeThrough(profileAuraOwnsPage());
         } else {
             listView.setLegacySections(false);
             listView.setSections();
@@ -11537,6 +11541,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private boolean profileAuraOwnsPage() {
         return glassPhotoHeader() && profileAuraOn();
     }
+    /** Captions on the see-through cards: the theme's gray gets lost over the aura. */
+    private int seeThroughLabelColor() {
+        return Theme.multAlpha(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), 0.7f);
+    }
+
     private static boolean profileAuraOn() {
         return app.exteraless.appearance.AppearanceConfig.profileAura() || app.exteraless.appearance.AppearanceConfig.md3ProfileAura();
     }
@@ -14613,6 +14622,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     };
                     textDetailCell.setContentDescriptionValueFirst(true);
                     textDetailCell.setGlassLayout(GlassTokens.isActive());
+                    if (profileAuraOwnsPage()) {
+                        textDetailCell.setLabelColor(seeThroughLabelColor());
+                    }
                     view = textDetailCell;
                     break;
                 case VIEW_TYPE_LINKED_COMMUNITY:
@@ -14644,6 +14656,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                             return dontApplyPeerColor(color, false);
                         }
                     };
+                    if (profileAuraOwnsPage()) {
+                        aboutLinkCell.setSeeThrough(seeThroughLabelColor());
+                    }
                     break;
                 }
                 case VIEW_TYPE_TEXT: {

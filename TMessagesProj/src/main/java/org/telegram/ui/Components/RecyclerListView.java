@@ -4211,13 +4211,24 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
     }
 
+    private boolean glassSectionsSeeThrough;
+
+    /** For a page with its own backdrop (the profile's aura): the cards let it through like the buttons do. */
+    public void setGlassSectionsSeeThrough(boolean seeThrough) {
+        glassSectionsSeeThrough = seeThrough;
+        invalidate();
+    }
+
     private void drawGlassBackgroundRect(Canvas canvas, RectF rect, float topRadius, float bottomRadius, float alpha) {
         if (rect.width() <= 0 || rect.height() <= 0) {
             return;
         }
         final int base = app.exteraless.appearance.M3SurfaceHelper.getCardColor(resourcesProvider);
         sectionBackgroundPaint.setShadowLayer(0, 0, 0, 0);
-        sectionBackgroundPaint.setColor(multAlpha(app.exteraless.appearance.glass.GlassTokens.fill(base, app.exteraless.appearance.glass.GlassTokens.TIER_BASE), alpha));
+        final int fill = glassSectionsSeeThrough
+                ? androidx.core.graphics.ColorUtils.setAlphaComponent(base, androidx.core.graphics.ColorUtils.calculateLuminance(base) < 0.5 ? 0x61 : 0x8C)
+                : app.exteraless.appearance.glass.GlassTokens.fill(base, app.exteraless.appearance.glass.GlassTokens.TIER_BASE);
+        sectionBackgroundPaint.setColor(multAlpha(fill, alpha));
         sectionBackgroundPath.rewind();
         radii[0] = radii[1] = radii[2] = radii[3] = topRadius;
         radii[4] = radii[5] = radii[6] = radii[7] = bottomRadius;

@@ -2505,8 +2505,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     }
 
     private PlayerGlass glass;
-    private final android.graphics.drawable.Drawable[] glassLenses = new android.graphics.drawable.Drawable[4];
-    private final app.exteraless.appearance.glass.GlassSurfaceDrawable[] glassPlates = new app.exteraless.appearance.glass.GlassSurfaceDrawable[4];
+    private final android.graphics.drawable.Drawable[] glassLenses = new android.graphics.drawable.Drawable[5];
+    private final app.exteraless.appearance.glass.GlassSurfaceDrawable[] glassPlates = new app.exteraless.appearance.glass.GlassSurfaceDrawable[5];
 
     /** iOS 26 glass surface (house GlassSurfaceDrawable: tinted fill, bevel highlight, light rim) over the blurred cover. */
     private android.graphics.drawable.Drawable glassPlate(int slot, PlayerColors c) {
@@ -2514,7 +2514,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         if (glass != null) {
             android.graphics.drawable.Drawable lens = glassLenses[slot];
             if (lens == null) {
-                final View[] hosts = {likeButton, collapseButton, moreButton, group};
+                final View[] hosts = {likeButton, collapseButton, moreButton, group, bubble};
                 lens = glass.attach(hosts[slot]);
                 glassLenses[slot] = lens;
             }
@@ -2546,6 +2546,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             speedButton.setBadgeColors(c.onSurface, c.surface);
             lyricsButton.setColors(0, c.onSurface, glass, c.onSurface);
             queueButton.setColors(0, c.onSurface, 0, c.onSurface);
+            bubble.setBackground(glassPlate(4, c));
+            bubble.setPadding(dp(12), dp(6), dp(12), dp(6));
+            bubble.setTextColor(c.onSurface);
             return;
         }
         speedButton.setColors(background, c.onSurface, background, c.onSurface);
@@ -3336,7 +3339,12 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
                 group.layout(groupLeft, groupTop, groupLeft + group.getMeasuredWidth(), groupTop + group.getMeasuredHeight());
             }
             if (seeking) {
-                layoutBubble();
+                // one positioner per mode: the full-bar one here fought the capsule one on every relayout
+                if (controlsCollapsed) {
+                    moveBarBubble(displayProgress());
+                } else {
+                    layoutBubble();
+                }
             }
         }
     }

@@ -14957,9 +14957,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor2 = Math.max(searchFieldVisible, alphaByScrollOffset * (1f - getRightSlidingProgress()));
 
         final float alpha = factor0 * factor1 * factor2;
+        // over search results the field sits on the action bar and would eat the selection buttons' taps
+        final float shown = alpha * (1f - animatorActionModeVisible.getFloatValue() * searchFieldVisible);
 
-        fragmentSearchField.setAlpha(alpha);
-        fragmentSearchField.setVisibility(alpha > 0 ? View.VISIBLE : View.GONE);
+        fragmentSearchField.setAlpha(shown);
+        fragmentSearchField.setVisibility(shown > 0 ? View.VISIBLE : View.GONE);
         animatorSearchButtonVisible.setValue(alpha <= 0.01f, true);
     }
 

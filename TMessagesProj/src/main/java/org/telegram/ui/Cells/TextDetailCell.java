@@ -51,6 +51,7 @@ public class TextDetailCell extends FrameLayout implements Theme.Colorable {
     private boolean contentDescriptionValueFirst;
     private boolean multiline;
     private boolean glassLayout;
+    private int labelColor;
 
     private Theme.ResourcesProvider resourcesProvider;
 
@@ -340,14 +341,21 @@ public class TextDetailCell extends FrameLayout implements Theme.Colorable {
         }
     }
 
+    /** Overrides the gray of the secondary texts, for a see-through card. */
+    public void setLabelColor(int color) {
+        labelColor = color;
+        updateColors();
+    }
+
     @Override
     public void updateColors() {
         textView.setLinkTextColor(processColor(Theme.getColor(Theme.key_chat_messageLinkIn, resourcesProvider)));
         textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
         textView.invalidate();
         valueTextView.setLinkTextColor(processColor(Theme.getColor(Theme.key_chat_messageLinkIn, resourcesProvider)));
-        valueTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
-        rightValueTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        final int gray = labelColor != 0 ? labelColor : Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider);
+        valueTextView.setTextColor(gray);
+        rightValueTextView.setTextColor(gray);
         valueTextView.invalidate();
     }
 

@@ -95,6 +95,9 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     private BlurredBackgroundDrawable glassTitle;
     private boolean drawGlassTitle = true;
     private float glassMenuRadius = -1;
+    private boolean compactTextMenu;
+    private final org.telegram.ui.Components.AnimatedFloat compactMenu =
+            new org.telegram.ui.Components.AnimatedFloat(this, 0, DURATION, CubicBezierInterpolator.EASE_OUT_QUINT);
     private final RectF titlePillRect = new RectF();
     private final RectF glassBackRect = new RectF();
     private final RectF glassDoneRect = new RectF();
@@ -403,6 +406,7 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
     @Override
     protected void dispatchDraw(@NonNull Canvas canvas) {
         animationsAllowed = attached;
+        compactMenu.set(compactTextMenu && menu != null && menu.isTextOnly() ? 1f : 0f);
 
         if ((glassBack != null || glassMenu != null || glassTitle != null)
                 && app.exteraless.appearance.M3SurfaceHelper.isMaterial3OpaqueChrome()) {
@@ -712,16 +716,18 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
         // a pill narrower than a button shrinks as a circle; a fading pill shrinks a little
         final float k = Math.min(1f, width / (half * 2)) * lerp(0.8f, 1f, fade);
 
+        final float halfV = lerp(half, (float) dp(18), compactMenu.get() * (1f - a) * (1f - s));
+
         float right = getWidth() - p - getDoneButtonSpace(false);
         float left = right - Math.max(width, half * 2);
-        float top = cy - half, bottom = cy + half;
+        float top = cy - halfV, bottom = cy + halfV;
         if (k < 1f) {
             final float cx = (left + right) / 2f;
             final float hw = (right - left) / 2f - half * (1f - k);
             left = cx - hw;
             right = cx + hw;
-            top = cy - half * k;
-            bottom = cy + half * k;
+            top = cy - halfV * k;
+            bottom = cy + halfV * k;
         }
         rect.set(
             lerp(left, getSearchPillLeft(), sk),
@@ -1236,6 +1242,13 @@ public class SimpleActionBar extends FrameLayout implements FactorAnimator.Targe
 
     boolean canOpenMenu() {
         return actionBarMenuOnItemClick == null || actionBarMenuOnItemClick.canOpenMenu();
+    }
+
+    /** A shorter pill with smaller text while the menu holds only text buttons. */
+    public void setCompactTextMenu() {
+        compactTextMenu = true;
+        createMenu().setTextItemsSize(13);
+        invalidate();
     }
 
     public SimpleActionBarMenu createMenu() {

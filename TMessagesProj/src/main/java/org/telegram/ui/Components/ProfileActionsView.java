@@ -414,7 +414,7 @@ public class ProfileActionsView extends View {
         action.textScale = action.text.getLineCount() >= 3 ? 0.75f : action.text.getLineCount() >= 2 ? 0.85f : 1.0f;
         if (GlassTokens.isActive()) {
             // the icon sits in the middle of the circle
-            final int glassIconSize = dp(26);
+            final int glassIconSize = dp(23);
             final float circleCy = action.rect.top + getCircleSize(action) / 2f;
             action.setBounds(
                 (int) (cx - glassIconSize / 2f),
@@ -458,12 +458,12 @@ public class ProfileActionsView extends View {
 
     /** Liquid Glass: diameter of the action's circle. */
     private float getCircleSize(Action action) {
-        return Math.min(dp(60), action.rect.width());
+        return Math.min(dp(GlassTokens.isActive() ? 52 : 60), action.rect.width());
     }
 
     /** Height of the whole buttons row of the profile; the circles of Liquid Glass need room for the captions under them. */
     public static int getRowHeight() {
-        return dp(GlassTokens.isActive() ? 98 : 74);
+        return dp(GlassTokens.isActive() ? 90 : 74);
     }
 
     private int lastColorFilterColor;

@@ -101,7 +101,7 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
     private long lastUpdateTime;
     private float currentRadius;
     private float iosTrackScale;
-    private Paint iosThumbPaint;
+    private final app.exteraless.appearance.glass.IosSliderThumb iosThumb = new app.exteraless.appearance.glass.IosSliderThumb(this);
     private int[] pressedState = new int[]{android.R.attr.state_enabled, android.R.attr.state_pressed};
     private float transitionProgress = 1f;
     private int transitionThumbX;
@@ -630,7 +630,6 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
             thumbX = Math.round(AndroidUtilities.lerp((float) transitionThumbX, (float) thumbX, t));
         }
         int y = (getMeasuredHeight() - thumbSize) / 2;
-        innerPaint1.setColor(getInnerTrackColor());
 
         boolean needInvalidate = false;
         long newUpdateTime = SystemClock.elapsedRealtime();
@@ -653,39 +652,52 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
 
         float centerY = getMeasuredHeight() / 2f;
         float halfTrack = customDraw == SLIDER_STYLE_IOS
-                ? (AndroidUtilities.dp(4) + AndroidUtilities.dp(3) * iosTrackScale) * 0.5f
+                ? AndroidUtilities.dp(3)
                 : AndroidUtilities.dp(lineWidthDp) / 2f;
         float left = selectorWidth / 2f, right = getMeasuredWidth() - selectorWidth / 2;
         float top = centerY - halfTrack, bottom = centerY + halfTrack;
 
-        rect.set(left, top, right, bottom);
-        drawProgressBar(canvas, rect, innerPaint1);
-        if (bufferedProgress > 0) {
-            innerPaint1.setColor(getThemedColor(Theme.key_player_progressCachedBackground));
-            rect.set(left, top, selectorWidth / 2f + bufferedProgress * (getMeasuredWidth() - selectorWidth), bottom);
-            drawProgressBar(canvas, rect, innerPaint1);
-        }
-        if (twoSided) {
-            canvas.drawRect(getMeasuredWidth() / 2 - AndroidUtilities.dp(1), getMeasuredHeight() / 2 - AndroidUtilities.dp(6), getMeasuredWidth() / 2 + AndroidUtilities.dp(1), getMeasuredHeight() / 2 + AndroidUtilities.dp(6), outerPaint1);
-            if (thumbX > (getMeasuredWidth() - selectorWidth) / 2) {
-                canvas.drawRect(getMeasuredWidth() / 2, getMeasuredHeight() / 2 - AndroidUtilities.dp(1), selectorWidth / 2 + thumbX, getMeasuredHeight() / 2 + AndroidUtilities.dp(1), outerPaint1);
-            } else {
-                canvas.drawRect(thumbX + selectorWidth / 2, getMeasuredHeight() / 2 - AndroidUtilities.dp(1), getMeasuredWidth() / 2, getMeasuredHeight() / 2 + AndroidUtilities.dp(1), outerPaint1);
+        final int trackThumbX = thumbX;
+        final app.exteraless.appearance.glass.IosSliderThumb.Track track = c -> {
+            innerPaint1.setColor(getInnerTrackColor());
+            rect.set(left, top, right, bottom);
+            drawProgressBar(c, rect, innerPaint1);
+            if (bufferedProgress > 0) {
+                innerPaint1.setColor(getThemedColor(Theme.key_player_progressCachedBackground));
+                rect.set(left, top, selectorWidth / 2f + bufferedProgress * (getMeasuredWidth() - selectorWidth), bottom);
+                drawProgressBar(c, rect, innerPaint1);
             }
-        } else {
-            if (minProgress >= 0) {
-                rect.set(left + minProgress * (right - left), top, left + thumbX, bottom);
-                drawProgressBar(canvas, rect, outerPaint1);
-                int wasAlpha = outerPaint1.getAlpha();
-                rect.set(left, top, left + minProgress * (right - left), bottom);
-                outerPaint1.setAlpha((int) (0.50f * wasAlpha));
-                drawProgressBar(canvas, rect, outerPaint1);
-                outerPaint1.setAlpha(wasAlpha);
+            if (twoSided) {
+                c.drawRect(getMeasuredWidth() / 2 - AndroidUtilities.dp(1), getMeasuredHeight() / 2 - AndroidUtilities.dp(6), getMeasuredWidth() / 2 + AndroidUtilities.dp(1), getMeasuredHeight() / 2 + AndroidUtilities.dp(6), outerPaint1);
+                final float halfLine = customDraw == SLIDER_STYLE_IOS ? halfTrack : AndroidUtilities.dp(1);
+                final float lineY = customDraw == SLIDER_STYLE_IOS ? centerY : getMeasuredHeight() / 2;
+                if (trackThumbX > (getMeasuredWidth() - selectorWidth) / 2) {
+                    c.drawRect(getMeasuredWidth() / 2, lineY - halfLine, selectorWidth / 2 + trackThumbX, lineY + halfLine, outerPaint1);
+                } else {
+                    c.drawRect(trackThumbX + selectorWidth / 2, lineY - halfLine, getMeasuredWidth() / 2, lineY + halfLine, outerPaint1);
+                }
             } else {
-                rect.set(left, top, left + thumbX, bottom);
-                drawProgressBar(canvas, rect, outerPaint1);
+                if (minProgress >= 0) {
+                    rect.set(left + minProgress * (right - left), top, left + trackThumbX, bottom);
+                    drawProgressBar(c, rect, outerPaint1);
+                    int wasAlpha = outerPaint1.getAlpha();
+                    rect.set(left, top, left + minProgress * (right - left), bottom);
+                    outerPaint1.setAlpha((int) (0.50f * wasAlpha));
+                    drawProgressBar(c, rect, outerPaint1);
+                    outerPaint1.setAlpha(wasAlpha);
+                } else {
+                    rect.set(left, top, left + trackThumbX, bottom);
+                    drawProgressBar(c, rect, outerPaint1);
+                }
             }
+        };
+
+        canvas.save();
+        if (customDraw == SLIDER_STYLE_IOS) {
+            iosThumb.clipTrack(canvas, thumbX + selectorWidth / 2f, centerY, iosTrackScale, getMeasuredWidth());
         }
+        track.draw(canvas);
+        canvas.restore();
 
         if (hoverDrawable != null && !isModern && customDraw != SLIDER_STYLE_IOS) {
             int dx = thumbX + selectorWidth / 2 - AndroidUtilities.dp(16);
@@ -718,7 +730,7 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         }
 
         if (customDraw == SLIDER_STYLE_IOS) {
-            drawIosThumb(canvas, thumbX + selectorWidth / 2f, centerY);
+            iosThumb.draw(canvas, thumbX + selectorWidth / 2f, centerY, getMeasuredWidth(), track);
         } else if (!isModern) {
             if (ElasticPillGesture.enabled() && (pressed || Math.abs(elasticThumbStretch) > .2f)) {
                 final float cx = thumbX + selectorWidth / 2f;
@@ -798,31 +810,6 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         if (needInvalidate) {
             postInvalidateOnAnimation();
         }
-    }
-
-    private void drawIosThumb(Canvas canvas, float cx, float cy) {
-        if (iosThumbPaint == null) {
-            iosThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        }
-        final float thumbR = AndroidUtilities.dpf2(9.2f) + AndroidUtilities.dpf2(2.2f) * iosTrackScale;
-        final float stretch = ElasticPillGesture.enabled() ? Math.abs(elasticThumbStretch) * 0.7f : 0f;
-        iosThumbPaint.setStyle(Paint.Style.FILL);
-        iosThumbPaint.setColor(0x28000000);
-        // the stretch must not push the pill out of the view: it would be cut flat at the edge
-        final float pillLeft = Math.max(0f, cx - thumbR - stretch);
-        final float pillRight = Math.min(getMeasuredWidth(), cx + thumbR + stretch);
-        rect.set(pillLeft, cy - thumbR + AndroidUtilities.dpf2(1.4f),
-                pillRight, cy + thumbR + AndroidUtilities.dpf2(1.4f));
-        canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
-
-        iosThumbPaint.setColor(0xFFFFFFFF);
-        rect.set(pillLeft, cy - thumbR, pillRight, cy + thumbR);
-        canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
-
-        iosThumbPaint.setStyle(Paint.Style.STROKE);
-        iosThumbPaint.setStrokeWidth(AndroidUtilities.dpf2(0.75f));
-        iosThumbPaint.setColor(0x1E000000);
-        canvas.drawRoundRect(rect, thumbR, thumbR, iosThumbPaint);
     }
 
     private void updatePath(Path path, RectF rect, float radius, float radius2) {
@@ -963,8 +950,12 @@ public class SeekBarView extends FrameLayout implements Theme.Colorable {
         float radius = AndroidUtilities.dp(isModern ? 10 : 2);
         //float radius = AndroidUtilities.dp(2);
         if (timestamps == null || timestamps.isEmpty()) {
-            if (needCustomDraw() != -1) {
+            final int custom = needCustomDraw();
+            // MD3 draws its own track after this; the iOS track is this one, with round ends
+            if (custom == SLIDER_STYLE_MD3) {
                 return;
+            } else if (custom == SLIDER_STYLE_IOS) {
+                radius = rect.height() / 2f;
             }
 
             canvas.drawRoundRect(rect, radius, radius, paint);

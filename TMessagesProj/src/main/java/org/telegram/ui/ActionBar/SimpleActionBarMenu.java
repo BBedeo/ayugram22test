@@ -6,6 +6,7 @@ import static org.telegram.messenger.AndroidUtilities.lerp;
 import android.content.Context;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -72,6 +73,9 @@ public class SimpleActionBarMenu extends LinearLayout {
         final LinearLayout.LayoutParams lp;
         if (text != null) {
             item.textView.setText(text);
+            if (textItemsSize > 0) {
+                item.textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, textItemsSize);
+            }
             lp = new LinearLayout.LayoutParams(width != 0 ? width : ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
             lp.leftMargin = lp.rightMargin = dp(6);
         } else {
@@ -102,6 +106,33 @@ public class SimpleActionBarMenu extends LinearLayout {
             item.setContentDescription(title);
         }
         return item;
+    }
+
+    private float textItemsSize;
+
+    void setTextItemsSize(float dp) {
+        textItemsSize = dp;
+        for (int a = 0, N = getChildCount(); a < N; a++) {
+            final View view = getChildAt(a);
+            if (view instanceof SimpleActionBarMenuItem && ((SimpleActionBarMenuItem) view).textView != null) {
+                ((SimpleActionBarMenuItem) view).textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, dp);
+            }
+        }
+    }
+
+    /** Whether the pill holds nothing but text buttons. */
+    boolean isTextOnly() {
+        boolean any = false;
+        for (int a = 0, N = getChildCount(); a < N; a++) {
+            final View view = getChildAt(a);
+            if (isSlotVisible(view)) {
+                if (!(view instanceof SimpleActionBarMenuItem) || ((SimpleActionBarMenuItem) view).textView == null) {
+                    return false;
+                }
+                any = true;
+            }
+        }
+        return any;
     }
 
     public SimpleActionBarMenuItem getItem(int id) {
