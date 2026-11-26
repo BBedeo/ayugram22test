@@ -218,4 +218,5 @@
     <string name="OEAppearanceCustomFontImport">Add your own font…</string>
     <string name="OEAppearanceCustomFontDelete">Delete</string>
     <string name="OEAppearanceCustomFontInvalid">This file is not a usable font (TTF, OTF or TTC)</string>
+    <string name="OEProfileEditShort">Edit</string>
 </resources>

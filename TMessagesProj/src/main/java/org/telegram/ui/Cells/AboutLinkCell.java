@@ -86,7 +86,7 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
     private FrameLayout showMoreTextBackgroundView;
     private FrameLayout bottomShadow;
     private Drawable showMoreBackgroundDrawable;
-    private boolean seeThrough;
+    private boolean eraseUnderMore;
     private final Paint erasePaint = new Paint();
 
     private LinkSpanDrawable pressedLink;
@@ -198,8 +198,18 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
         showMoreTextBackgroundView.addView(showMoreTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT));
         addView(showMoreTextBackgroundView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.BOTTOM, 18 - showMoreTextBackgroundView.getPaddingLeft() / AndroidUtilities.density, 0, 18 - showMoreTextBackgroundView.getPaddingRight() / AndroidUtilities.density, 6));
         backgroundPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));
+        if (app.exteraless.appearance.glass.GlassTokens.isActive()) {
+            eraseUnderMore();
+        }
 
         setWillNotDraw(false);
+    }
+
+    /** On a translucent card an opaque patch behind "more" shows as a stripe: the text under it is erased instead. */
+    private void eraseUnderMore() {
+        eraseUnderMore = true;
+        erasePaint.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        showMoreTextBackgroundView.setBackground(null);
     }
 
     protected int processColor(int color) {
@@ -208,15 +218,10 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
 
     private int lastRippleColor;
 
-    /**
-     * For a see-through card: no opaque patch behind "more" (the text under it is erased instead) and a
-     * {@code labelColor} caption.
-     */
+    /** For a see-through card: no opaque patch behind "more" and a {@code labelColor} caption. */
     public void setSeeThrough(int labelColor) {
-        seeThrough = true;
-        erasePaint.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        eraseUnderMore();
         valueTextView.setTextColor(labelColor);
-        showMoreTextBackgroundView.setBackground(null);
         invalidate();
     }
 
@@ -301,8 +306,9 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
         float alpha = parent == null ? 1f : (float) Math.pow(parent.getAlpha(), 2f);
 
         final boolean glassFade = app.exteraless.appearance.glass.GlassTokens.isActive() && bottomShadow.getAlpha() > 0;
-        final float moreAlpha = showMoreTextBackgroundView.getAlpha();
-        if (glassFade || seeThrough && moreAlpha > 0) {
+        // a short text has no "more" button, so nothing may be drawn in its place
+        final float moreAlpha = shouldExpand ? showMoreTextBackgroundView.getAlpha() : 0;
+        if (glassFade || eraseUnderMore && moreAlpha > 0) {
             // Liquid Glass: the card is translucent, so the collapsed text fades out itself (no page-coloured overlay)
             final int layer = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
             drawText(canvas);
@@ -318,7 +324,7 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
                 fadePaint.setAlpha((int) (bottomShadow.getAlpha() * 255));
                 canvas.drawRect(0, top, getWidth(), bottom, fadePaint);
             }
-            if (seeThrough && moreAlpha > 0) {
+            if (eraseUnderMore && moreAlpha > 0) {
                 final View more = showMoreTextBackgroundView;
                 final int erase = canvas.saveLayer(more.getLeft(), more.getTop(), more.getRight(), more.getBottom(), erasePaint);
                 showMoreBackgroundDrawable.setBounds(more.getLeft(), more.getTop(), more.getRight(), more.getBottom());
@@ -331,7 +337,7 @@ public class AboutLinkCell extends FrameLayout implements Theme.Colorable {
             drawText(canvas);
         }
 
-        float viewAlpha = showMoreTextBackgroundView.getAlpha();
+        float viewAlpha = moreAlpha;
         if (viewAlpha > 0) {
             canvas.save();
             canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), (int) (viewAlpha * 255), Canvas.ALL_SAVE_FLAG);

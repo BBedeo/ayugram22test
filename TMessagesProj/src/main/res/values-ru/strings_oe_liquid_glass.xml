@@ -34,4 +34,5 @@
     <string name="OEAppearancePresetClassic">Классический (По умолчанию)</string>
     <string name="OEAppearancePresetClassicInfo">Стандартное оформление без всеобщего жидкого стекла и упругих жестов</string>
     <string name="OEAppearancePresetApplied">Применён пресет: %1$s</string>
+    <string name="OEProfileEditShort">Изм.</string>
 </resources>

@@ -4367,7 +4367,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             editItem.setContentDescription(LocaleController.getString(R.string.Edit));
         } else if (glassTextEditItem()) {
             // Liquid Glass: the text capsule of the header instead of the icon
-            editItem = menu.addItem(edit_channel, LocaleController.getString(R.string.Edit));
+            editItem = menu.addItem(edit_channel, LocaleController.getString(R.string.OEProfileEditShort));
             editItem.setContentDescription(LocaleController.getString(R.string.Edit));
             if (simpleActionBar != null) {
                 simpleActionBar.setCompactTextMenu();
