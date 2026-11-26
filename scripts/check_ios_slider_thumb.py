@@ -8,16 +8,22 @@ CALLERS = (
     "org/telegram/ui/Components/SeekBarView.java",
     "org/telegram/ui/Components/SlideChooseView.java",
     "org/telegram/ui/Components/PhotoEditorSeekBar.java",
+)
+# the player bars pop the thumb out of the track
+POPPING = (
     "app/exteraless/player/WavySeekBar.java",
+    "app/exteraless/player/PlayerCollapsedBar.java",
 )
 errors = []
-for path in CALLERS:
-    text = (ROOT / path).read_text(encoding="utf-8")
-    for needle in ("IosSliderThumb(this)", "iosThumb.clipTrack(", "iosThumb.draw("):
-        if needle not in text:
-            errors.append(f"{path}: missing {needle}")
+for paths, needles in ((CALLERS, ("iosThumb.clipTrack(", "iosThumb.draw(")), (POPPING, ("iosThumb.drawPopping(",))):
+    for path in paths:
+        text = (ROOT / path).read_text(encoding="utf-8")
+        for needle in ("IosSliderThumb(this)",) + needles:
+            if needle not in text:
+                errors.append(f"{path}: missing {needle}")
 drawer = (ROOT / "app/exteraless/appearance/glass/IosSliderThumb.java").read_text(encoding="utf-8")
-for needle in ("new LiquidGlassEffect(node, true)", "Build.VERSION.SDK_INT >= 33", "GlassTokens.isActive()",
+for needle in ("new LiquidGlassEffect(node, false)", "canvas.clipPath(path)", "public void drawPopping(",
+               "Build.VERSION.SDK_INT >= 33", "GlassTokens.isActive()",
                "ValueAnimator.areAnimatorsEnabled()", "track.draw(c)"):
     if needle not in drawer:
         errors.append(f"IosSliderThumb: missing {needle}")

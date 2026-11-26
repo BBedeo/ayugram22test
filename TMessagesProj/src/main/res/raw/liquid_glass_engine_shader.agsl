@@ -1,0 +1,162 @@
+uniform shader img;
+
+uniform float2 center;
+uniform float2 size;
+uniform float4 radius;
+uniform float thickness;
+uniform float refract_intensity;
+uniform float glass_press;
+uniform float glass_highlight;
+uniform float glass_light_angle;
+uniform float glass_motion;
+uniform float glass_adaptive;
+uniform float4 foreground_color_premultiplied;
+// pixels of the node in a dp, saturation
+uniform float2 optics;
+// antialiasing of the edge, the bottom capsule's tide
+uniform float2 shape;
+// a hint's arrow: its height, the radius of its tip, of the fillets at the edge, the half width of the stripe it changes
+uniform float4 arrow;
+// xy: the point of the edge on its axis, from the center; zw: the direction out of the body
+uniform float4 arrow_axis;
+
+// The bend profile and the wider radius of its direction follow Kyant0/AndroidLiquidGlass (Apache-2.0).
+
+float sdfRect(float2 p, float2 sz, float4 r) {
+  r.xy = (p.x > 0.0) ? r.xy : r.zw;
+  r.x  = (p.y > 0.0) ? r.x  : r.y;
+  float2 q = abs(p) - sz + r.x;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r.x;
+}
+
+// the arrow's outline as in liquid_glass_arrow_shader.agsl: u along the edge (folded), v out of the body
+float sdArrowEdge(float u, float v) {
+  const float SQ2 = 1.41421356;
+  const float S = 0.70710678;
+  float h = arrow.x, rt = arrow.y, rf = arrow.z;
+  float2 ct = float2(0.0, h - rt);
+  float2 cf = float2(h + (rt + rf) * (SQ2 - 1.0), rf);
+  float2 a = ct + rt * float2(S, S);
+  float2 b = cf - rf * float2(S, S);
+  float2 p = float2(u, v);
+
+  float2 ab = b - a;
+  float t = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+  float d = length(p - a - ab * t);
+  float2 qt = p - ct;
+  if (qt.y >= qt.x) {
+    d = min(d, abs(length(qt) - rt));
+  }
+  float2 qf = p - cf;
+  if (qf.x <= 0.0 && qf.y <= qf.x) {
+    d = min(d, abs(length(qf) - rf));
+  }
+  d = min(d, length(float2(max(cf.x - u, 0.0), v)));
+
+  float f = u <= a.x ? ct.y + sqrt(max(rt * rt - u * u, 0.0))
+          : u <= b.x ? a.y - (u - a.x)
+          : u <= cf.x ? rf - sqrt(max(rf * rf - (u - cf.x) * (u - cf.x), 0.0))
+          : 0.0;
+  return v < f ? -d : d;
+}
+
+// the rounded rect, with the arrow out of a side where a hint has one (arrow.w is 0 elsewhere)
+float sdShape(float2 p, float4 r) {
+  if (arrow.w > 0.0) {
+    float2 q = p - arrow_axis.xy;
+    float2 dir = arrow_axis.zw;
+    float u = abs(q.x * dir.y - q.y * dir.x);
+    if (u < arrow.w) {
+      // within the stripe: the body without its edge there, cut by the edge with the arrow
+      float e = (arrow.x + thickness + 2.0) * 0.5;
+      float body = sdfRect(p - dir * e, size + abs(dir) * e, r);
+      return max(body, sdArrowEdge(u, dot(q, dir)));
+    }
+  }
+  return sdfRect(p, size, r);
+}
+
+float2 outward(float2 p, float4 r) {
+  float2 g = float2(
+      sdShape(p + float2(0.5, 0.0), r) - sdShape(p - float2(0.5, 0.0), r),
+      sdShape(p + float2(0.0, 0.5), r) - sdShape(p - float2(0.0, 0.5), r));
+  float len = length(g);
+  return len > 0.001 ? g / len : float2(0.0, -1.0);
+}
+
+half4 srcOver(half4 src, half4 dst) {
+  half3 outRGB = src.rgb + dst.rgb * (1.0 - src.a);
+  float outA = src.a + (1.0 - src.a) * dst.a;
+  return half4(outRGB, outA);
+}
+
+float gaussian(float x) {
+  return exp(-x * x);
+}
+
+float circleMap(float x) {
+  return 1.0 - sqrt(max(0.0, 1.0 - x * x));
+}
+
+half4 main(in float2 fragCoord) {
+  float2 p = fragCoord - center;
+  float sdRaw = sdShape(p, radius);
+  // past the edge the lens goes on as at the edge: the outline clips it
+  float depth = -min(sdRaw, 0.0);
+  float minHalf = min(size.x, size.y);
+  float lift = clamp(glass_press, 0.0, 1.0);
+  float move = clamp(glass_motion, -1.0, 1.0);
+
+  // only the band at the edge bends, hardest at the very edge: there the far side shows, mirrored
+  float band = max(thickness * (1.0 + 0.15 * lift), 0.001);
+  float bend = circleMap(clamp(1.0 - depth / band, 0.0, 1.0));
+  float shift = min(bend * band * refract_intensity * (1.0 + 0.30 * lift), 2.0 * minHalf);
+  // a wider radius for the direction only, so it turns smoothly in the corners; a hint keeps its own, because
+  // the arrow's stripe stays clear of the real corners only
+  float4 turn = arrow.w > 0.0 ? radius : min(radius * 1.5, float4(minHalf));
+  float2 uv = fragCoord - outward(p, turn) * shift - p * (0.04 * lift);
+
+  float2 edge = outward(p, radius);
+  float tideDp = max(minHalf / 24.0, 1.0);
+  if (shape.y > 0.5) {
+    float2 rel = clamp(p / max(size, float2(1.0)), float2(-1.0), float2(1.0));
+    uv.y += sin(rel.y * 2.6 - move * 2.2) * smoothstep(-0.05, 0.90, rel.x)
+        * bend * tideDp * (0.35 + 0.85 * lift) * 0.28 * min(refract_intensity, 1.0);
+  }
+  // on a small shape the edge samples past the far side: stay within the shape and its arrow
+  float2 tip = arrow_axis.zw * arrow.x;
+  uv = clamp(uv, center - size + 0.5 + min(tip, float2(0.0)), center + size - 0.5 + max(tip, float2(0.0)));
+  half4 backdrop = img.eval(uv);
+
+  float luma = dot(float3(backdrop.rgb), float3(0.2126, 0.7152, 0.0722));
+  backdrop.rgb = clamp(mix(half3(luma), backdrop.rgb, half(optics.y)), half3(0.0), half3(1.0));
+  half4 surface = srcOver(half4(foreground_color_premultiplied * (1.0 - 0.5 * lift)), backdrop);
+  if (glass_adaptive > 0.5) {
+    // under a dark tint a very bright backdrop is veiled, so white labels stay readable
+    float tintAlpha = clamp(foreground_color_premultiplied.a, 0.001, 1.0);
+    float tintLuma = dot(foreground_color_premultiplied.rgb / tintAlpha, float3(0.2126, 0.7152, 0.0722));
+    float darkTint = 1.0 - smoothstep(0.38, 0.65, tintLuma);
+    float veil = smoothstep(0.56, 0.96, luma) * darkTint * 0.16 * (1.0 - lift * 0.35);
+    surface.rgb *= half(1.0 - veil);
+  }
+
+  // a hairline rim on two opposite sides: top left and bottom right at the default angle
+  float angle = -2.356 + (glass_light_angle - 5.4978) + 0.42 * move;
+  float facing = abs(dot(edge, float2(cos(angle), sin(angle))));
+  float glint = gaussian((depth / optics.x - 0.5) / 0.45) * pow(facing, 4.0) * 0.55;
+  if (shape.y > 0.5) {
+    float dDp = depth / tideDp;
+    float arcs = smoothstep(-0.05, 0.85, edge.x) * smoothstep(-0.75, 0.92, edge.y + move * 0.42)
+        + smoothstep(-0.05, 0.85, -edge.x) * smoothstep(-0.75, 0.92, edge.y - move * 0.42) * (0.55 + 0.45 * lift);
+    float rim = gaussian((dDp - 0.70) / 0.58) * 0.90 + gaussian((dDp - 1.75) / 0.90) * 0.10;
+    float tide = gaussian((dDp - (1.45 + 0.85 * lift)) / (1.05 + 0.45 * lift));
+    glint += arcs * (rim * (0.32 + 0.30 * lift) * (0.22 + 0.28 * lift) + tide * (0.12 + 0.20 * lift));
+  }
+  // by the pixel's alpha, so the empty pixels of a slider's lens stay empty
+  surface.rgb = min(half3(1.0), surface.rgb + half3(glint * glass_highlight * float(surface.a)));
+
+  if (shape.x > 0.5) {
+    surface *= half(smoothstep(0.6, -0.85, sdRaw));
+  }
+  return surface;
+}

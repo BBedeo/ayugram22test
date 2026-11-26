@@ -4,13 +4,17 @@ import android.graphics.Color;
 import android.graphics.RenderEffect;
 import android.graphics.RenderNode;
 import android.graphics.RuntimeShader;
+import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 
 import java.util.Arrays;
+
+import app.exteraless.appearance.LiquidGlassTuning;
 
 @RequiresApi(api = 33)
 public class LiquidGlassEffect {
@@ -19,7 +23,10 @@ public class LiquidGlassEffect {
     // the arrow costs the shader a lot: a shape without it keeps the plain one
     private final RuntimeShader plainShader;
     private RuntimeShader arrowShader;
+    private RuntimeShader engineShader;
     private RuntimeShader shader;
+    private final int role;
+    private static Boolean engineCompiles;
     private RenderEffect effect;
 
     /** The effects by the phase of the node on the grid of the downsample, they keep the uniforms they were made with. */
@@ -42,12 +49,33 @@ public class LiquidGlassEffect {
 
     public LiquidGlassEffect(RenderNode node, boolean elasticPillLens, boolean headerGlassLens) {
         this.node = node;
+        role = LiquidGlassOptics.role(elasticPillLens, headerGlassLens);
         final int shaderRes = elasticPillLens
                 ? R.raw.liquid_glass_pill_shader
                 : (headerGlassLens ? R.raw.liquid_glass_header_shader : R.raw.liquid_glass_shader);
         final String code = AndroidUtilities.readRes(shaderRes);
         shader = plainShader = new RuntimeShader(code);
         node.setRenderEffect(effect = RenderEffect.createRuntimeShaderEffect(shader, "img"));
+    }
+
+    /**
+     * The single lens replaces every older lens while Liquid Glass is on, unless the driver rejects its shader.
+     * Whoever calls {@link #update} asks this too, so the numbers always fit the shader.
+     */
+    public static boolean engineActive() {
+        if (Build.VERSION.SDK_INT < 33 || !LiquidGlassTuning.isActive()) {
+            return false;
+        }
+        if (engineCompiles == null) {
+            try {
+                new RuntimeShader(AndroidUtilities.readRes(R.raw.liquid_glass_engine_shader));
+                engineCompiles = true;
+            } catch (RuntimeException e) {
+                FileLog.e(e);
+                engineCompiles = false;
+            }
+        }
+        return engineCompiles;
     }
 
     private int downsample;
@@ -120,7 +148,10 @@ public class LiquidGlassEffect {
             radiusRightBottom = height * (1.0f - a);
         }
 
+        final boolean engine = engineActive();
+
         if (
+            engine != (shader == engineShader) ||
             this.downsample != downsample ||
             Math.abs(this.width - width) > 0.1f ||
             Math.abs(this.height - height) > 0.1f ||
@@ -129,7 +160,7 @@ public class LiquidGlassEffect {
             Math.abs(this.radiusRightBottom - radiusRightBottom) > 0.1f ||
             Math.abs(this.radiusLeftBottom - radiusLeftBottom) > 0.1f ||
             Math.abs(this.thickness - thickness) > 0.1f ||
-            Math.abs(this.intensity - intensity) > 0.1f ||
+            Math.abs(this.intensity - intensity) > (engine ? 0.01f : 0.1f) ||
             Math.abs(this.index - index) > 0.1f ||
             Math.abs(this.glassPress - press) > .015f ||
             Math.abs(this.glassHighlight - highlight) > .015f ||
@@ -140,7 +171,12 @@ public class LiquidGlassEffect {
             arrowChanged
         ) {
             arrowChanged = false;
-            if (arrowHeight > 0) {
+            if (engine) {
+                if (engineShader == null) {
+                    engineShader = new RuntimeShader(AndroidUtilities.readRes(R.raw.liquid_glass_engine_shader));
+                }
+                shader = engineShader;
+            } else if (arrowHeight > 0) {
                 if (arrowShader == null) {
                     arrowShader = new RuntimeShader(AndroidUtilities.readRes(R.raw.liquid_glass_arrow_shader));
                 }
@@ -169,14 +205,20 @@ public class LiquidGlassEffect {
             shader.setFloatUniform("radius", radiusRightBottom * scale, radiusRightTop * scale, radiusLeftBottom * scale, radiusLeftTop * scale);
             shader.setFloatUniform("thickness", thickness * scale);
             shader.setFloatUniform("refract_intensity", this.intensity = intensity);
-            shader.setFloatUniform("refract_index", this.index = index);
+            this.index = index;
+            if (engine) {
+                shader.setFloatUniform("optics", AndroidUtilities.density * scale, LiquidGlassOptics.saturation(role));
+                shader.setFloatUniform("shape", LiquidGlassOptics.coverage(role), LiquidGlassOptics.flow(role));
+            } else {
+                shader.setFloatUniform("refract_index", index);
+            }
             shader.setFloatUniform("glass_press", this.glassPress = press);
             shader.setFloatUniform("glass_highlight", this.glassHighlight = highlight);
             shader.setFloatUniform("glass_light_angle", this.glassLightAngle = lightAngle);
             shader.setFloatUniform("glass_motion", this.glassMotion = motion);
             shader.setFloatUniform("glass_adaptive", this.glassAdaptive = adaptive);
             shader.setFloatUniform("foreground_color_premultiplied", r, g, b, a);
-            if (shader == arrowShader) {
+            if (engine || shader == arrowShader) {
                 shader.setFloatUniform("arrow", arrowHeight * scale, arrowTipRadius * scale, arrowFilletRadius * scale, arrowStripe * scale);
                 shader.setFloatUniform("arrow_axis", arrowAxisX * scale, arrowAxisY * scale, arrowDirX, arrowDirY);
             }

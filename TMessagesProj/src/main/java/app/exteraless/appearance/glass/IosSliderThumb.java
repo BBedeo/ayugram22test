@@ -15,11 +15,12 @@ import android.view.View;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.Components.blur3.LiquidGlassEffect;
+import org.telegram.ui.Components.blur3.LiquidGlassOptics;
 
 import app.exteraless.appearance.LiquidGlassTuning;
 
 /**
- * The thumb of every iOS-style slider, one instance per view: a white capsule that becomes a drop of the pill lens
+ * The thumb of every iOS-style slider, one instance per view: a white capsule that becomes a drop of glass
  * while held, on springs. Each frame call {@link #clipTrack} around the track drawing (it also moves the springs),
  * then {@link #draw}.
  */
@@ -95,6 +96,32 @@ public final class IosSliderThumb {
         }
     }
 
+    /** The thumb grows out of the track by {@code pop}; at zero only the track is drawn. */
+    public void drawPopping(Canvas canvas, float cx, float cy, int width, float pop, Track track) {
+        final boolean show = pop > 0.01f;
+        canvas.save();
+        if (show) {
+            // the clip has to match the thumb, which grows by scaling
+            canvas.scale(pop, pop, cx, cy);
+            clipTrack(canvas, cx, cy, 1f, width);
+            canvas.scale(1f / pop, 1f / pop, cx, cy);
+        }
+        track.draw(canvas);
+        canvas.restore();
+        if (show) {
+            canvas.save();
+            canvas.scale(pop, pop, cx, cy);
+            draw(canvas, cx, cy, width, c -> {
+                // the thumb is drawn scaled; its lens has to see the track at the real size
+                c.save();
+                c.scale(1f / pop, 1f / pop, cx, cy);
+                track.draw(c);
+                c.restore();
+            });
+            canvas.restore();
+        }
+    }
+
     private boolean refracts(Canvas canvas) {
         return Build.VERSION.SDK_INT >= 33 && press > 0.01f && canvas.isHardwareAccelerated() && GlassTokens.isActive();
     }
@@ -159,7 +186,7 @@ public final class IosSliderThumb {
         final float h = rect.height();
         if (node == null) {
             node = new RenderNode("IosSliderThumb");
-            lens = new LiquidGlassEffect(node, true);
+            lens = new LiquidGlassEffect(node, false);
         }
         node.setPosition(0, 0, (int) Math.ceil(w), (int) Math.ceil(h));
         final Canvas c = node.beginRecording();
@@ -167,15 +194,20 @@ public final class IosSliderThumb {
         track.draw(c);
         node.endRecording();
 
+        // the plain lens bends only its bevel and leaves empty pixels empty
+        final boolean engine = LiquidGlassEffect.engineActive();
         lens.update(w, h, 0, 0, radius, radius, radius, radius,
-                Math.min(dp(LiquidGlassTuning.thicknessDp()), h / 3f),
-                0.75f * LiquidGlassTuning.refractionScale(), 1.5f, 0,
-                p, LiquidGlassTuning.shine(), LiquidGlassTuning.lightAngleRadians(),
-                LiquidGlassTuning.motionEnabled() ? p * 0.5f : 0f,
-                LiquidGlassTuning.adaptiveLightEnabled() ? 1f : 0f,
+                engine ? LiquidGlassOptics.sliderBevel(h, AndroidUtilities.density, LiquidGlassTuning.thicknessDp())
+                        : Math.min(dp(LiquidGlassTuning.thicknessDp()), h / 3f),
+                engine ? LiquidGlassOptics.sliderBend(LiquidGlassTuning.refractionScale(), p)
+                        : Math.min(0.09f * LiquidGlassTuning.refractionScale(), 0.1f) * p, 1.5f, 0,
+                0, 0, 0, 0, 0,
                 0, 0, 1);
 
         canvas.save();
+        path.rewind();
+        path.addRoundRect(rect, radius, radius, Path.Direction.CW);
+        canvas.clipPath(path);
         canvas.translate(rect.left, rect.top);
         canvas.drawRenderNode(node);
         canvas.restore();

@@ -2,10 +2,12 @@ package app.exteraless.player;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.os.Build;
 import android.view.ViewConfiguration;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,6 +16,9 @@ import androidx.annotation.NonNull;
 
 import app.exteraless.appearance.glass.GlassSurfaceDrawable;
 import app.exteraless.appearance.glass.GlassTokens;
+import app.exteraless.appearance.glass.IosSliderThumb;
+import org.telegram.ui.Components.AnimatedFloat;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 
 /**
  * What the iOS player's control capsule shrinks into after a few idle seconds: a glass capsule with a
@@ -27,6 +32,8 @@ final class PlayerCollapsedBar extends View {
     private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
+    private final IosSliderThumb iosThumb = new IosSliderThumb(this);
+    private final AnimatedFloat thumbPop = new AnimatedFloat(this, 0, 320, CubicBezierInterpolator.EASE_OUT_BACK);
     private boolean playing;
     private float progress;
     private Runnable onToggle;
@@ -105,10 +112,19 @@ final class PlayerCollapsedBar extends View {
         final float right = w - dp(20);
         final float th = scrubbing ? dp(6) : dp(4);
         final float cy = h / 2f;
-        rect.set(left, cy - th / 2f, right, cy + th / 2f);
-        canvas.drawRoundRect(rect, th / 2f, th / 2f, trackPaint);
-        rect.right = Math.max(left + th, left + (right - left) * progress);
-        canvas.drawRoundRect(rect, th / 2f, th / 2f, fillPaint);
+        final IosSliderThumb.Track track = c -> {
+            rect.set(left, cy - th / 2f, right, cy + th / 2f);
+            c.drawRoundRect(rect, th / 2f, th / 2f, trackPaint);
+            rect.right = Math.max(left + th, left + (right - left) * progress);
+            c.drawRoundRect(rect, th / 2f, th / 2f, fillPaint);
+        };
+        if (GlassTokens.isActive()) {
+            final boolean still = Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled();
+            final float pop = Math.max(0f, thumbPop.set(scrubbing ? 1f : 0f, still));
+            iosThumb.drawPopping(canvas, trackX(progress), cy, w, pop, track);
+        } else {
+            track.draw(canvas);
+        }
     }
 
     private float fraction(float x) {
@@ -129,6 +145,7 @@ final class PlayerCollapsedBar extends View {
                 if (!downOnButton && seek != null) {
                     if (!scrubbing && Math.abs(event.getX() - downX) > slop) {
                         scrubbing = true;
+                        invalidate();
                         getParent().requestDisallowInterceptTouchEvent(true);
                         seek.onStart();
                     }

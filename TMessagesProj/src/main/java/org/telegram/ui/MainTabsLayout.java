@@ -41,11 +41,14 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedLinearLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.glass.GlassTabView;
+import org.telegram.ui.Components.blur3.LiquidGlassEffect;
+import org.telegram.ui.Components.blur3.LiquidGlassOptics;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 
 import app.exteraless.appearance.MainTabsUiHelper;
 import app.exteraless.appearance.ElasticPillGesture;
 import app.exteraless.appearance.ElasticGlassPillRenderer;
+import app.exteraless.appearance.LiquidGlassTuning;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -773,6 +776,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private RenderNode pillRefractNode;
     private RuntimeShader pillContentShader;
     private boolean pillContentShaderFailed;
+    private boolean pillContentEngine;
     private float lastPillShaderCx = Float.NaN, lastPillShaderCy = Float.NaN;
     private float lastPillShaderW = -1f, lastPillShaderH = -1f;
     private float lastPillShaderPress = -1f, lastPillShaderMotion = Float.NaN;
@@ -792,8 +796,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 tabsContentNode.setClipToBounds(false);
                 pillRefractNode = new RenderNode("ElasticPillRefract");
                 pillRefractNode.setClipToBounds(false);
-                final String code = AndroidUtilities.readRes(R.raw.liquid_glass_pill_content_shader);
-                pillContentShader = new RuntimeShader(code);
+            }
+            final boolean engine = LiquidGlassEffect.engineActive();
+            if (pillContentShader == null || engine != pillContentEngine) {
+                pillContentShader = new RuntimeShader(AndroidUtilities.readRes(engine
+                        ? R.raw.liquid_glass_engine_shader : R.raw.liquid_glass_pill_content_shader));
+                pillContentEngine = engine;
+                lastPillShaderCx = Float.NaN;
             }
             final int w = getWidth();
             final int h = getHeight();
@@ -823,9 +832,22 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 lastPillShaderMotion = motion;
                 pillContentShader.setFloatUniform("center", cx, cy);
                 pillContentShader.setFloatUniform("size", hw, hh);
-                pillContentShader.setFloatUniform("radius", hh);
-                pillContentShader.setFloatUniform("thickness", Math.min(dp(24), hh * .90f));
-                pillContentShader.setFloatUniform("glass_press", press);
+                if (engine) {
+                    // the icons bend only while the pill is lifted or travels: at rest the labels stay straight
+                    final float lift = Math.min(1f, Math.max(press, Math.abs(motion) * 1.15f));
+                    pillContentShader.setFloatUniform("radius", hh, hh, hh, hh);
+                    pillContentShader.setFloatUniform("thickness", LiquidGlassOptics.bevel(2f * Math.min(hw, hh),
+                            AndroidUtilities.density, LiquidGlassTuning.thicknessDp()));
+                    pillContentShader.setFloatUniform("refract_intensity",
+                            LiquidGlassOptics.bend(LiquidGlassTuning.refractionScale()) * lift);
+                    pillContentShader.setFloatUniform("glass_press", lift);
+                    pillContentShader.setFloatUniform("optics", AndroidUtilities.density, 1f);
+                    pillContentShader.setFloatUniform("shape", 1f, LiquidGlassOptics.flow(LiquidGlassOptics.PILL));
+                } else {
+                    pillContentShader.setFloatUniform("radius", hh);
+                    pillContentShader.setFloatUniform("thickness", Math.min(dp(24), hh * .90f));
+                    pillContentShader.setFloatUniform("glass_press", press);
+                }
                 pillContentShader.setFloatUniform("glass_motion", motion);
                 pillRefractNode.setRenderEffect(
                         RenderEffect.createRuntimeShaderEffect(pillContentShader, "img"));

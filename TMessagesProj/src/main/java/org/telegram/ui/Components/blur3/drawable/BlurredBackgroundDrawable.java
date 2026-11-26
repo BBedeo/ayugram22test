@@ -29,6 +29,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.math.MathUtils;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LiteMode;
 import org.telegram.messenger.utils.RadiiUtils;
 import org.telegram.ui.ActionBar.Theme;
@@ -36,6 +37,7 @@ import org.telegram.ui.Components.blur3.Blur3HashImpl;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.GlassOutlineStyle;
 import org.telegram.ui.Components.blur3.LiquidGlassEffect;
+import org.telegram.ui.Components.blur3.LiquidGlassOptics;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProviderThemed;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider;
@@ -1491,9 +1493,16 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                             : boundProps.liquidThickness,
                     (int) (Math.min(body.width(), body.height()) * thicknessFactor)), 1);
 
+                // the single lens takes its numbers from the shape's size, the same for every call site
+                final boolean engine = LiquidGlassEffect.engineActive();
+                final float lensThickness = engine
+                        ? LiquidGlassOptics.bevel(Math.min(body.width(), body.height()), AndroidUtilities.density,
+                                LiquidGlassTuning.thicknessDp())
+                        : thickness;
+
                 if (boundProps.hasArrow()) {
                     // the stripe the arrow changes, with the lens' band past its fillets, but clear of the corners
-                    final float stripe = Math.max(boundProps.arrowHalfBase, Math.min(boundProps.arrowHalfBase + thickness + 1,
+                    final float stripe = Math.max(boundProps.arrowHalfBase, Math.min(boundProps.arrowHalfBase + lensThickness + 1,
                         Math.min(boundProps.arrowFreeStart, boundProps.arrowFreeEnd)));
                     liquidGlassEffect.setArrow(
                         boundProps.arrowAxisX() - body.centerX(), boundProps.arrowAxisY() - body.centerY(),
@@ -1506,19 +1515,22 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 final float refractionMult = headerGlassLens
                         ? LiquidGlassTuning.headerRefractionScale()
                         : LiquidGlassTuning.refractionScale();
+                final float lensIntensity = engine
+                        ? LiquidGlassOptics.bend(LiquidGlassTuning.refractionScale())
+                        : boundProps.liquidIntensity * refractionMult;
                 liquidGlassEffect.update(
                     body.width(), body.height(),
                     body.left - b.left, body.top - b.top,
                     boundProps.shaderRadii[0], boundProps.shaderRadii[2], boundProps.shaderRadii[4], boundProps.shaderRadii[6],
-                    thickness,
-                    boundProps.liquidIntensity * refractionMult,
+                    lensThickness,
+                    lensIntensity,
                     boundProps.liquidIndex,
                     backgroundColor,
                     Float.isNaN(elasticPressOverride)
                             ? (LiquidGlassTuning.motionEnabled() ? pressProgress : 0f)
                             : elasticPressOverride,
                     Float.isNaN(liquidShineOverride)
-                            ? (headerGlassLens ? LiquidGlassTuning.headerShine() : LiquidGlassTuning.shine())
+                            ? (headerGlassLens && !engine ? LiquidGlassTuning.headerShine() : LiquidGlassTuning.shine())
                             : liquidShineOverride,
                     Float.isNaN(liquidLightAngleOverride)
                             ? LiquidGlassTuning.lightAngleRadians() : liquidLightAngleOverride,

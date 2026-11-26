@@ -226,7 +226,6 @@ public class WavySeekBar extends View {
                     && !android.animation.ValueAnimator.areAnimatorsEnabled();
             // a frozen bar keeps the thumb as it is, like its thickness
             final float pop = Math.max(0f, frozen ? iosThumbPop.get() : iosThumbPop.set(targetExpand, still));
-            final boolean liquid = glass && pop > 0.01f;
             final app.exteraless.appearance.glass.IosSliderThumb.Track track = c -> {
                 rect.set(left, cy - r, right, cy + r);
                 fillPaint.setColor(trackPaint.getColor());
@@ -239,28 +238,13 @@ public class WavySeekBar extends View {
                     c.drawRoundRect(rect, r, r, fillPaint);
                 }
             };
-            canvas.save();
-            if (liquid) {
-                // the clip has to match the thumb, which grows out of the bar by scaling
-                canvas.scale(pop, pop, cx, cy);
-                iosThumb.clipTrack(canvas, cx, cy, 1f, getWidth());
-                canvas.scale(1f / pop, 1f / pop, cx, cy);
-            }
-            track.draw(canvas);
-            canvas.restore();
-            if (liquid) {
-                canvas.save();
-                canvas.scale(pop, pop, cx, cy);
-                iosThumb.draw(canvas, cx, cy, getWidth(), c -> {
-                    // the thumb is drawn scaled; its lens has to see the track at the real size
-                    c.save();
-                    c.scale(1f / pop, 1f / pop, cx, cy);
-                    track.draw(c);
-                    c.restore();
-                });
-                canvas.restore();
-            } else if (!glass && iosExpand > 0.01f) {
-                drawGlassThumb(canvas, x, cy, left, right);
+            if (glass) {
+                iosThumb.drawPopping(canvas, cx, cy, getWidth(), pop, track);
+            } else {
+                track.draw(canvas);
+                if (iosExpand > 0.01f) {
+                    drawGlassThumb(canvas, x, cy, left, right);
+                }
             }
             if (iosExpand != targetExpand && !frozen) {
                 postInvalidateOnAnimation();
