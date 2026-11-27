@@ -324,6 +324,7 @@ class SolarIcons {
             solarIcons.add(R.drawable.msg_topics to R.drawable.msg_topics_solar)
             solarIcons.add(R.drawable.msg_translate to R.drawable.msg_translate_solar)
             solarIcons.add(R.drawable.ic_translate to R.drawable.msg_translate_solar)
+            solarIcons.add(R.drawable.msg_translate_off to R.drawable.msg_translate_off_solar)
             solarIcons.add(R.drawable.msg_unarchive to R.drawable.msg_unarchive_solar)
             solarIcons.add(R.drawable.msg_unfave to R.drawable.msg_unfave_solar)
             solarIcons.add(R.drawable.msg_ungroup to R.drawable.msg_ungroup_solar)

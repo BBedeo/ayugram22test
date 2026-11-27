@@ -1899,6 +1899,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int edit_quick_reply = 64;
 
     private ActionBarMenuItem actionModeOtherItem; // NekoX
+    private ActionBarMenuSubItem actionModeTranslateSubItem;
 
     private final static int copy_business_link = 65;
     private final static int share_business_link = 66;
@@ -11776,7 +11777,7 @@ public class ChatActivity extends BaseFragment implements
         if (currentEncryptedChat == null && !noforward) {
             actionModeOtherItem.addSubItem(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, LocaleController.getString(R.string.NoQuoteForward));
         }
-        actionModeOtherItem.addSubItem(nkbtn_translate, translateIcon, LocaleController.getString(R.string.Translate));
+        actionModeTranslateSubItem = actionModeOtherItem.addSubItem(nkbtn_translate, translateIcon, LocaleController.getString(R.string.Translate));
         actionModeOtherItem.addSubItem(nkbtn_sharemessage, R.drawable.msg_shareout, LocaleController.getString(R.string.ShareMessages));
         actionModeOtherItem.addSubItem(nkbtn_unpin, R.drawable.msg_unpin, LocaleController.getString(R.string.UnpinMessage));
         if (!noforward) {
@@ -11834,7 +11835,25 @@ public class ChatActivity extends BaseFragment implements
         final int count = actionModeOtherItem.getVisibleSubItemsCount();
         final boolean onlyTranslate = count == 1 && actionModeOtherItem.isSubItemVisible(nkbtn_translate);
         actionBar.createActionMode().setItemVisibility(nkbtn_translate, onlyTranslate ? View.VISIBLE : View.GONE);
+        updateActionModeTranslateIcon();
         actionModeOtherItem.setVisibility(count == 0 || onlyTranslate ? View.GONE : View.VISIBLE);
+    }
+
+    // a selection that already shows its translation offers the way back: the icon is struck out
+    private void updateActionModeTranslateIcon() {
+        if (actionModeTranslateSubItem == null) {
+            return;
+        }
+        final boolean shown = MessageTransKt.isTranslationShown(getSelectedMessages1());
+        final int icon = shown ? R.drawable.msg_translate_off
+                : LlmConfig.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate;
+        final String text = getString(shown ? R.string.UndoTranslate : R.string.Translate);
+        actionModeTranslateSubItem.setTextAndIcon(text, icon);
+        final ActionBarMenuItem button = actionBar.createActionMode().getItem(nkbtn_translate);
+        if (button != null) {
+            button.setIcon(icon);
+            button.setContentDescription(text);
+        }
     }
 
     private void hideTagSelector() {
@@ -26120,6 +26139,7 @@ public class ChatActivity extends BaseFragment implements
             int loadIndex = did == dialog_id ? 0 : 1;
             doOnIdle(() -> {
                 replaceMessageObjects(messageObjects, loadIndex, false);
+                updateActionModeTranslateIcon(); // some translations finish by replacing the message
             });
         } else if (id == NotificationCenter.notificationsSettingsUpdated) {
             updateTitleIcons();
@@ -27138,6 +27158,7 @@ public class ChatActivity extends BaseFragment implements
                 return;
             }
             updateMessageTranslation(messageObject, summary);
+            updateActionModeTranslateIcon();
             if (args.length > 2 && (boolean) args[2]) {
                 checkTranslation(true);
             }
@@ -51554,13 +51575,13 @@ public class ChatActivity extends BaseFragment implements
                         if (showTranslate && (isOutgoingOrNotTranslatingDialog || isLLMDefault)) {
                             items.add(canUndoTranslate ? getString(R.string.UndoTranslate) : getString(R.string.Translate));
                             options.add(nkbtn_translate);
-                            icons.add(isLLMDefault && !isRichMessage ? R.drawable.magic_stick_solar : R.drawable.msg_translate);
+                            icons.add(canUndoTranslate ? R.drawable.msg_translate_off : isLLMDefault && !isRichMessage ? R.drawable.magic_stick_solar : R.drawable.msg_translate);
                         }
                         boolean shouldShowLLM = !showTranslate || !isTranslated || !isOutgoingOrNotTranslatingDialog;
                         if (showTranslateLLM && shouldShowLLM) {
                             items.add(canUndoTranslate ? getString(R.string.UndoTranslate) : getString(R.string.TranslateMessageLLM));
                             options.add(nkbtn_translate_llm);
-                            icons.add(R.drawable.magic_stick_solar);
+                            icons.add(canUndoTranslate ? R.drawable.msg_translate_off : R.drawable.magic_stick_solar);
                         }
                     }
                     if (NekoConfig.showShareMessages.Bool() && msg != null) {
@@ -51783,13 +51804,13 @@ public class ChatActivity extends BaseFragment implements
                     if (showTranslate && (isOutgoingOrNotTranslatingDialog || isLLMDefault)) {
                         items.add(canUndoTranslate ? getString(R.string.UndoTranslate) : getString(R.string.Translate));
                         options.add(nkbtn_translate);
-                        icons.add(isLLMDefault && !isRichMessage ? R.drawable.magic_stick_solar : R.drawable.msg_translate);
+                        icons.add(canUndoTranslate ? R.drawable.msg_translate_off : isLLMDefault && !isRichMessage ? R.drawable.magic_stick_solar : R.drawable.msg_translate);
                     }
                     boolean shouldShowLLM = !showTranslate || !isTranslated || !isOutgoingOrNotTranslatingDialog;
                     if (showTranslateLLM && shouldShowLLM) {
                         items.add(canUndoTranslate ? getString(R.string.UndoTranslate) : getString(R.string.TranslateMessageLLM));
                         options.add(nkbtn_translate_llm);
-                        icons.add(R.drawable.magic_stick_solar);
+                        icons.add(canUndoTranslate ? R.drawable.msg_translate_off : R.drawable.magic_stick_solar);
                     }
                 }
                 allowDelete = true;

@@ -1270,6 +1270,7 @@ public final class BaseIconPacks {
         map.put(R.drawable.ayu_ghost,           R.drawable.ayu_ghost_solar);
         map.put(R.drawable.ic_select_between,   R.drawable.msg_select_between_solar);
         map.put(R.drawable.ic_translate,        R.drawable.msg_translate_solar);
+        map.put(R.drawable.msg_translate_off,   R.drawable.msg_translate_off_solar);
         map.put(R.drawable.ic_upward,           R.drawable.ic_upward_solar);
         map.put(R.drawable.input_sticker,       R.drawable.msg_sticker_solar);
         map.put(R.drawable.menu_recent,         R.drawable.msg_recent_solar);

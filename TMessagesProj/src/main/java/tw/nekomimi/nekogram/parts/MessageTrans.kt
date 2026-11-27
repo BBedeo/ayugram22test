@@ -219,6 +219,18 @@ private val ChatActivity.translateController: TranslateController
     get() = messagesController.translateController
 
 
+/** True when every message with text shows its translation, so "Translate" brings the original back. */
+fun isTranslationShown(messages: List<MessageObject>): Boolean {
+    val withText = messages.filter { it.hasTranslatableText() }
+    return withText.isNotEmpty() && withText.all { msg ->
+        if (msg.isRich) RichMessageTransHelper.hasActiveTranslation(msg) else msg.isTranslated
+    }
+}
+
+private fun MessageObject.hasTranslatableText(): Boolean =
+    isPoll || !messageOwner.message.isNullOrEmpty() ||
+            isRich && RichMessageTransHelper.collectPlainTexts(messageOwner.rich_message).isNotEmpty()
+
 @JvmName("translateMessages")
 fun ChatActivity.translateMessagesWithProvider(provider: Int) =
     translateMessages(provider = provider)
@@ -242,15 +254,8 @@ fun ChatActivity.translateMessages(
     val canReuseCache = provider == 0
 
     // Check if all messages are already translated, hide translation if so
-    val allTranslated = messages.all { msg ->
-        if (msg.isRich) {
-            RichMessageTransHelper.hasActiveTranslation(msg)
-        } else {
-            msg.isTranslated
-        }
-    }
-    if (allTranslated) {
-        messages.forEach { msg ->
+    if (isTranslationShown(messages)) {
+        messages.filter { it.hasTranslatableText() }.forEach { msg ->
             hideTranslation(msg, translatorMode)
         }
         return
