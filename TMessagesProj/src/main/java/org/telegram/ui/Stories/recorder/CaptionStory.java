@@ -108,7 +108,7 @@ public class CaptionStory extends CaptionContainerView {
                 }
             };
 
-            periodPopup = ItemOptions.makeOptions(rootView, resourcesProvider, periodButton);
+            periodPopup = ItemOptions.makeOptions(rootView, resourcesProvider, periodButton).growFrom(periodButton);
             periodPopup.addText(LocaleController.getString("StoryPeriodHint"), 13, dp(200));
             periodPopup.addGap();
             for (int i = 0; i < periods.length; ++i) {

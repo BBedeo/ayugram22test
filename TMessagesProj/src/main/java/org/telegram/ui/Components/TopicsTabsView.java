@@ -922,7 +922,8 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
             final MessagesController messagesController = MessagesController.getInstance(currentAccount);
             final TLRPC.Chat currentChat = dialogId < 0 ? messagesController.getChat(-dialogId) : null;
             final TLRPC.User currentUser = dialogId > 0 ? messagesController.getUser(dialogId) : null;
-            final ItemOptions options = ItemOptions.makeOptions(fragment, view, true);
+            // a row of the side panel is not a button: its menu stays a popup
+            final ItemOptions options = ItemOptions.makeOptions(fragment, view, true).growFrom(fromSidePanel ? null : view);
 
             if (ChatObject.isMonoForum(currentChat)) {
                 final long topicId = DialogObject.getPeerDialogId(topic.from_id);

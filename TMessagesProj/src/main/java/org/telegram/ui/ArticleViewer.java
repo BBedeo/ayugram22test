@@ -4609,7 +4609,7 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
             if (pages[0] == null) return false;
 
             final float wasRotation = actionBar.backButtonDrawable.getRotation();
-            ItemOptions options = ItemOptions.makeOptions(sheet != null ? sheet.windowView : windowView, v);
+            ItemOptions options = ItemOptions.makeOptions(sheet != null ? sheet.windowView : windowView, v).growFrom(v);
 
             final int backgroundColor = SharedConfig.adaptableColorInBrowser ? Theme.getColor(Theme.key_iv_background) : pages[0].getBackgroundColor();
             final int textColor = SharedConfig.adaptableColorInBrowser ? Theme.getColor(Theme.key_windowBackgroundWhiteBlackText) : AndroidUtilities.computePerceivedBrightness(pages[0].getBackgroundColor()) >= .721f ? Color.BLACK : Color.WHITE;

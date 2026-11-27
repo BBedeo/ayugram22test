@@ -1031,7 +1031,7 @@ public class FiltersSetupActivity extends BaseFragment implements NotificationCe
                     filterCell.setOnOptionsClick(v -> {
                         FilterCell cell = (FilterCell) v.getParent();
                         MessagesController.DialogFilter filter = cell.getCurrentFilter();
-                        ItemOptions options = ItemOptions.makeOptions(FiltersSetupActivity.this, cell);
+                        ItemOptions options = ItemOptions.makeOptions(FiltersSetupActivity.this, cell).growFrom(v);
                         options.add(R.drawable.msg_edit, LocaleController.getString(R.string.FilterEditItem), () -> {
                             if (filter.locked) {
                                 showDialog(new LimitReachedBottomSheet(FiltersSetupActivity.this, mContext, LimitReachedBottomSheet.TYPE_FOLDERS, currentAccount, null));

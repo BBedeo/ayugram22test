@@ -430,7 +430,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             final long dialogId = parentFragment.getDialogId();
             final long topicId = parentFragment.getTopicId();
             final boolean muted = parentFragment.getMessagesController().isDialogMuted(dialogId, topicId);
-            final ItemOptions options = ItemOptions.makeOptions(parentFragment, ChatAvatarContainer.this);
+            final ItemOptions options = ItemOptions.makeOptions(parentFragment, ChatAvatarContainer.this).growFrom(ChatAvatarContainer.this);
             options.add(R.drawable.msg_info, LocaleController.getString(R.string.OpenProfile), () -> openProfile(false));
             if (canSearch()) {
                 options.add(R.drawable.msg_search, LocaleController.getString(R.string.Search), this::openSearch);

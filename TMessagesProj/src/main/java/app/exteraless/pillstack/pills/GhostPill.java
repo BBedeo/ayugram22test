@@ -136,7 +136,7 @@ public class GhostPill extends BasePill implements NotificationCenter.Notificati
         if (fragment == null) {
             return false;
         }
-        ItemOptions.makeOptions(fragment, this)
+        ItemOptions.makeOptions(fragment, this).growFrom(this)
                 .add(R.drawable.ayu_ghost, LocaleController.getString(R.string.GhostMode),
                         () -> fragment.presentFragment(new GhostModeActivity()))
                 .add(R.drawable.msg_settings, LocaleController.getString(R.string.Settings),

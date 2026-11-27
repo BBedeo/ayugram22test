@@ -599,7 +599,7 @@ public class StarsReactionsSheet extends BottomSheet implements NotificationCent
             final ArrayList<TLObject> chats = BotStarsController.getInstance(currentAccount).getAdminedChannels();
             chats.add(0, UserConfig.getInstance(currentAccount).getCurrentUser());
 
-            ItemOptions i = ItemOptions.makeOptions(containerView, resourcesProvider, dialogSelectorInnerLayout);
+            ItemOptions i = ItemOptions.makeOptions(containerView, resourcesProvider, dialogSelectorInnerLayout).growFrom(dialogSelectorInnerLayout);
             for (TLObject obj : chats) {
                 long did;
                 if (obj instanceof TLRPC.User) {

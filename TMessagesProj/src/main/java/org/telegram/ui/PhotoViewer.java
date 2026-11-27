@@ -7778,7 +7778,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             final boolean multipleSelected = placeProvider != null &&  placeProvider.getSelectedCount() > 1;
             final String languageText = Translator.getInputTranslateLangForChat(ChatsHelper.getChatId()).toUpperCase();
 
-            final ItemOptions options = ItemOptions.makeOptions(containerView, new DarkThemeResourceProvider(), view)
+            final ItemOptions options = ItemOptions.makeOptions(containerView, new DarkThemeResourceProvider(), view).growFrom(view)
                 .setGravity(Gravity.RIGHT);
             if (showCaptionTranslate && LlmConfig.isLLMTranslatorAvailable() && !LlmConfig.llmIsDefaultProvider()) {
                 addTranslateCommentOption(options, R.drawable.magic_stick_solar, getString(R.string.TranslateMessageLLM) + ' ' + "(" + languageText + ")", Translator.providerLLMTranslator);
@@ -24023,7 +24023,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         final int account = currentMessageObject.currentAccount;
         final Theme.ResourcesProvider resourcesProvider = new DarkThemeResourceProvider();
 
-        final ItemOptions o = ItemOptions.makeOptions(containerView, resourcesProvider, menuItem, true);
+        final ItemOptions o = ItemOptions.makeOptions(containerView, resourcesProvider, menuItem, true).growFrom(menuItem);
         o.translate(0, -dp(46));
         o.setGravity(Gravity.RIGHT);
 

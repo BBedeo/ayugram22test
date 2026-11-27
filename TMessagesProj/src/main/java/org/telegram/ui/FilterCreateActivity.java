@@ -2028,7 +2028,7 @@ public class FilterCreateActivity extends BaseFragment {
                 return;
             }
             final RecyclerListView listView = ((FilterCreateActivity) fragment).listView;
-            ItemOptions options = ItemOptions.makeOptions(fragment, this);
+            ItemOptions options = ItemOptions.makeOptions(fragment, this).growFrom(optionsIcon);
             options.setScrimViewBackground(listView.getClipBackground(this));
             options.add(R.drawable.msg_qrcode, LocaleController.getString(R.string.GetQRCode), this::qrcode);
             options.add(R.drawable.msg_delete, LocaleController.getString(R.string.DeleteLink), true, this::deleteLink);
@@ -2582,7 +2582,7 @@ public class FilterCreateActivity extends BaseFragment {
                         view = new LinkCell(getContext(), null, currentAccount, filter.id) {
                             @Override
                             public void options() {
-                                ItemOptions options = ItemOptions.makeOptions(container, this);
+                                ItemOptions options = ItemOptions.makeOptions(container, this).growFrom(optionsIcon);
                                 options.add(R.drawable.msg_copy, LocaleController.getString(R.string.CopyLink), this::copy);
                                 options.add(R.drawable.msg_qrcode, LocaleController.getString(R.string.GetQRCode), this::qrcode);
                                 options.add(R.drawable.msg_delete, LocaleController.getString(R.string.DeleteLink), true, this::deleteLink);

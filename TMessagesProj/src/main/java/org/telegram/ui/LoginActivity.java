@@ -10561,7 +10561,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             cells[2].setSubtitle(premium_days == 7 ? getString(R.string.SMSFee3Text) : formatPluralStringComma("SMSFee3TextDays", premium_days));
 
             optionsButton.setOnClickListener(v -> {
-                ItemOptions.makeOptions(LoginActivity.this, optionsButton)
+                ItemOptions.makeOptions(LoginActivity.this, optionsButton).growFrom(optionsButton)
                     .add(R.drawable.msg_help, getString(R.string.SettingsHelp), () -> {
                         try {
                             PackageInfo pInfo = ApplicationLoader.applicationContext.getPackageManager().getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);

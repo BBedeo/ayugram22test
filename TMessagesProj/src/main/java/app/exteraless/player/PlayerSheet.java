@@ -1383,7 +1383,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     }
 
     private void showPlaybackOptions(View anchor) {
-        ItemOptions o = ItemOptions.makeOptions(container, colors.provider(resourcesProvider), anchor, true);
+        ItemOptions o = ItemOptions.makeOptions(container, colors.provider(resourcesProvider), anchor, true).growFrom(anchor);
         addPlaybackOptions(o, null);
         o.show();
     }
@@ -1932,7 +1932,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         }
         boolean noForwards = PlayerActions.noForwards(mo);
         Theme.ResourcesProvider rp = colors.provider(resourcesProvider);
-        ItemOptions o = ItemOptions.makeOptions(container, rp, anchor, true);
+        ItemOptions o = ItemOptions.makeOptions(container, rp, anchor, true).growFrom(anchor);
         if (!noForwards) {
             ItemOptions sub = o.makeSwipeback();
             sub.add(R.drawable.ic_ab_back, getString(R.string.Back), o::closeSwipeback);

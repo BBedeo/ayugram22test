@@ -1092,7 +1092,7 @@ public class ManageLinksActivity extends BaseFragment implements NotificationCen
                     return;
                 }
 
-                ItemOptions options = ItemOptions.makeOptions((ViewGroup) fragmentView, LinkCell.this);
+                ItemOptions options = ItemOptions.makeOptions((ViewGroup) fragmentView, LinkCell.this).growFrom(optionsView);
                 if (invite.revoked) {
                     options.add(R.drawable.msg_delete, getString(R.string.Delete), true, () -> {
                         TLRPC.TL_chatInviteExported inviteFinal = invite;

@@ -373,6 +373,9 @@ public class ScrimOptions extends Dialog {
             return;
         }
         AndroidUtilities.makeGlobalBlurBitmap(bitmap -> {
+            if (bitmap == null) {
+                return; // no picture of the screen: the caller goes on without blur
+            }
             if (cutToContainer.getWidth() > 0 && cutToContainer.getHeight() > 0) {
                 int[] pos = new int[2];
                 cutToContainer.getLocationOnScreen(pos);

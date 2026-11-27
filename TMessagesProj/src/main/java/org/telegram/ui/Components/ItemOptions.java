@@ -1491,6 +1491,10 @@ public class ItemOptions {
             return this;
         }
 
+        // growing out of the button; without any of these the menu opens as a popup, as before
+        final boolean grow = growButton != null && growButton.isShown() && growButton.getWidth() > 0 && growButton.getHeight() > 0
+                && LiquidGlassTuning.motionEnabled() && layout == lastLayout && !dontFocus && captureForGrow(container);
+
         float x = 0;
         float y = AndroidUtilities.displaySize.y / 2f;
         if (scrimView != null) {
@@ -1518,7 +1522,7 @@ public class ItemOptions {
             x = point[0] = 0;
         }
 
-        if (dimAlpha > 0 || blur || blurForMenu) {
+        if (!grow && (dimAlpha > 0 || blur || blurForMenu)) {
             DimView dimViewLocal = dimView = new DimView(context);
             preDrawListener = () -> {
                 dimViewLocal.invalidate();
@@ -1573,18 +1577,41 @@ public class ItemOptions {
         final android.graphics.Rect layoutPadding = lastLayout.getPadding();
         layoutBounds.set(layoutPadding.left, layoutPadding.top, layout.getMeasuredWidth() - layoutPadding.right, layout.getMeasuredHeight() - layoutPadding.bottom);
 
-        actionBarPopupWindow = new ActionBarPopupWindow(layout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
-            @Override
-            public void dismiss() {
-                super.dismiss();
-                ItemOptions.this.dismissDim(container);
+        int keyboardHeight = 0;
+        if (container != null && !allowShowingOnTopOfKeyboard) {
+            final android.graphics.Rect visible = new android.graphics.Rect();
+            final View rootView = container.getRootView();
+            container.getWindowVisibleDisplayFrame(visible);
+            final int usableViewHeight = rootView.getHeight() - (visible.top != 0 ? AndroidUtilities.statusBarHeight : 0) - AndroidUtilities.getViewInset(rootView);
+            keyboardHeight = Math.max(0, usableViewHeight - (visible.bottom - visible.top));
+        }
+        final int bottomLimit = AndroidUtilities.displaySize.y - AndroidUtilities.navigationBarHeight - keyboardHeight;
 
-                if (dismissListener != null) {
-                    dismissListener.run();
-                    dismissListener = null;
+        // grows up or down by the free space; known only here, with the menu measured and the keyboard counted
+        boolean growUp = forceTop;
+        if (grow && !forceTop && !forceBottom) {
+            final int[] buttonOnScreen = new int[2];
+            growButton.getLocationOnScreen(buttonOnScreen);
+            growUp = buttonOnScreen[1] + layout.getMeasuredHeight() + dp(16) > bottomLimit;
+        }
+
+        if (grow) {
+            actionBarPopupWindow = new ButtonGrowPopup(ButtonGrowPopup.newOverlay(context), growButton, scrimBlur3SourceBitmap, container, growUp, resourcesProvider) {
+                @Override
+                public void dismiss() {
+                    super.dismiss();
+                    onPopupDismiss(container);
                 }
-            }
-        };
+            };
+        } else {
+            actionBarPopupWindow = new ActionBarPopupWindow(layout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
+                @Override
+                public void dismiss() {
+                    super.dismiss();
+                    onPopupDismiss(container);
+                }
+            };
+        }
         actionBarPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
             @Override
             public void onDismiss() {
@@ -1605,7 +1632,7 @@ public class ItemOptions {
         actionBarPopupWindow.setOutsideTouchable(true);
         actionBarPopupWindow.setFocusable(!dontFocus);
         actionBarPopupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        actionBarPopupWindow.setAnimationStyle(R.style.PopupContextAnimation);
+        actionBarPopupWindow.setAnimationStyle(grow ? 0 : R.style.PopupContextAnimation);
         if (allowShowingOnTopOfKeyboard) {
             actionBarPopupWindow.setInputMethodMode(ActionBarPopupWindow.INPUT_METHOD_NOT_NEEDED);
             actionBarPopupWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED);
@@ -1642,15 +1669,6 @@ public class ItemOptions {
         } else {
             X = (container.getWidth() - layout.getMeasuredWidth()) / 2; // at the center
         }
-        int keyboardHeight = 0;
-        if (container != null && !allowShowingOnTopOfKeyboard) {
-            final android.graphics.Rect visible = new android.graphics.Rect();
-            final View rootView = container.getRootView();
-            container.getWindowVisibleDisplayFrame(visible);
-            final int usableViewHeight = rootView.getHeight() - (visible.top != 0 ? AndroidUtilities.statusBarHeight : 0) - AndroidUtilities.getViewInset(rootView);
-            keyboardHeight = Math.max(0, usableViewHeight - (visible.bottom - visible.top));
-        }
-        final int bottomLimit = AndroidUtilities.displaySize.y - AndroidUtilities.navigationBarHeight - keyboardHeight;
         int Y;
         float scrimHeight = onTopOfScrim ? 0 : scrimViewBounds.height();
         boolean above = false;
@@ -1675,7 +1693,7 @@ public class ItemOptions {
         } else {
             Y = (container.getHeight() - layout.getMeasuredHeight()) / 2; // at the center
         }
-        if (swipeback && above && !overridenSwipebackGravity && lastLayout != null) {
+        if (!grow && swipeback && above && !overridenSwipebackGravity && lastLayout != null) {
             lastLayout.swipeBackGravityBottom = true;
         }
 
@@ -1710,7 +1728,7 @@ public class ItemOptions {
             }
         }
 
-        if (blurForMenu && scrimBlur3SourceBitmap != null) {
+        if (!grow && blurForMenu && scrimBlur3SourceBitmap != null) {
             setGapBackgroundColor(Color.TRANSPARENT);
             setGapCollapsedForGlass(true);
             final BlurredBackgroundDrawableViewFactory menuFactory = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap);
@@ -1744,12 +1762,16 @@ public class ItemOptions {
         }
 
         actionBarPopupWindow.setScaleOut(scaleOut);
-        actionBarPopupWindow.showAtLocation(
-            container,
-            0,
-            (int) (offsetX = (X + this.translateX)),
-            (int) (offsetY = (Y + this.translateY))
-        );
+        offsetX = X + this.translateX;
+        offsetY = Y + this.translateY;
+        if (grow) {
+            actionBarPopupWindow.setClippingEnabled(false);
+            actionBarPopupWindow.setLayoutInScreen(true);
+            actionBarPopupWindow.showAtLocation(container, 0, 0, 0);
+            ((ButtonGrowPopup) actionBarPopupWindow).openMenu(lastLayout);
+        } else {
+            actionBarPopupWindow.showAtLocation(container, 0, (int) offsetX, (int) offsetY);
+        }
 
         final boolean handledByMenuItem = scrimView instanceof ActionBarMenuItem
                 && ((ActionBarMenuItem) scrimView).isDragOpenMenuEnabled();
@@ -1757,15 +1779,52 @@ public class ItemOptions {
             installHoverReleaseListener();
         }
 
-        if (followScrim) {
+        if (followScrim && !grow) {
             installFollowListeners();
         }
 
         return this;
     }
 
+    private View growButton;
+
+    /**
+     * The menu of a button grows out of it and pours back, as the header menus do. For a menu opened by a button (a tap or
+     * a hold), call this before {@link #show()}; change the animation itself in SimpleActionBarMenuOverlay only.
+     */
+    public ItemOptions growFrom(View button) {
+        growButton = button;
+        return this;
+    }
+
+    /** The screen under a growing menu, without the button: what its glass refracts. False if there is no picture. */
+    private boolean captureForGrow(ViewGroup container) {
+        if (scrimBlur3SourceBitmap == null) {
+            scrimBlur3SourceBitmap = new GlassSourceBitmap();
+        }
+        ButtonGrowPopup.finishClosing();
+        final float alpha = growButton.getAlpha();
+        growButton.setAlpha(0f);
+        ScrimOptions.makeGlobalBlurBitmaps(container, (bitmapBg, bitmapOptions) -> {
+            scrimBlur3SourceBitmap.setBitmap(bitmapOptions);
+            Blur3Utils.checkBitmapSourceMatrixScale(scrimBlur3SourceBitmap, container);
+        });
+        growButton.setAlpha(alpha);
+        return scrimBlur3SourceBitmap.getBitmap() != null;
+    }
+
+    private void onPopupDismiss(ViewGroup container) {
+        dismissDim(container);
+
+        if (dismissListener != null) {
+            dismissListener.run();
+            dismissListener = null;
+        }
+    }
+
     public void setTranslationY(float ty) {
-        if (actionBarPopupWindow != null) {
+        // the overlay of a growing menu places it by its button
+        if (actionBarPopupWindow != null && !(actionBarPopupWindow instanceof ButtonGrowPopup)) {
             actionBarPopupWindow.update((int) offsetX, (int) (offsetY + ty), -1, -1);
         }
     }
@@ -1830,7 +1889,7 @@ public class ItemOptions {
     }
 
     public void reposition() {
-        if (actionBarPopupWindow == null || !actionBarPopupWindow.isShowing()) return;
+        if (actionBarPopupWindow == null || !actionBarPopupWindow.isShowing() || actionBarPopupWindow instanceof ButtonGrowPopup) return;
         if (scrimView == null || pointContainer == null || layout == null || lastLayout == null) return;
         final ViewGroup container = pointContainer;
 
@@ -2119,6 +2178,7 @@ public class ItemOptions {
     private View hoveredItem;
     private boolean hoverEnteredMenu;
     private boolean hoverDraggedOutside;
+    private boolean hoverMoved;
     private float hoverDownRawX = Float.NaN;
     private float hoverDownRawY = Float.NaN;
     private final int[] hoverLoc = new int[2];
@@ -2129,6 +2189,7 @@ public class ItemOptions {
         hoverDraggedOutside = false;
         hoverDownRawX = Float.NaN;
         hoverDownRawY = Float.NaN;
+        hoverMoved = false;
         if (scrimView.getParent() != null) {
             scrimView.getParent().requestDisallowInterceptTouchEvent(true);
         }
@@ -2200,6 +2261,14 @@ public class ItemOptions {
     }
 
     private void updateHover(int rawX, int rawY) {
+        // a growing menu comes out over the held button: a finger that has not moved chooses nothing under it
+        if (actionBarPopupWindow instanceof ButtonGrowPopup && !hoverMoved) {
+            final float slop = android.view.ViewConfiguration.get(context).getScaledTouchSlop();
+            if (Float.isNaN(hoverDownRawX) || Math.hypot(rawX - hoverDownRawX, rawY - hoverDownRawY) <= slop * 1.5f) {
+                return;
+            }
+            hoverMoved = true;
+        }
         final View pageRoot = layout instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout
                 ? ((ActionBarPopupWindow.ActionBarPopupWindowLayout) layout).getVisiblePageRoot()
                 : layout;
@@ -2260,6 +2329,7 @@ public class ItemOptions {
         hoverDraggedOutside = false;
         hoverDownRawX = Float.NaN;
         hoverDownRawY = Float.NaN;
+        hoverMoved = false;
     }
 
     private void cancelHover() {
@@ -2272,6 +2342,7 @@ public class ItemOptions {
         hoverDraggedOutside = false;
         hoverDownRawX = Float.NaN;
         hoverDownRawY = Float.NaN;
+        hoverMoved = false;
     }
 
     private static View findItemAt(View root, int rawX, int rawY) {
@@ -2380,9 +2451,6 @@ public class ItemOptions {
                     scrimView.setAlpha(0.0f);
                 }
                 ScrimOptions.makeGlobalBlurBitmaps(pointContainer, (bitmapBg, bitmapOptions) -> {
-                    if (scrimView != null) {
-                        scrimView.setAlpha(1.0f);
-                    }
                     if (blur) blurBitmap = bitmapBg;
                     if (scrimBlur3SourceBitmap != null) {
                         scrimBlur3SourceBitmap.setBitmap(bitmapOptions);
@@ -2392,6 +2460,10 @@ public class ItemOptions {
                         }
                     }
                 });
+                // the capture is synchronous and skips the callback when there is no picture
+                if (scrimView != null) {
+                    scrimView.setAlpha(1.0f);
+                }
             }
         }
 

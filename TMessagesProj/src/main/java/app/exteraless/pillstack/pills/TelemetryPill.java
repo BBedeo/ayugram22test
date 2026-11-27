@@ -101,7 +101,7 @@ public abstract class TelemetryPill extends BasePill {
         if (fragment == null) {
             return false;
         }
-        ItemOptions.makeOptions(fragment, this)
+        ItemOptions.makeOptions(fragment, this).growFrom(this)
                 .add(R.drawable.msg_retry, LocaleController.getString(R.string.Refresh), () -> onUpdateData(true))
                 .add(R.drawable.msg_settings, LocaleController.getString(R.string.Settings),
                         () -> fragment.presentFragment(new PillStackSettingsActivity()))

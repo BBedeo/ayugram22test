@@ -234,7 +234,7 @@ public class CachePill extends BasePill implements PillStackEvents.Listener {
         if (fragment == null) {
             return false;
         }
-        ItemOptions.makeOptions(fragment, this)
+        ItemOptions.makeOptions(fragment, this).growFrom(this)
                 .add(R.drawable.msg2_data, LocaleController.getString(R.string.StorageUsage), this::openCacheSettings)
                 .addGap()
                 .add(R.drawable.msg_retry, LocaleController.getString(R.string.Refresh), () -> onUpdateData(true))

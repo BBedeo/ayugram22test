@@ -1072,7 +1072,7 @@ public class UserSelectorBottomSheet extends BottomSheetWithRecyclerListView imp
             return null;
         }
         return (View view) -> {
-            ItemOptions.makeOptions(container, resourcesProvider, (View) view.getParent())
+            ItemOptions.makeOptions(container, resourcesProvider, (View) view.getParent()).growFrom(view)
                 .add(R.drawable.profile_discuss, LocaleController.getString(R.string.SendMessage), () -> {
                     if (user == null) return;
                     BaseFragment fragment = getBaseFragment();

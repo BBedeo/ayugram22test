@@ -5485,7 +5485,7 @@ public class PeerStoriesView extends SizeNotifierFrameLayout implements Notifica
                     if (disabledPaidFeatures(true)) {
                         return false;
                     }
-                    ItemOptions.makeOptions(storyViewer.containerView, resourcesProvider, v)
+                    ItemOptions.makeOptions(storyViewer.containerView, resourcesProvider, v).growFrom(v)
                         .add(R.drawable.msg_edit, getString(R.string.LiveStoryMessageEditStars), () -> {
                             onHighlightLiveMessage();
                         })

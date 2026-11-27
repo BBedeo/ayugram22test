@@ -309,7 +309,7 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
         });
         menu.addItem(1, R.drawable.ic_ab_other).setOnClickListener(v -> {
             final GramWallet wallet = GramWallet.getInstance(currentAccount);
-            final ItemOptions o = ItemOptions.makeOptions(WalletActivity.this, v, true);
+            final ItemOptions o = ItemOptions.makeOptions(WalletActivity.this, v, true).growFrom(v);
             o.translate(0, -dp(48));
             o.setDimAlpha(0);
             o.setGravity(Gravity.RIGHT);
@@ -3304,7 +3304,7 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
                 sheet[0].getContainer(),
                 resourceProvider,
                 moreButton
-            );
+            ).growFrom(moreButton);
             if (!TextUtils.isEmpty(transaction[0].tx_hash)) {
                 options.add(
                     R.drawable.msg_search,

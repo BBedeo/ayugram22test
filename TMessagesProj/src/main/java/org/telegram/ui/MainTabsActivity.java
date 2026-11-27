@@ -750,7 +750,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     public boolean openContactsSelector(View anchor) {
         if (getContext() == null || getParentActivity() == null) return false;
-        final ItemOptions o = ItemOptions.makeOptions(this, anchor);
+        final ItemOptions o = ItemOptions.makeOptions(this, anchor).growFrom(anchor);
         o.add(R.drawable.msg_contact_add, getString(R.string.NewContact), () -> {
             new NewContactBottomSheet(this, getContext()).show();
         });
@@ -774,7 +774,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     public boolean openFeedSelector(View anchor) {
         if (getContext() == null || getParentActivity() == null) return false;
-        final ItemOptions o = ItemOptions.makeOptions(this, anchor);
+        final ItemOptions o = ItemOptions.makeOptions(this, anchor).growFrom(anchor);
         o.add(R.drawable.msg_archive_hide, getString(R.string.HideFeedTab), () -> {
             AppearanceConfig.showFeedTab.setConfigBool(false);
             NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.feedTabVisibleToggled);
@@ -802,7 +802,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     public boolean openCallsSelector(View anchor) {
         if (getContext() == null || getParentActivity() == null) return false;
-        final ItemOptions o = ItemOptions.makeOptions(this, anchor);
+        final ItemOptions o = ItemOptions.makeOptions(this, anchor).growFrom(anchor);
         o.add(R.drawable.menu_call_create, getString(R.string.GroupCallCreate2), () -> CallLogActivity.openCreateCall(this));
         if (getUserConfig().showCallsTab) {
             o.add(R.drawable.msg_archive_hide, getString(R.string.HideCallTab), () -> {
@@ -832,7 +832,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         final ArrayList<MessagesController.DialogFilter> filters = getMessagesController().getDialogFilters();
         if (filters == null || filters.size() <= 1) return false;
 
-        final ItemOptions o = ItemOptions.makeOptions(this, anchor);
+        final ItemOptions o = ItemOptions.makeOptions(this, anchor).growFrom(anchor);
         for (int i = 0; i < filters.size(); i++) {
             final MessagesController.DialogFilter folder = filters.get(i);
             final ActionBarMenuSubItem folderItem = new ActionBarMenuSubItem(getParentActivity(), 2, false, false, getResourceProvider());
@@ -990,7 +990,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             return 0;
         });
 
-        ItemOptions o = ItemOptions.makeOptions(this, button);
+        ItemOptions o = ItemOptions.makeOptions(this, button).growFrom(button);
         if (UserConfig.getActivatedAccountsCount() < UserConfig.MAX_ACCOUNT_COUNT) {
             o.add(R.drawable.msg_addbot, getString(R.string.AddAccount), () -> {
                 int freeAccounts = 0;
@@ -1947,7 +1947,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             return openCallsSelector(button);
         }
         if (index == INDEX_SETTINGS) {
-            ItemOptions o = ItemOptions.makeOptions(this, button);
+            ItemOptions o = ItemOptions.makeOptions(this, button).growFrom(button);
             if (NekoConfig.showGhostInDrawer.Bool()) {
                 final String msg = NekoConfig.isGhostModeActive()
                     ? getString(R.string.DisableGhostMode)
@@ -1981,7 +1981,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             return true;
         }
 
-        ItemOptions o = ItemOptions.makeOptions(this, button);
+        ItemOptions o = ItemOptions.makeOptions(this, button).growFrom(button);
         addChatsMenuItems(o, button);
         setupPopupMenuStyle(o);
         o.show();

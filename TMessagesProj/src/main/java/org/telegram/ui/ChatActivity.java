@@ -11000,7 +11000,7 @@ public class ChatActivity extends BaseFragment implements
         headerItem.prepareSubMenu();
         final ActionBarPopupWindow.ActionBarPopupWindowLayout layout = headerItem.getPopupLayout();
         // in the screen's overlay: its dim is over the sidebar too (the panel's elevation would lift it over a dim inside)
-        final ItemOptions o = ItemOptions.makeOptions(this, button, true);
+        final ItemOptions o = ItemOptions.makeOptions(this, button, true).growFrom(button);
         boolean lastWasGap = true;
         for (int i = 0; i < layout.getItemsCount(); i++) {
             final View child = layout.getItemAt(i);
@@ -12122,7 +12122,7 @@ public class ChatActivity extends BaseFragment implements
                     return;
                 }
 
-                var filterPopup = ItemOptions.makeOptions(contentView, themeDelegate, searchFilterButton);
+                var filterPopup = ItemOptions.makeOptions(contentView, themeDelegate, searchFilterButton).growFrom(searchFilterButton);
                 filterPopup.setDimAlpha(0);
                 for (var filter : searchFilters) {
                     filterPopup.add(0, filter.first, () -> {

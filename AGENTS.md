@@ -203,6 +203,17 @@ changes so accepted visuals match on the first attempt:
   run all static checks in `scripts/check_*.py` (all must exit `0`).
 
 
+## Menus that grow out of a button
+
+- A menu opened by a button (tap or hold) goes through
+  `ItemOptions.growFrom(button)` before `show()`: it grows out of the button
+  and pours back (`ButtonGrowPopup` hosts the header menus' overlay).
+- Change the animation only in `SimpleActionBarMenuOverlay`; do not write a
+  second one for a single menu.
+- Row and message context menus do not grow. Without Liquid Glass animations,
+  for two-card, no-focus or own-window menus the popup behaves as before.
+  Scope and exclusions: `docs/designs/button-menu-grow.md` (kept locally).
+
 ## Live typing preview (live drafts)
 
 - Настройка: `ChatsConfig.liveTypingPreview` (`OEChatsLiveTypingPreview`, по умолчанию OFF), экран **Чаты → Поле ввода**,

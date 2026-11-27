@@ -233,7 +233,7 @@ public class TranslateAlert3 extends BottomSheetWithRecyclerListView {
     }
 
     private void onToLangMenu(View btn) {
-        final ItemOptions o = ItemOptions.makeOptions(container, resourcesProvider, btn);
+        final ItemOptions o = ItemOptions.makeOptions(container, resourcesProvider, btn).growFrom(btn);
         o.setMaxHeight(dp(450));
         o.setDrawScrim(false);
         o.setOnTopOfScrim();

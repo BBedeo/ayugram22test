@@ -157,7 +157,7 @@ public class CaptionPhotoViewer extends CaptionContainerView {
             }
             hint.hide();
 
-            timerPopup = ItemOptions.makeOptions(rootView, new DarkThemeResourceProvider(), timerButton);
+            timerPopup = ItemOptions.makeOptions(rootView, new DarkThemeResourceProvider(), timerButton).growFrom(timerButton);
             timerPopup.setDimAlpha(0);
             timerPopup.addText(getString(R.string.TimerPeriodHint), 13, dp(200));
             timerPopup.addGap();

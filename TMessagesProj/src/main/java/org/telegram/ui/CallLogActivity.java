@@ -1694,7 +1694,7 @@ public class CallLogActivity extends BaseFragment implements NotificationCenter.
 			});
 		};
 		linkOptionsView.setOnClickListener(v ->
-			ItemOptions.makeOptions(sheet.container, resourcesProvider, linkContainer)
+			ItemOptions.makeOptions(sheet.container, resourcesProvider, linkContainer).growFrom(v)
 				.add(R.drawable.msg_copy, getString(R.string.Copy), () -> {
 					AndroidUtilities.addToClipboard(currentLink[0]);
 
@@ -1737,7 +1737,7 @@ public class CallLogActivity extends BaseFragment implements NotificationCenter.
             }
         }.show());
 		if (creator) {
-			optionsView.setOnClickListener(v -> ItemOptions.makeOptions(sheet.getContainer(), resourcesProvider, optionsView)
+			optionsView.setOnClickListener(v -> ItemOptions.makeOptions(sheet.getContainer(), resourcesProvider, optionsView).growFrom(optionsView)
                 .add(R.drawable.menu_link_revoke, getString(R.string.GroupCallCreatedLinkRevoke), revoke)
                 .setOnTopOfScrim()
                 .translate(0, -dp(6))
@@ -1876,7 +1876,7 @@ public class CallLogActivity extends BaseFragment implements NotificationCenter.
 	}
 
 	private void showItemOptions() {
-		ItemOptions io = ItemOptions.makeOptions(this, otherItem);
+		ItemOptions io = ItemOptions.makeOptions(this, otherItem).growFrom(otherItem);
 		// io.setColors(getThemedColor(Theme.key_actionBarDefaultTitle), getThemedColor(Theme.key_actionBarDefaultTitle));
 		io.setDimAlpha(0x08);
 		if (!NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() && MainTabsHelper.isCallsTabShown(currentAccount)) {

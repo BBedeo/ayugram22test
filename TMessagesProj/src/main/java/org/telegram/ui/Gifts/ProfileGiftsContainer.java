@@ -1269,7 +1269,7 @@ public class ProfileGiftsContainer extends FrameLayout implements NotificationCe
                 return false;
             }
 
-            currentMenu = ItemOptions.makeOptions(fragment, view)
+            currentMenu = ItemOptions.makeOptions(fragment, view).growFrom(view)
                 .setScrimViewBackground(new Drawable() {
                     private final Drawable bg = Theme.createRoundRectDrawable(dp(16), dp(16), backgroundColor);
                     private final Rect bgBounds = new Rect();

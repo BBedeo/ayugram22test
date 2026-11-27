@@ -113,7 +113,7 @@ public class SelectGiftsBottomSheet extends BottomSheetWithRecyclerListView impl
                     if (lastMenu != null) {
                         lastMenu.dismiss();
                     }
-                    final ItemOptions o = lastMenu = ItemOptions.makeOptions(container, resourcesProvider, other);
+                    final ItemOptions o = lastMenu = ItemOptions.makeOptions(container, resourcesProvider, other).growFrom(other);
                     final boolean hiddenFilters;
 
                     if (dialogId == UserConfig.getInstance(currentAccount).getClientUserId()) {

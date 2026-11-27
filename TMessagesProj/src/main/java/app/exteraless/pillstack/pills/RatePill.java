@@ -289,7 +289,7 @@ public class RatePill extends BasePill implements PillStackEvents.Listener {
         if (fragment == null) {
             return false;
         }
-        final ItemOptions options = ItemOptions.makeOptions(fragment, this, true);
+        final ItemOptions options = ItemOptions.makeOptions(fragment, this, true).growFrom(this);
 
         final int swipebackMaxHeight = (int) (AndroidUtilities.displaySize.y * 0.5f);
 

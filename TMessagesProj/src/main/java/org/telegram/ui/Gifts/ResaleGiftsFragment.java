@@ -342,7 +342,7 @@ public class ResaleGiftsFragment extends BaseFragment implements FactorAnimator.
         filtersContainer.addView(sortButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL, 0, 0, 6, 0));
         sortButton.setOnClickListener(v -> {
             if (!filtersShown) return;
-            ItemOptions.makeOptions(this, sortButton)
+            ItemOptions.makeOptions(this, sortButton).growFrom(sortButton)
                 .add(R.drawable.menu_sort_value, getString(ResaleGiftsList.Sorting.BY_PRICE.buttonStringResId), () -> {
                     list.setSorting(ResaleGiftsList.Sorting.BY_PRICE);
                 })
@@ -1718,7 +1718,7 @@ public class ResaleGiftsFragment extends BaseFragment implements FactorAnimator.
             sortButton.setSorting(state.resaleList.getSorting());
             filtersContainer.addView(sortButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL, 0, 0, 6, 0));
             sortButton.setOnClickListener(v -> {
-                ItemOptions.makeOptions(container, resourcesProvider, sortButton)
+                ItemOptions.makeOptions(container, resourcesProvider, sortButton).growFrom(sortButton)
                     .add(R.drawable.menu_sort_value, getString(ResaleGiftsList.Sorting.BY_PRICE.buttonStringResId), () -> {
                         state.resaleList.setSorting(ResaleGiftsList.Sorting.BY_PRICE);
                     })

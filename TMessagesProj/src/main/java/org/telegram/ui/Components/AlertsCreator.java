@@ -4791,7 +4791,7 @@ public class AlertsCreator {
                     return;
                 }
 
-                final ItemOptions o = ItemOptions.makeOptions(bottomSheet.container, resourcesProvider, repeatContainer);
+                final ItemOptions o = ItemOptions.makeOptions(bottomSheet.container, resourcesProvider, repeatContainer).growFrom(v);
                 for (int i = 0; i < repeatValues.length; ++i) {
                     final int value = repeatValues[i];
                     o.add(repeatLabels[i], () -> {

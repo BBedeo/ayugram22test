@@ -4066,7 +4066,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             ? null : allFilters.get(tabView.getId());
                     final boolean startupMenuSelected = startupMenuFilter != null && app.exteraless.chats.StartupFolder.getMode(currentAccount) == startupMenuFilter.id;
 
-                    filterOptions = ItemOptions.makeOptions(DialogsActivity.this, tabView)
+                    filterOptions = ItemOptions.makeOptions(DialogsActivity.this, tabView).growFrom(tabView)
                             .setScrimViewBackground(new Drawable() {
                                 private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                 private RectF bound = new RectF();
@@ -12762,7 +12762,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         final boolean multipleMedia = sharedMediaEntries != null && sharedMediaEntries.size() > 1;
 
-        final ItemOptions options = ItemOptions.makeOptions(this, view);
+        final ItemOptions options = ItemOptions.makeOptions(this, view).growFrom(view);
         if (commentView != null && !TextUtils.isEmpty(commentView.getFieldText())) {
             options.addView(new TranslateBeforeSendWrapper(getContext(), true, false, getResourceProvider()) {
                 @Override
@@ -15419,7 +15419,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             return 0;
         });
 
-        ItemOptions o = ItemOptions.makeOptions(this, view);
+        ItemOptions o = ItemOptions.makeOptions(this, view).growFrom(view);
         if (accountNumbers.size() > 0) {
             if (o.getItemsCount() > 0) o.addGap();
             for (int acc : accountNumbers) {

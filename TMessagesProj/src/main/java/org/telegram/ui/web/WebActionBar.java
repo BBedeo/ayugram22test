@@ -203,7 +203,7 @@ public class WebActionBar extends FrameLayout {
         menuButton.setOnClickListener(v -> {
             if (!(getParent() instanceof ViewGroup)) return;
             Utilities.CallbackReturn<Integer, Runnable> click = id -> () -> menuListener.run(id);
-            ItemOptions o = ItemOptions.makeOptions((ViewGroup) getParent(), menuButton);
+            ItemOptions o = ItemOptions.makeOptions((ViewGroup) getParent(), menuButton).growFrom(menuButton);
             o.setDimAlpha(0);
             o.setColors(menuTextColor, menuIconColor);
             o.translate(0, -dp(52));

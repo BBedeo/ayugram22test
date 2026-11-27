@@ -225,7 +225,7 @@ public class FeedCategoryTabsView extends FrameLayout {
         if (category == null) {
             return false;
         }
-        ItemOptions.makeOptions(fragment, view)
+        ItemOptions.makeOptions(fragment, view).growFrom(view)
                 .add(R.drawable.msg_edit, LocaleController.getString(R.string.FeedCategoryEdit), () -> delegate.onEditCategory(category))
                 .add(R.drawable.msg_view_file, LocaleController.getString(R.string.FeedCategoryHide), () -> delegate.onHideCategory(category))
                 .add(R.drawable.msg_delete, LocaleController.getString(R.string.FeedCategoryDelete), true, () -> delegate.onDeleteCategory(category))

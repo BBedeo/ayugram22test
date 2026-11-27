@@ -312,7 +312,7 @@ public class SearchTagsList extends FrameLayout implements NotificationCenter.No
                 btn.reactionButton.startAnimation();
             }
             final Item item = items.get(position);
-            ItemOptions.makeOptions(fragment, view)
+            ItemOptions.makeOptions(fragment, view).growFrom(view)
                 .setGravity(Gravity.LEFT)
                 .add(R.drawable.menu_tag_rename, LocaleController.getString(TextUtils.isEmpty(item.name) ? R.string.SavedTagLabelTag : R.string.SavedTagRenameTag), () -> {
                     openRenameTagAlert(getContext(), currentAccount, item.reaction.toTLReaction(), resourcesProvider, false);

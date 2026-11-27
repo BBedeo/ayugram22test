@@ -1790,7 +1790,7 @@ public class BotWebViewSheet extends Dialog implements NotificationCenter.Notifi
         if (options != null) {
             options.dismiss();
         }
-        final ItemOptions o = options = ItemOptions.makeOptions(windowView, resourcesProvider, fullscreen ? fullscreenButtons : optionsItem, true);
+        final ItemOptions o = options = ItemOptions.makeOptions(windowView, resourcesProvider, fullscreen ? fullscreenButtons : optionsItem, true).growFrom(fullscreen ? null : optionsItem);
         final BotDownloads botDownloads = BotDownloads.get(getContext(), currentAccount, botId);
         fileItems.clear();
         if (botDownloads.hasFiles()) {

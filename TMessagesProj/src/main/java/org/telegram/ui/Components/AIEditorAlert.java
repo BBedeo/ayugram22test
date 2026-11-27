@@ -209,7 +209,7 @@ public class AIEditorAlert extends BottomSheetWithRecyclerListView implements No
         styleTabs.setOnItemLongClick(tab -> {
             if (tab.tone instanceof TL_aicompose.TL_aiComposeTone) {
                 final TL_aicompose.TL_aiComposeTone tone = (TL_aicompose.TL_aiComposeTone) tab.tone;
-                ItemOptions.makeOptions(container, resourcesProvider, tab)
+                ItemOptions.makeOptions(container, resourcesProvider, tab).growFrom(tab)
                     .setScrimViewBackground(Theme.createRoundRectDrawable(dp(12), Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider)))
                     .addIf(tone.creator, R.drawable.msg_edit, getString(R.string.AIEditorEditStyle), () -> {
                         new CreateAiStyleAlert(getContext(), resourcesProvider)
@@ -315,7 +315,7 @@ public class AIEditorAlert extends BottomSheetWithRecyclerListView implements No
             if (editing) return false;
             if (!hasSendResult()) return false;
             final boolean self = dialogId == UserConfig.getInstance(currentAccount).getClientUserId();
-            ItemOptions.makeOptions(container, resourcesProvider, sendButton)
+            ItemOptions.makeOptions(container, resourcesProvider, sendButton).growFrom(sendButton)
                 .addIf(!self, R.drawable.input_notify_off, getString(R.string.SendWithoutSound), () -> {
                     runSend(0, 0, false);
                     dismiss();

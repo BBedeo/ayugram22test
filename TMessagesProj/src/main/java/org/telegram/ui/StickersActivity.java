@@ -687,7 +687,7 @@ public class StickersActivity extends BaseFragment implements NotificationCenter
         if (view == null || !(view.getParent() instanceof StickerSetCell)) return;
         final StickerSetCell cell = (StickerSetCell) view.getParent();
         final TLRPC.TL_messages_stickerSet set = cell.getStickersSet();
-        ItemOptions.makeOptions(StickersActivity.this, cell)
+        ItemOptions.makeOptions(StickersActivity.this, cell).growFrom(view)
             .add(R.drawable.msg_archive, LocaleController.getString(R.string.StickersHide), () -> {
                 MediaDataController.getInstance(currentAccount).toggleStickerSet(getParentActivity(), set, !set.set.archived ? 1 : 2, StickersActivity.this, true, true);
             })

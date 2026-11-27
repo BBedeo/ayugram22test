@@ -14867,7 +14867,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             return;
         }
         messageEditText.hideActionMode();
-        final ItemOptions options = ItemOptions.makeOptions(sizeNotifierLayout != null ? sizeNotifierLayout : this, resourcesProvider, emojiButton, false, false, true);
+        final ItemOptions options = ItemOptions.makeOptions(sizeNotifierLayout != null ? sizeNotifierLayout : this, resourcesProvider, emojiButton, false, false, true).growFrom(emojiButton);
         options.setMaxHeight(dp(280));
         ChatActivity.fillActionModeMenu(new MenuToItemOptions(options, messageEditText), parentFragment.getCurrentEncryptedChat(), true, true);
         options.forceTop(true);

@@ -108,7 +108,7 @@ public class RevenueSharingAdsInfoBottomSheet extends BottomSheetWithRecyclerLis
             ThemeBind.selectorBackground(optionsView, Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), 1), null, ThemeBind.of(Theme.key_listSelector));
             optionsView.setOnClickListener(v -> {
                 options.run(
-                    ItemOptions.makeOptions(container, resourcesProvider, optionsView, true)
+                    ItemOptions.makeOptions(container, resourcesProvider, optionsView, true).growFrom(optionsView)
                         .setGravity(Gravity.RIGHT)
                         .setDrawScrim(false)
                         .translate(dp(12), dp(-32))

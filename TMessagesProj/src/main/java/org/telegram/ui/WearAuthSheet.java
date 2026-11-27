@@ -295,7 +295,7 @@ public class WearAuthSheet {
         sheet.fixNavigationBarKey(Theme.key_windowBackgroundGray);
 
         accountSelectorLayout.setOnClickListener(v -> {
-            ItemOptions i = ItemOptions.makeOptions(sheet.container, sheet.getResourcesProvider(), accountSelectorInnerLayout);
+            ItemOptions i = ItemOptions.makeOptions(sheet.container, sheet.getResourcesProvider(), accountSelectorInnerLayout).growFrom(accountSelectorInnerLayout);
             for (int account : accountNumbers) {
                 final TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
                 if (user == null) continue;

@@ -1985,7 +1985,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
         // the options of the tabs: built once for the bubble of a simple header's pill and for the popup of the old one
         final OnClickListener optionsClickListener = view -> {
             final int tab = getClosestTab();
-            final ItemOptions options = ItemOptions.makeOptions(profileActivity, view);
+            final ItemOptions options = ItemOptions.makeOptions(profileActivity, view).growFrom(view);
             options.setDismissWithButtons(false);
             if (!fillOptions(tab, popupOptions(options))) {
                 return;
@@ -2417,7 +2417,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
                             return;
                         }
 
-                        ItemOptions o = ItemOptions.makeOptions(profileActivity, view)
+                        ItemOptions o = ItemOptions.makeOptions(profileActivity, view).growFrom(view)
                             .setScrimViewBackground(new Drawable() {
                                 private final Drawable bg = Theme.createRoundRectDrawable(dp(16), dp(16), Theme.blendOver(
                                     Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider),
@@ -4312,7 +4312,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
                 if (main_tab != null && (page == getTabId(main_tab) || firstTab == page)) {
                     return false;
                 }
-                final ItemOptions o = ItemOptions.makeOptions(profileActivity, view);
+                final ItemOptions o = ItemOptions.makeOptions(profileActivity, view).growFrom(view);
                 o.setScrimViewBackground(Theme.createRoundRectDrawable(dp(24), Theme.getColor(Theme.key_windowBackgroundWhite)));
                 o.add(R.drawable.tabs_reorder, getString(R.string.ProfileTabSetAsMain), () -> {
                     if (profileActivity == null) return;
