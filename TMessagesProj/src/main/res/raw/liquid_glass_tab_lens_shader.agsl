@@ -1,0 +1,40 @@
+uniform shader img;
+
+// the lifted pill: its centre and half size
+uniform float2 center;
+uniform float2 size;
+// the bending rim: how deep it reaches and how far inwards the very edge samples, 0 at rest
+uniform float2 rim;
+
+// The iOS 26 tab bar lens: the refraction and its colour split follow Kyant0/AndroidLiquidGlass (Apache-2.0).
+
+half4 main(in float2 fragCoord) {
+  float2 p = fragCoord - center;
+  float r = min(size.x, size.y);
+  float2 q = abs(p) - size + r;
+  float sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+  float depth = -min(sd, 0.0);
+
+  half4 color = img.eval(fragCoord);
+  if (depth < rim.x) {
+    float t = 1.0 - depth / rim.x;
+    float bend = 1.0 - sqrt(max(0.0, 1.0 - t * t));
+    float2 out_ = max(q, 0.0) * sign(p);
+    float2 shift = -out_ / max(length(out_), 0.001) * bend * rim.y;
+    float2 spread = shift * (p.x * p.y) / max(size.x * size.y, 1.0);
+    float2 uv = fragCoord + shift;
+    half4 red = img.eval(uv + spread);
+    half4 orange = img.eval(uv + spread * (2.0 / 3.0));
+    half4 yellow = img.eval(uv + spread * (1.0 / 3.0));
+    half4 green = img.eval(uv);
+    half4 cyan = img.eval(uv - spread * (1.0 / 3.0));
+    half4 blue = img.eval(uv - spread * (2.0 / 3.0));
+    half4 purple = img.eval(uv - spread);
+    color.r = (red.r + orange.r + yellow.r) / 3.5 + purple.r / 7.0;
+    color.g = orange.g / 7.0 + (yellow.g + green.g + cyan.g) / 3.5;
+    color.b = (cyan.b + blue.b + purple.b) / 3.0;
+    color.a = (red.a + orange.a + yellow.a + green.a + cyan.a + blue.a + purple.a) / 7.0;
+  }
+  // the outline of the pill
+  return color * half(smoothstep(0.6, -0.85, sd));
+}

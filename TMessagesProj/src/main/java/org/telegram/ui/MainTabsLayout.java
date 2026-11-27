@@ -42,7 +42,6 @@ import org.telegram.ui.Components.AnimatedLinearLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.glass.GlassTabView;
 import org.telegram.ui.Components.blur3.LiquidGlassEffect;
-import org.telegram.ui.Components.blur3.LiquidGlassOptics;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 
 import app.exteraless.appearance.MainTabsUiHelper;
@@ -655,7 +654,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float raiseY = raised
                 ? Math.max(0f, Math.min(getHeight(), getHeight() - 2 * MainTabsUiHelper.getBackgroundInset() + dp(9)) - availableHeight)
                 : dp(6.6f);
-        final float raiseX = raised ? dp(14) : dp(7.5f);
+        // as wide as iOS lifts it: a held label such as «Настройки» stays clear of the bending rim
+        final float raiseX = raised ? dp(26) : dp(7.5f);
         final float glideSwell = glideLift * dp(2.4f);
         final float jellyX = elasticJellyValue * dp(3.5f) + elasticPressValue * raiseX + glideSwell + verticalPullSquish * .85f;
         final float jellyY = -elasticJellyValue * dp(1.6f) + elasticPressValue * raiseY + glideSwell * .88f
@@ -787,6 +787,23 @@ public class MainTabsLayout extends AnimatedLinearLayout {
     private float lastPillShaderCx = Float.NaN, lastPillShaderCy = Float.NaN;
     private float lastPillShaderW = -1f, lastPillShaderH = -1f;
     private float lastPillShaderPress = -1f, lastPillShaderMotion = Float.NaN;
+    // the tabs once more, as the lens shows them: each a little larger about its own centre
+    private RenderNode pillTabsNode;
+    private float lensTabScale = 1f;
+
+    @Override
+    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        if (lensTabScale == 1f) {
+            return super.drawChild(canvas, child, drawingTime);
+        }
+        final int save = canvas.save();
+        // the tab under the pill already swells a little (updateElasticTabLensScale): the two do not add up
+        final float s = Math.max(1f, lensTabScale / Math.max(1f, child.getScaleX()));
+        canvas.scale(s, s, child.getX() + child.getWidth() * .5f, child.getY() + child.getHeight() * .5f);
+        final boolean more = super.drawChild(canvas, child, drawingTime);
+        canvas.restoreToCount(save);
+        return more;
+    }
 
     private boolean drawRefractedTabsContent(Canvas canvas) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
@@ -803,11 +820,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 tabsContentNode.setClipToBounds(false);
                 pillRefractNode = new RenderNode("ElasticPillRefract");
                 pillRefractNode.setClipToBounds(false);
+                pillTabsNode = new RenderNode("ElasticPillTabs");
+                pillTabsNode.setClipToBounds(false);
             }
             final boolean engine = LiquidGlassEffect.engineActive();
             if (pillContentShader == null || engine != pillContentEngine) {
                 pillContentShader = new RuntimeShader(AndroidUtilities.readRes(engine
-                        ? R.raw.liquid_glass_engine_shader : R.raw.liquid_glass_pill_content_shader));
+                        ? R.raw.liquid_glass_tab_lens_shader : R.raw.liquid_glass_pill_content_shader));
                 pillContentEngine = engine;
                 lastPillShaderCx = Float.NaN;
             }
@@ -824,6 +843,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             final float hh = selectorRect.height() * .5f;
             final float press = Math.max(elasticGlassPill.getOpticalPress(), elasticPressValue);
             final float motion = elasticGlassPill.getLightPhase();
+            // the icons bend only while the pill is lifted or travels: at rest the labels stay straight
+            final float lift = Math.min(1f, Math.max(press, Math.abs(motion) * 1.15f));
+            // Material 3 has a narrower pill, so it keeps a shallow lens
+            final boolean deepLens = !MainTabsUiHelper.isMaterial3NavigationBar();
             if (Math.abs(lastPillShaderCx - cx) > .15f
                     || Math.abs(lastPillShaderCy - cy) > .15f
                     || Math.abs(lastPillShaderW - hw) > .15f
@@ -840,28 +863,38 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 pillContentShader.setFloatUniform("center", cx, cy);
                 pillContentShader.setFloatUniform("size", hw, hh);
                 if (engine) {
-                    // the icons bend only while the pill is lifted or travels: at rest the labels stay straight
-                    final float lift = Math.min(1f, Math.max(press, Math.abs(motion) * 1.15f));
-                    pillContentShader.setFloatUniform("radius", hh, hh, hh, hh);
-                    // a shallow rim apart from the glass sliders: the shared bevel is wide enough to fold the tab labels
-                    pillContentShader.setFloatUniform("thickness", AndroidUtilities.dpf2(7));
-                    pillContentShader.setFloatUniform("refract_intensity", .30f * lift);
-                    pillContentShader.setFloatUniform("glass_press", lift);
-                    pillContentShader.setFloatUniform("optics", AndroidUtilities.density, 1f);
-                    pillContentShader.setFloatUniform("shape", 1f, LiquidGlassOptics.flow(LiquidGlassOptics.PILL));
+                    // the iOS 26 lens, apart from the glass sliders: a narrow rim that reaches far inwards
+                    pillContentShader.setFloatUniform("rim",
+                            AndroidUtilities.dpf2(deepLens ? 10 : 7) * lift,
+                            AndroidUtilities.dpf2(deepLens ? 14 : 3) * lift);
                 } else {
                     pillContentShader.setFloatUniform("radius", hh);
                     pillContentShader.setFloatUniform("thickness", Math.min(dp(24), hh * .90f));
                     pillContentShader.setFloatUniform("glass_press", press);
+                    pillContentShader.setFloatUniform("glass_motion", motion);
                 }
-                pillContentShader.setFloatUniform("glass_motion", motion);
                 pillRefractNode.setRenderEffect(
                         RenderEffect.createRuntimeShaderEffect(pillContentShader, "img"));
             }
 
+            RenderNode lensContent = tabsContentNode;
+            final float tabScale = engine ? 1f + (deepLens ? .1f : .04f) * lift : 1f;
+            if (tabScale > 1.001f) {
+                pillTabsNode.setPosition(0, 0, w, h);
+                final Canvas tabsCanvas = pillTabsNode.beginRecording();
+                lensTabScale = tabScale;
+                try {
+                    super.dispatchDraw(tabsCanvas);
+                } finally {
+                    lensTabScale = 1f;
+                    pillTabsNode.endRecording();
+                }
+                lensContent = pillTabsNode;
+            }
+
             pillRefractNode.setPosition(0, 0, w, h);
             final Canvas refractCanvas = pillRefractNode.beginRecording();
-            refractCanvas.drawRenderNode(tabsContentNode);
+            refractCanvas.drawRenderNode(lensContent);
             pillRefractNode.endRecording();
 
             final float r = selectorRect.height() * .5f;
