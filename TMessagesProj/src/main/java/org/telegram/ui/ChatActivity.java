@@ -8918,7 +8918,7 @@ public class ChatActivity extends BaseFragment implements
         boolean noForwards = getMessagesController().isChatNoForwards(currentChat) || currentChat != null && currentChat.noforwards;
         boolean currentLeftButtonNoForwards = isCurrentLeftButtonNoForwards();
         int leftButtonAction = ChatsHelper.getLeftButtonAction(this, currentLeftButtonNoForwards);
-        actionsButtonsLayout.setReplyButtonTextAndIcon(ChatsHelper.getLeftButtonText(leftButtonAction), ChatsHelper.getLeftButtonDrawable(leftButtonAction));
+        updateLeftBottomButton(leftButtonAction);
         actionsButtonsLayout.setForwardButtonTextAndIcon(LocaleController.getString(R.string.Forward), R.drawable.input_forward, true);
         actionsButtonsLayout.setReplyButtonOnClickListener(v -> {
             chatsHelper.makeReplyButtonClick(this, isCurrentLeftButtonNoForwards());
@@ -10507,6 +10507,9 @@ public class ChatActivity extends BaseFragment implements
                 ChatsHelper.getLeftButtonText(leftButtonAction),
                 ChatsHelper.getLeftButtonDrawable(leftButtonAction)
             );
+            // a forward without the author (or caption) sits to the right of the plain Forward
+            actionsButtonsLayout.setForwardButtonFirst(leftButtonAction == ChatsHelper.LEFT_BUTTON_NOQUOTE
+                    || leftButtonAction == ChatsHelper.LEFT_BUTTON_NOCAPTION);
         }
     }
 
@@ -11760,12 +11763,20 @@ public class ChatActivity extends BaseFragment implements
 
         boolean noforward = getMessagesController().isChatNoForwards(currentChat);
         boolean canSendMessages = ChatObject.canSendMessages(currentChat);
+        final int translateIcon = LlmConfig.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate;
+        // stands in for the ⋮ while «Translate» is all it holds, see updateActionModeOtherButton
+        actionModeViews.add(actionMode.addItemWithWidth(nkbtn_translate, translateIcon, dp(54), LocaleController.getString(R.string.Translate)));
+        actionMode.setItemVisibility(nkbtn_translate, View.GONE);
         actionModeViews.add(actionModeOtherItem = actionMode.addItemWithWidth(nkactionbarbtn_action_mode_other, R.drawable.ic_ab_other, dp(54), LocaleController.getString(R.string.MessageMenu)));
+        if (!inPreviewMode && !isInsideContainer && parentChatActivity == null && fragmentView instanceof FrameLayout
+                && actionBar.isGlassMode() && app.exteraless.appearance.LiquidGlassTuning.motionEnabled()) {
+            actionModeOtherItem.setSubMenuOverlayProvider(this::getSimpleMenuOverlay); // grows out of the button
+        }
 
         if (currentEncryptedChat == null && !noforward) {
             actionModeOtherItem.addSubItem(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, LocaleController.getString(R.string.NoQuoteForward));
         }
-        actionModeOtherItem.addSubItem(nkbtn_translate, LlmConfig.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate, LocaleController.getString(R.string.Translate));
+        actionModeOtherItem.addSubItem(nkbtn_translate, translateIcon, LocaleController.getString(R.string.Translate));
         actionModeOtherItem.addSubItem(nkbtn_sharemessage, R.drawable.msg_shareout, LocaleController.getString(R.string.ShareMessages));
         actionModeOtherItem.addSubItem(nkbtn_unpin, R.drawable.msg_unpin, LocaleController.getString(R.string.UnpinMessage));
         if (!noforward) {
@@ -11792,6 +11803,7 @@ public class ChatActivity extends BaseFragment implements
 
         actionModeOtherItem.setSubItemVisibility(star, selectedMessagesCanStarIds[0].size() + selectedMessagesCanStarIds[1].size() != 0);
         updateActionModeMenuItems();
+        updateActionModeOtherButton();
         boolean doShrinkActionBarItems = isActionBarTooNarrow && actionMode.getItem(edit).getVisibility() == View.VISIBLE && actionMode.getItem(copy).getVisibility() == View.VISIBLE && actionMode.getItem(delete).getVisibility() == View.VISIBLE;
         if (doShrinkActionBarItems) {
             actionMode.getItem(nkactionbarbtn_reply).setVisibility(View.GONE);
@@ -11813,6 +11825,16 @@ public class ChatActivity extends BaseFragment implements
         actionModeOtherItem.setSubItemVisibility(nkbtn_hide, NekoConfig.showMessageHide.Bool());
         actionModeOtherItem.setSubItemVisibility(nkbtn_report, NekoConfig.showReport.Bool());
         actionModeOtherItem.setSubItemVisibility(nkbtn_detail, NekoConfig.showMessageDetails.Bool());
+    }
+
+    private void updateActionModeOtherButton() {
+        if (actionModeOtherItem == null) {
+            return;
+        }
+        final int count = actionModeOtherItem.getVisibleSubItemsCount();
+        final boolean onlyTranslate = count == 1 && actionModeOtherItem.isSubItemVisible(nkbtn_translate);
+        actionBar.createActionMode().setItemVisibility(nkbtn_translate, onlyTranslate ? View.VISIBLE : View.GONE);
+        actionModeOtherItem.setVisibility(count == 0 || onlyTranslate ? View.GONE : View.VISIBLE);
     }
 
     private void hideTagSelector() {
@@ -21757,6 +21779,7 @@ public class ChatActivity extends BaseFragment implements
 
                 if (actionModeOtherItem != null) {
                     actionModeOtherItem.setSubItemVisibility(nkbtn_translate, !isTranslatingDialog(messageObject));
+                    updateActionModeOtherButton();
                 }
             }
         }
@@ -33728,6 +33751,16 @@ public class ChatActivity extends BaseFragment implements
             hideActionMode();
             updatePinnedMessageView(true);
         }, hideDimAfter ? () -> dimBehindView(false) : null, themeDelegate);
+    }
+
+    /** The selection bar's delete button when the delete question may grow out of it, null otherwise. */
+    public View getDeleteGrowButton() {
+        if (inPreviewMode || isInsideContainer || parentChatActivity != null || getParentLayout() == null || actionBar == null || !actionBar.isActionModeShowed()
+                || !actionBar.isGlassMode() || !app.exteraless.appearance.LiquidGlassTuning.motionEnabled()) {
+            return null;
+        }
+        final View button = actionBar.createActionMode().getItem(delete);
+        return button != null && button.isShown() ? button : null;
     }
 
     public void hideActionMode() {

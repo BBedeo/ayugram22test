@@ -709,19 +709,40 @@ public class ActionBarMenu extends LinearLayout {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         if (glassMode) {
+            final int margin = isActionMode ? actionModeItemMargin(MeasureSpec.getSize(widthMeasureSpec)) : -dp(5);
             for (int a = 0, N = getChildCount(); a < N; a++) {
                 final View view = getChildAt(a);
                 if (view instanceof ActionBarMenuItem) {
                     final ViewGroup.LayoutParams lp = view.getLayoutParams();
                     if (lp instanceof MarginLayoutParams) {
                         MarginLayoutParams mlp = (MarginLayoutParams) lp;
-                        mlp.leftMargin = -dp(5);
-                        mlp.rightMargin = -dp(5);
+                        mlp.leftMargin = margin;
+                        mlp.rightMargin = margin;
                     }
                 }
             }
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    /**
+     * Selection mode on glass: every button has a pill of its own, so they are spread apart as far as the width allows
+     * (up to 8dp between the pills), leaving room for the back button and the counter.
+     */
+    private int actionModeItemMargin(int width) {
+        int items = 0, itemsWidth = 0;
+        for (int a = 0, N = getChildCount(); a < N; a++) {
+            final View view = getChildAt(a);
+            if (view instanceof ActionBarMenuItem && view.getVisibility() != GONE) {
+                items++;
+                itemsWidth += view.getLayoutParams().width;
+            }
+        }
+        if (items == 0) {
+            return -dp(5);
+        }
+        final int spare = width - dp(130) - (itemsWidth - items * dp(10));
+        return -dp(5) + Math.max(0, Math.min(dp(5), spare / (items * 2)));
     }
 
     // Width the search field still occupies while it fades out after closing.

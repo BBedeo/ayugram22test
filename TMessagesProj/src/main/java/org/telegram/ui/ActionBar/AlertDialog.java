@@ -2197,6 +2197,14 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             return this;
         }
 
+        public CharSequence getTitle() {
+            return alertDialog.title;
+        }
+
+        public CharSequence getMessage() {
+            return alertDialog.message;
+        }
+
         public Builder setSubtitle(CharSequence subtitle) {
             alertDialog.subtitle = subtitle;
             return this;

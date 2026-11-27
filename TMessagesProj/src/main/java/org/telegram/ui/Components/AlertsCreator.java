@@ -8414,7 +8414,13 @@ public class AlertsCreator {
             builder.setMessage(replaceTags(LocaleController.formatString(R.string.BoostingGiveawayDeleteMsgText, giveawayEndDate)));
             builder.setNeutralButton(LocaleController.getString(R.string.Delete), deleteAction);
         } else {
-            builder.setPositiveButton(LocaleController.getString(isSavedMessages ? R.string.Remove : R.string.Delete), deleteAction);
+            final String deleteText = LocaleController.getString(isSavedMessages ? R.string.Remove : R.string.Delete);
+            final View growButton = selectedMessage == null && fragment instanceof ChatActivity ? ((ChatActivity) fragment).getDeleteGrowButton() : null;
+            if (growButton != null) {
+                showDeleteQuestionFrom(growButton, fragment, builder, ayuFrameLayout, deleteText, () -> deleteAction.onClick(null, DialogInterface.BUTTON_POSITIVE));
+                return;
+            }
+            builder.setPositiveButton(deleteText, deleteAction);
         }
         builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
         builder.setOnPreDismissListener(di -> {
@@ -8434,6 +8440,20 @@ public class AlertsCreator {
             ((ViewGroup.MarginLayoutParams) dialog.getButtonsLayout().getLayoutParams()).topMargin = dp(-8);
             ThemeBind.textColor(neutralButton, Theme.key_text_RedBold);
         }
+    }
+
+    /** The delete question as a card growing out of the button that asked it: the same checks, one red action; a tap outside cancels. */
+    private static void showDeleteQuestionFrom(View button, BaseFragment fragment, AlertDialog.Builder builder, @Nullable View checks, CharSequence action, Runnable onDelete) {
+        final int width = 280;
+        final ItemOptions options = ItemOptions.makeOptions(fragment, button).growFrom(button).setMinWidth(width);
+        options.addText(builder.getTitle(), 16, AndroidUtilities.bold(), dp(width));
+        options.addText(builder.getMessage(), 14, dp(width));
+        if (checks != null) {
+            options.addView(checks, LayoutHelper.createLinear(width, LayoutHelper.WRAP_CONTENT));
+        }
+        options.addGap();
+        options.add(R.drawable.msg_delete, action, true, onDelete);
+        options.show();
     }
 
     public static void createThemeCreateDialog(BaseFragment fragment, int type, Theme.ThemeInfo switchToTheme, Theme.ThemeAccent switchToAccent) {

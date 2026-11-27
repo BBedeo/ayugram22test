@@ -1535,8 +1535,10 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                     Float.isNaN(liquidLightAngleOverride)
                             ? LiquidGlassTuning.lightAngleRadians() : liquidLightAngleOverride,
                     Float.isNaN(liquidMotionPhaseOverride)
+                            // only the moving pill turns its light with its place: still glass keeps the 45deg rim
+                            // (turned by its place on screen, a long pill showed two flat lines instead of lit corners)
                             ? (LiquidGlassTuning.motionEnabled()
-                                    ? pressProgress * .5f + (getSourceOffsetX() + getSourceOffsetY()) * .0015f : 0f)
+                                    ? pressProgress * .5f + (elasticPillLens ? (getSourceOffsetX() + getSourceOffsetY()) * .0015f : 0f) : 0f)
                             : liquidMotionPhaseOverride,
                     LiquidGlassTuning.adaptiveLightEnabled() ? 1f : 0f,
                     originX - sL, originY - sT,

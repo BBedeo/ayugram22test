@@ -4079,7 +4079,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     continue;
                 }
                 final float cx = offsetX + (child.getLeft() + child.getRight()) / 2f + child.getTranslationX();
-                final int half = Math.min(shapeHalfMax, Math.max(dp(10), child.getWidth() / 2 - dp(1)));
+                int half = Math.min(shapeHalfMax, Math.max(dp(10), child.getWidth() / 2 - dp(1)));
+                if (child.getLayoutParams() instanceof MarginLayoutParams) {
+                    // buttons crowded into overlapping margins get smaller pills rather than touching ones
+                    final MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
+                    half = Math.min(half, Math.max(dp(10), (child.getWidth() + lp.leftMargin + lp.rightMargin) / 2 - dp(1)));
+                }
                 final int a = Math.round(alphaInt * Math.min(1f, child.getAlpha() * 2f));
                 drawActionModePill(canvas, index++, Math.round(cx - half - p), Math.round(cx + half + p), t, b, a);
             } else if (child instanceof org.telegram.ui.Components.AnimatedTextView) {

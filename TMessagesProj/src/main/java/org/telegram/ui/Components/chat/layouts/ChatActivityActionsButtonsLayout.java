@@ -11,6 +11,7 @@ import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -155,6 +156,20 @@ public class ChatActivityActionsButtonsLayout extends LinearLayout {
 
 
 
+    private boolean forwardFirst;
+
+    /** Forward in the left place, the other button in the right one; the texts and icons stay with their buttons. */
+    public void setForwardButtonFirst(boolean first) {
+        if (forwardFirst != first) {
+            forwardFirst = first;
+            final ViewGroup.LayoutParams left = getChildAt(0).getLayoutParams(), right = getChildAt(1).getLayoutParams();
+            removeAllViews();
+            addView(first ? forwardButton.button : replyButton.button, left);
+            addView(first ? replyButton.button : forwardButton.button, right);
+            checkButtonsPositionsAndVisibility();
+        }
+    }
+
     public void updateColors() {
         replyButton.button.updateColors();
         forwardButton.button.updateColors();
@@ -183,7 +198,7 @@ public class ChatActivityActionsButtonsLayout extends LinearLayout {
         final float visibility = totalVisibilityFactor * holder.visibilityAnimator.getFloatValue();
         final float offsetY = -dp(54) * (1f - visibility);
         float offsetX = getMeasuredWidth() / 2f * (1f - AnimatorUtils.DECELERATE_INTERPOLATOR.getInterpolation(visibility));
-        if (holder == replyButton) {
+        if ((holder == replyButton) != forwardFirst) { // each slides in from its own side
             offsetX *= -1;
         }
 
