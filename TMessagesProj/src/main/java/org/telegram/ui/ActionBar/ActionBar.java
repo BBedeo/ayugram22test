@@ -2205,9 +2205,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             final int halfPill = pillWidth / 2;
             final int minCenter = safeLeft + halfPill;
             final int maxCenter = safeRight - (pillWidth - halfPill);
-            compactCenterX = minCenter > maxCenter
+            compactCenterX = springTitleCenterX(minCenter > maxCenter
                     ? (safeLeft + safeRight) / 2
-                    : Math.max(minCenter, Math.min(maxCenter, getMeasuredWidth() / 2));
+                    : Math.max(minCenter, Math.min(maxCenter, getMeasuredWidth() / 2)));
         } else {
             compactCenterX = getMeasuredWidth() / 2;
         }
@@ -3033,6 +3033,46 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     private boolean canPlayJellySpring() {
         return android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled();
+    }
+
+    private final FloatValueHolder titleCenterSpringHolder = new FloatValueHolder(0f);
+    private SpringAnimation titleCenterSpring;
+    private int titleCenterLaid;
+    private int titleCenterWidth;
+    private int lastTitleCenterTarget;
+
+    /** The compact title slides to its new center on the same spring the menu pill widens on. */
+    private int springTitleCenterX(int target) {
+        if (titleCenterSpring == null) {
+            titleCenterSpring = new SpringAnimation(titleCenterSpringHolder, target);
+            titleCenterSpring.setSpring(new SpringForce(target)
+                    .setStiffness(PILL_WIDTH_SPRING_STIFFNESS)
+                    .setDampingRatio(PILL_WIDTH_SPRING_DAMPING));
+            titleCenterSpring.addUpdateListener((animation, value, velocity) -> {
+                final int dx = Math.round(value) - titleCenterLaid;
+                titleCenterLaid += dx;
+                for (SimpleTextView title : titleTextView) {
+                    if (title != null) {
+                        title.offsetLeftAndRight(dx);
+                    }
+                }
+                if (subtitleTextView != null) {
+                    subtitleTextView.offsetLeftAndRight(dx);
+                }
+                invalidate();
+            });
+        }
+        if (titleCenterWidth != getMeasuredWidth() || !isAttachedToWindow() || !canPlayJellySpring()) {
+            titleCenterWidth = getMeasuredWidth();
+            lastTitleCenterTarget = target;
+            titleCenterSpring.cancel();
+            titleCenterSpringHolder.setValue(target);
+        } else if (lastTitleCenterTarget != target) {
+            lastTitleCenterTarget = target;
+            titleCenterSpring.animateToFinalPosition(target);
+        }
+        titleCenterLaid = Math.round(titleCenterSpringHolder.getValue());
+        return titleCenterLaid;
     }
 
     private float getTitlePillJellyValue() {

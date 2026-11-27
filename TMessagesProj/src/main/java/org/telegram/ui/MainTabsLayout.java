@@ -839,7 +839,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     pillContentShader.setFloatUniform("thickness", LiquidGlassOptics.bevel(2f * Math.min(hw, hh),
                             AndroidUtilities.density, LiquidGlassTuning.thicknessDp()));
                     pillContentShader.setFloatUniform("refract_intensity",
-                            LiquidGlassOptics.bend(LiquidGlassTuning.refractionScale()) * lift);
+                            LiquidGlassOptics.pillBend(LiquidGlassTuning.refractionScale()) * lift);
                     pillContentShader.setFloatUniform("glass_press", lift);
                     pillContentShader.setFloatUniform("optics", AndroidUtilities.density, 1f);
                     pillContentShader.setFloatUniform("shape", 1f, LiquidGlassOptics.flow(LiquidGlassOptics.PILL));

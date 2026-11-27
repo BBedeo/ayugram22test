@@ -175,6 +175,7 @@ checks = {
         and "glassTitleRestRect" in action_bar
         and "canvas.scale(pressScale, pressScale" in action_bar
         and "private void drawCompactTitleGlassPill(" in action_bar
+        and "compactCenterX = springTitleCenterX(" in action_bar
         and "backButtonImageView.setTranslationX(dp(2));" in action_bar
         and "(chatAvatarContainer != null || compactGlassTitlePill) && !actionModeVisible && !isSearchFieldVisible" in action_bar
     ),

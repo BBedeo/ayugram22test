@@ -26,6 +26,11 @@ public final class LiquidGlassOptics {
         return Math.max(0f, Math.min(6f, 4f * strengthScale));
     }
 
+    /** The bottom capsule's pill is low: with {@link #bend} its far side showed upside down at the edge. */
+    public static float pillBend(float strengthScale) {
+        return 0.12f * bend(strengthScale);
+    }
+
     public static float saturation(int role) {
         return role == PILL ? 1.2f : 1f;
     }
@@ -44,7 +49,8 @@ public final class LiquidGlassOptics {
         return Math.max(Math.min(thicknessSettingDp * density, heightPx / 3f), 1f);
     }
 
+    /** Weak enough that the edge of the low thumb never reaches the track and mirrors it. */
     public static float sliderBend(float strengthScale, float press) {
-        return Math.min(2.4f * strengthScale, 4f) * press;
+        return Math.min(0.8f * strengthScale, 0.9f) * press;
     }
 }

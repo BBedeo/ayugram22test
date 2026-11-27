@@ -40,10 +40,12 @@ for needle in ("R.raw.liquid_glass_engine_shader", "R.raw.liquid_glass_pill_shad
         errors.append(f"LiquidGlassEffect: missing {needle}")
 for path, needles in (
         (BLUR / "drawable/BlurredBackgroundDrawable.java",
-         ("LiquidGlassEffect.engineActive()", "LiquidGlassOptics.bevel(", "LiquidGlassOptics.bend(")),
+         ("LiquidGlassEffect.engineActive()", "LiquidGlassOptics.bevel(", "LiquidGlassOptics.bend(",
+          "elasticPillLens ? LiquidGlassOptics.pillBend(",
+          "LiquidGlassEffect.engineActive() || (headerGlassLens && !elasticPillLens)")),
         (MAIN / "java/org/telegram/ui/MainTabsLayout.java",
          ("LiquidGlassEffect.engineActive()", "R.raw.liquid_glass_engine_shader", "R.raw.liquid_glass_pill_content_shader",
-          "LiquidGlassOptics.bend(LiquidGlassTuning.refractionScale()) * lift")),
+          "LiquidGlassOptics.pillBend(LiquidGlassTuning.refractionScale()) * lift")),
         (MAIN / "java/app/exteraless/appearance/glass/IosSliderThumb.java",
          ("LiquidGlassEffect.engineActive()", "LiquidGlassOptics.sliderBevel(", "LiquidGlassOptics.sliderBend("))):
     text = read(path)
@@ -53,7 +55,8 @@ CASES = (
     ("bevel(165, 3, 11)", 33), ("bevel(30, 3, 11)", 13.5), ("bevel(600, 3, 11)", 72),
     ("bevel(150, 3, 22)", 60), ("bevel(1, 3, 11)", 1),
     ("bend(1)", 4), ("bend(2.2f)", 6), ("bend(0)", 0),
-    ("sliderBevel(60, 3, 11)", 20), ("sliderBend(1, 1)", 2.4), ("sliderBend(2, 0.5f)", 2),
+    ("pillBend(1)", 0.48), ("pillBend(2.2f)", 0.72), ("pillBend(0)", 0),
+    ("sliderBevel(60, 3, 11)", 20), ("sliderBend(1, 1)", 0.8), ("sliderBend(2, 0.5f)", 0.45),
     ("sliderBend(0, 1)", 0),
     ("role(true, true)", 2), ("role(false, true)", 1), ("role(false, false)", 0),
 )

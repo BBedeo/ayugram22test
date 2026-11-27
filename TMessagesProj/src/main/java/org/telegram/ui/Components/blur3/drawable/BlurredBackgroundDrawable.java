@@ -1373,9 +1373,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
             if (liquidGlassEffect == null || Build.VERSION.SDK_INT < 33 || !(source instanceof GlassFadeBlurredDrawable.GlassFadeDownsampledSource)) {
                 return 1;
             }
-            // Header glass (back circle, title pill) is small: on the source grid its rim and edge AA fall under one
-            // pixel and are blown up into blocks. The lens runs in screen pixels over the already smooth blur.
-            if (headerGlassLens && !elasticPillLens) {
+            // The engine's hairline rim and the header glass's edge fall under one pixel of the source grid and are
+            // blown up into blocks, so the lens runs in screen pixels over the already smooth blur.
+            if (LiquidGlassEffect.engineActive() || (headerGlassLens && !elasticPillLens)) {
                 return 1;
             }
             final GlassFadeBlurredDrawable.GlassFadeDownsampledSource downsampled = (GlassFadeBlurredDrawable.GlassFadeDownsampledSource) source;
@@ -1515,9 +1515,9 @@ public class BlurredBackgroundDrawable extends GlassDrawable implements Theme.Co
                 final float refractionMult = headerGlassLens
                         ? LiquidGlassTuning.headerRefractionScale()
                         : LiquidGlassTuning.refractionScale();
-                final float lensIntensity = engine
-                        ? LiquidGlassOptics.bend(LiquidGlassTuning.refractionScale())
-                        : boundProps.liquidIntensity * refractionMult;
+                final float lensIntensity = !engine ? boundProps.liquidIntensity * refractionMult
+                        : elasticPillLens ? LiquidGlassOptics.pillBend(LiquidGlassTuning.refractionScale())
+                        : LiquidGlassOptics.bend(LiquidGlassTuning.refractionScale());
                 liquidGlassEffect.update(
                     body.width(), body.height(),
                     body.left - b.left, body.top - b.top,
