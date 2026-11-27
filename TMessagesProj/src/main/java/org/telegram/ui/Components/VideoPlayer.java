@@ -53,6 +53,7 @@ import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
+import androidx.media3.exoplayer.audio.ForwardingAudioSink;
 import androidx.media3.exoplayer.audio.TeeAudioProcessor;
 import androidx.media3.exoplayer.mediacodec.MediaCodecDecoderException;
 import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer;
@@ -2048,14 +2049,34 @@ public class VideoPlayer implements Player.Listener, VideoListener, AnalyticsLis
                 @NonNull Context context,
                 boolean enableFloatOutput,
                 boolean enableAudioTrackPlaybackParams) {
-            return new DefaultAudioSink.Builder(context)
+            final SpectrumSink spectrum = new SpectrumSink();
+            final AudioSink sink = new DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(new AudioProcessor[]{
                             new TeeAudioProcessor(new VisualizerBufferSink()),
-                            new TeeAudioProcessor(new SpectrumSink())
+                            new TeeAudioProcessor(spectrum)
                     })
                     .build();
+            return new ForwardingAudioSink(sink) {
+                @Override
+                public boolean handleBuffer(ByteBuffer buffer, long presentationTimeUs, int encodedAccessUnitCount)
+                        throws AudioSink.InitializationException, AudioSink.WriteException {
+                    // the processors see the sound before it waits in the output buffer: hold the spectrum that long
+                    if (spectrumListener != null) {
+                        final long heardUs = sink.getCurrentPositionUs(false);
+                        spectrum.delayMs = heardUs == AudioSink.CURRENT_POSITION_NOT_SET ? 0 : Math.max(0, Math.min(1500,
+                                (long) ((presentationTimeUs - heardUs) / 1000 / sink.getPlaybackParameters().speed)));
+                    }
+                    return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount);
+                }
+
+                @Override
+                public void flush() {
+                    spectrum.generation++; // a seek: what is still on its way will never be heard
+                    super.flush();
+                }
+            };
         }
     }
 
@@ -2077,7 +2098,9 @@ public class VideoPlayer implements Player.Listener, VideoListener, AnalyticsLis
         private int rate = 44100;
         private int channels = 2;
         private int encoding = C.ENCODING_PCM_16BIT;
-        private long lastPost;
+        private int unposted;
+        long delayMs;
+        volatile int generation;
 
         @Override
         public void flush(int sampleRateHz, int channelCount, int encoding) {
@@ -2112,11 +2135,12 @@ public class VideoPlayer implements Player.Listener, VideoListener, AnalyticsLis
         }
 
         private void analyse() {
-            final long now = android.os.SystemClock.elapsedRealtime();
-            if (now - lastPost < 30) {
+            // counted in sound, not in time: the buffer fills in bursts and each part of it is heard later
+            unposted += N;
+            if (unposted * 1000L < 30L * rate) {
                 return;
             }
-            lastPost = now;
+            unposted = 0;
             final float[] w = new float[N];
             for (int i = 0; i < N; i++) {
                 w[i] = samples[i] * (0.5f - 0.5f * (float) Math.cos(2 * Math.PI * i / (N - 1)));
@@ -2139,12 +2163,13 @@ public class VideoPlayer implements Player.Listener, VideoListener, AnalyticsLis
                 final double db = 20 * Math.log10(Math.max(1e-6, peak / (N / 4f)));
                 out[i] = (float) Math.max(0, Math.min(1, (db + 62) / 52));
             }
+            final int posted = generation;
             AndroidUtilities.runOnUIThread(() -> {
                 final SpectrumListener l = spectrumListener;
-                if (l != null) {
+                if (l != null && posted == generation) {
                     l.onSpectrum(out);
                 }
-            });
+            }, delayMs);
         }
     }
 

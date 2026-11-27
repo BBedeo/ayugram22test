@@ -1593,6 +1593,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         controls.play.setContentDescription(getString(playing ? R.string.AccActionPause : R.string.AccActionPlay));
         seekBar.setPlaying(playing);
         updateSpin();
+        layout.invalidate(); // a resumed track sets the aurora drifting again
         boolean ios = Md3Player.isIosPlayer();
         boolean framed = coverStyle == PlayerStyle.COVER_CARD || coverStyle == PlayerStyle.COVER_DISC;
         float scale = playing || !framed || previewMode ? 1f : (ios ? 0.83f : 0.92f);
@@ -2722,12 +2723,56 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
                         ColorUtils.setAlphaComponent(tints[i], colors.dark ? 0x70 : 0x58), ColorUtils.setAlphaComponent(tints[i], 0), Shader.TileMode.CLAMP);
             }
         }
-        for (android.graphics.RadialGradient g : auroraShaders) {
-            overlayPaint.setShader(g);
+        for (int i = 0; i < 3; i++) {
+            // each blob loops on its own period from the resting spot, so the colours keep flowing into new mixes
+            final double a = auroraTime * 2 * Math.PI / AURORA_PERIODS[i];
+            final float way = i == 1 ? -1f : 1f;
+            auroraMatrix.setTranslate((float) (way * width * 0.25f * Math.sin(a)),
+                    (float) ((i == 2 ? -1f : 1f) * height * 0.07f * (1 - Math.cos(a))));
+            auroraShaders[i].setLocalMatrix(auroraMatrix);
+            overlayPaint.setShader(auroraShaders[i]);
             canvas.drawRect(0, 0, width, height, overlayPaint);
         }
         overlayPaint.setShader(null);
+        // each drawn frame asks for the next one, so the loop ends as soon as the blobs stop being drawn
+        if (!auroraScheduled && auroraDrifts()) {
+            auroraScheduled = true;
+            AndroidUtilities.runOnUIThread(auroraTick, AURORA_FRAME_MS);
+        }
     }
+
+    private static final float[] AURORA_PERIODS = {19f, 23f, 17f};
+    private static final int AURORA_FRAME_MS = 33;
+    private final android.graphics.Matrix auroraMatrix = new android.graphics.Matrix();
+    private boolean auroraScheduled;
+    private long auroraLast;
+    private float auroraTime;
+    private int auroraFrame;
+
+    private boolean auroraDrifts() {
+        return Md3Player.isIosPlayer() && backdrop == null && !previewMode
+                && layout.isAttachedToWindow() && layout.getWindowVisibility() == View.VISIBLE
+                && !MediaController.getInstance().isMessagePaused() && !org.telegram.messenger.LiteMode.isPowerSaverApplied()
+                && (Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled());
+    }
+
+    private final Runnable auroraTick = new Runnable() {
+        @Override
+        public void run() {
+            if (auroraDrifts()) {
+                final long now = android.os.SystemClock.elapsedRealtime();
+                auroraTime += Math.min(50, now - auroraLast) / 1000f;
+                auroraLast = now;
+                layout.invalidate();
+                // the glass samples a software copy of the backdrop: a third of the frames is enough for slow blobs
+                if (glass != null && ++auroraFrame % 3 == 0) {
+                    glass.refresh();
+                }
+            }
+            // cleared last: the glass repainting the blobs above must not keep the loop alive by itself
+            auroraScheduled = false;
+        }
+    };
 
     private class CoverScrim extends View {
 

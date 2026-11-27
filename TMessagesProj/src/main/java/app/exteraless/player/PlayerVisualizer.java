@@ -15,8 +15,8 @@ import org.telegram.messenger.LiteMode;
 import org.telegram.ui.Components.VideoPlayer;
 
 /**
- * Soft frequency bars under the collapsed control capsule. Telegram gives no spectrum for music files, so the bands are a
- * smooth synthetic motion that is heavier in the bass (left) and slowed down so it never flickers; it eases out when paused.
+ * Soft frequency bars under the collapsed control capsule, bass on the left: the decoder's spectrum, delivered as it is
+ * heard, or a smooth synthetic motion when there are no samples. It eases out when paused.
  */
 final class PlayerVisualizer extends View {
 
