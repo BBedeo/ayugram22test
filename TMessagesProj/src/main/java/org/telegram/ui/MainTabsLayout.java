@@ -48,7 +48,6 @@ import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import app.exteraless.appearance.MainTabsUiHelper;
 import app.exteraless.appearance.ElasticPillGesture;
 import app.exteraless.appearance.ElasticGlassPillRenderer;
-import app.exteraless.appearance.LiquidGlassTuning;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -651,9 +650,15 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float verticalPullSquish = Math.min(dp(4.2f), Math.abs(pullY) * .14f);
         final float pullShiftY = dp(2.2f) * (float) Math.tanh(pullY / dp(24f));
         final float glideLift = Math.min(1f, totalStretch / dp(7.0f));
-        final float pressSwell = elasticPressValue * dp(7.5f) + glideLift * dp(2.4f);
-        final float jellyX = elasticJellyValue * dp(3.5f) + pressSwell + verticalPullSquish * .85f;
-        final float jellyY = -elasticJellyValue * dp(1.6f) + pressSwell * .88f
+        // lifted, the pill leaves the bar by 4.5 dp above and below, but never its own view: the lens layer ends there
+        final boolean raised = !MainTabsUiHelper.isMaterial3NavigationBar();
+        final float raiseY = raised
+                ? Math.max(0f, Math.min(getHeight(), getHeight() - 2 * MainTabsUiHelper.getBackgroundInset() + dp(9)) - availableHeight)
+                : dp(6.6f);
+        final float raiseX = raised ? dp(14) : dp(7.5f);
+        final float glideSwell = glideLift * dp(2.4f);
+        final float jellyX = elasticJellyValue * dp(3.5f) + elasticPressValue * raiseX + glideSwell + verticalPullSquish * .85f;
+        final float jellyY = -elasticJellyValue * dp(1.6f) + elasticPressValue * raiseY + glideSwell * .88f
                 + Math.min(dp(2.6f), edgeOverscroll * .18f)
                 - verticalPullSquish
                 - Math.min(dp(2.2f), totalStretch * .12f);
@@ -715,11 +720,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 ? Math.max(clampedLeft + minPillWidth, clampedRight - leftSquish)
                 : clampedRight;
 
+        final float top = cy - height * .5f;
+        final float bottom = cy + height * .5f;
         selectorRect.set(
                 finalLeft,
-                cy - height * .5f,
+                raised ? Math.max(0f, top) : top,
                 finalRight,
-                cy + height * .5f);
+                raised ? Math.min(getHeight(), bottom) : bottom);
         final float motionDir = leftOverscroll > .1f ? -1f : (rightOverscroll > .1f ? 1f : direction);
         final float motionMag = Math.min(1f, Math.max(totalStretch / dp(16), edgeOverscroll / dp(11)));
         elasticGlassPill.draw(canvas, selectorRect, elasticPillGlass,
@@ -836,10 +843,9 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                     // the icons bend only while the pill is lifted or travels: at rest the labels stay straight
                     final float lift = Math.min(1f, Math.max(press, Math.abs(motion) * 1.15f));
                     pillContentShader.setFloatUniform("radius", hh, hh, hh, hh);
-                    pillContentShader.setFloatUniform("thickness", LiquidGlassOptics.bevel(2f * Math.min(hw, hh),
-                            AndroidUtilities.density, LiquidGlassTuning.thicknessDp()));
-                    pillContentShader.setFloatUniform("refract_intensity",
-                            LiquidGlassOptics.pillBend(LiquidGlassTuning.refractionScale()) * lift);
+                    // a shallow rim apart from the glass sliders: the shared bevel is wide enough to fold the tab labels
+                    pillContentShader.setFloatUniform("thickness", AndroidUtilities.dpf2(7));
+                    pillContentShader.setFloatUniform("refract_intensity", .30f * lift);
                     pillContentShader.setFloatUniform("glass_press", lift);
                     pillContentShader.setFloatUniform("optics", AndroidUtilities.density, 1f);
                     pillContentShader.setFloatUniform("shape", 1f, LiquidGlassOptics.flow(LiquidGlassOptics.PILL));
