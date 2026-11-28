@@ -136,6 +136,9 @@ public class ActionBarPopupWindow extends PopupWindow {
         private final Rect bgPaddings = new Rect();
         private onSizeChangedListener onSizeChangedListener;
         private float reactionsEnterProgress = 1f;
+        private float topCut;
+        private float itemsAlpha = 1f;
+        private View bottomCard;
 
         private PopupSwipeBackLayout swipeBackLayout;
         @Nullable
@@ -520,6 +523,48 @@ public class ActionBarPopupWindow extends PopupWindow {
             return linearLayout.getChildCount();
         }
 
+        /**
+         * Lays {@code card} over the bottom of the menu and returns how many px the menu has to lose at the top to hold
+         * only it; -1, with nothing added, when it can't.
+         */
+        public int addBottomCard(View card) {
+            final int width = getMeasuredWidth() - getPaddingLeft() - getPaddingRight();
+            if (width <= 0 || gapStartY != -1000000) {
+                return -1;
+            }
+            card.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            final int bottom = shownFromBottom ? getMeasuredHeight() : (int) (getMeasuredHeight() * backScaleY) - subtractBackgroundHeight;
+            final int cut = bottom - shownTop() - card.getMeasuredHeight() - getPaddingTop() - getPaddingBottom();
+            if (cut < 0) {
+                return -1;
+            }
+            super.addView(card, new FrameLayout.LayoutParams(width, bottom - getPaddingTop() - getPaddingBottom()));
+            bottomCard = card;
+            return cut;
+        }
+
+        public boolean hasBottomCard() {
+            return bottomCard != null && bottomCard.getParent() == this;
+        }
+
+        private int shownTop() {
+            return shownFromBottom ? (int) (getMeasuredHeight() * (1f - backScaleY)) : 0;
+        }
+
+        /** The menu shrinks to its bottom edge: {@code cut} px are gone at the top, the items fade to {@code alpha}. */
+        public void setTopCut(float cut, float alpha) {
+            topCut = cut;
+            itemsAlpha = alpha;
+            final View items = swipeBackLayout != null ? swipeBackLayout : scrollView != null ? scrollView : linearLayout;
+            items.setAlpha(alpha);
+            items.setVisibility(alpha > 0 ? VISIBLE : INVISIBLE);
+            invalidate();
+        }
+
+        public boolean isDragSelectEnabled() {
+            return dragSelectEnabled;
+        }
+
         public int precalculateHeight() {
             int MOST_SPEC = View.MeasureSpec.makeMeasureSpec(dp(1000), View.MeasureSpec.AT_MOST);
             linearLayout.measure(MOST_SPEC, MOST_SPEC);
@@ -628,6 +673,9 @@ public class ActionBarPopupWindow extends PopupWindow {
                         rect.set(AndroidUtilities.rectTmp2.right, AndroidUtilities.rectTmp2.top, AndroidUtilities.rectTmp2.right, AndroidUtilities.rectTmp2.top);
                         AndroidUtilities.lerp(rect, AndroidUtilities.rectTmp2, reactionsEnterProgress, AndroidUtilities.rectTmp2);
                     }
+                    if (topCut > 0) {
+                        AndroidUtilities.rectTmp2.top += (int) topCut;
+                    }
                     backgroundDrawable.setBounds(AndroidUtilities.rectTmp2);
                     backgroundDrawable.draw(canvas);
                     if (clipChildren) {
@@ -637,8 +685,13 @@ public class ActionBarPopupWindow extends PopupWindow {
                         AndroidUtilities.rectTmp2.bottom -= bgPaddings.bottom;
                         canvas.clipRect(AndroidUtilities.rectTmp2);
                     }
-                    if (hasGap) {
-                        canvas.save();
+                    if (hasGap && itemsAlpha > 0) {
+                        // the separators are drawn here by hand, so they fade with the items here too
+                        if (itemsAlpha < 1f) {
+                            canvas.saveLayerAlpha(0, 0, getMeasuredWidth(), getMeasuredHeight(), (int) (255 * itemsAlpha), Canvas.ALL_SAVE_FLAG);
+                        } else {
+                            canvas.save();
+                        }
                         AndroidUtilities.rectTmp.set(backgroundDrawable.getBounds());
                         AndroidUtilities.rectTmp.inset(dp(8), dp(8));
                         if (path == null) {
@@ -672,6 +725,11 @@ public class ActionBarPopupWindow extends PopupWindow {
                     canvas.restoreToCount(saveCount);
                 }
             }
+            final boolean cutting = topCut > 0;
+            if (cutting) {
+                canvas.save();
+                canvas.clipRect(0, shownTop() + (int) topCut + getPaddingTop(), getMeasuredWidth(), getMeasuredHeight());
+            }
             if (reactionsEnterProgress != 1f) {
                 canvas.saveLayerAlpha((float) AndroidUtilities.rectTmp2.left, (float) AndroidUtilities.rectTmp2.top, AndroidUtilities.rectTmp2.right, AndroidUtilities.rectTmp2.bottom, (int) (255 * reactionsEnterProgress), Canvas.ALL_SAVE_FLAG);
                 float scale = 0.5f + reactionsEnterProgress * 0.5f;
@@ -682,6 +740,9 @@ public class ActionBarPopupWindow extends PopupWindow {
             } else {
                 drawDragHoverHighlight(canvas);
                 super.dispatchDraw(canvas);
+            }
+            if (cutting) {
+                canvas.restore();
             }
         }
 

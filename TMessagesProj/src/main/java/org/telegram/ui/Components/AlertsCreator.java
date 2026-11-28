@@ -8334,6 +8334,7 @@ public class AlertsCreator {
             }
         }
 
+        boolean partialDelete = false; // the text says only some of the messages will go
         if (isSavedMessages) {
             if (count == 1) {
                 builder.setMessage(LocaleController.getString(R.string.AreYouSureUnsaveSingleMessage));
@@ -8343,12 +8344,14 @@ public class AlertsCreator {
         } else if (chat != null && hasNotOut) {
             if (hasDeleteForAllCheck && myMessagesCount != count) {
                 builder.setMessage(LocaleController.formatString(R.string.DeleteMessagesTextGroupPart, LocaleController.formatPluralString("messages", myMessagesCount)));
+                partialDelete = true;
             } else if (count == 1) {
                 builder.setMessage(LocaleController.getString(R.string.AreYouSureDeleteSingleMessage));
             } else {
                 builder.setMessage(LocaleController.getString(R.string.AreYouSureDeleteFewMessages));
             }
         } else if (hasDeleteForAllCheck && !canDeleteInbox && myMessagesCount != count) {
+            partialDelete = true;
             if (chat != null) {
                 builder.setMessage(LocaleController.formatString("DeleteMessagesTextGroup", R.string.DeleteMessagesTextGroup, LocaleController.formatPluralString("messages", myMessagesCount)));
             } else {
@@ -8418,6 +8421,11 @@ public class AlertsCreator {
             final View growButton = selectedMessage == null && fragment instanceof ChatActivity ? ((ChatActivity) fragment).getDeleteGrowButton() : null;
             if (growButton != null) {
                 showDeleteQuestionFrom(growButton, fragment, builder, ayuFrameLayout, deleteText, () -> deleteAction.onClick(null, DialogInterface.BUTTON_POSITIVE));
+                return;
+            }
+            if (selectedMessage != null && !partialDelete && fragment instanceof ChatActivity
+                    && ((ChatActivity) fragment).askDeleteInMenu(selectedMessage, ayuFrameLayout, deleteText,
+                    () -> deleteAction.onClick(null, DialogInterface.BUTTON_POSITIVE))) {
                 return;
             }
             builder.setPositiveButton(deleteText, deleteAction);

@@ -33789,6 +33789,26 @@ public class ChatActivity extends BaseFragment implements
         }, hideDimAfter ? () -> dimBehindView(false) : null, themeDelegate);
     }
 
+    private boolean menuAsksDelete;
+
+    /** The open message menu asks the delete question itself, shrinking to it. False means: show the dialog. */
+    public boolean askDeleteInMenu(MessageObject message, View checks, CharSequence action, Runnable onDelete) {
+        if (message == null || message != selectedObject || scrimPopupWindow == null || !scrimPopupWindow.isShowing()
+                || !(scrimPopupWindow.getContentView() instanceof ChatScrimPopupContainerLayout)
+                || !app.exteraless.appearance.LiquidGlassTuning.motionEnabled()) {
+            return false;
+        }
+        menuAsksDelete = app.exteraless.appearance.glass.MenuDeleteCard.show(
+                (ChatScrimPopupContainerLayout) scrimPopupWindow.getContentView(), checks, action, themeDelegate, this::closeMenu, () -> {
+                    selectedObject = null;
+                    selectedObjectGroup = null;
+                    selectedObjectToEditCaption = null;
+                    closeMenu();
+                    onDelete.run();
+                });
+        return menuAsksDelete;
+    }
+
     /** The selection bar's delete button when the delete question may grow out of it, null otherwise. */
     public View getDeleteGrowButton() {
         if (inPreviewMode || isInsideContainer || parentChatActivity != null || getParentLayout() == null || actionBar == null || !actionBar.isActionModeShowed()
@@ -36904,7 +36924,11 @@ public class ChatActivity extends BaseFragment implements
                     return;
                 }
                 preserveDim = true;
+                menuAsksDelete = false;
                 createDeleteMessagesAlert(selectedObject, selectedObjectGroup, true);
+                if (menuAsksDelete) {
+                    return; // the menu stays open and keeps the message until it is answered
+                }
                 break;
             }
             case OPTION_FORWARD: {
