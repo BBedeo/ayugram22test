@@ -27,6 +27,17 @@ public final class GlassTouchMath {
         return start * left * left;
     }
 
+    /** A veil that swells to {@code peak} and clears again, easing at both ends. */
+    public static float pulseStrength(float peak, float elapsedMs, float riseMs, float durationMs) {
+        return elapsedMs < riseMs ? peak * smooth(elapsedMs / riseMs)
+                : peak * (1f - smooth((elapsedMs - riseMs) / (durationMs - riseMs)));
+    }
+
+    private static float smooth(float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        return t * t * (3f - 2f * t);
+    }
+
     /** Scale of a held row: 9% at most, and never more than 16dp off the longer side. */
     public static float squeezeScale(float longSidePx, float density) {
         return 1f - Math.min(0.09f, 16f * density / longSidePx);

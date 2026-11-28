@@ -39,12 +39,14 @@ import tw.nekomimi.nekogram.NekoConfig;
 
 /**
  * The touch effect of Glass Touch: shine, squeeze and (Android 13+) a lens under the finger. It follows the pressed
- * state the list already gives its rows, holds one row at a time and leaves alone a row that animates itself. The lens
- * stays under the finger, and a swipe that takes the gesture over carries it to the whole list.
+ * state the list already gives its rows, holds one row at a time and leaves alone a row that animates itself. Shine and
+ * squeeze belong to the row. The lens belongs to the whole list, so a row's edges never cut it, and it stays under the
+ * finger until the finger is gone, also when a scroll or a swipe takes the row's press away.
  */
 public final class GlassTouchController implements View.OnAttachStateChangeListener, ViewTreeObserver.OnPreDrawListener {
 
     private static final long MIN_VISIBLE_MS = 140;
+    private static final long LIST_RELEASE_MS = 150; // longer than a list keeps a tapped row pressed
     private static final float LENS_PRESS_STIFFNESS = 520f;
     private static final float LENS_RELEASE_STIFFNESS = 260f;
     private static final float LENS_DAMPING = 0.5f;
@@ -56,9 +58,11 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
     private static int fingerId;
     private static float fingerX;
     private static float fingerY;
+    private static int gestures; // counts finger downs, so a lens never moves on to another finger
 
-    private final View row; // the whole list once the lens is carried there
-    private final boolean carried;
+    private final View row;
+    private final View host; // the list: it shows the lens
+    private int gesture = gestures; // the finger down this press belongs to
     private final int[] spot = new int[2];
     private final long started = SystemClock.uptimeMillis();
     private final float pressedScale;
@@ -70,8 +74,9 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
     private Object lens; // Lens, Android 13+; typed loosely so older runtimes never resolve it
     private float writtenScale = 1f;
     private boolean ownScale = true;
-    private boolean held = true;
     private boolean lensed;
+    private boolean carried; // the list took the press back, the finger and its lens are still there
+    private boolean rowGone;
     private boolean releasing;
     private boolean done;
 
@@ -84,15 +89,15 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
             return;
         }
         if (active != null) {
-            if (active.row == row && !active.releasing) {
+            if (active.row == row && !active.releasing && !active.carried) {
                 AndroidUtilities.cancelRunOnUIThread(active.letGo);
-                active.held = true;
+                active.gesture = gestures;
                 return;
             }
             active.cleanup();
         }
         if (GlassTouchSettings.press() && eligible(list, row)) {
-            active = new GlassTouchController(row, x - row.getX(), y - row.getY());
+            active = new GlassTouchController(list, row, x, y);
         }
     }
 
@@ -100,11 +105,12 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
     public static void onActivityTouch(MotionEvent ev) {
         final int action = ev.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) {
+            gestures++;
+            fingerId = ev.getPointerId(0);
+            fingerDown = true;
             if (active != null && active.carried) {
                 active.letGo(); // the finger that carried it is gone
             }
-            fingerId = ev.getPointerId(0);
-            fingerDown = true;
         }
         final int index = fingerDown ? ev.findPointerIndex(fingerId) : -1;
         if (index < 0) {
@@ -116,24 +122,12 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL
                 || action == MotionEvent.ACTION_POINTER_UP && ev.getActionIndex() == index) {
             fingerDown = false;
-            if (active != null && active.carried) {
-                active.letGo(); // a row's lens is released by its list
+            if (active != null && active.gesture == gestures) {
+                active.fingerLifted();
             }
         } else if (action == MotionEvent.ACTION_MOVE && active != null && active.lens != null) {
-            active.row.invalidate(); // the lens moves before that draw, when the pages have moved too
+            active.host.invalidate(); // the lens moves before that draw, when the pages have moved too
         }
-    }
-
-    /** A swipe is about to take the gesture from a held row of {@code list}: its lens moves to the list itself. */
-    public static void carryToList(View list) {
-        final GlassTouchController from = active;
-        if (Build.VERSION.SDK_INT < 33 || !fingerDown || from == null || !from.held || from.releasing
-                || from.lens == null || from.row.getParent() != list) {
-            return;
-        }
-        final float strength = from.dropLens();
-        from.letGo(); // the row springs back and cleans up after itself
-        active = new GlassTouchController(list, strength);
     }
 
     private static boolean eligible(RecyclerListView list, View row) {
@@ -145,42 +139,33 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
                 && row.getScaleX() == 1f && row.getScaleY() == 1f && row.getTranslationX() == 0f;
     }
 
-    private GlassTouchController(View row, float x, float y) {
+    private GlassTouchController(View host, View row, float x, float y) {
+        this.host = host;
         this.row = row;
-        carried = false;
         pressedScale = GlassTouchMath.squeezeScale(Math.max(row.getWidth(), row.getHeight()), AndroidUtilities.density);
         shine.setBounds(0, 0, row.getWidth(), row.getHeight());
         row.getOverlay().add(shine);
         row.addOnAttachStateChangeListener(this);
+        host.addOnAttachStateChangeListener(this);
 
         scale.setMinimumVisibleChange(DynamicAnimation.MIN_VISIBLE_CHANGE_SCALE);
         scale.addUpdateListener((animation, value, velocity) -> squeeze(value));
         scale.addEndListener((animation, canceled, value, velocity) -> finish());
         GlassMotion.spring(scale, pressedScale, GlassMotion.PRESS_STIFFNESS, SpringForce.DAMPING_RATIO_NO_BOUNCY);
-        if (Build.VERSION.SDK_INT >= 33 && row.isHardwareAccelerated()) {
-            holdLens(x, y, 0f);
+        if (Build.VERSION.SDK_INT >= 33 && host.isHardwareAccelerated()) {
+            holdLens(x, y);
         }
         if (!NekoConfig.disableVibration.Bool()) {
             row.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
         }
     }
 
-    /** A carried lens: no squeeze, shine or tick, only the lens at the strength it had. */
+    /** {@code x}, {@code y} are list coordinates. */
     @RequiresApi(33)
-    private GlassTouchController(View list, float strength) {
-        row = list;
-        carried = true;
-        pressedScale = 1f;
-        ownScale = false;
-        row.addOnAttachStateChangeListener(this);
-        holdLens(0f, 0f, strength);
-    }
-
-    @RequiresApi(33)
-    private void holdLens(float x, float y, float strength) {
+    private void holdLens(float x, float y) {
         final Lens fresh;
         try {
-            fresh = new Lens(row, x, y,
+            fresh = new Lens(host, x, y,
                     GlassTouchMath.lensRadius(row.getWidth(), row.getHeight(), AndroidUtilities.density));
         } catch (Exception e) {
             FileLog.e(e);
@@ -189,24 +174,12 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
         lens = fresh;
         lensed = true;
         follow(); // the finger may have moved during the tap delay
-        fresh.set(strength);
-        row.getViewTreeObserver().addOnPreDrawListener(this);
-        lensSpring.setStartValue(strength);
+        fresh.set(0f);
+        host.getViewTreeObserver().addOnPreDrawListener(this);
         lensSpring.setMinimumVisibleChange(DynamicAnimation.MIN_VISIBLE_CHANGE_ALPHA);
         lensSpring.addUpdateListener((animation, value, velocity) -> fresh.set(value));
         lensSpring.addEndListener((animation, canceled, value, velocity) -> finish());
         GlassMotion.spring(lensSpring, 1f, LENS_PRESS_STIFFNESS, LENS_DAMPING);
-    }
-
-    /** Takes the lens off the view and returns the strength it had. */
-    @RequiresApi(33)
-    private float dropLens() {
-        final Lens gone = (Lens) lens;
-        lens = null;
-        row.getViewTreeObserver().removeOnPreDrawListener(this);
-        lensSpring.cancel();
-        gone.remove();
-        return Math.max(0f, gone.p);
     }
 
     @Override
@@ -215,15 +188,20 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
         return true;
     }
 
-    /** Puts a held lens under the finger, in the view's own coordinates. */
+    /** The finger that pressed the row is still on the screen. */
+    private boolean fingerHolds() {
+        return fingerDown && gesture == gestures;
+    }
+
+    /** Puts the lens under the finger, in the list's own coordinates. */
     private void follow() {
-        if (Build.VERSION.SDK_INT < 33 || lens == null || !fingerDown || !held || releasing) {
+        if (Build.VERSION.SDK_INT < 33 || lens == null || !fingerHolds() || releasing) {
             return;
         }
-        row.getLocationOnScreen(spot);
+        host.getLocationOnScreen(spot);
         ((Lens) lens).move(
-                Math.max(0f, Math.min(row.getWidth(), (fingerX - spot[0]) / row.getScaleX())),
-                Math.max(0f, Math.min(row.getHeight(), (fingerY - spot[1]) / row.getScaleY())));
+                Math.max(0f, Math.min(host.getWidth(), (fingerX - spot[0]) / host.getScaleX())),
+                Math.max(0f, Math.min(host.getHeight(), (fingerY - spot[1]) / host.getScaleY())));
     }
 
     private void squeeze(float value) {
@@ -238,7 +216,6 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
     }
 
     private void release() {
-        held = false;
         AndroidUtilities.cancelRunOnUIThread(letGo);
         final long wait = MIN_VISIBLE_MS - (SystemClock.uptimeMillis() - started);
         if (wait > 0) {
@@ -248,18 +225,52 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
         }
     }
 
+    private void fingerLifted() {
+        if (carried) {
+            letGo();
+        } else {
+            // the list releases its row itself, but one that gave the gesture away may never name the row again
+            AndroidUtilities.cancelRunOnUIThread(letGo);
+            AndroidUtilities.runOnUIThread(letGo, LIST_RELEASE_MS);
+        }
+    }
+
     private void letGo() {
         if (releasing || done) {
             return;
         }
-        releasing = true;
-        if (!carried) {
-            GlassMotion.spring(scale, 1f, GlassMotion.RELEASE_STIFFNESS, GlassMotion.RELEASE_DAMPING);
+        if (lens != null && fingerHolds()) {
+            carried = true; // a scroll or a swipe took the press: the row springs back, the lens stays
+            springRowBack();
+            return;
         }
+        releasing = true;
+        springRowBack();
         if (lens != null) {
             GlassMotion.spring(lensSpring, 0f, LENS_RELEASE_STIFFNESS, LENS_DAMPING);
         }
         finish(); // does nothing while a spring is running
+    }
+
+    private void springRowBack() {
+        if (!rowGone) {
+            GlassMotion.spring(scale, 1f, GlassMotion.RELEASE_STIFFNESS, GlassMotion.RELEASE_DAMPING);
+        }
+    }
+
+    /** Gives the row back as it was; a recycled row shows another chat at once. */
+    private void dropRow() {
+        if (rowGone) {
+            return;
+        }
+        rowGone = true;
+        row.removeOnAttachStateChangeListener(this);
+        scale.cancel();
+        if (ownScale && row.getScaleX() == writtenScale && row.getScaleY() == writtenScale) {
+            row.setScaleX(1f);
+            row.setScaleY(1f);
+        }
+        row.getOverlay().remove(shine);
     }
 
     private void finish() {
@@ -274,18 +285,14 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
         }
         done = true;
         AndroidUtilities.cancelRunOnUIThread(letGo);
-        row.removeOnAttachStateChangeListener(this);
-        scale.cancel();
+        host.removeOnAttachStateChangeListener(this);
+        dropRow();
         lensSpring.cancel();
-        if (ownScale && row.getScaleX() == writtenScale && row.getScaleY() == writtenScale) {
-            row.setScaleX(1f);
-            row.setScaleY(1f);
-        }
         if (Build.VERSION.SDK_INT >= 33 && lens != null) {
-            dropLens();
-        }
-        if (!carried) {
-            row.getOverlay().remove(shine);
+            final Lens gone = (Lens) lens;
+            lens = null;
+            host.getViewTreeObserver().removeOnPreDrawListener(this);
+            gone.remove();
         }
         if (active == this) {
             active = null;
@@ -298,28 +305,33 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
 
     @Override
     public void onViewDetachedFromWindow(@NonNull View view) {
-        cleanup();
+        if (view == host) {
+            cleanup();
+        } else {
+            dropRow(); // scrolled away
+            letGo();
+            finish();
+        }
     }
 
     @RequiresApi(33)
     private static final class Lens {
-        // compiled once: one row holds the lens at a time, and an effect keeps the uniforms it was created with
+        // compiled once: one list holds the lens at a time, and an effect keeps the uniforms it was created with
         private static RuntimeShader shader;
 
-        private final View row;
+        private final View view;
         private float p = -1f;
         private float x;
         private float y;
         private boolean applied;
 
-        Lens(View row, float x, float y, float radius) {
-            this.row = row;
+        Lens(View view, float x, float y, float radius) {
+            this.view = view;
             this.x = x;
             this.y = y;
             if (shader == null) {
                 shader = new RuntimeShader(AndroidUtilities.readRes(R.raw.glass_touch_lens_shader));
             }
-            shader.setFloatUniform("size", row.getWidth(), row.getHeight());
             shader.setFloatUniform("center", x, y);
             shader.setFloatUniform("radius", radius);
             shader.setFloatUniform("rim", 1f);
@@ -348,13 +360,14 @@ public final class GlassTouchController implements View.OnAttachStateChangeListe
         }
 
         private void apply() {
-            row.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "img"));
+            shader.setFloatUniform("size", view.getWidth(), view.getHeight());
+            view.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "img"));
             applied = true;
         }
 
         void remove() {
             if (applied) {
-                row.setRenderEffect(null);
+                view.setRenderEffect(null);
             }
         }
     }

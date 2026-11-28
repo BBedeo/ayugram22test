@@ -2,6 +2,7 @@ package org.telegram.ui;
 
 import static org.telegram.messenger.AndroidUtilities.dpf2;
 
+import android.animation.TimeInterpolator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
@@ -15,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import app.exteraless.appearance.glass.GlassTouchSettings;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -23,6 +25,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.ViewPagerFixed;
 
 import java.util.ArrayList;
@@ -32,6 +35,7 @@ import java.util.HashSet;
 import xyz.nextalone.nagram.NaConfig;
 
 public abstract class ViewPagerActivity extends BaseFragment {
+    private static final TimeInterpolator SOFT_SCROLL = new CubicBezierInterpolator(0.32, 0.72, 0, 1);
     protected final SparseArray<FragmentState> fragmentsArr = new SparseArray<>();
 
     protected FrameLayout contentView;
@@ -535,7 +539,13 @@ public abstract class ViewPagerActivity extends BaseFragment {
 
         @Override
         protected long getManualScrollDuration() {
-            return 320L;
+            return GlassTouchSettings.pages() ? 420L : 320L;
+        }
+
+        @Override
+        protected TimeInterpolator getManualScrollInterpolator() {
+            // Glass Touch: starts gently and settles slowly, so a tab does not jump on its first frames
+            return GlassTouchSettings.pages() ? SOFT_SCROLL : super.getManualScrollInterpolator();
         }
 
         @Override

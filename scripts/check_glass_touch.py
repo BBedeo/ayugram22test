@@ -50,16 +50,26 @@ need(GLASS / "GlassBackBlur.java", "private static Object shader;", "void releas
      "void settle()", "onViewDetachedFromWindow")
 need(GLASS / "GlassPageBlur.java", "addOnPreDrawListener", "removeOnPreDrawListener", "GlassTouchSettings.pages()")
 need(GLASS / "GlassTouchSettings.java", "isGlassTouchPages()")
+# the lens lives on the list, so a row's edges never cut it, and it stays while the finger does
 need(GLASS / "GlassTouchController.java", "ACTION_POINTER_UP", "static void onActivityTouch(",
-     "static void carryToList(")
+     "new Lens(host,", "fingerHolds()", "dropRow()", "active.fingerLifted()")
+need(MAIN / "res/raw/glass_touch_lens_shader.agsl", "if (dist >= radius)")  # the rest of the list is copied as is
+# a list can resize under a held finger (the keyboard), so every effect takes the current size
+need(GLASS / "GlassTouchController.java",
+     'private void apply() {\n            shader.setFloatUniform("size", view.getWidth(), view.getHeight());')
 need(JAVA / "org/telegram/ui/LaunchActivity.java", "GlassTouchController.onActivityTouch(ev)")
 dialogs = JAVA / "org/telegram/ui/DialogsActivity.java"
-need(dialogs, "GlassTouchController.carryToList(viewPages[0].listView)")
 if dialogs.read_text(encoding="utf-8").count("glassPages.start()") != 2:
     errors.append("DialogsActivity: the folder swipe and the folder tab tap must both start the tracker")
 tabs = (JAVA / "org/telegram/ui/MainTabsActivity.java").read_text(encoding="utf-8")
 if tabs.count("pulseGlassPages();") != 2:
     errors.append("MainTabsActivity: the tab tap and the back to chats must both pulse the pages")
+need(JAVA / "org/telegram/ui/MainTabsActivity.java", "glassTabs.pulse(viewPager, 0.7f, 100, 420)")
+# the softer slide belongs to the switch; without it the pager keeps its own curve
+need(JAVA / "org/telegram/ui/ViewPagerActivity.java", "getManualScrollInterpolator()", "GlassTouchSettings.pages()",
+     "super.getManualScrollInterpolator()")
+need(JAVA / "org/telegram/ui/Components/ViewPagerFixed.java",
+     "manualScrolling.setInterpolator(getManualScrollInterpolator());")
 need(JAVA / "app/exteraless/settings/OpenExteraAppearanceActivity.java", 'addRow("glassTouchPages")')
 for strings in ("values/strings_oe_appearance.xml", "values-ru/strings_oe_liquid_glass.xml",
                 "values-uk/strings_oe_liquid_glass.xml"):
@@ -77,7 +87,11 @@ CASES = (
     ("pageStrength(0, 1000)", 0), ("pageStrength(500, 1000)", 0.35), ("pageStrength(-1000, 1000)", 0.7),
     ("pageStrength(1500, 1000)", 0.7), ("pageStrength(100, 0)", 0),
     ("fadeStrength(1, 0, 380)", 1), ("fadeStrength(1, 190, 380)", 0.25), ("fadeStrength(0.7f, 160, 320)", 0.175),
-    ("fadeStrength(0.7f, 400, 320)", 0), ("fadeStrength(1, -10, 380)", 1), ("fadeStrength(0.5f, 380, 380)", 0),
+    ("fadeStrength(0.7f, 400, 320)", 0),
+    ("pulseStrength(0.7f, -10, 100, 420)", 0), ("pulseStrength(0.7f, 0, 100, 420)", 0),
+    ("pulseStrength(0.7f, 50, 100, 420)", 0.35), ("pulseStrength(0.7f, 100, 100, 420)", 0.7),
+    ("pulseStrength(0.7f, 260, 100, 420)", 0.35), ("pulseStrength(0.7f, 420, 100, 420)", 0),
+    ("pulseStrength(0.7f, 500, 100, 420)", 0), ("fadeStrength(1, -10, 380)", 1), ("fadeStrength(0.5f, 380, 380)", 0),
 )
 probe = "package app.exteraless.appearance.glass;\npublic class GlassTouchProbe {\n" \
     "  static int failed;\n" \

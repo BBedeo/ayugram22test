@@ -1149,10 +1149,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     private final app.exteraless.appearance.glass.GlassBackBlur glassTabs = new app.exteraless.appearance.glass.GlassBackBlur();
 
-    /** Glass Touch: timed like the reference, not tied to the pager's own scroll. */
+    /** Glass Touch: a veil over the tab change, as long as its slide; it swells in, so nothing flashes. */
     private void pulseGlassPages() {
         if (app.exteraless.appearance.glass.GlassTouchSettings.pages()) {
-            glassTabs.pulse(viewPager, 0.7f, 320);
+            glassTabs.pulse(viewPager, 0.7f, 100, 420);
         }
     }
 

@@ -64,7 +64,7 @@ public final class GlassBackBlur implements View.OnAttachStateChangeListener {
         if (applied < 0) {
             disarm();
         } else {
-            fade(applied, BACK_FADE_MS);
+            fade(applied, 0, BACK_FADE_MS);
         }
     }
 
@@ -74,7 +74,16 @@ public final class GlassBackBlur implements View.OnAttachStateChangeListener {
         take(target);
         if (view != null) {
             apply(strength);
-            fade(strength, ms); // a view that is not laid out yet picks the effect up on a later frame
+            fade(strength, 0, ms); // a view that is not laid out yet picks the effect up on a later frame
+        }
+    }
+
+    /** Like {@link #pulse(View, float, long)}, but swells in over {@code riseMs}: the view is sharp when it starts. */
+    public void pulse(View target, float strength, long riseMs, long ms) {
+        disarm();
+        take(target);
+        if (view != null) {
+            fade(strength, riseMs, ms);
         }
     }
 
@@ -114,13 +123,15 @@ public final class GlassBackBlur implements View.OnAttachStateChangeListener {
         }
     }
 
-    private void fade(float start, long ms) {
+    private void fade(float peak, long riseMs, long ms) {
         final ValueAnimator animator = ValueAnimator.ofFloat(0f, ms);
         animator.setDuration(ms);
         animator.setInterpolator(new LinearInterpolator());
         animator.addUpdateListener(a -> {
             if (fade == a) {
-                apply(GlassTouchMath.fadeStrength(start, (float) a.getAnimatedValue(), ms));
+                final float elapsed = (float) a.getAnimatedValue();
+                apply(riseMs > 0 ? GlassTouchMath.pulseStrength(peak, elapsed, riseMs, ms)
+                        : GlassTouchMath.fadeStrength(peak, elapsed, ms));
             }
         });
         animator.addListener(new AnimatorListenerAdapter() {

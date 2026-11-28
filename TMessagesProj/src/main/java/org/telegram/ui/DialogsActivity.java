@@ -894,7 +894,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else {
                 viewPages[1].setTranslationX(-viewPages[0].getMeasuredWidth());
             }
-            app.exteraless.appearance.glass.GlassTouchController.carryToList(viewPages[0].listView);
             glassPages.start();
             return true;
         }
