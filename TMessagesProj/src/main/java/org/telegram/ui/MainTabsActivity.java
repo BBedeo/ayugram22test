@@ -90,7 +90,6 @@ import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.GlassRim;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProviderBuilder;
-import app.exteraless.appearance.ElasticPillGesture;
 import app.exteraless.appearance.LiquidGlassTuning;
 import org.telegram.utils.glass.GlassEngine;
 import org.telegram.utils.glass.GlassSettings;
@@ -613,7 +612,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         // with the elastic pill the bar takes the capsule's live strip capture too: the page's own glass capture does
         // not follow the list's overscroll stretch, so the bar stood still while the capsule on it moved
         BlurredBackgroundDrawableViewFactory barFactory = iBlur3FactoryGlass;
-        if (ElasticPillGesture.enabled() && iBlur3SourceTabLens != null) {
+        if (MainTabsUiHelper.isElasticTabPill() && iBlur3SourceTabLens != null) {
             barFactory = new BlurredBackgroundDrawableViewFactory(iBlur3SourceTabLens,
                 iBlur3SourceTabFrosted != null ? iBlur3SourceTabFrosted : iBlur3SourceColor, iBlur3SourceColor);
             barFactory.setSourceRootView(viewPositionWatcher, contentView);
@@ -626,7 +625,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             tabsViewBackground.setHeaderGlassLens(true);
         }
         tabsView.setBackground(tabsViewBackground);
-        if (ElasticPillGesture.enabled()) {
+        if (MainTabsUiHelper.isElasticTabPill()) {
             // The selection pill gets its own native glass lens sampling our
             // crisp 1x fragment-strip capture (iBlur3SourceTabLens) while the
             // outer bar keeps smoothly frosted iBlur3SourceTabGlass.
@@ -1867,14 +1866,14 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             // global Liquid Glass is disabled. Keep its glass capture alive too;
             // otherwise the drawable has a GPU effect but only a stale/empty source
             // and looks like a flat dark capsule.
-            if (ElasticPillGesture.enabled()
+            if (MainTabsUiHelper.isElasticTabPill()
                     && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                     && iBlur3SourceTabGlass != null
                     && source != iBlur3SourceTabGlass) {
                 iBlur3SourceTabGlass.setSize(width, height);
                 iBlur3SourceTabGlass.updateDisplayListIfNeeded();
             }
-            if (ElasticPillGesture.enabled()
+            if (MainTabsUiHelper.isElasticTabPill()
                     && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                     && iBlur3SourceTabLens != null
                     && !capturingTabLens

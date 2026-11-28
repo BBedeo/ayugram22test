@@ -6,9 +6,11 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.view.View;
+import android.view.ViewParent;
 
 import androidx.annotation.Nullable;
 
+import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.MenuOverlayHost;
@@ -210,7 +212,7 @@ class ButtonGrowPopup extends ActionBarPopupWindow implements MenuOverlayHost {
                 buttonAlpha = button.getAlpha();
             }
         } else if (openOverlay != null) {
-            button.setAlpha(buttonAlpha);
+            setButtonAlpha(buttonAlpha);
         }
         openOverlay = menuOverlay;
     }
@@ -238,7 +240,19 @@ class ButtonGrowPopup extends ActionBarPopupWindow implements MenuOverlayHost {
     // called from the overlay's draw, so the button goes only when the overlay's copy of it is on screen
     @Override
     public void setMenuStartReveal(float reveal) {
-        button.setAlpha(buttonAlpha * reveal);
+        setButtonAlpha(buttonAlpha * reveal);
+    }
+
+    // a bar draws the glass under its buttons itself, by their alpha (selection mode): it has to redraw with the button
+    private void setButtonAlpha(float alpha) {
+        if (button.getAlpha() == alpha) {
+            return;
+        }
+        button.setAlpha(alpha);
+        final ViewParent parent = button.getParent();
+        if (parent != null && parent.getParent() instanceof ActionBar) {
+            ((ActionBar) parent.getParent()).invalidate();
+        }
     }
 
     @Override

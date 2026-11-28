@@ -4086,7 +4086,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     half = Math.min(half, Math.max(dp(10), (child.getWidth() + lp.leftMargin + lp.rightMargin) / 2 - dp(1)));
                 }
                 final int a = Math.round(alphaInt * Math.min(1f, child.getAlpha() * 2f));
-                drawActionModePill(canvas, index++, Math.round(cx - half - p), Math.round(cx + half + p), t, b, a);
+                final int cut = shapeHalfMax - half; // a smaller pill stays round
+                drawActionModePill(canvas, index++, Math.round(cx - half - p), Math.round(cx + half + p), t + cut, b - cut, a);
             } else if (child instanceof org.telegram.ui.Components.AnimatedTextView) {
                 final org.telegram.ui.Components.AnimatedTextView atv = (org.telegram.ui.Components.AnimatedTextView) child;
                 final float tw = atv.getDrawable() != null ? atv.getDrawable().getCurrentWidth() : atv.width();

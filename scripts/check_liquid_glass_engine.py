@@ -45,7 +45,7 @@ for path, needles in (
           "LiquidGlassEffect.engineActive() || (headerGlassLens && !elasticPillLens)")),
         (MAIN / "java/org/telegram/ui/MainTabsLayout.java",
          ("LiquidGlassEffect.engineActive()", "R.raw.liquid_glass_tab_lens_shader", "R.raw.liquid_glass_pill_content_shader",
-          'AndroidUtilities.dpf2(deepLens ? 14 : 3) * lift')),
+          'AndroidUtilities.dpf2(14) * lift')),
         (MAIN / "java/app/exteraless/appearance/glass/IosSliderThumb.java",
          ("LiquidGlassEffect.engineActive()", "LiquidGlassOptics.sliderBevel(", "LiquidGlassOptics.sliderBend("))):
     text = read(path)

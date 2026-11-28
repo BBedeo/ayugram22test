@@ -35,6 +35,11 @@ public final class MainTabsUiHelper {
         return AppearanceConfig.newNavigationBarStyle() && !MainTabsLayout.isBottomNavigationFloating();
     }
 
+    /** The travelling glass pill is not Material 3: that bar is only tapped, nothing in it is dragged or stretched. */
+    public static boolean isElasticTabPill() {
+        return ElasticPillGesture.enabled() && !isMaterial3NavigationBar();
+    }
+
     /**
      * Панель как в Telegram iOS: капсула почти во всю ширину экрана, 60dp высотой,
      * вкладки растянуты по ширине. Это та же не-M3 ветка, только шире и выше,

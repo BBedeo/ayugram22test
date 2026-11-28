@@ -168,13 +168,17 @@ checks = {
         "super.dispatchTouchEvent(cancel);" in nav
         and "hovered.performClick();" in nav
         and "action == MotionEvent.ACTION_UP" in nav
-        and "if (!ElasticPillGesture.enabled())" in nav,
+        and "if (!MainTabsUiHelper.isElasticTabPill())" in nav,
     "Cancelled drag restores actual tab":
         "finishElasticTouch(false)" in nav
         and "syncElasticPillToSelected(true);" in nav,
     "Original nav and scaling remain untouched when option is off":
         "clickHelper.onTouchEvent(this, ev);" in nav
-        and "if (!ElasticPillGesture.enabled()) animatorIsScaled.setValue(true, true);" in nav,
+        and "if (!MainTabsUiHelper.isElasticTabPill()) animatorIsScaled.setValue(true, true);" in nav,
+    "Material 3 bar is only tapped: no elastic pill, drag or swell":
+        "ElasticPillGesture.enabled() && !isMaterial3NavigationBar()" in read("app/exteraless/appearance/MainTabsUiHelper.java")
+        and "ElasticPillGesture.enabled()" not in nav + main
+        and "if (!MainTabsUiHelper.isMaterial3NavigationBar()) {\n                clickHelper.onTouchEvent" in nav,
     "Call buttons cancel actions on drag":
         "cancelClickForDrag" in buttons
         and "MotionEvent.ACTION_CANCEL" in buttons

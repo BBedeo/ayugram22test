@@ -1806,7 +1806,8 @@ public class ItemOptions {
         final float alpha = growButton.getAlpha();
         growButton.setAlpha(0f);
         ScrimOptions.makeGlobalBlurBitmaps(container, (bitmapBg, bitmapOptions) -> {
-            scrimBlur3SourceBitmap.setBitmap(bitmapOptions);
+            // dark theme: bitmapOptions is darkened by a fifth, which turns the glass over a dark screen black
+            scrimBlur3SourceBitmap.setBitmap(Theme.isCurrentThemeDark() ? bitmapBg : bitmapOptions);
             Blur3Utils.checkBitmapSourceMatrixScale(scrimBlur3SourceBitmap, container);
         });
         growButton.setAlpha(alpha);
