@@ -47,7 +47,14 @@ if "LiquidGlassTuning.motionEnabled()" not in chat[start:start + 900]:
     errors.append("ChatActivity: the menu may ask only with glass animations on")
 
 alerts = need("org/telegram/ui/Components/AlertsCreator.java",
-              "!partialDelete && fragment instanceof ChatActivity", ".askDeleteInMenu(selectedMessage, ayuFrameLayout")
+              "!partialDelete && fragment instanceof ChatActivity", ".askDeleteInMenu(")
+# a supergroup deletes for everyone and only the question says so: the card repeats it above its buttons
+for needle in ("if (question != R.string.AreYouSureDeleteSingleMessage) {\n                    forEveryone = LocaleController.getString(question);",
+               ".askDeleteInMenu(selectedMessage, forEveryone, ayuFrameLayout"):
+    if needle not in alerts:
+        errors.append(f"AlertsCreator: missing {needle!r}")
+if not 0 <= card.find("panel.addView(warning(") < card.find("panel.addView(checks,"):
+    errors.append("MenuDeleteCard: the warning must stand above the checks and the buttons")
 # both texts that say only part of the messages will go keep the dialog
 if alerts.count("partialDelete = true;") != 2:
     errors.append("AlertsCreator: both partial-delete texts must keep the dialog")

@@ -35,8 +35,8 @@ import java.util.ArrayList;
 
 /**
  * The message menu's own delete question: the same window shrinks to its bottom edge, the items and whatever surrounds
- * the menu dissolve, and the dialog's checks with «Cancel» and the red action come out of a light blur. «Cancel» unfolds
- * the menu again; a tap beside the card closes everything.
+ * the menu dissolve, and the dialog's warning and checks with «Cancel» and the red action come out of a light blur.
+ * «Cancel» unfolds the menu again; a tap beside the card closes everything.
  */
 public final class MenuDeleteCard {
 
@@ -53,8 +53,9 @@ public final class MenuDeleteCard {
     private boolean answered;
 
     /** False when the menu cannot hold the question; nothing has changed then and the caller shows the dialog. */
-    public static boolean show(ChatScrimPopupContainerLayout menu, @Nullable View checks, CharSequence action,
-                               Theme.ResourcesProvider resourcesProvider, Runnable onOutside, Runnable onDelete) {
+    public static boolean show(ChatScrimPopupContainerLayout menu, @Nullable CharSequence warning, @Nullable View checks,
+                               CharSequence action, Theme.ResourcesProvider resourcesProvider, Runnable onOutside,
+                               Runnable onDelete) {
         final ActionBarPopupWindow.ActionBarPopupWindowLayout popup = menu.getPopupWindowLayout();
         if (popup == null) {
             return false;
@@ -62,7 +63,8 @@ public final class MenuDeleteCard {
         if (popup.hasBottomCard()) {
             return true; // two fingers pressed two ways to delete: the question is already there
         }
-        final MenuDeleteCard question = new MenuDeleteCard(menu.getContext(), popup, checks, action, resourcesProvider, onOutside, onDelete);
+        final MenuDeleteCard question = new MenuDeleteCard(menu.getContext(), popup, warning, checks, action, resourcesProvider,
+                onOutside, onDelete);
         question.cut = popup.addBottomCard(question.card);
         if (question.cut < 0) {
             question.panel.removeAllViews(); // the dialog takes the checks
@@ -83,8 +85,9 @@ public final class MenuDeleteCard {
         return true;
     }
 
-    private MenuDeleteCard(Context context, ActionBarPopupWindow.ActionBarPopupWindowLayout popup, @Nullable View checks,
-                           CharSequence action, Theme.ResourcesProvider resourcesProvider, Runnable onOutside, Runnable onDelete) {
+    private MenuDeleteCard(Context context, ActionBarPopupWindow.ActionBarPopupWindowLayout popup, @Nullable CharSequence warning,
+                           @Nullable View checks, CharSequence action, Theme.ResourcesProvider resourcesProvider,
+                           Runnable onOutside, Runnable onDelete) {
         this.popup = popup;
         this.dragSelect = popup.isDragSelectEnabled();
 
@@ -99,8 +102,14 @@ public final class MenuDeleteCard {
         panel.setClickable(true);
         card.addView(panel, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
 
+        if (warning != null) {
+            panel.addView(warning(context, warning, resourcesProvider),
+                    LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
         if (checks != null && anyShown(checks)) {
             panel.addView(checks, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+        if (panel.getChildCount() > 0) {
             panel.addView(divider(context, resourcesProvider), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
         }
 
@@ -156,6 +165,15 @@ public final class MenuDeleteCard {
                 label.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
             }
         }
+    }
+
+    private static TextView warning(Context context, CharSequence text, Theme.ResourcesProvider resourcesProvider) {
+        final TextView view = new TextView(context);
+        view.setText(text);
+        view.setTextColor(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider));
+        view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        view.setPadding(dp(18), dp(12), dp(18), dp(10));
+        return view;
     }
 
     private static TextView button(Context context, CharSequence text, int color) {

@@ -33792,14 +33792,14 @@ public class ChatActivity extends BaseFragment implements
     private boolean menuAsksDelete;
 
     /** The open message menu asks the delete question itself, shrinking to it. False means: show the dialog. */
-    public boolean askDeleteInMenu(MessageObject message, View checks, CharSequence action, Runnable onDelete) {
+    public boolean askDeleteInMenu(MessageObject message, CharSequence warning, View checks, CharSequence action, Runnable onDelete) {
         if (message == null || message != selectedObject || scrimPopupWindow == null || !scrimPopupWindow.isShowing()
                 || !(scrimPopupWindow.getContentView() instanceof ChatScrimPopupContainerLayout)
                 || !app.exteraless.appearance.LiquidGlassTuning.motionEnabled()) {
             return false;
         }
         menuAsksDelete = app.exteraless.appearance.glass.MenuDeleteCard.show(
-                (ChatScrimPopupContainerLayout) scrimPopupWindow.getContentView(), checks, action, themeDelegate, this::closeMenu, () -> {
+                (ChatScrimPopupContainerLayout) scrimPopupWindow.getContentView(), warning, checks, action, themeDelegate, this::closeMenu, () -> {
                     selectedObject = null;
                     selectedObjectGroup = null;
                     selectedObjectToEditCaption = null;

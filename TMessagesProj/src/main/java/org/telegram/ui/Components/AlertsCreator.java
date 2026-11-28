@@ -8335,6 +8335,7 @@ public class AlertsCreator {
         }
 
         boolean partialDelete = false; // the text says only some of the messages will go
+        CharSequence forEveryone = null; // a supergroup deletes for everyone and only the question says so
         if (isSavedMessages) {
             if (count == 1) {
                 builder.setMessage(LocaleController.getString(R.string.AreYouSureUnsaveSingleMessage));
@@ -8359,12 +8360,12 @@ public class AlertsCreator {
             }
         } else {
             if (chat != null && chat.megagroup && !scheduled && !hasAyuDeletedMessages) {
-                if (count == 1) {
-                    builder.setMessage(LocaleController.getString(selectedMessage != null && selectedMessage.isEphemeral() ?
-                        R.string.AreYouSureDeleteSingleMessage :
-                        R.string.AreYouSureDeleteSingleMessageMega));
-                } else {
-                    builder.setMessage(LocaleController.getString(R.string.AreYouSureDeleteFewMessagesMega));
+                final int question = count != 1 ? R.string.AreYouSureDeleteFewMessagesMega
+                        : selectedMessage != null && selectedMessage.isEphemeral() ? R.string.AreYouSureDeleteSingleMessage
+                        : R.string.AreYouSureDeleteSingleMessageMega;
+                builder.setMessage(LocaleController.getString(question));
+                if (question != R.string.AreYouSureDeleteSingleMessage) {
+                    forEveryone = LocaleController.getString(question);
                 }
             } else {
                 if (count == 1) {
@@ -8424,7 +8425,7 @@ public class AlertsCreator {
                 return;
             }
             if (selectedMessage != null && !partialDelete && fragment instanceof ChatActivity
-                    && ((ChatActivity) fragment).askDeleteInMenu(selectedMessage, ayuFrameLayout, deleteText,
+                    && ((ChatActivity) fragment).askDeleteInMenu(selectedMessage, forEveryone, ayuFrameLayout, deleteText,
                     () -> deleteAction.onClick(null, DialogInterface.BUTTON_POSITIVE))) {
                 return;
             }
