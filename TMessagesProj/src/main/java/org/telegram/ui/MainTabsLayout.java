@@ -623,13 +623,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
 
         final float extension = elasticDragging ? 0f : Math.min(dp(16), travelled * .17f);
-        final float bridgeStretch = elasticDragging ? interTabArch * dp(10.0f) : 0f;
+        final float bridgeStretch = elasticDragging ? interTabArch * dp(14.0f) : 0f;
         final float absDelta = Math.max(0f, Math.abs(elasticSmoothedDelta) - dp(0.45f));
         final float velocityStretch = elasticDragging
-                ? Math.min(dp(14), absDelta * 1.25f)
-                : Math.min(dp(6.5f), absDelta * .42f);
-        final float targetStretch = Math.min(dp(21), extension + bridgeStretch + velocityStretch);
-        elasticSmoothedStretch += (targetStretch - elasticSmoothedStretch) * (elasticDragging ? .26f : .26f);
+                ? Math.min(dp(22), absDelta * 1.9f)
+                : Math.min(dp(10), absDelta * .65f);
+        final float targetStretch = Math.min(dp(32), extension + bridgeStretch + velocityStretch);
+        elasticSmoothedStretch += (targetStretch - elasticSmoothedStretch) * (elasticDragging ? .34f : .26f);
         if (Math.abs(elasticSmoothedStretch) < .02f && targetStretch == 0f) {
             elasticSmoothedStretch = 0f;
         }
@@ -661,7 +661,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final float jellyY = -elasticJellyValue * dp(1.6f) + elasticPressValue * raiseY + glideSwell * .88f
                 + Math.min(dp(2.6f), edgeOverscroll * .18f)
                 - verticalPullSquish
-                - Math.min(dp(2.2f), totalStretch * .12f);
+                - Math.min(dp(4.5f), totalStretch * .15f);
         final float verticalCompression = Math.min(dp(1.8f), totalStretch * .10f);
         final float height = Math.max(1f, availableHeight - verticalCompression + jellyY);
         final float widthAtX = getInterpolatedWidthByX(centerX, this);
@@ -751,6 +751,10 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 ? Math.max(0f, elasticPressValue * .042f + Math.min(.022f, totalStretch / Math.max(1f, dp(10)) * .022f))
                 : 0f;
         final float span = Math.max(dp(28), lensWidth * .86f);
+        // as in iOS, the icon under the lifted pill rises; the compact bar has less room above it
+        final float maxLift = MainTabsUiHelper.isMaterial3NavigationBar() ? 0f
+                : dp(tw.nekomimi.nekogram.helpers.MainTabsHelper.isMainTabsHideTitleStyle() ? 2f : 4f)
+                        * Math.max(0f, Math.min(1.2f, elasticPressValue));
         for (int i = 0, n = getChildCount(); i < n; i++) {
             final View child = getChildAt(i);
             if (!(child instanceof GlassTabView) || child.getVisibility() != View.VISIBLE) {
@@ -763,7 +767,49 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 child.setScaleX(targetScale);
                 child.setScaleY(targetScale);
             }
+            ((GlassTabView) child).setElasticLift(maxLift * overlap * overlap * (3f - 2f * overlap));
         }
+    }
+
+    private float elasticPullX;
+    private float elasticBarX, elasticBarY, elasticBarSpeedX, elasticBarSpeedY;
+    private View elasticHoverTab;
+
+    // the panel itself gives a little after the finger and swells while held, like the iOS 26 tab bar
+    @Override
+    public void draw(@NonNull Canvas canvas) {
+        final float w = getWidth();
+        if (!ElasticPillGesture.enabled() || MainTabsUiHelper.isMaterial3NavigationBar() || w <= 0) {
+            super.draw(canvas);
+            return;
+        }
+        final float targetX = elasticDragging ? (float) Math.tanh(elasticPullX / dp(110)) : 0f;
+        final float targetY = elasticDragging ? (float) Math.tanh(elasticPullY / dp(48)) : 0f;
+        // a soft spring: it lags behind the finger and overshoots once on the way back
+        elasticBarSpeedX = elasticBarSpeedX * .7f + (targetX - elasticBarX) * .16f;
+        elasticBarSpeedY = elasticBarSpeedY * .7f + (targetY - elasticBarY) * .16f;
+        elasticBarX += elasticBarSpeedX;
+        elasticBarY += elasticBarSpeedY;
+        if (Math.abs(targetX - elasticBarX) + Math.abs(elasticBarSpeedX)
+                + Math.abs(targetY - elasticBarY) + Math.abs(elasticBarSpeedY) > .004f) {
+            postInvalidateOnAnimation();
+        } else {
+            elasticBarX = targetX;
+            elasticBarY = targetY;
+            elasticBarSpeedX = elasticBarSpeedY = 0f;
+        }
+        // the leading end travels further than the trailing one, so the panel stretches
+        final float lead = dp(7) * elasticBarX;
+        final float trail = dp(2.5f) * elasticBarX;
+        final float left = elasticBarX > 0 ? trail : lead;
+        final float right = elasticBarX > 0 ? lead : trail;
+        final float swell = Math.max(0f, Math.min(1.2f, elasticPressValue)) * dp(7) / w;
+        final int save = canvas.save();
+        canvas.translate(left, dp(3) * elasticBarY);
+        canvas.scale((w + right - left) / w, 1f);
+        canvas.scale(1f + swell, 1f + swell * 1.8f + .02f * Math.abs(elasticBarY), w * .5f, getHeight() * .5f);
+        super.draw(canvas);
+        canvas.restoreToCount(save);
     }
 
         private boolean drawTopDivider = true;
@@ -1373,6 +1419,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             elasticTouchPointer = ev.getPointerId(0);
             elasticDownX = ev.getX();
             elasticDownY = ev.getY();
+            elasticPullX = 0f;
             elasticPullY = 0f;
             elasticSmoothedPullY = 0f;
             elasticSmoothedDir = 0f;
@@ -1439,15 +1486,26 @@ public class MainTabsLayout extends AnimatedLinearLayout {
                 selectedTabPositionX.cancel();
                 selectedTabPositionOffsetX.cancel();
                 animatedLongSelectedViewOffsetX = 0f;
+                elasticHoverTab = findNearestVisibleChildByX(animatedLongSelectedViewCenterX, this);
                 MotionEvent cancel = MotionEvent.obtain(ev);
                 cancel.setAction(MotionEvent.ACTION_CANCEL);
                 super.dispatchTouchEvent(cancel);
                 cancel.recycle();
             }
             if (elasticDragging) {
+                elasticPullX = x - elasticDownX;
                 elasticPullY = y - elasticDownY;
                 animatedLongSelectedViewCenterX = clampXToChildrenCenters(x + elasticTouchOffsetX, this);
                 updateElasticSelectionPreview(animatedLongSelectedViewCenterX);
+                // iOS ticks as the pill passes onto another tab
+                final View hover = findNearestVisibleChildByX(animatedLongSelectedViewCenterX, this);
+                // clearly nearer, so a finger resting between two tabs does not buzz
+                if (hover != null && hover != elasticHoverTab && (elasticHoverTab == null
+                        || Math.abs(animatedLongSelectedViewCenterX - getCenterX(hover)) + dp(8)
+                        < Math.abs(animatedLongSelectedViewCenterX - getCenterX(elasticHoverTab)))) {
+                    elasticHoverTab = hover;
+                    AndroidUtilities.vibrateCursor(this);
+                }
                 invalidate();
                 return true;
             }
@@ -1501,6 +1559,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         final boolean hadDrag = elasticDragging;
         final boolean wasOnPill = elasticTouchStartedOnPill;
         elasticDragging = false;
+        elasticPullX = 0f;
         elasticPullY = 0f;
         elasticSmoothedPullY = 0f;
         elasticSmoothedDir = 0f;
@@ -1607,7 +1666,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
         if (ElasticPillGesture.enabled()) {
             // Soft iOS-like edge rubber-banding when pulling slightly past first/last tab.
-            final float over = dp(14);
+            // short where the panel itself gives way: further out the rim cut the end tab's label
+            final float over = dp(MainTabsUiHelper.isMaterial3NavigationBar() ? 14 : 4);
             final float soft = dp(32);
             if (x < min) return min - over * (float) Math.tanh((min - x) / soft);
             if (x > max) return max + over * (float) Math.tanh((x - max) / soft);

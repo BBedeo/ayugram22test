@@ -241,8 +241,10 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
 
             final float gap = dpf2(1.33f);
             final float cx = viewWidth / 2f + dpf2(11);
-            final float cy = MainTabsUiHelper.getMainTabCounterCenterY(mainTabMaterial3, getHeight());
             final float height = dpf2(16);
+            // the counter rides with a lifted icon, but never past the top edge, where it would be clipped
+            final float cy = Math.max(height / 2f,
+                    MainTabsUiHelper.getMainTabCounterCenterY(mainTabMaterial3, getHeight()) - elasticLift * .5f);
             final float width = Math.max(height, counter.getCurrentWidth() + dp(8));
             final float rOuter = dpf2(9.333f);
             final float rInner = dpf2(8f);
@@ -602,6 +604,19 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         final float textWidth = measureTextWidth();
         final float padding = lerp(dpf2(16), dp(8), MathUtils.clamp((textWidth - dp(40)) / dp(16), 0, 1));
         return Math.min(dp(84), (int) (textWidth + padding * 2));
+    }
+
+    private float elasticLift;
+
+    /** The elastic pill raises the icon it is over; the label follows a little. */
+    public void setElasticLift(float px) {
+        if (elasticLift != px) {
+            elasticLift = px;
+            imageView.setTranslationY(-px);
+            if (backupImageView != null) backupImageView.setTranslationY(-px);
+            textView.setTranslationY(-px * .35f);
+            invalidate();
+        }
     }
 
     public float attachScale = 1;
