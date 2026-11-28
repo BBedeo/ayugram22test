@@ -152,6 +152,15 @@ checks = {
         and "0x18FFFFFF" not in provider
         and "0x10FFFFFF" not in provider
     ),
+    "Selection mode draws a glass pill under the close button, which is a plain ImageView and not a menu item": (
+        "} else if (child instanceof ImageView) {"
+        in action_bar.split("private void drawActionModeGlassPills(")[-1].split("public void addColorKeys(")[0]
+    ),
+    "Selection mode draws a glass pill under the NumberTextView counter and redraws it with its digits": (
+        "} else if (child instanceof org.telegram.ui.Components.NumberTextView) {"
+        in action_bar.split("private void drawActionModeGlassPills(")[-1].split("public void addColorKeys(")[0]
+        and "target instanceof org.telegram.ui.Components.NumberTextView" in action_bar
+    ),
     "SimpleTextView exposes full content width including drawables and gravity": (
         "public int getFullContentWidth()" in simple_text
         and "public int getGravity()" in simple_text

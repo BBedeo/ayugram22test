@@ -4063,10 +4063,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final float offsetX = actionMode.getX();
         final int shapeHalfMax = s / 2;
         int index = 0;
+        int backCx = -s; // no back button: nothing for a close button to stand on
 
         if (backButtonImageView != null && backButtonImageView.getVisibility() == VISIBLE) {
-            final int cx = Math.round(backButtonImageView.getX() + backButtonImageView.getWidth() / 2f);
-            drawActionModePill(canvas, index++, cx - shapeHalfMax - p, cx + shapeHalfMax + p, t, b, alphaInt);
+            backCx = Math.round(backButtonImageView.getX() + backButtonImageView.getWidth() / 2f);
+            drawActionModePill(canvas, index++, backCx - shapeHalfMax - p, backCx + shapeHalfMax + p, t, b, alphaInt);
         }
 
         for (int i = 0, n = actionMode.getChildCount(); i < n; i++) {
@@ -4088,6 +4089,23 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 final int a = Math.round(alphaInt * Math.min(1f, child.getAlpha() * 2f));
                 final int cut = shapeHalfMax - half; // a smaller pill stays round
                 drawActionModePill(canvas, index++, Math.round(cx - half - p), Math.round(cx + half + p), t + cut, b - cut, a);
+            } else if (child instanceof ImageView) {
+                // the close cross of the chat list and of the search results
+                final int cx = Math.round(offsetX + (child.getLeft() + child.getRight()) / 2f + child.getTranslationX());
+                if (Math.abs(cx - backCx) >= s) { // never a second pill on the back button's
+                    final int a = Math.round(alphaInt * Math.min(1f, child.getAlpha() * 2f));
+                    drawActionModePill(canvas, index++, cx - shapeHalfMax - p, cx + shapeHalfMax + p, t, b, a);
+                }
+            } else if (child instanceof org.telegram.ui.Components.NumberTextView) {
+                // the other lists' counter: a pill round for a short number, the digits moved to its middle
+                final float tw = ((org.telegram.ui.Components.NumberTextView) child).getTextWidth();
+                final int left = Math.round(offsetX + child.getLeft() - dp(6));
+                final int width = Math.max(s, Math.round(tw) + dp(20));
+                final boolean fits = left + width <= offsetX + child.getRight() + dp(1);
+                child.setTranslationX(fits ? (width - tw) / 2f - dp(6) : 0);
+                if (fits) {
+                    drawActionModePill(canvas, index++, left - p, left + width + p, t, b, alphaInt);
+                }
             } else if (child instanceof org.telegram.ui.Components.AnimatedTextView) {
                 final org.telegram.ui.Components.AnimatedTextView atv = (org.telegram.ui.Components.AnimatedTextView) child;
                 final float tw = atv.getDrawable() != null ? atv.getDrawable().getCurrentWidth() : atv.width();
@@ -4101,6 +4119,15 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                     drawActionModePill(canvas, index++, left - p, right + p, t, b, alphaInt);
                 }
             }
+        }
+    }
+
+    @Override
+    public void onDescendantInvalidated(@NonNull View child, @NonNull View target) {
+        super.onDescendantInvalidated(child, target);
+        // new digits redraw only the counter: its pill and its place follow from here
+        if (glassMode && child == actionMode && target instanceof org.telegram.ui.Components.NumberTextView) {
+            invalidate();
         }
     }
 
