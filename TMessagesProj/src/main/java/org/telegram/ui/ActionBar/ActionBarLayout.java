@@ -1091,7 +1091,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         invalidate();
         if (containerView.getMeasuredWidth() > 0) {
             // the share of the previous screen really uncovered, not the progress reported to the fragments
-            glassBack.update(containerView.getTranslationX() / containerView.getMeasuredWidth());
+            final float uncovered = containerView.getTranslationX() / containerView.getMeasuredWidth();
+            glassBack.update(uncovered);
+            glassBackBar.update(uncovered);
         }
 
         if (fragmentsStack.size() >= 2 && containerView.getMeasuredWidth() > 0) {
@@ -1470,7 +1472,14 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     }
 
     private void onSlideAnimationEnd(final boolean backAnimation) {
-        glassBack.disarm(); // before the containers swap
+        // before the containers swap: a committed back keeps its fade, the screen it veils stays
+        if (backAnimation) {
+            glassBack.disarm();
+            glassBackBar.disarm();
+        } else {
+            glassBack.settle();
+            glassBackBar.settle();
+        }
         // openExtera: контейнеры ниже меняются местами — масштаб карточки надо снять до этого
         springRouteYRatio = 0f;
         springRouteBackgroundDrawable = null;
@@ -1560,6 +1569,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     private void prepareForMoving() {
         glassBack.disarm();
+        glassBackBar.disarm();
         maybeStartTracking = false;
         startedTracking = true;
         layoutToIgnore = containerViewBack;
@@ -1625,7 +1635,8 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             invalidateActionBars();
         }
         if (!m3PredictiveBack) {
-            glassBack.arm(containerViewBack);
+            glassBack.arm(fragmentView);
+            glassBackBar.arm(separateHeader(lastFragment));
         }
     }
 
@@ -1748,6 +1759,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     maybeStartTracking = false;
                     startedTracking = false;
                     glassBack.disarm(); // a gesture dropped here never reaches onSlideAnimationEnd
+                    glassBackBar.disarm();
                     layoutToIgnore = null;
                     if (containerView != null) {
                         containerView.setLayerType(LAYER_TYPE_NONE, null);
@@ -1777,6 +1789,29 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     /** M3-режим включён для текущего жеста (решается один раз в onBackStarted). */
     private boolean m3PredictiveBack;
     private final app.exteraless.appearance.glass.GlassBackBlur glassBack = new app.exteraless.appearance.glass.GlassBackBlur();
+    // the same veil for a header that is a sibling of the screen's view, not a part of it
+    private final app.exteraless.appearance.glass.GlassBackBlur glassBackBar = new app.exteraless.appearance.glass.GlassBackBlur();
+
+    private static View separateHeader(BaseFragment fragment) {
+        return fragment.actionBar != null && fragment.actionBar.shouldAddToContainer() ? fragment.actionBar : null;
+    }
+
+    /** A back without a gesture arms nothing: if it closed a screen, the one it uncovered clears from full glass. */
+    private void clearGlassAfterBack(BaseFragment closing) {
+        if (closing == null || !app.exteraless.appearance.glass.GlassTouchSettings.back()
+                || NaConfig.INSTANCE.getBackAnimationStyle().Int() == BACK_ANIMATION_PREDICTIVE
+                || !closing.isRemovingFromStack() && fragmentsStack.contains(closing)) {
+            return;
+        }
+        for (int i = fragmentsStack.size() - 1; i >= 0; i--) {
+            final BaseFragment shown = fragmentsStack.get(i);
+            if (shown != closing) {
+                glassBack.pulse(shown.fragmentView, 1f, 380);
+                glassBackBar.pulse(separateHeader(shown), 1f, 380);
+                return;
+            }
+        }
+    }
 
     /**
      * Подложка нижележащего фрагмента на время обычного (не жестового) пружинного перехода.
@@ -1994,7 +2029,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     public void onBackInvoked() {
         if (!predictiveInput) {
+            final BaseFragment top = getLastFragment();
             onBackPressed();
+            clearGlassAfterBack(top);
             return;
         }
         predictiveInput = false;
@@ -2020,6 +2057,11 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             m3PredictiveBack = false;
             predictiveBackBackgroundDrawable = null;
             predictiveBackAnimation.reset();
+        }
+
+        if (!backAnimation) {
+            glassBack.release();
+            glassBackBar.release();
         }
 
         float x = containerView.getX();

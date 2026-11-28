@@ -226,5 +226,7 @@
     <string name="OEAppearanceGlassTouchSelectionSub">A glass frame in the shape of the bubble around selected messages</string>
     <string name="OEAppearanceGlassTouchBack">Glass back gesture</string>
     <string name="OEAppearanceGlassTouchBackSub">The previous screen clears through glass as you swipe back. Needs Android 12.</string>
+    <string name="OEAppearanceGlassTouchPages">Tabs and folders</string>
+    <string name="OEAppearanceGlassTouchPagesSub">Folder pages and bottom tabs arrive through glass. Needs Android 12.</string>
     <string name="OEAppearanceGlassTouchInfo">Effects of the Glass Touch plugin by @vibecodersnotes and Claude. They pause in the Material 3 style, in power saver and while system animations are off.</string>
 </resources>

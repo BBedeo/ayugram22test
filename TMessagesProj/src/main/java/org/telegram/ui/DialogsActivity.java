@@ -546,6 +546,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private float contactsAlpha = 1f;
     private ValueAnimator contactsAlphaAnimator;
     private ViewPage[] viewPages;
+    private app.exteraless.appearance.glass.GlassPageBlur glassPages;
     private ActionBarMenuItem passcodeItem;
     private ActionBarMenuItem downloadsItem;
     private DownloadProgressIcon downloadProgressIcon;
@@ -893,6 +894,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else {
                 viewPages[1].setTranslationX(-viewPages[0].getMeasuredWidth());
             }
+            app.exteraless.appearance.glass.GlassTouchController.carryToList(viewPages[0].listView);
+            glassPages.start();
             return true;
         }
 
@@ -3929,6 +3932,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     showScrollbars(false);
                     switchToCurrentSelectedMode(true);
                     animatingForward = forward;
+                    if (glassPages != null) { // the tab strip exists before the screen's content view
+                        glassPages.start();
+                    }
                 }
 
                 @Override
@@ -4400,6 +4406,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         });
 
         ContentView contentView = new ContentView(context);
+        glassPages = new app.exteraless.appearance.glass.GlassPageBlur(contentView,
+                () -> viewPages != null ? viewPages[1] : null);
         fragmentView = contentView;
 
         final PointF tmpPoint = new PointF();

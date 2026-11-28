@@ -30,4 +30,8 @@ public final class GlassTouchSettings {
     public static boolean back() {
         return AppearanceConfig.isGlassTouchBack() && allowed();
     }
+
+    public static boolean pages() {
+        return AppearanceConfig.isGlassTouchPages() && allowed();
+    }
 }

@@ -23,7 +23,7 @@ def need(path, *needles):
 
 
 config = (MAIN / "kotlin/app/exteraless/appearance/AppearanceConfig.kt").read_text(encoding="utf-8")
-for key in ("Press", "Selection", "Back"):
+for key in ("Press", "Selection", "Back", "Pages"):
     if not re.search(rf'addConfig\("OEAppearanceGlassTouch{key}",\s*ConfigItem\.configTypeBool,\s*false\)', config):
         errors.append(f"AppearanceConfig: OEAppearanceGlassTouch{key} must exist and default to false")
 
@@ -39,8 +39,31 @@ need(JAVA / "org/telegram/ui/Components/RecyclerListView.java", "GlassTouchContr
 need(JAVA / "org/telegram/ui/ChatActivity.java", "chatListView.setGlassTouchEnabled(false)",
      "glassSelection.beginFrame()", "glassSelection.addGroup(", "glassSelection.draw(")
 need(JAVA / "app/exteraless/player/LyricsView.java", "list.setGlassTouchEnabled(false)")
-need(JAVA / "org/telegram/ui/ActionBar/ActionBarLayout.java", "glassBack.arm(", "glassBack.update(",
-     "glassBack.disarm()")
+LAYOUT = JAVA / "org/telegram/ui/ActionBar/ActionBarLayout.java"
+# the previous screen's own view, as the plugin does; a header that is a separate view gets a second veil
+need(LAYOUT, "glassBack.arm(fragmentView)", "glassBack.release()", "glassBack.settle()", "glassBack.pulse(")
+layout = LAYOUT.read_text(encoding="utf-8")
+for op in ("arm", "update", "release", "settle", "disarm", "pulse"):
+    if layout.count(f"glassBack.{op}(") != layout.count(f"glassBackBar.{op}("):
+        errors.append(f"ActionBarLayout: glassBack.{op} and glassBackBar.{op} must go together")
+need(GLASS / "GlassBackBlur.java", "private static Object shader;", "void release()", "void pulse(",
+     "void settle()", "onViewDetachedFromWindow")
+need(GLASS / "GlassPageBlur.java", "addOnPreDrawListener", "removeOnPreDrawListener", "GlassTouchSettings.pages()")
+need(GLASS / "GlassTouchSettings.java", "isGlassTouchPages()")
+need(GLASS / "GlassTouchController.java", "ACTION_POINTER_UP", "static void onActivityTouch(",
+     "static void carryToList(")
+need(JAVA / "org/telegram/ui/LaunchActivity.java", "GlassTouchController.onActivityTouch(ev)")
+dialogs = JAVA / "org/telegram/ui/DialogsActivity.java"
+need(dialogs, "GlassTouchController.carryToList(viewPages[0].listView)")
+if dialogs.read_text(encoding="utf-8").count("glassPages.start()") != 2:
+    errors.append("DialogsActivity: the folder swipe and the folder tab tap must both start the tracker")
+tabs = (JAVA / "org/telegram/ui/MainTabsActivity.java").read_text(encoding="utf-8")
+if tabs.count("pulseGlassPages();") != 2:
+    errors.append("MainTabsActivity: the tab tap and the back to chats must both pulse the pages")
+need(JAVA / "app/exteraless/settings/OpenExteraAppearanceActivity.java", 'addRow("glassTouchPages")')
+for strings in ("values/strings_oe_appearance.xml", "values-ru/strings_oe_liquid_glass.xml",
+                "values-uk/strings_oe_liquid_glass.xml"):
+    need(MAIN / "res" / strings, 'name="OEAppearanceGlassTouchPages"', 'name="OEAppearanceGlassTouchPagesSub"')
 need(MAIN / "res/raw/glass_touch_lens_shader.agsl", "uniform shader img;", "uniform float2 center;",
      "uniform float radius;", "uniform float rim;", "uniform float p;")
 need(MAIN / "res/raw/glass_touch_back_shader.agsl", "uniform shader img;", "uniform float2 size;",
@@ -51,6 +74,10 @@ CASES = (
     ("backStrength(0.55f)", 0.78), ("backStrength(1)", 0), ("backStrength(-1)", 1), ("backStrength(2)", 0),
     ("squeezeScale(100, 1)", 0.91), ("squeezeScale(400, 1)", 0.96),
     ("lensRadius(400, 72, 1)", 96), ("lensRadius(60, 60, 1)", 48), ("lensRadius(150, 50, 1)", 75),
+    ("pageStrength(0, 1000)", 0), ("pageStrength(500, 1000)", 0.35), ("pageStrength(-1000, 1000)", 0.7),
+    ("pageStrength(1500, 1000)", 0.7), ("pageStrength(100, 0)", 0),
+    ("fadeStrength(1, 0, 380)", 1), ("fadeStrength(1, 190, 380)", 0.25), ("fadeStrength(0.7f, 160, 320)", 0.175),
+    ("fadeStrength(0.7f, 400, 320)", 0), ("fadeStrength(1, -10, 380)", 1), ("fadeStrength(0.5f, 380, 380)", 0),
 )
 probe = "package app.exteraless.appearance.glass;\npublic class GlassTouchProbe {\n" \
     "  static int failed;\n" \

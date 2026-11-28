@@ -588,6 +588,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
                 selectTab(position, true);
                 viewPager.scrollToPosition(position);
+                pulseGlassPages();
             });
 
             tabsView.addView(tabs[index]);
@@ -1146,6 +1147,15 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     private DialogsActivity dialogsActivity;
 
+    private final app.exteraless.appearance.glass.GlassBackBlur glassTabs = new app.exteraless.appearance.glass.GlassBackBlur();
+
+    /** Glass Touch: timed like the reference, not tied to the pager's own scroll. */
+    private void pulseGlassPages() {
+        if (app.exteraless.appearance.glass.GlassTouchSettings.pages()) {
+            glassTabs.pulse(viewPager, 0.7f, 320);
+        }
+    }
+
     @Override
     public boolean onBackPressed(boolean invoked) {
         final boolean result = super.onBackPressed(invoked);
@@ -1154,6 +1164,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             if (viewPager.getCurrentPosition() != startPosition) {
                 if (invoked) {
                     viewPager.scrollToPosition(startPosition);
+                    pulseGlassPages();
                 }
                 return false;
             }

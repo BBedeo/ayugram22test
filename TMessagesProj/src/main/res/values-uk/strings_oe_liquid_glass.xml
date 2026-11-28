@@ -41,5 +41,7 @@
     <string name="OEAppearanceGlassTouchSelectionSub">Скляна рамка за формою бульбашки навколо виділених повідомлень</string>
     <string name="OEAppearanceGlassTouchBack">Скло під час жесту «назад»</string>
     <string name="OEAppearanceGlassTouchBackSub">Попередній екран проступає крізь скло, поки ви тягнете назад. Потрібен Android 12.</string>
+    <string name="OEAppearanceGlassTouchPages">Вкладки та папки</string>
+    <string name="OEAppearanceGlassTouchPagesSub">Папки й нижні вкладки зʼявляються крізь скло. Потрібен Android 12.</string>
     <string name="OEAppearanceGlassTouchInfo">Ефекти плагіна Glass Touch, автори @vibecodersnotes і Claude. Не працюють у стилі Material 3, під час енергозбереження та з вимкненими системними анімаціями.</string>
 </resources>

@@ -8999,6 +8999,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     public boolean dispatchTouchEvent(MotionEvent ev) {
         // remembers the tapped button: a glass confirmation dialog grows out of it
         app.exteraless.appearance.glass.DialogMorphOrigin.onActivityTouch(this, ev);
+        app.exteraless.appearance.glass.GlassTouchController.onActivityTouch(ev);
         return super.dispatchTouchEvent(ev);
     }
 

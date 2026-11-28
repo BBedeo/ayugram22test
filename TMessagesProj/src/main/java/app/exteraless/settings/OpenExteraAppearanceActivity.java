@@ -135,6 +135,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int glassTouchPressRow;
     private int glassTouchSelectionRow;
     private int glassTouchBackRow;
+    private int glassTouchPagesRow;
     private int glassTouchDividerRow;
 
     // Calls — independent of the glass master switch
@@ -351,6 +352,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         glassTouchPressRow = addRow("glassTouchPress");
         glassTouchSelectionRow = addRow("glassTouchSelection");
         glassTouchBackRow = addRow("glassTouchBack");
+        glassTouchPagesRow = addRow("glassTouchPages");
         glassTouchDividerRow = addRow();
 
         callsHeaderRow = addRow("callsHeader");
@@ -1357,6 +1359,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             item = AppearanceConfig.glassTouchSelection;
         } else if (position == glassTouchBackRow) {
             item = AppearanceConfig.glassTouchBack;
+        } else if (position == glassTouchPagesRow) {
+            item = AppearanceConfig.glassTouchPages;
         } else if (position == detailedSettingsRow) {
             item = AppearanceConfig.detailedSettings;
         } else if (position == disableAvatarBlurRow) {
@@ -1588,7 +1592,11 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == glassTouchBackRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassTouchBack),
                                 getString(R.string.OEAppearanceGlassTouchBackSub),
-                                AppearanceConfig.glassTouchBack.Bool(), true, false);
+                                AppearanceConfig.glassTouchBack.Bool(), true, true);
+                    } else if (position == glassTouchPagesRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassTouchPages),
+                                getString(R.string.OEAppearanceGlassTouchPagesSub),
+                                AppearanceConfig.glassTouchPages.Bool(), true, false);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == detailedSettingsRow) {

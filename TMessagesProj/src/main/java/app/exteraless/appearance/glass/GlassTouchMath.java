@@ -16,6 +16,17 @@ public final class GlassTouchMath {
         return 0.78f * t * t;
     }
 
+    /** Strength of the glass on a page that arrives while it still sits {@code shift} px aside. */
+    public static float pageStrength(float shift, float width) {
+        return width <= 0 ? 0f : 0.7f * Math.min(Math.abs(shift) / width, 1f);
+    }
+
+    /** A veil clearing by time, from {@code start} down to zero. */
+    public static float fadeStrength(float start, float elapsedMs, float durationMs) {
+        final float left = 1f - Math.max(0f, Math.min(1f, elapsedMs / durationMs));
+        return start * left * left;
+    }
+
     /** Scale of a held row: 9% at most, and never more than 16dp off the longer side. */
     public static float squeezeScale(float longSidePx, float density) {
         return 1f - Math.min(0.09f, 16f * density / longSidePx);

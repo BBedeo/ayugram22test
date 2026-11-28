@@ -42,5 +42,7 @@
     <string name="OEAppearanceGlassTouchSelectionSub">Стеклянная рамка по форме пузыря вокруг выделенных сообщений</string>
     <string name="OEAppearanceGlassTouchBack">Стекло при жесте «назад»</string>
     <string name="OEAppearanceGlassTouchBackSub">Предыдущий экран проступает сквозь стекло, пока вы тянете назад. Нужен Android 12.</string>
+    <string name="OEAppearanceGlassTouchPages">Вкладки и папки</string>
+    <string name="OEAppearanceGlassTouchPagesSub">Папки и нижние вкладки появляются сквозь стекло. Нужен Android 12.</string>
     <string name="OEAppearanceGlassTouchInfo">Эффекты плагина Glass Touch, авторы @vibecodersnotes и Claude. Не работают в стиле Material 3, при энергосбережении и выключенных системных анимациях.</string>
 </resources>

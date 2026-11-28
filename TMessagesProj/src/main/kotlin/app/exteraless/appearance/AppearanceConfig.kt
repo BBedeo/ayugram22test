@@ -870,6 +870,17 @@ object AppearanceConfig {
         return glassTouchBack.Bool()
     }
 
+    /** Glass Touch: папки и нижние вкладки появляются сквозь стекло. */
+    @JvmField
+    val glassTouchPages =
+        addConfig("OEAppearanceGlassTouchPages", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isGlassTouchPages(): Boolean {
+        ensureLoaded()
+        return glassTouchPages.Bool()
+    }
+
     /** Показывать заголовки групп («Закреплённые» / «Чаты») над кластерами карточек в списке чатов. */
     @JvmField
     val segmentedGroupHeaders =
