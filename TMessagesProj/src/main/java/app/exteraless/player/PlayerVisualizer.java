@@ -103,7 +103,9 @@ final class PlayerVisualizer extends View {
             if (i < 5) {
                 bassSum += level[i];
             }
-            final float bh = Math.max(dp(3), level[i] * h);
+            // the highest bands are often silent: a floor taller than the width keeps them bars, not lone dots
+            final float floor = bw * 1.6f;
+            final float bh = floor + level[i] * Math.max(0, h - floor);
             final float cx = step * (i + 0.5f);
             rect.set(cx - bw / 2f, 0, cx + bw / 2f, bh);
             canvas.drawRoundRect(rect, bw / 2f, bw / 2f, paint);

@@ -364,7 +364,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         header.addView(headerCenter, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 56, 0, 56, 0));
         layout.addView(header);
 
-        cover = new CoverImage(context, 120);
+        cover = new CoverImage(context, Md3Player.isIosPlayer() ? 72 : 120);
         cover.setRadius(dp(28));
         cover.setListener(fallbackSeed, this::onSeed);
         cover.setOutlineProvider(new ViewOutlineProvider() {
@@ -2123,9 +2123,18 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         moreButton.setBackground(Theme.createSelectorDrawable(c.ripple(), Theme.RIPPLE_MASK_CIRCLE_20DP));
         headerLabel.setTextColor(c.onSurfaceVariant);
         headerTitle.setTextColor(c.onSurface);
-        cover.setColors(c.primaryContainer, c.onPrimaryContainer);
+        if (Md3Player.isIosPlayer()) {
+            // a cover without art wears the tints of the drifting background
+            final int[] tints = auroraTints(c);
+            final int[] tinted = {ColorUtils.blendARGB(c.primaryContainer, tints[1], 0.45f), c.primaryContainer,
+                    ColorUtils.blendARGB(c.primaryContainer, tints[2], 0.45f)};
+            cover.setGradient(tinted, c.onPrimaryContainer);
+            smallCover.setGradient(tinted, c.onPrimaryContainer);
+        } else {
+            cover.setColors(c.primaryContainer, c.onPrimaryContainer);
+            smallCover.setColors(c.primaryContainer, c.onPrimaryContainer);
+        }
         cover.setDisc(coverStyle == PlayerStyle.COVER_DISC, c.surface);
-        smallCover.setColors(c.primaryContainer, c.onPrimaryContainer);
         coverScrim.invalidate();
         layout.invalidate();
         if (styleEditor != null) {
@@ -2163,6 +2172,9 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
             if (collapsedBar != null) {
                 visualizer.setColor(ColorUtils.setAlphaComponent(c.onSurface, 150));
                 collapsedBar.setColors(c.onSurface, ColorUtils.blendARGB(c.surface, c.onSurface, c.dark ? 0.18f : 0.05f));
+                if (glass != null) {
+                    collapsedBar.setBackground(glassPlate(5, c));
+                }
             }
             likeButton.setBackground(glassPlate(0, c));
             collapseButton.setBackground(glassPlate(1, c));
@@ -2506,8 +2518,8 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     }
 
     private PlayerGlass glass;
-    private final android.graphics.drawable.Drawable[] glassLenses = new android.graphics.drawable.Drawable[5];
-    private final app.exteraless.appearance.glass.GlassSurfaceDrawable[] glassPlates = new app.exteraless.appearance.glass.GlassSurfaceDrawable[5];
+    private final android.graphics.drawable.Drawable[] glassLenses = new android.graphics.drawable.Drawable[6];
+    private final app.exteraless.appearance.glass.GlassSurfaceDrawable[] glassPlates = new app.exteraless.appearance.glass.GlassSurfaceDrawable[6];
 
     /** iOS 26 glass surface (house GlassSurfaceDrawable: tinted fill, bevel highlight, light rim) over the blurred cover. */
     private android.graphics.drawable.Drawable glassPlate(int slot, PlayerColors c) {
@@ -2515,7 +2527,7 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
         if (glass != null) {
             android.graphics.drawable.Drawable lens = glassLenses[slot];
             if (lens == null) {
-                final View[] hosts = {likeButton, collapseButton, moreButton, group, bubble};
+                final View[] hosts = {likeButton, collapseButton, moreButton, group, bubble, collapsedBar};
                 lens = glass.attach(hosts[slot]);
                 glassLenses[slot] = lens;
             }
@@ -2705,16 +2717,21 @@ public class PlayerSheet extends BottomSheet implements NotificationCenter.Notif
     private android.graphics.RadialGradient[] auroraShaders;
     private int auroraKey;
 
+    /** The main colour and its two neighbours on the colour wheel. */
+    private static int[] auroraTints(PlayerColors c) {
+        final float[] hsv = new float[3];
+        Color.colorToHSV(c.primary, hsv);
+        final float h0 = hsv[0];
+        return new int[]{c.primary, Color.HSVToColor(new float[]{(h0 + 40f) % 360f, Math.max(0.45f, hsv[1]), Math.max(0.7f, hsv[2])}),
+                Color.HSVToColor(new float[]{(h0 + 320f) % 360f, Math.max(0.45f, hsv[1]), Math.max(0.7f, hsv[2])})};
+    }
+
     /** Soft colour blobs (iOS 26 style) so the glass lenses have something to refract on a cover without art. */
     private void drawAurora(Canvas canvas, int width, int height) {
         final int key = (colors.primary * 31 + colors.primaryContainer) * 31 + width * 7 + height;
         if (auroraShaders == null || auroraKey != key) {
             auroraKey = key;
-            final float[] hsv = new float[3];
-            Color.colorToHSV(colors.primary, hsv);
-            final float h0 = hsv[0];
-            final int[] tints = {colors.primary, Color.HSVToColor(new float[]{(h0 + 40f) % 360f, Math.max(0.45f, hsv[1]), Math.max(0.7f, hsv[2])}),
-                    Color.HSVToColor(new float[]{(h0 + 320f) % 360f, Math.max(0.45f, hsv[1]), Math.max(0.7f, hsv[2])})};
+            final int[] tints = auroraTints(colors);
             final float[][] spots = {{0.18f, 0.22f, 0.75f}, {0.9f, 0.5f, 0.7f}, {0.3f, 0.88f, 0.8f}};
             auroraShaders = new android.graphics.RadialGradient[3];
             for (int i = 0; i < 3; i++) {

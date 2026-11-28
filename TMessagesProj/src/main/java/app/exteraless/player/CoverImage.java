@@ -3,8 +3,10 @@ package app.exteraless.player;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 
 import org.telegram.messenger.ImageLocation;
@@ -18,6 +20,7 @@ public class CoverImage extends BackupImageView {
     }
 
     private final Paint placeholderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int[] gradient;
     private final Paint holePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean disc;
@@ -51,7 +54,18 @@ public class CoverImage extends BackupImageView {
     }
 
     public void setColors(int background, int foreground) {
+        gradient = null;
+        placeholderPaint.setShader(null);
         placeholderPaint.setColor(background);
+        note.setColor(foreground);
+        invalidate();
+    }
+
+    /** A cover without art as a diagonal gradient, top left to bottom right, instead of a flat plate. */
+    public void setGradient(int[] colors, int foreground) {
+        gradient = colors;
+        placeholderPaint.setShader(null);
+        placeholderPaint.setColor(0xFF000000);
         note.setColor(foreground);
         invalidate();
     }
@@ -136,6 +150,9 @@ public class CoverImage extends BackupImageView {
     @Override
     protected void onDraw(Canvas canvas) {
         if (!getImageReceiver().hasBitmapImage()) {
+            if (gradient != null && (placeholderPaint.getShader() == null || rect.right != getWidth() || rect.bottom != getHeight())) {
+                placeholderPaint.setShader(new LinearGradient(0, 0, getWidth(), getHeight(), gradient, null, Shader.TileMode.CLAMP));
+            }
             rect.set(0, 0, getWidth(), getHeight());
             canvas.drawRoundRect(rect, radius, radius, placeholderPaint);
             note.setBounds(0, 0, getWidth(), getHeight());

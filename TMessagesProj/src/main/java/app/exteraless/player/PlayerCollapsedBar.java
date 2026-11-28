@@ -102,8 +102,11 @@ final class PlayerCollapsedBar extends View {
     protected void onDraw(@NonNull Canvas canvas) {
         final int w = getWidth();
         final int h = getHeight();
-        glass.setBounds(0, 0, w, h);
-        glass.draw(canvas);
+        // with the player's lens as the background, the own plate would put a second rim and a shadow on it
+        if (getBackground() == null) {
+            glass.setBounds(0, 0, w, h);
+            glass.draw(canvas);
+        }
         final int button = h;
         final PlayerIcon icon = playing ? pause : play;
         icon.setBounds(0, 0, button, h);
