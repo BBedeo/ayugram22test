@@ -15169,6 +15169,28 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         iBlur3Positions.add(iBlur3PositionMainTabs);
     }
 
+    private final RectF miniPlayerGlassArea = new RectF();
+
+    // this page captures for itself, not through the simple glass: the tabs' band is its own, the parent's mini player
+    // joins its areas from here
+    @Override
+    public void setParentGlass(@Nullable RectF position, @Nullable RectF second, @Nullable Runnable onCaptured) {
+        if (second == null ? miniPlayerGlassArea.isEmpty() : miniPlayerGlassArea.equals(second)) {
+            return;
+        }
+        if (second == null) {
+            miniPlayerGlassArea.setEmpty();
+        } else {
+            miniPlayerGlassArea.set(second);
+        }
+        if (iBlur3Capture != null && fragmentView != null && fragmentView.getMeasuredWidth() > 0 && actionBar != null) {
+            invalidateBlurCaptures(GlassEngine.FLAG_INVALIDATED_POSITIONS);
+            if (onCaptured != null) {
+                onCaptured.run(); // the parent recorded the old set of captured parts, its hash does not see them
+            }
+        }
+    }
+
     private void invalidateBlurCaptures(int flags) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || scrollableViewNoiseSuppressor == null) {
             return;
@@ -15192,6 +15214,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (actionBar != null && actionBar.getOpenMenuOverlay() != null) {
                 captureBottom = Math.max(captureBottom, Math.min(Math.max(0, fragmentView.getMeasuredHeight() - additionalList), dp(640)));
             }
+            final boolean miniPlayerOnTop = !miniPlayerGlassArea.isEmpty()
+                && miniPlayerGlassArea.centerY() < fragmentView.getMeasuredHeight() / 2f;
+            if (miniPlayerOnTop) {
+                captureBottom = Math.max(captureBottom, (int) Math.ceil(miniPlayerGlassArea.bottom));
+            }
 
             iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), captureBottom + additionalList);
 
@@ -15208,6 +15235,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -dp(48));
 
                 hasBottomBlur = true;
+            }
+            if (!miniPlayerGlassArea.isEmpty() && !miniPlayerOnTop) {
+                if (hasBottomBlur) {
+                    iBlur3PositionMainTabs.union(miniPlayerGlassArea);
+                } else {
+                    iBlur3PositionMainTabs.set(miniPlayerGlassArea);
+                    hasBottomBlur = true;
+                }
             }
 
             scrollableViewNoiseSuppressor.setupRenderNodes(iBlur3Positions, hasBottomBlur ? 2 : 1);

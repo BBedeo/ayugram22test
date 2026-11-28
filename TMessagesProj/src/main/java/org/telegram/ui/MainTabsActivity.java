@@ -1586,6 +1586,16 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             anchor = AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight();
         }
         miniPlayer.setTopState(anchor, zone, shift, visibility);
+
+        // the card appears, hides and is dragged without the pages moving: their capture follows it from here
+        if (!miniPlayer.isGlassShown()
+                || !ViewPositionWatcher.computeRectInParent(miniPlayer.getCardView(), contentView, miniPlayerBounds)) {
+            miniPlayerBounds.setEmpty();
+        }
+        if (!miniPlayerBounds.equals(miniPlayerCapturedBounds)) {
+            miniPlayerCapturedBounds.set(miniPlayerBounds);
+            blur3_invalidateBlur();
+        }
     }
 
     private void applyMiniPlayerInsets(TabFragmentDelegate delegate, boolean chats) {
@@ -1809,6 +1819,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     }
 
     private final RectF tabsCapturePosition = new RectF();
+    private final RectF miniPlayerCapturePosition = new RectF();
+    private final RectF miniPlayerBounds = new RectF();
+    private final RectF miniPlayerCapturedBounds = new RectF();
     private final Runnable onFragmentGlassCaptured = this::blur3_onFragmentGlassCaptured;
 
     private void blur3_onFragmentGlassCaptured() {
@@ -1831,7 +1844,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         }
     }
 
-    /** The tabs go to the capture of the page under them: the full width, the place of the shown tabs whatever they do. */
+    /**
+     * The tabs and the mini player go to the capture of the page under them: the full width, the place of the shown tabs
+     * whatever they do and the place of the mini player where it is now.
+     */
     private void blur3_updateFragmentsGlass() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || iBlur3SourceTabGlass == null || contentView == null) {
             return;
@@ -1848,12 +1864,17 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             if (view == null || view.getWidth() <= 0 || !(fragment instanceof TabFragmentDelegate)) {
                 continue;
             }
-            if (top >= view.getHeight()) {
-                fragment.setParentGlass(null, null);
-            } else {
+            RectF tabs = null;
+            if (top < view.getHeight()) {
                 tabsCapturePosition.set(0, top - dp(1), view.getWidth(), bottom + dp(1));
-                fragment.setParentGlass(tabsCapturePosition, onFragmentGlassCaptured);
+                tabs = tabsCapturePosition;
             }
+            RectF mini = null;
+            if (!miniPlayerCapturedBounds.isEmpty()) {
+                miniPlayerCapturePosition.set(0, miniPlayerCapturedBounds.top - dp(1), view.getWidth(), miniPlayerCapturedBounds.bottom + dp(1));
+                mini = miniPlayerCapturePosition;
+            }
+            fragment.setParentGlass(tabs, mini, tabs == null && mini == null ? null : onFragmentGlassCaptured);
         }
     }
 

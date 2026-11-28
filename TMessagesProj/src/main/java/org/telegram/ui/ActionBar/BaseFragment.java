@@ -1546,12 +1546,12 @@ public abstract class BaseFragment {
     }
 
     /**
-     * A glass of the parent over this fragment, e.g. the tabs, on the capture of the simple glass: its area in the
-     * coordinates of the fragment's view, null for none. Does nothing without the simple glass.
+     * The glass of the parent over this fragment, e.g. the tabs and the mini player, on the capture of the simple
+     * glass: their areas in the coordinates of the fragment's view, null for none. Does nothing without the simple glass.
      */
-    public void setParentGlass(@Nullable RectF position, @Nullable Runnable onCaptured) {
+    public void setParentGlass(@Nullable RectF position, @Nullable RectF second, @Nullable Runnable onCaptured) {
         if (simpleGlass != null) {
-            glassEngine.setExternalCapturePosition(position);
+            glassEngine.setExternalCapturePositions(position, second);
             simpleGlass.setOnCaptured(onCaptured);
         }
     }

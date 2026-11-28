@@ -79,17 +79,26 @@ public class GlassEngine {
     }
 
     private final RectF externalCapturePosition = new RectF();
+    private final RectF externalSecondCapturePosition = new RectF();
     private boolean externalCapturePositionInvalidated;
 
-    /** The area of a glass that is not in the root's views, e.g. the tabs over a page: in the root's coordinates, null for none. */
-    public void setExternalCapturePosition(@Nullable RectF position) {
+    /**
+     * The areas of the glass that is not in the root's views, e.g. the tabs and the mini player over a page: in the
+     * root's coordinates, null for none.
+     */
+    public void setExternalCapturePositions(@Nullable RectF first, @Nullable RectF second) {
+        setExternalCapturePosition(externalCapturePosition, first);
+        setExternalCapturePosition(externalSecondCapturePosition, second);
+    }
+
+    private void setExternalCapturePosition(RectF target, @Nullable RectF position) {
         if (position == null) {
-            if (!externalCapturePosition.isEmpty()) {
-                externalCapturePosition.setEmpty();
+            if (!target.isEmpty()) {
+                target.setEmpty();
                 externalCapturePositionInvalidated = true;
             }
-        } else if (!externalCapturePosition.equals(position)) {
-            externalCapturePosition.set(position);
+        } else if (!target.equals(position)) {
+            target.set(position);
             externalCapturePositionInvalidated = true;
         }
     }
@@ -517,6 +526,9 @@ public class GlassEngine {
             }
             if (!externalCapturePosition.isEmpty()) {
                 allVisibleDrawablesWithDisplayListPositions.add(externalCapturePosition);
+            }
+            if (!externalSecondCapturePosition.isEmpty()) {
+                allVisibleDrawablesWithDisplayListPositions.add(externalSecondCapturePosition);
             }
             positionsMerger.merge(
                 allVisibleDrawablesWithDisplayListPositions,

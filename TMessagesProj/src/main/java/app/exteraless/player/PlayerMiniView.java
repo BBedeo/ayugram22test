@@ -147,6 +147,11 @@ public class PlayerMiniView extends FrameLayout implements NotificationCenter.No
         return card;
     }
 
+    /** True while the card is on screen as glass: the host has to capture what is under it. */
+    public boolean isGlassShown() {
+        return glassBg != null && getVisibility() == VISIBLE && card.getHeight() > 0;
+    }
+
     public static PlayerMiniView preview(Context context) {
         return new PlayerMiniView(context, null, null, true);
     }
