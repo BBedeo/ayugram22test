@@ -1089,6 +1089,10 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     public void setInnerTranslationX(float value) {
         innerTranslationX = value;
         invalidate();
+        if (containerView.getMeasuredWidth() > 0) {
+            // the share of the previous screen really uncovered, not the progress reported to the fragments
+            glassBack.update(containerView.getTranslationX() / containerView.getMeasuredWidth());
+        }
 
         if (fragmentsStack.size() >= 2 && containerView.getMeasuredWidth() > 0) {
             float progress;
@@ -1466,6 +1470,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     }
 
     private void onSlideAnimationEnd(final boolean backAnimation) {
+        glassBack.disarm(); // before the containers swap
         // openExtera: контейнеры ниже меняются местами — масштаб карточки надо снять до этого
         springRouteYRatio = 0f;
         springRouteBackgroundDrawable = null;
@@ -1554,6 +1559,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     }
 
     private void prepareForMoving() {
+        glassBack.disarm();
         maybeStartTracking = false;
         startedTracking = true;
         layoutToIgnore = containerViewBack;
@@ -1617,6 +1623,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (USE_ACTIONBAR_CROSSFADE) {
             swipeProgress = 0f;
             invalidateActionBars();
+        }
+        if (!m3PredictiveBack) {
+            glassBack.arm(containerViewBack);
         }
     }
 
@@ -1738,6 +1747,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 } else if (ev == null) {
                     maybeStartTracking = false;
                     startedTracking = false;
+                    glassBack.disarm(); // a gesture dropped here never reaches onSlideAnimationEnd
                     layoutToIgnore = null;
                     if (containerView != null) {
                         containerView.setLayerType(LAYER_TYPE_NONE, null);
@@ -1766,6 +1776,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private Drawable predictiveBackBackgroundDrawable;
     /** M3-режим включён для текущего жеста (решается один раз в onBackStarted). */
     private boolean m3PredictiveBack;
+    private final app.exteraless.appearance.glass.GlassBackBlur glassBack = new app.exteraless.appearance.glass.GlassBackBlur();
 
     /**
      * Подложка нижележащего фрагмента на время обычного (не жестового) пружинного перехода.

@@ -16,7 +16,7 @@ import org.telegram.ui.Components.UniversalRecyclerView;
 import org.telegram.ui.Gifts.GiftSheet;
 
 /** Profile gift rendering with wallet sticker state, without changing profile interactions. */
-class WalletGiftCell extends GiftSheet.GiftCell {
+public class WalletGiftCell extends GiftSheet.GiftCell {
     TL_wallet.nftItem nft;
     WalletGiftStickers board;
     // The press bounce is drawn by the cell itself rather than set as scaleX/Y: the board owns the view's scale while

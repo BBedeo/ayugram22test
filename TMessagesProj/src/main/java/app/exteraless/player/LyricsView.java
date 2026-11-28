@@ -96,6 +96,7 @@ public class LyricsView extends FrameLayout {
         super(context);
 
         list = new RecyclerListView(context);
+        list.setGlassTouchEnabled(false); // lines own a blur effect and a scale animation
         layoutManager = new LinearLayoutManager(context);
         list.setLayoutManager(layoutManager);
         list.setAdapter(adapter);

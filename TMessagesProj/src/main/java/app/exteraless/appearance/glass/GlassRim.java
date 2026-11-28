@@ -42,6 +42,29 @@ public final class GlassRim {
         if (rect.width() <= 0 || rect.height() <= 0 || alpha <= 0f) {
             return;
         }
+        shade(rect, alpha);
+
+        final float half = paint.getStrokeWidth() / 2f;
+        final float max = Math.min(rect.width(), rect.height()) / 2f;
+        final float rt = Math.max(0f, Math.min(topRadius, max) - half);
+        final float rb = Math.max(0f, Math.min(bottomRadius, max) - half);
+        radii[0] = radii[1] = radii[2] = radii[3] = rt;
+        radii[4] = radii[5] = radii[6] = radii[7] = rb;
+        path.rewind();
+        path.addRoundRect(rect.left + half, rect.top + half, rect.right - half, rect.bottom - half, radii, Path.Direction.CW);
+        canvas.drawPath(path, paint);
+    }
+
+    /** The same rim along any outline, a message bubble for one; {@code bounds} encloses it. */
+    public void draw(Canvas canvas, Path outline, RectF bounds, float alpha) {
+        if (bounds.width() <= 0 || bounds.height() <= 0 || alpha <= 0f) {
+            return;
+        }
+        shade(bounds, alpha);
+        canvas.drawPath(outline, paint);
+    }
+
+    private void shade(RectF rect, float alpha) {
         final int peak = peak(GlassTokens.isDark());
         final int light = Color.argb(peak, 255, 255, 255);
         if (unit == null || shaderColor != light) {
@@ -58,15 +81,5 @@ public final class GlassRim {
         matrix.postTranslate(rect.left, rect.top);
         unit.setLocalMatrix(matrix);
         paint.setAlpha(Math.round(255 * Math.max(0f, Math.min(1f, alpha))));
-
-        final float half = paint.getStrokeWidth() / 2f;
-        final float max = Math.min(rect.width(), rect.height()) / 2f;
-        final float rt = Math.max(0f, Math.min(topRadius, max) - half);
-        final float rb = Math.max(0f, Math.min(bottomRadius, max) - half);
-        radii[0] = radii[1] = radii[2] = radii[3] = rt;
-        radii[4] = radii[5] = radii[6] = radii[7] = rb;
-        path.rewind();
-        path.addRoundRect(rect.left + half, rect.top + half, rect.right - half, rect.bottom - half, radii, Path.Direction.CW);
-        canvas.drawPath(path, paint);
     }
 }

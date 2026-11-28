@@ -106,7 +106,7 @@ public final class GlassMotion {
         });
     }
 
-    private static void spring(SpringAnimation animation, float target, float stiffness, float damping) {
+    static void spring(SpringAnimation animation, float target, float stiffness, float damping) {
         SpringForce force = animation.getSpring();
         if (force == null) {
             force = new SpringForce(target);

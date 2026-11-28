@@ -131,6 +131,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int disableAvatarBlurRow;
     private int blurDividerRow;
 
+    private int glassTouchHeaderRow;
+    private int glassTouchPressRow;
+    private int glassTouchSelectionRow;
+    private int glassTouchBackRow;
+    private int glassTouchDividerRow;
+
     // Calls — independent of the glass master switch
     private int callsHeaderRow;
     private int hideVoIPLabelsRow;
@@ -340,6 +346,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         forceBlurRow = addRow("forceBlur");
         disableAvatarBlurRow = detailed ? addRow("disableAvatarBlur") : -1;
         blurDividerRow = addRow();
+
+        glassTouchHeaderRow = addRow("glassTouchHeader");
+        glassTouchPressRow = addRow("glassTouchPress");
+        glassTouchSelectionRow = addRow("glassTouchSelection");
+        glassTouchBackRow = addRow("glassTouchBack");
+        glassTouchDividerRow = addRow();
 
         callsHeaderRow = addRow("callsHeader");
         hideVoIPLabelsRow = addRow("hideVoIPControlLabels");
@@ -1339,6 +1351,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             item = AppearanceConfig.animatedNumbers;
         } else if (position == typingBubbleRow) {
             item = AppearanceConfig.typingBubbleAtBottom;
+        } else if (position == glassTouchPressRow) {
+            item = AppearanceConfig.glassTouchPress;
+        } else if (position == glassTouchSelectionRow) {
+            item = AppearanceConfig.glassTouchSelection;
+        } else if (position == glassTouchBackRow) {
+            item = AppearanceConfig.glassTouchBack;
         } else if (position == detailedSettingsRow) {
             item = AppearanceConfig.detailedSettings;
         } else if (position == disableAvatarBlurRow) {
@@ -1520,6 +1538,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setText(getString(R.string.OEAppearanceFolders));
                     } else if (position == linksHeaderRow) {
                         cell.setText(getString(R.string.OEAppearanceInterface));
+                    } else if (position == glassTouchHeaderRow) {
+                        cell.setText(getString(R.string.OEAppearanceGlassTouchHeader));
                     }
                     break;
                 }
@@ -1557,6 +1577,18 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceTypingBubbleAtBottom),
                                 getString(R.string.OEAppearanceTypingBubbleAtBottomSub),
                                 AppearanceConfig.typingBubbleAtBottom.Bool(), true, true);
+                    } else if (position == glassTouchPressRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassTouchPress),
+                                getString(R.string.OEAppearanceGlassTouchPressSub),
+                                AppearanceConfig.glassTouchPress.Bool(), true, true);
+                    } else if (position == glassTouchSelectionRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassTouchSelection),
+                                getString(R.string.OEAppearanceGlassTouchSelectionSub),
+                                AppearanceConfig.glassTouchSelection.Bool(), true, true);
+                    } else if (position == glassTouchBackRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassTouchBack),
+                                getString(R.string.OEAppearanceGlassTouchBackSub),
+                                AppearanceConfig.glassTouchBack.Bool(), true, false);
                     } else if (position == customThemesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == detailedSettingsRow) {
@@ -1781,6 +1813,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setText(getString(R.string.OEAppearanceCustomThemesInfo));
                     } else if (position == blurDividerRow) {
                         cell.setText(getString(R.string.OEAppearanceBlurInfo));
+                    } else if (position == glassTouchDividerRow) {
+                        cell.setText(getString(R.string.OEAppearanceGlassTouchInfo));
                     } else if (position == callsDividerRow) {
                         cell.setText(getString(R.string.OEAppearanceHideVoIPControlLabelsInfo));
                     } else if (position == avatarsDividerRow) {
@@ -1835,12 +1869,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }
             if (position == presetsHeaderRow || position == appearanceHeaderRow || position == sectionsHeaderRow
                     || position == blurHeaderRow || position == callsHeaderRow || position == chatListHeaderRow
-                    || position == foldersHeaderRow || position == linksHeaderRow) {
+                    || position == foldersHeaderRow || position == linksHeaderRow || position == glassTouchHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == presetsDividerRow || position == appearanceDividerRow || position == sectionsDividerRow
                     || position == blurDividerRow || position == callsDividerRow || position == avatarsDividerRow
                     || position == chatListDividerRow || position == foldersDividerRow
-                    || position == linksDividerRow) {
+                    || position == linksDividerRow || position == glassTouchDividerRow) {
                 return TYPE_INFO_PRIVACY;
             } else if (position == fabShapeRow) {
                 return TYPE_FAB_SHAPE;

@@ -219,4 +219,12 @@
     <string name="OEAppearanceCustomFontDelete">Delete</string>
     <string name="OEAppearanceCustomFontInvalid">This file is not a usable font (TTF, OTF or TTC)</string>
     <string name="OEProfileEditShort">Edit</string>
+    <string name="OEAppearanceGlassTouchHeader">Glass Touch</string>
+    <string name="OEAppearanceGlassTouchPress">Touch effects</string>
+    <string name="OEAppearanceGlassTouchPressSub">Lens, shine and a soft squeeze on a pressed list row. The lens needs Android 13.</string>
+    <string name="OEAppearanceGlassTouchSelection">Selection frame</string>
+    <string name="OEAppearanceGlassTouchSelectionSub">A glass frame in the shape of the bubble around selected messages</string>
+    <string name="OEAppearanceGlassTouchBack">Glass back gesture</string>
+    <string name="OEAppearanceGlassTouchBackSub">The previous screen clears through glass as you swipe back. Needs Android 12.</string>
+    <string name="OEAppearanceGlassTouchInfo">Effects of the Glass Touch plugin by @vibecodersnotes and Claude. They pause in the Material 3 style, in power saver and while system animations are off.</string>
 </resources>

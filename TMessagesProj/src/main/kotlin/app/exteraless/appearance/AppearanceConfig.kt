@@ -837,6 +837,39 @@ object AppearanceConfig {
         return typingBubbleAtBottom.Bool()
     }
 
+    /** Glass Touch: линза, блик и сжатие нажатой строки списка. */
+    @JvmField
+    val glassTouchPress =
+        addConfig("OEAppearanceGlassTouchPress", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isGlassTouchPress(): Boolean {
+        ensureLoaded()
+        return glassTouchPress.Bool()
+    }
+
+    /** Glass Touch: стеклянная рамка выделенных сообщений. */
+    @JvmField
+    val glassTouchSelection =
+        addConfig("OEAppearanceGlassTouchSelection", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isGlassTouchSelection(): Boolean {
+        ensureLoaded()
+        return glassTouchSelection.Bool()
+    }
+
+    /** Glass Touch: стекло под уходящим экраном при жесте «назад». */
+    @JvmField
+    val glassTouchBack =
+        addConfig("OEAppearanceGlassTouchBack", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun isGlassTouchBack(): Boolean {
+        ensureLoaded()
+        return glassTouchBack.Bool()
+    }
+
     /** Показывать заголовки групп («Закреплённые» / «Чаты») над кластерами карточек в списке чатов. */
     @JvmField
     val segmentedGroupHeaders =

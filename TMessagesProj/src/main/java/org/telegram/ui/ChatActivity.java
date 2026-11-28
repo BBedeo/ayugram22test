@@ -20,6 +20,7 @@ import app.exteraless.chats.ChatsConfig;
 import app.exteraless.components.ActionRow;
 import app.exteraless.components.MessageDetailsPopupWrapper;
 import app.exteraless.appearance.GlassMenuHelper;
+import app.exteraless.appearance.glass.SelectionGlassFrame;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
@@ -1048,6 +1049,7 @@ public class ChatActivity extends BaseFragment implements
     private Long dialog_id_Long;
     private int lastLoadIndex = 1;
     public SparseArray<MessageObject>[] selectedMessagesIds = new SparseArray[]{new SparseArray<>(), new SparseArray<>()};
+    private final SelectionGlassFrame glassSelection = new SelectionGlassFrame();
     public SparseArray<MessageObject>[] selectedMessagesCanCopyIds = new SparseArray[]{new SparseArray<>(), new SparseArray<>()};
     public SparseArray<MessageObject>[] selectedMessagesCanStarIds = new SparseArray[]{new SparseArray<>(), new SparseArray<>()};
     private boolean hasUnfavedSelected;
@@ -6324,6 +6326,7 @@ public class ChatActivity extends BaseFragment implements
                     // canvas.clipRect(0, chatListViewPaddingTop - chatListViewPaddingVisibleOffset - AndroidUtilities.dp(4), getMeasuredWidth(), getMeasuredHeight() - blurredViewBottomOffset);
                 }
                 selectorRect.setEmpty();
+                glassSelection.beginFrame();
                 if (pullingDownOffset != 0) {
                     int restoreToCount = canvas.save();
                     float transitionOffset = 0;
@@ -6334,11 +6337,13 @@ public class ChatActivity extends BaseFragment implements
                     drawChatBackgroundElements(canvas);
                     super.dispatchDraw(canvas);
                     drawChatForegroundElements(canvas);
+                    glassSelection.draw(canvas, this, selectedMessagesIds);
                     canvas.restoreToCount(restoreToCount);
                 } else {
                     drawChatBackgroundElements(canvas);
                     super.dispatchDraw(canvas);
                     drawChatForegroundElements(canvas);
+                    glassSelection.draw(canvas, this, selectedMessagesIds);
                 }
                 canvas.restore();
             }
@@ -6723,6 +6728,12 @@ public class ChatActivity extends BaseFragment implements
                                 selected = false;
                                 break;
                             }
+                        }
+                        if (positionF == null) {
+                            final View cell = group.transitionParams.cell;
+                            final float halfWidth = (r - l) / 2f * cell.getScaleX(), halfHeight = (b - t) / 2f * cell.getScaleY();
+                            AndroidUtilities.rectTmp.set((l + r) / 2f - halfWidth, (t + b) / 2f - halfHeight, (l + r) / 2f + halfWidth, (t + b) / 2f + halfHeight);
+                            glassSelection.addGroup(group.groupId, AndroidUtilities.rectTmp, selected);
                         }
                         group.transitionParams.cell.drawBackground(canvas, (int) l, (int) t, (int) r, (int) b, group.transitionParams.pinnedTop, group.transitionParams.pinnedBotton, selected, 0);
                         if (group != scrimGroup) {
@@ -7208,6 +7219,7 @@ public class ChatActivity extends BaseFragment implements
         chatListView.setHideIfEmpty(false);
         chatListView.setAccessibilityEnabled(false);
         chatListView.setNestedScrollingEnabled(false);
+        chatListView.setGlassTouchEnabled(false);
         chatListView.setInstantClick(true);
         chatListView.setDisableHighlightState(true);
         chatListView.setTag(1);
@@ -21415,6 +21427,9 @@ public class ChatActivity extends BaseFragment implements
 
     private void addToSelectedMessages(MessageObject messageObject, boolean outside, boolean last) {
         int prevCantForwardCount = cantForwardMessagesCount;
+        if (chatListView != null) {
+            chatListView.invalidate(); // the glass selection frames follow the selection
+        }
         if (messageObject != null) {
             if (threadMessageObjects != null && threadMessageObjects.contains(messageObject) && !isThreadChat()) {
                 return;
@@ -38568,6 +38583,7 @@ public class ChatActivity extends BaseFragment implements
         if (chatListView == null) {
             return;
         }
+        chatListView.invalidate(); // the glass selection frames follow the selection
         int lastVisibleItem = RecyclerView.NO_POSITION;
         int top = 0;
         if (!wasManualScroll && unreadMessageObject != null) {

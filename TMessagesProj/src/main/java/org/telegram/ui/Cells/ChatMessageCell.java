@@ -1563,6 +1563,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     public boolean isAvatarVisible;
     private boolean isThreadPost;
     boolean drawBackground = true;
+    private final Rect glassFrameBounds = new Rect();
     int substractBackgroundHeight;
     private boolean allowAssistant;
     public MessageDrawable currentBackgroundDrawable;
@@ -18423,6 +18424,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             }
             setDrawableBoundsInner(currentBackgroundShadowDrawable, backgroundDrawableLeft, backgroundDrawableTop, backgroundDrawableRight, backgroundHeight);
         }
+        glassFrameBounds.set(currentBackgroundDrawable.getBounds());
 
         if (!currentMessageObject.isOutOwner() && transitionParams.changePinnedBottomProgress != 1 && !mediaBackground && !drawPinnedBottom) {
             backgroundDrawableLeft -= dp(6);
@@ -19917,7 +19919,18 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         animateCheckboxTranslation();
     }
 
-    private boolean hasInlineBotButtons() {
+    /** Bubble bounds as last laid out, in content coordinates; false for a message without a bubble. */
+    public boolean getGlassFrameBounds(Rect out) {
+        out.set(glassFrameBounds);
+        return drawBackground && !out.isEmpty();
+    }
+
+    /** Whether the bubble is the tailless kind, by the rule drawBackground() uses for albums. */
+    public boolean isGlassFrameMedia() {
+        return mediaBackground || drawPinnedBottom;
+    }
+
+    public boolean hasInlineBotButtons() {
         return currentMessageObject != null && currentMessageObject.hasInlineBotButtons() || drawContinueBotTopic;
     }
 

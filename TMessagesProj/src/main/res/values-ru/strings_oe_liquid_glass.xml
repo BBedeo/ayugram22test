@@ -35,4 +35,12 @@
     <string name="OEAppearancePresetClassicInfo">Стандартное оформление без всеобщего жидкого стекла и упругих жестов</string>
     <string name="OEAppearancePresetApplied">Применён пресет: %1$s</string>
     <string name="OEProfileEditShort">Изм.</string>
+    <string name="OEAppearanceGlassTouchHeader">Glass Touch</string>
+    <string name="OEAppearanceGlassTouchPress">Эффект касания</string>
+    <string name="OEAppearanceGlassTouchPressSub">Линза, блик и мягкое сжатие нажатой строки списка. Линза появляется с Android 13.</string>
+    <string name="OEAppearanceGlassTouchSelection">Рамка выделения</string>
+    <string name="OEAppearanceGlassTouchSelectionSub">Стеклянная рамка по форме пузыря вокруг выделенных сообщений</string>
+    <string name="OEAppearanceGlassTouchBack">Стекло при жесте «назад»</string>
+    <string name="OEAppearanceGlassTouchBackSub">Предыдущий экран проступает сквозь стекло, пока вы тянете назад. Нужен Android 12.</string>
+    <string name="OEAppearanceGlassTouchInfo">Эффекты плагина Glass Touch, авторы @vibecodersnotes и Claude. Не работают в стиле Material 3, при энергосбережении и выключенных системных анимациях.</string>
 </resources>

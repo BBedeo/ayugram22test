@@ -137,6 +137,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     private boolean isHidden;
 
     private boolean disableHighlightState;
+    private boolean glassTouchEnabled = true;
 
     private boolean allowItemsInteractionDuringAnimation = true;
 
@@ -1416,6 +1417,14 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             return;
         }
         child.setPressed(pressed);
+        if (glassTouchEnabled) {
+            app.exteraless.appearance.glass.GlassTouchController.onRowPressed(this, child, x, y, pressed);
+        }
+    }
+
+    /** Off for lists whose rows animate their own scale or own a render effect. */
+    public void setGlassTouchEnabled(boolean value) {
+        glassTouchEnabled = value;
     }
 
     protected boolean allowSelectChildAtPosition(float x, float y) {

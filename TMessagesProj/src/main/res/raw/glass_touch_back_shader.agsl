@@ -1,0 +1,28 @@
+// Glass Touch back gesture, after the "liquid" shader of the exteraGram plugin "Glass Touch" (@vibecodersnotes, Claude).
+uniform shader img;
+uniform float2 size;
+uniform float p;
+
+half4 main(float2 xy) {
+    if (xy.x < 0.0 || xy.y < 0.0 || xy.x > size.x || xy.y > size.y) {
+        return img.eval(xy);
+    }
+    float2 c = size * 0.5;
+    float2 d = (xy - c) / c;
+    float r2 = dot(d, d);
+    // sampling stays half a pixel inside the view
+    float2 lo = float2(0.5, 0.5);
+    float2 hi = size - float2(0.5, 0.5);
+    float2 uv = xy - d * c * r2 * 0.07 * p;
+    float2 ca = d * (2.0 + 10.0 * r2) * p;
+    half4 g = img.eval(clamp(uv, lo, hi));
+    half4 r = img.eval(clamp(uv + ca, lo, hi));
+    half4 b = img.eval(clamp(uv - ca, lo, hi));
+    half4 col = half4(r.r, g.g, b.b, g.a);
+    // a band of light that crosses the screen as the glass clears
+    float t = (xy.x + xy.y) / (size.x + size.y);
+    float s = (t - (1.15 - p * 1.3)) * 7.0;
+    float h = exp(-s * s) * 0.10 * p;
+    col.rgb += half3(h, h, h) * col.a;
+    return col;
+}
